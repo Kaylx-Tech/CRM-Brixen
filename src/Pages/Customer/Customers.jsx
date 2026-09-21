@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Button } from "@/components/ui/button"
 import AddCustomer from "./AddCustomer"
+import ViewCustomer from "./ViewCustomer"
 
 import {
   Select,
@@ -32,109 +33,110 @@ const dummyCustomers = [
 
 const columnHelper = createColumnHelper()
 
-const columns = [
-  columnHelper.display({
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  }),
-  columnHelper.accessor("name", {
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          className="p-0 hover:bg-transparent font-semibold"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Customer Name
-          <IconArrowsSort className="ml-2 h-4 w-4" />
-        </Button>
-      )
-    },
-  }),
-  columnHelper.accessor("email", {
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          className="p-0 hover:bg-transparent font-semibold"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Email
-          <IconArrowsSort className="ml-2 h-4 w-4" />
-        </Button>
-      )
-    },
-  }),
-  columnHelper.accessor("type", {
-    header: "Type",
-    cell: ({ row }) => {
-      const type = row.getValue("type")
-      return <Badge variant={type === 'B2B' ? 'default' : 'secondary'}>{type}</Badge>
-    }
-  }),
-  columnHelper.accessor("signedUp", {
-    header: "Signed up",
-  }),
-  columnHelper.accessor("source", {
-    header: "Source",
-  }),
-  columnHelper.accessor("companies", {
-    header: "Companies",
-  }),
-  columnHelper.accessor("orders", {
-    header: "Orders",
-  }),
-  columnHelper.accessor("status", {
-    header: "Status",
-    cell: ({ row }) => {
-      const status = row.getValue("status")
-      return <Badge variant={status === 'Active' ? 'outline' : 'destructive'}>{status}</Badge>
-    }
-  }),
-  columnHelper.display({
-    id: "actions",
-    cell: ({ row }) => {
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <IconDotsVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuGroup>
-              <DropdownMenuItem>View customer</DropdownMenuItem>
-              <DropdownMenuItem>Edit details</DropdownMenuItem>
-              <DropdownMenuItem variant='destructive'>Delete</DropdownMenuItem>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    },
-  }),
-]
-
 const Customers = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [viewCustomer, setViewCustomer] = useState(null)
+
+  const columns = React.useMemo(() => [
+    columnHelper.display({
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    }),
+    columnHelper.accessor("name", {
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            className="p-0 hover:bg-transparent font-semibold"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Customer Name
+            <IconArrowsSort className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+    }),
+    columnHelper.accessor("email", {
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            className="p-0 hover:bg-transparent font-semibold"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Email
+            <IconArrowsSort className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+    }),
+    columnHelper.accessor("type", {
+      header: "Type",
+      cell: ({ row }) => {
+        const type = row.getValue("type")
+        return <Badge variant={type === 'B2B' ? 'default' : 'secondary'}>{type}</Badge>
+      }
+    }),
+    columnHelper.accessor("signedUp", {
+      header: "Signed up",
+    }),
+    columnHelper.accessor("source", {
+      header: "Source",
+    }),
+    columnHelper.accessor("companies", {
+      header: "Companies",
+    }),
+    columnHelper.accessor("orders", {
+      header: "Orders",
+    }),
+    columnHelper.accessor("status", {
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.getValue("status")
+        return <Badge variant={status === 'Active' ? 'outline' : 'destructive'}>{status}</Badge>
+      }
+    }),
+    columnHelper.display({
+      id: "actions",
+      cell: ({ row }) => {
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <IconDotsVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={() => setViewCustomer(row.original)}>View customer</DropdownMenuItem>
+                <DropdownMenuItem>Edit details</DropdownMenuItem>
+                <DropdownMenuItem variant='destructive'>Delete</DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
+    }),
+  ], [])
 
   const customerFilterConfig = [
     {
@@ -183,7 +185,15 @@ const Customers = () => {
         data={dummyCustomers}
         filterConfig={customerFilterConfig}
       />
+     
       <AddCustomer isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      {viewCustomer && (
+        <ViewCustomer 
+          customer={viewCustomer} 
+          isOpen={!!viewCustomer} 
+          onClose={() => setViewCustomer(null)} 
+        />
+      )}
     </div>
   )
 }

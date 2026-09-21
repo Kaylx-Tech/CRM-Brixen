@@ -5,6 +5,7 @@ import SignUp from './Pages/SignUp'
 import AdminLayout from './Layout/AdminLayout'
 import Dashboard from './Pages/Dasboard'
 import Customers from './Pages/Customer/Customers'
+import Companies from './Pages/Companies/Companies'
 import { TooltipProvider } from './components/ui/tooltip'
 import { ThemeProvider } from './hooks/theme-provider'
 
@@ -21,6 +22,7 @@ const App = () => {
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="customers" element={<Customers />} />
+              <Route path="companies" element={<Companies />} />
             </Route>
           </Routes>
         </BrowserRouter>

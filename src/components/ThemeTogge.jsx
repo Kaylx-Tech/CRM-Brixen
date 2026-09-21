@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { IconSun, IconMoon } from '@tabler/icons-react';
 
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,25 @@ export function ModeToggle() {
     const toggleTheme = () => {
         setTheme(theme === "dark" ? "light" : "dark");
     }
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (
+                e.target.tagName === 'INPUT' ||
+                e.target.tagName === 'TEXTAREA' ||
+                e.target.isContentEditable
+            ) {
+                return;
+            }
+
+            if (e.key === 'd' || e.key === 'D') {
+                toggleTheme();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [theme]);
 
     return (
         <Button onClick={toggleTheme}

@@ -51,7 +51,6 @@ export function ChartBarMultiple() {
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="space-y-1">
           <CardTitle>Revenue Analytics</CardTitle>
-          <CardDescription>This month</CardDescription>
         </div>
         <Select defaultValue="this-month">
           <SelectTrigger className="w-[120px] h-8 text-xs">
@@ -59,9 +58,9 @@ export function ChartBarMultiple() {
           </SelectTrigger>
           <SelectContent>
           <SelectGroup>
-            <SelectItem value="this-month">This month</SelectItem>
-            <SelectItem value="last-month">Last month</SelectItem>
-            <SelectItem value="this-year">This year</SelectItem>
+            <SelectItem value="This Month">This Month</SelectItem>
+            <SelectItem value="Last Month">Last Month</SelectItem>
+            <SelectItem value="This Year">This Year</SelectItem>
           </SelectGroup>
           </SelectContent>
         </Select>
@@ -128,17 +127,16 @@ export function ChartPieSeparatorNone() {
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="space-y-1">
           <CardTitle>Sales Analytics</CardTitle>
-          <CardDescription>This month</CardDescription>
-        </div>
+         </div>
         <Select defaultValue="this-month">
           <SelectTrigger className="w-[120px] h-8 text-xs">
             <SelectValue placeholder="Filter" />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-            <SelectItem value="this-month">This month</SelectItem>
-            <SelectItem value="last-month">Last month</SelectItem>
-            <SelectItem value="this-year">This year</SelectItem>
+            <SelectItem value="this-month">This Month</SelectItem>
+            <SelectItem value="last-month">Last Month</SelectItem>
+            <SelectItem value="this-year">This Year</SelectItem>
             </SelectGroup>
           </SelectContent>
         </Select>

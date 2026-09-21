@@ -90,7 +90,6 @@ const AddCustomer = ({ isOpen, onClose }) => {
           </div>
           
         </div>
-
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
@@ -100,6 +99,7 @@ const AddCustomer = ({ isOpen, onClose }) => {
             Create Customer
           </Button>
         </DialogFooter>
+       
       </DialogContent>
     </Dialog>
   )

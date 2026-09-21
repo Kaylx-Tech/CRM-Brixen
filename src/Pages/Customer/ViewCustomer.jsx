@@ -1,11 +1,13 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogTrigger,
 } from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Tabs,
   TabsContent,
@@ -22,15 +24,16 @@ import { Separator } from '@/components/ui/separator'
 import { IconUpload } from '@tabler/icons-react'
 
 const ViewCustomer = ({ isOpen, onClose }) => {
+  const [activeTab, setActiveTab] = useState("overview")
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[850px] p-0 overflow-hidden gap-0">
+      <DialogContent className="sm:max-w-[800px]">
         
         {/* Header Section */}
-        <div className="p-6 pb-4">
-          <DialogHeader className="flex flex-row items-center gap-4 space-y-0 text-left">
-            <Avatar className="w-14 h-14 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xl font-bold">
-              <AvatarFallback className="rounded-lg bg-blue-600 text-white">MW</AvatarFallback>
+          <DialogHeader className='flex-row items-center gap-4 space-y-0 text-left'>
+            <Avatar className="w-14 h-14 bg-blue-600 text-white flex items-center justify-center text-xl font-bold">
+              <AvatarFallback>MW</AvatarFallback>
             </Avatar>
             <div>
               <DialogTitle className="text-2xl font-bold">Muhammad Waqas Aslam</DialogTitle>
@@ -39,30 +42,30 @@ const ViewCustomer = ({ isOpen, onClose }) => {
               </DialogDescription>
             </div>
           </DialogHeader>
-        </div>
 
         {/* Tabs Section */}
-        <Tabs defaultValue="overview" className="w-full flex flex-col">
-          <div className="px-6 py-2 border-b">
-            <TabsList className="bg-transparent h-auto p-0 gap-2 flex-wrap">
-              <TabsTrigger value="overview" className="rounded-full border data-[state=active]:bg-background data-[state=active]:border-input data-[state=inactive]:border-transparent data-[state=inactive]:hover:bg-muted px-4 py-1.5 h-auto text-sm shadow-none">Overview</TabsTrigger>
-              <TabsTrigger value="companies" className="rounded-full border data-[state=active]:bg-background data-[state=active]:border-input data-[state=inactive]:border-transparent data-[state=inactive]:hover:bg-muted px-4 py-1.5 h-auto text-sm shadow-none">Companies</TabsTrigger>
-              <TabsTrigger value="orders" className="rounded-full border data-[state=active]:bg-background data-[state=active]:border-input data-[state=inactive]:border-transparent data-[state=inactive]:hover:bg-muted px-4 py-1.5 h-auto text-sm shadow-none">Orders</TabsTrigger>
-              <TabsTrigger value="invoices" className="rounded-full border data-[state=active]:bg-background data-[state=active]:border-input data-[state=inactive]:border-transparent data-[state=inactive]:hover:bg-muted px-4 py-1.5 h-auto text-sm shadow-none">Invoices</TabsTrigger>
-              <TabsTrigger value="documents" className="rounded-full border data-[state=active]:bg-background data-[state=active]:border-input data-[state=inactive]:border-transparent data-[state=inactive]:hover:bg-muted px-4 py-1.5 h-auto text-sm shadow-none">Documents</TabsTrigger>
-              <TabsTrigger value="support" className="rounded-full border data-[state=active]:bg-background data-[state=active]:border-input data-[state=inactive]:border-transparent data-[state=inactive]:hover:bg-muted px-4 py-1.5 h-auto text-sm shadow-none">Support</TabsTrigger>
-              <TabsTrigger value="activity" className="rounded-full border data-[state=active]:bg-background data-[state=active]:border-input data-[state=inactive]:border-transparent data-[state=inactive]:hover:bg-muted px-4 py-1.5 h-auto text-sm shadow-none">Activity</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col">
+          <div className="px-6 py-2 border-b overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <TabsList className="flex w-max">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="companies">Companies</TabsTrigger>
+              <TabsTrigger value="orders">Orders</TabsTrigger>
+              <TabsTrigger value="invoices">Invoices</TabsTrigger>
+              <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="support">Support</TabsTrigger>
+              <TabsTrigger value="activity">Activity</TabsTrigger>
             </TabsList>
           </div>
 
-          <div className="p-6 overflow-y-auto max-h-[50vh]">
+          <ScrollArea className="h-[60vh] min-h-[400px] w-full">
+            <div className="p-6 overflow-x-hidden">
             
             {/* Overview Tab */}
             <TabsContent value="overview" className="m-0 space-y-6 outline-none">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
                 <div className="flex items-center">
                   <span className="font-bold w-24">B2B ID:</span>
-                  <Badge variant="secondary" className="bg-blue-50 text-blue-600 hover:bg-blue-50 rounded-md font-semibold px-2 py-0.5">B2B-000001</Badge>
+                  <Badge variant="secondary">B2B-000001</Badge>
                 </div>
                 <div className="flex items-center">
                   <span className="font-bold w-28">Login email:</span>
@@ -78,7 +81,7 @@ const ViewCustomer = ({ isOpen, onClose }) => {
                 </div>
                 <div className="flex items-center">
                   <span className="font-bold w-24">Status:</span>
-                  <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200 hover:bg-green-50 rounded-md font-semibold px-2 py-0.5">Active</Badge>
+                  <Badge variant="outline">Active</Badge>
                 </div>
                 <div className="flex items-center">
                   <span className="font-bold w-32">WordPress Sync:</span>
@@ -95,8 +98,8 @@ const ViewCustomer = ({ isOpen, onClose }) => {
               <div className="space-y-3">
                 <Label className="font-bold text-sm">Send all client notifications to</Label>
                 <div className="flex items-center gap-3">
-                  <Input placeholder="Leave blank to use login email" className="max-w-xs h-9" />
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-5 h-9">Save</Button>
+                  <Input placeholder="Leave blank to use login email" className="max-w-xs" />
+                  <Button size="sm">Save</Button>
                 </div>
                 <p className="text-[13px] text-muted-foreground">
                   Orders, documents, payments, and activity emails for this client all go here.
@@ -128,9 +131,9 @@ const ViewCustomer = ({ isOpen, onClose }) => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" className="rounded-full h-8 text-[13px] px-4">Upload</Button>
-                  <Button variant="outline" className="rounded-full h-8 text-[13px] px-4">Change details</Button>
-                  <Button className="rounded-full h-8 text-[13px] px-4 bg-blue-600 hover:bg-blue-700 text-white">Process</Button>
+                  <Button variant="outline" size="sm">Upload</Button>
+                  <Button variant="outline" size="sm">Change details</Button>
+                  <Button size="sm">Process</Button>
                 </div>
               </div>
             </TabsContent>
@@ -148,7 +151,7 @@ const ViewCustomer = ({ isOpen, onClose }) => {
             <TabsContent value="documents" className="m-0 space-y-4 outline-none">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">Documents stored for this customer only.</p>
-                <Button className="rounded-full bg-blue-600 hover:bg-blue-700 text-white h-9 px-4">
+                <Button size="sm">
                   <IconUpload className="mr-2 h-4 w-4" />
                   Upload Document
                 </Button>
@@ -163,13 +166,13 @@ const ViewCustomer = ({ isOpen, onClose }) => {
                       Bank statement • #GB15323 • 18 Sept 2026 • Brixen Admin
                     </p>
                   </div>
-                  <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200 hover:bg-green-50 rounded-md font-semibold px-2 py-0.5">Approved</Badge>
+                  <Badge variant="outline">Approved</Badge>
                 </div>
                 <div className="flex flex-col items-end gap-3">
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" className="rounded-full h-7 text-xs px-3">View</Button>
-                    <Button className="rounded-full h-7 text-xs px-3 bg-blue-600 hover:bg-blue-700 text-white">Download</Button>
-                    <Button variant="outline" className="rounded-full h-7 text-xs px-3">Delete</Button>
+                    <Button variant="outline" size="sm">View</Button>
+                    <Button size="sm">Download</Button>
+                    <Button variant="outline" size="sm">Delete</Button>
                   </div>
                   <Select defaultValue="approved">
                     <SelectTrigger className="h-8 w-[160px] text-[13px]">
@@ -192,13 +195,13 @@ const ViewCustomer = ({ isOpen, onClose }) => {
                       Order Documents • #GB15323 • 18 Sept 2026 • Customer Upload
                     </p>
                   </div>
-                  <Badge variant="outline" className="bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-50 rounded-md font-semibold px-2 py-0.5">Pending Review</Badge>
+                  <Badge variant="outline">Pending Review</Badge>
                 </div>
                 <div className="flex flex-col items-end gap-3">
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" className="rounded-full h-7 text-xs px-3">View</Button>
-                    <Button className="rounded-full h-7 text-xs px-3 bg-blue-600 hover:bg-blue-700 text-white">Download</Button>
-                    <Button variant="outline" className="rounded-full h-7 text-xs px-3">Delete</Button>
+                    <Button variant="outline" size="sm">View</Button>
+                    <Button size="sm">Download</Button>
+                    <Button variant="outline" size="sm">Delete</Button>
                   </div>
                   <Select defaultValue="pending">
                     <SelectTrigger className="h-8 w-[160px] text-[13px]">
@@ -221,13 +224,13 @@ const ViewCustomer = ({ isOpen, onClose }) => {
                       Order Documents • #GB15323 • 18 Sept 2026 • Customer Upload
                     </p>
                   </div>
-                  <Badge variant="outline" className="bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-50 rounded-md font-semibold px-2 py-0.5">Pending Review</Badge>
+                  <Badge variant="outline">Pending Review</Badge>
                 </div>
                 <div className="flex flex-col items-end gap-3">
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" className="rounded-full h-7 text-xs px-3">View</Button>
-                    <Button className="rounded-full h-7 text-xs px-3 bg-blue-600 hover:bg-blue-700 text-white">Download</Button>
-                    <Button variant="outline" className="rounded-full h-7 text-xs px-3">Delete</Button>
+                    <Button variant="outline" size="sm">View</Button>
+                    <Button size="sm">Download</Button>
+                    <Button variant="outline" size="sm">Delete</Button>
                   </div>
                   <Select defaultValue="pending">
                     <SelectTrigger className="h-8 w-[160px] text-[13px]">
@@ -253,12 +256,13 @@ const ViewCustomer = ({ isOpen, onClose }) => {
               No recent activity found.
             </TabsContent>
 
-          </div>
+            </div>
+          </ScrollArea>
         </Tabs>
 
         {/* Footer Section */}
-        <div className="p-4 border-t flex justify-end bg-background">
-          <Button variant="outline" onClick={onClose} className="rounded-full px-8">
+        <div className="p-4 flex justify-end">
+          <Button onClick={onClose}>
             Close
           </Button>
         </div>

@@ -162,9 +162,18 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected }) => 
                   )
                 })}
                 
+                {/* Selected Count Overlay */}
+                {table.getFilteredSelectedRowModel().rows.length > 0 && (
+                  <div className="absolute inset-y-0 left-10 flex items-center z-10 animate-in fade-in slide-in-from-left-8 duration-400">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      {table.getFilteredSelectedRowModel().rows.length} {table.getFilteredSelectedRowModel().rows.length === 1 ? 'Row' : 'Rows'} Selected
+                    </span>
+                  </div>
+                )}
+                
                 {/* Delete Button Overlay */}
                 {table.getFilteredSelectedRowModel().rows.length > 0 && (
-                  <div className="absolute inset-y-0 right-4 flex items-center justify-end z-10 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="absolute inset-y-0 right-4 flex items-center justify-end z-10 animate-in fade-in slide-in-from-right-4 duration-400">
                     <Button 
                       variant="destructive" 
                       size="sm" 
