@@ -28,16 +28,29 @@ const AddCustomer = ({ isOpen, onClose }) => {
           
           <div className="space-y-3">
             <Label className="font-semibold">Customer Type <span className="text-destructive">*</span></Label>
-            <RadioGroup defaultValue="normal" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <RadioGroup defaultValue="individual" className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Label
-                htmlFor="normal"
+                htmlFor="individual"
                 className="flex items-start gap-3 rounded-md border border-input p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary cursor-pointer font-normal"
               >
-                <RadioGroupItem value="normal" id="normal" className="mt-0.5" />
+                <RadioGroupItem value="individual" id="individual" className="mt-0.5" />
                 <div className="grid gap-1">
-                  <span className="font-semibold text-sm">Normal Customer</span>
+                  <span className="font-semibold text-sm">Individual</span>
                   <span className="text-xs text-muted-foreground">
-                    Retail/individual client. Signs in on the Brixen website only — not this CRM portal.
+                    Has only one company. Single/personal company owner.
+                  </span>
+                </div>
+              </Label>
+
+              <Label
+                htmlFor="business"
+                className="flex items-start gap-3 rounded-md border border-input p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary cursor-pointer font-normal"
+              >
+                <RadioGroupItem value="business" id="business" className="mt-0.5" />
+                <div className="grid gap-1">
+                  <span className="font-semibold text-sm">Business</span>
+                  <span className="text-xs text-muted-foreground">
+                    Multiple companies. Direct multi-company corporate account.
                   </span>
                 </div>
               </Label>
@@ -48,9 +61,9 @@ const AddCustomer = ({ isOpen, onClose }) => {
               >
                 <RadioGroupItem value="b2b" id="b2b" className="mt-0.5" />
                 <div className="grid gap-1">
-                  <span className="font-semibold text-sm">B2B Customer</span>
+                  <span className="font-semibold text-sm">B2B Account</span>
                   <span className="text-xs text-muted-foreground">
-                    Corporate client. Signs in to this CRM portal with email and password. Unique B2B-XXXXXX ID.
+                    Deals on behalf of others. Intermediary/agent managing client portfolios.
                   </span>
                 </div>
               </Label>

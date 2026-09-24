@@ -26,9 +26,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 const dummyCustomers = [
-  { id: 1, name: "John Doe", email: "john@example.com", type: "Normal", signedUp: "Sep 15, 2026", source: "Organic", companies: 0, orders: 2, status: "Active" },
-  { id: 2, name: "Acme Corp", email: "billing@acme.com", type: "B2B", signedUp: "Sep 12, 2026", source: "Referral", companies: 1, orders: 15, status: "Active" },
-  { id: 3, name: "Jane Smith", email: "jane@example.com", type: "Normal", signedUp: "Sep 10, 2026", source: "Social", companies: 0, orders: 1, status: "Inactive" },
+  { id: 1, name: "John Doe", email: "john@example.com", type: "Individual", signedUp: "Sep 15, 2026", source: "Organic", companies: 1, orders: 2, status: "Active" },
+  { id: 2, name: "Apex Global Holdings", email: "corp@apexholding.com", type: "Business", signedUp: "Sep 14, 2026", source: "Direct", companies: 4, orders: 8, status: "Active" },
+  { id: 3, name: "Acme Corp (Agent)", email: "billing@acme.com", type: "B2B", signedUp: "Sep 12, 2026", source: "Referral", companies: 12, orders: 15, status: "Active" },
+  { id: 4, name: "Jane Smith", email: "jane@example.com", type: "Individual", signedUp: "Sep 10, 2026", source: "Social", companies: 1, orders: 1, status: "Inactive" },
 ]
 
 const columnHelper = createColumnHelper()
@@ -92,7 +93,10 @@ const Customers = () => {
       header: "Type",
       cell: ({ row }) => {
         const type = row.getValue("type")
-        return <Badge variant={type === 'B2B' ? 'default' : 'secondary'}>{type}</Badge>
+        let badgeVariant = 'secondary'
+        if (type === 'B2B') badgeVariant = 'default'
+        else if (type === 'Business') badgeVariant = 'outline'
+        return <Badge variant={badgeVariant}>{type}</Badge>
       }
     }),
     columnHelper.accessor("signedUp", {
@@ -161,7 +165,8 @@ const Customers = () => {
       columnKey: "type",
       placeholder: "Types",
       options: [
-        { label: "Normal", value: "Normal" },
+        { label: "Individual", value: "Individual" },
+        { label: "Business", value: "Business" },
         { label: "B2B", value: "B2B" },
       ]
     }
