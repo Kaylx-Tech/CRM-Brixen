@@ -311,24 +311,7 @@ const Dashboard = () => {
 
       {/* Recent Activity Feed */}
       {isLoading ? (
-        <Card>
-          <CardHeader className="pb-3">
-            <Skeleton className="h-5 w-44" />
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {Array.from({ length: 4 }).map((_, idx) => (
-                <div key={idx} className="flex items-start gap-3 p-3.5 rounded-xl border bg-muted/20">
-                  <Skeleton className="size-8 rounded-lg shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <Skeleton className="w-full h-[150px] rounded-xl" />
       ) : dashboardData?.activity && dashboardData.activity.length > 0 ? (
         <Card>
           <CardHeader className="pb-3">

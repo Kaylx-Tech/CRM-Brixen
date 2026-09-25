@@ -22,17 +22,7 @@ export function StatCard({
   isLoading = false,
 }) {
   if (isLoading) {
-    return (
-      <Card className="@container/card">
-        <CardHeader>
-          <Skeleton className="h-4 w-24 mb-1" />
-          <div className="flex items-center justify-between mt-2">
-            <Skeleton className="h-8 w-28" />
-            <Skeleton className="h-6 w-14 rounded-full" />
-          </div>
-        </CardHeader>
-      </Card>
-    )
+    return <Skeleton className="w-full h-[115px] rounded-xl" />
   }
 
   const isDown = trendDirection === "down"
@@ -78,9 +68,9 @@ export function StatCard({
 export function SectionCards({ stats = [], isLoading = false }) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs dark:*:data-[slot=card]:bg-card">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {Array.from({ length: 5 }).map((_, i) => (
-          <StatCard key={i} isLoading={true} />
+          <Skeleton key={i} className="w-full h-[115px] rounded-xl" />
         ))}
       </div>
     )

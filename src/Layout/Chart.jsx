@@ -38,24 +38,7 @@ export function ChartBarMultiple({
   isLoading = false,
 }) {
   if (isLoading) {
-    return (
-      <Card className="flex flex-col">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <Skeleton className="h-5 w-44" />
-          <Skeleton className="h-8 w-28" />
-        </CardHeader>
-        <CardContent className="flex-1 pt-6">
-          <div className="flex items-end justify-between gap-2 h-[260px] pt-8 px-4">
-            {[40, 65, 80, 50, 90, 75, 60, 85, 70, 95, 45, 60].map((h, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                <Skeleton className="w-full rounded-t-sm" style={{ height: `${h}%` }} />
-                <Skeleton className="h-3 w-6" />
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    )
+    return <Skeleton className="w-full h-[360px] rounded-xl" />
   }
 
   const displayData = data && data.length > 0 ? data : []
@@ -132,22 +115,7 @@ const pieChartConfig = {
 
 export function ChartPieSeparatorNone({ data = [], isLoading = false }) {
   if (isLoading) {
-    return (
-      <Card className="flex flex-col h-full">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <Skeleton className="h-5 w-40" />
-        </CardHeader>
-        <div className="flex flex-col sm:flex-row items-center justify-center flex-1 p-6 gap-6">
-          <Skeleton className="size-48 rounded-full shrink-0" />
-          <div className="flex flex-col gap-3 w-full sm:w-auto">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-4 w-36" />
-            <Skeleton className="h-4 w-28" />
-            <Skeleton className="h-4 w-30" />
-          </div>
-        </div>
-      </Card>
-    )
+    return <Skeleton className="w-full h-[360px] rounded-xl" />
   }
 
   const pieData = data && data.length > 0 ? data : []
@@ -209,17 +177,7 @@ const areaChartConfig = {
 
 export function ChartAreaSalesTrend({ data = [], isLoading = false }) {
   if (isLoading) {
-    return (
-      <Card className="flex flex-col">
-        <CardHeader className="flex items-center justify-between pb-2">
-          <Skeleton className="h-5 w-28" />
-          <Skeleton className="h-4 w-40" />
-        </CardHeader>
-        <CardContent className="flex-1 pt-6">
-          <Skeleton className="w-full h-[250px] rounded-lg" />
-        </CardContent>
-      </Card>
-    )
+    return <Skeleton className="w-full h-[360px] rounded-xl" />
   }
 
   const displayData = data && data.length > 0 ? data : []
@@ -302,21 +260,7 @@ const topPerformerConfig = {
 
 export function ChartTopPerformer({ data = [], isLoading = false }) {
   if (isLoading) {
-    return (
-      <Card className="flex flex-col">
-        <CardHeader className="pb-2">
-          <Skeleton className="h-5 w-44" />
-        </CardHeader>
-        <CardContent className="flex-1 pt-4 space-y-3">
-          {[75, 90, 60, 45, 80, 55].map((w, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <Skeleton className="h-4 w-28 shrink-0" />
-              <Skeleton className="h-6 rounded-md" style={{ width: `${w}%` }} />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    )
+    return <Skeleton className="w-full h-[360px] rounded-xl" />
   }
 
   const displayData = data && data.length > 0 ? data : []
