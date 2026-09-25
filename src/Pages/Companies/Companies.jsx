@@ -150,33 +150,7 @@ const Companies = () => {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 pb-8">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="w-full flex flex-col h-full relative">
-              <CardHeader className="pb-3 flex flex-row items-start justify-between">
-                <div className="flex flex-col gap-2 pr-6 w-3/4">
-                  <Skeleton className="h-5 w-4/5" />
-                  <Skeleton className="h-3.5 w-24" />
-                </div>
-                <Skeleton className="h-8 w-8 rounded-md" />
-              </CardHeader>
-              <CardContent className="pb-4 space-y-4 flex-1">
-                <div className="flex items-center gap-2">
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-4 w-32" />
-                </div>
-                <div className="space-y-1.5">
-                  <Skeleton className="h-3.5 w-full" />
-                  <Skeleton className="h-3.5 w-2/3" />
-                </div>
-                <div className="flex items-center gap-3 pt-1">
-                  <Skeleton className="h-5 w-14 rounded-full" />
-                  <Skeleton className="h-5 w-16 rounded-md" />
-                </div>
-                <Skeleton className="h-3.5 w-44" />
-              </CardContent>
-              <CardFooter>
-                <Skeleton className="h-9 w-full rounded-md" />
-              </CardFooter>
-            </Card>
+            <Skeleton key={i} className="w-full h-[270px] rounded-xl" />
           ))}
         </div>
       ) : filteredCompanies.length === 0 ? (
