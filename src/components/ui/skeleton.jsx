@@ -8,7 +8,7 @@ function Skeleton({
     <div
       data-slot="skeleton"
       className={cn(
-        "animate-shimmer rounded-md bg-muted/80 relative overflow-hidden border border-border/30",
+        "animate-shimmer rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs",
         className
       )}
       {...props}
