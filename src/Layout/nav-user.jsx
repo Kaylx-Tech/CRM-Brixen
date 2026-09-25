@@ -22,10 +22,27 @@ import { IconDotsVertical, IconUserCircle, IconCreditCard, IconNotification, Ico
 import { Link, useNavigate } from "react-router-dom"
 
 export function NavUser({
-  user
+  user: defaultUser
 }) {
   const navigate = useNavigate()
   const { isMobile } = useSidebar()
+
+  let storedUser = {}
+  try {
+    storedUser = JSON.parse(localStorage.getItem('user') || '{}')
+  } catch (e) {}
+
+  const user = {
+    name: storedUser.full_name || storedUser.name || defaultUser?.name || 'Administrator',
+    email: storedUser.email || defaultUser?.email || 'admin@brixenconsultants.com',
+    avatar: storedUser.avatar_url || defaultUser?.avatar || '',
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('user')
+    navigate('/login')
+  }
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -37,7 +54,9 @@ export function NavUser({
           >
             <Avatar className="size-8 rounded-lg grayscale">
               <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+              <AvatarFallback className="rounded-lg">
+                {(user.name || 'AD').substring(0, 2).toUpperCase()}
+              </AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-medium">{user.name}</span>
@@ -58,7 +77,9 @@ export function NavUser({
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar className="size-8">
                     <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                    <AvatarFallback className="rounded-lg">
+                      {(user.name || 'AD').substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>
@@ -71,27 +92,23 @@ export function NavUser({
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <IconUserCircle
-                />
+              <DropdownMenuItem onClick={() => navigate('/admin/profile')}>
+                <IconUserCircle />
                 Account
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <IconCreditCard
-                />
+              <DropdownMenuItem onClick={() => navigate('/admin/payments')}>
+                <IconCreditCard />
                 Billing
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <IconNotification
-                />
+              <DropdownMenuItem onClick={() => navigate('/admin/tasks')}>
+                <IconNotification />
                 Notifications
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <IconLogout
-              />
-              <Link to="/">Log out</Link>
+            <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
+              <IconLogout />
+              <span>Log out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

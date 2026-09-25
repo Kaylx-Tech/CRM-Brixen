@@ -36,19 +36,21 @@ export function LoginForm({
       const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       })
       
       const data = await res.json()
 
       if (data.status === "success") {
-        localStorage.setItem("user", JSON.stringify(data.user))
-        navigate("/")
+        localStorage.setItem("user", JSON.stringify(data.user || { name: email.split('@')[0], email }))
+        navigate("/admin/dashboard")
       } else {
         setError(data.message || "Login failed")
       }
     } catch (err) {
-      setError("Failed to connect to server")
+      // If server is offline/dev fallback, allow valid login for demo or show error
+      setError("Failed to connect to server. Please check backend connection.")
     } finally {
       setIsLoading(false)
     }
@@ -124,9 +126,9 @@ export function LoginForm({
                   {isLoading ? "Logging in..." : "Login"}
                 </Button>
               </Field>
-              <FieldDescription className="text-center">
+              {/* <FieldDescription className="text-center">
                 Don&apos;t have an account? <Link to="/signup">Sign up</Link>
-              </FieldDescription>
+              </FieldDescription> */}
             </FieldGroup>
           </form>
         </CardContent>
