@@ -96,39 +96,16 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected, isLoa
                 }}
                 disabled={isLoading}
               >
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-35">
                   <SelectValue placeholder={config.placeholder} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {config.options.map((opt) => {
-                      const isStatus = config.columnKey === "status" || opt.value === "Active" || opt.value === "Inactive";
-                      const isActive = opt.value === "Active" || opt.value === "Completed" || opt.value === "Done";
-                      const isInactive = opt.value === "Inactive" || opt.value === "Cancelled" || opt.value === "Refunded";
-
-                      return (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {isStatus ? (
-                            <div className="flex items-center gap-2">
-                              <span className={`w-2 h-2 rounded-full shrink-0 ${
-                                isActive ? "bg-emerald-500" : isInactive ? "bg-rose-500" : "bg-amber-500"
-                              }`} />
-                              <span className={`px-2 py-0.5 rounded-md text-xs font-medium border ${
-                                isActive 
-                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50" 
-                                  : isInactive 
-                                  ? "bg-rose-50 text-rose-700 border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/50" 
-                                  : "bg-muted text-foreground border-border"
-                              }`}>
-                                {opt.label}
-                              </span>
-                            </div>
-                          ) : (
-                            opt.label
-                          )}
-                        </SelectItem>
-                      );
-                    })}
+                    {config.options.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>
