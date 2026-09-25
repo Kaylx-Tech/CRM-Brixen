@@ -230,7 +230,17 @@ const Customers = () => {
       header: "Status",
       cell: ({ row }) => {
         const status = row.getValue("status")
-        return <Badge variant={status === 'Active' ? 'outline' : 'destructive'}>{status}</Badge>
+        const isActive = status === 'Active'
+        return (
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+            isActive
+              ? "bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50"
+              : "bg-rose-50 text-rose-700 border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/50"
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-rose-500"}`} />
+            {status}
+          </span>
+        )
       }
     }),
     columnHelper.display({
