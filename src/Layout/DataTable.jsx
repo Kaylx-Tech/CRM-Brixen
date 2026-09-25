@@ -24,11 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
 import { IconAdjustmentsHorizontal, IconSearch, IconX, IconPlus, IconTrash } from "@tabler/icons-react"
 import { features } from "./data-table-features"
 import { cn } from "cn"
 
-export const DataTable = ({ columns, data, filterConfig, onDeleteSelected }) => {
+export const DataTable = ({ columns, data, filterConfig, onDeleteSelected, isLoading = false }) => {
   const [sorting, setSorting] = React.useState([])
   const [columnFilters, setColumnFilters] = React.useState([])
   const [globalFilter, setGlobalFilter] = React.useState("")
@@ -37,7 +38,7 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected }) => 
 
   const table = useTable({
     features,
-    data,
+    data: data || [],
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -45,6 +46,11 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected }) => 
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     globalFilterFn: "includesString",
+    initialState: {
+      pagination: {
+        pageSize: 10000,
+      },
+    },
     state: {
       sorting,
       columnFilters,
@@ -54,6 +60,15 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected }) => 
     },
   })
 
+  const [filterResetKey, setFilterResetKey] = React.useState(0)
+
+  const handleClearFilters = () => {
+    setGlobalFilter("")
+    table.resetColumnFilters()
+    setColumnFilters([])
+    setFilterResetKey((prev) => prev + 1)
+  }
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-4 gap-4">
@@ -61,10 +76,11 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected }) => 
           <div className="relative">
             <IconSearch className="absolute left-2.5 top-1.5 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Search Data..."
+              placeholder="Search data..."
               value={globalFilter ?? ""}
               className="max-w-xs pl-8"
               onChange={(event) => setGlobalFilter(event.target.value)}
+              disabled={isLoading}
             />
           </div>
           {filterConfig && filterConfig.map((config) => {
@@ -73,11 +89,12 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected }) => 
 
             return (
               <Select 
-                key={config.columnKey} 
-                value={currentValue}
+                key={`${config.columnKey}-${filterResetKey}-${currentValue ?? 'none'}`} 
+                value={currentValue ?? null}
                 onValueChange={(val) => {
                   column?.setFilterValue(val === "all" ? undefined : val);
                 }}
+                disabled={isLoading}
               >
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder={config.placeholder} />
@@ -98,11 +115,9 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected }) => 
           {(globalFilter || columnFilters.length > 0) && (
             <Button 
               variant="destructive" 
-              onClick={() => {
-                setGlobalFilter("");
-                table.resetColumnFilters();
-              }} 
-              className="px-2"
+              size="sm"
+              onClick={handleClearFilters} 
+              className="h-7"
             >
               Clear
               <IconX className="ml-1 h-4 w-4" />
@@ -111,7 +126,7 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected }) => 
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
+            <Button variant="outline" size="sm" className="ml-auto h-7" disabled={isLoading}>
               <IconAdjustmentsHorizontal className="mr-2 h-4 w-4" />
               Columns
             </Button>
@@ -178,7 +193,6 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected }) => 
                       variant="destructive" 
                       size="sm" 
                       onClick={() => onDeleteSelected?.(table.getFilteredSelectedRowModel().rows)}
-                     
                     >
                       <IconTrash className="mr-1 h-4.5 w-4.5" />
                       Delete ({table.getFilteredSelectedRowModel().rows.length})
@@ -189,7 +203,27 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected }) => 
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {isLoading ? (
+              Array.from({ length: 6 }).map((_, rIdx) => (
+                <TableRow key={rIdx} className="hover:bg-transparent">
+                  {columns.map((col, cIdx) => (
+                    <TableCell key={cIdx} className="py-4">
+                      <Skeleton 
+                        className={cn(
+                          "h-4",
+                          cIdx === 0 ? "size-4 rounded-sm" :
+                          cIdx === 1 ? "w-28" :
+                          cIdx === 2 ? "w-40" :
+                          cIdx === 3 ? "w-20 rounded-full h-5" :
+                          cIdx === columns.length - 1 ? "size-8 rounded-md" :
+                          "w-20"
+                        )} 
+                      />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -204,36 +238,23 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected }) => 
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No results.
+                <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground">
+                  No records found.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-between space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
-        </div>
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
+      <div className="flex items-center justify-between py-3">
+        <div className="text-sm text-muted-foreground">
+          {isLoading ? (
+            <Skeleton className="h-4 w-40" />
+          ) : table.getFilteredSelectedRowModel().rows.length > 0 ? (
+            `${table.getFilteredSelectedRowModel().rows.length} of ${table.getFilteredRowModel().rows.length} row(s) selected.`
+          ) : (
+            `Showing all ${table.getFilteredRowModel().rows.length} record(s)`
+          )}
         </div>
       </div>
     </div>
