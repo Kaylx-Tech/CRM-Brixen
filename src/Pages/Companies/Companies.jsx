@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { IconUpload, IconBuildingPlus, IconSearch, IconAlertCircle, IconRefresh } from '@tabler/icons-react'
+import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import { IconUpload, IconBuildingPlus, IconSearch, IconRefresh } from '@tabler/icons-react'
 import CompanyCard from './CompanyCard'
 import AddCompany from './AddCompany'
-import { Alert, AlertTitle } from '@/components/ui/alert'
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const fallbackCompanies = [
@@ -114,14 +115,14 @@ const Companies = () => {
           <TabsList className="flex-wrap h-auto justify-start">
             <TabsTrigger value="all" className="py-2">
               All
-              <span className="ml-2 bg-muted-foreground/20 px-1.5 py-0.5 rounded-full text-xs">
-                {companies.length}
+              <span className="ml-2 bg-muted-foreground/20 px-1.5 py-0.5 rounded-full text-xs min-w-[20px] text-center inline-flex items-center justify-center">
+                {isLoading ? <Skeleton className="h-3 w-4 rounded-xs" /> : companies.length}
               </span>
             </TabsTrigger>
             <TabsTrigger value="uk" className="py-2">
               UK Portfolio
-              <span className="ml-2 bg-muted-foreground/20 px-1.5 py-0.5 rounded-full text-xs">
-                {companies.length}
+              <span className="ml-2 bg-muted-foreground/20 px-1.5 py-0.5 rounded-full text-xs min-w-[20px] text-center inline-flex items-center justify-center">
+                {isLoading ? <Skeleton className="h-3 w-4 rounded-xs" /> : companies.length}
               </span>
             </TabsTrigger>
             <TabsTrigger value="attention" className="py-2 data-[state=active]:bg-destructive/10 data-[state=active]:text-destructive text-destructive">
@@ -145,10 +146,38 @@ const Companies = () => {
         </div>
       </div>
 
-      {/* Grid */}
+      {/* Grid / Skeletons */}
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">
-          Loading company records from backend...
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 pb-8">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="w-full flex flex-col h-full relative">
+              <CardHeader className="pb-3 flex flex-row items-start justify-between">
+                <div className="flex flex-col gap-2 pr-6 w-3/4">
+                  <Skeleton className="h-5 w-4/5" />
+                  <Skeleton className="h-3.5 w-24" />
+                </div>
+                <Skeleton className="h-8 w-8 rounded-md" />
+              </CardHeader>
+              <CardContent className="pb-4 space-y-4 flex-1">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+                <div className="space-y-1.5">
+                  <Skeleton className="h-3.5 w-full" />
+                  <Skeleton className="h-3.5 w-2/3" />
+                </div>
+                <div className="flex items-center gap-3 pt-1">
+                  <Skeleton className="h-5 w-14 rounded-full" />
+                  <Skeleton className="h-5 w-16 rounded-md" />
+                </div>
+                <Skeleton className="h-3.5 w-44" />
+              </CardContent>
+              <CardFooter>
+                <Skeleton className="h-9 w-full rounded-md" />
+              </CardFooter>
+            </Card>
+          ))}
         </div>
       ) : filteredCompanies.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
