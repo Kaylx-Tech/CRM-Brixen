@@ -1,0 +1,61 @@
+# SQLite Database Files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+hypetex.db
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Storage & Private Files
+storage/clients/*
+!storage/clients/.gitkeep
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+
+# Virtualenv
+.venv/
+venv/
+
+# IDE & OS Files
+.DS_Store
+.vscode/
+.idea/
+.cursor/
+*.swp
+*.tmp
+crm.log
+tmp-inv/
+
+# One-off fix / helper scripts
+fix_*.py
+recover_dash.py
+restore_dash.py
+bust_cache*.py
+enforce_hover.py
+remove_shadows.py
+size_buttons.py
+sm_btns.py
+stripe_theme.py
+tweak_buttons.py
+update_final.py
+update_styles.py
+rewrite_*.py
+
+# Build artifacts & archives
+*.zip
+*.patch
+css_diff.txt
+css_history.patch
+
+# Restored CSS backup
+static/css/styles_restored.css

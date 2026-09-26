@@ -24,4 +24,12 @@ dist-ssr
 *.sw?
 
 # Custom ignoring
-Brixen-CRM/
+backend/.venv/
+backend/__pycache__/
+backend/*.pyc
+backend/*.db
+backend/*.db-wal
+backend/*.db-shm
+backend/storage/
+backend/.env.production
+.env.production
