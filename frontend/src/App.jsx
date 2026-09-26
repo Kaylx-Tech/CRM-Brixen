@@ -7,6 +7,7 @@ import AdminLayout from './Layout/AdminLayout'
 import Dashboard from './Pages/Dasboard'
 import Customers from './Pages/Customer/Customers'
 import Companies from './Pages/Companies/Companies'
+import Accountancy from './Pages/Accountancy/Accountancy'
 import ComingSoon from './Pages/ComingSoon'
 import { TooltipProvider } from './components/ui/tooltip'
 import { ThemeProvider } from './hooks/theme-provider'
@@ -40,9 +41,7 @@ const App = () => {
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="customers" element={<Customers />} />
                 <Route path="companies" element={<Companies />} />
-                
-                {/* Coming Soon Pages */}
-                <Route path="accountancy" element={<ComingSoon />} />
+                <Route path="accountancy" element={<Accountancy />} />
                 <Route path="orders" element={<ComingSoon />} />
                 <Route path="tasks" element={<ComingSoon />} />
                 <Route path="services" element={<ComingSoon />} />

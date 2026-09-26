@@ -16,7 +16,7 @@ except ImportError:
 
 def _load_env_file():
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    for fname in ('.env.production', '.env'):
+    for fname in ('.env', '.env.production'):
         fpath = os.path.join(base_dir, fname)
         if os.path.exists(fpath):
             try:
@@ -35,8 +35,15 @@ def _load_env_file():
 
 _load_env_file()
 
-DB_PATH = os.environ.get('DATABASE_URL') or os.path.join(os.path.dirname(__file__), 'hypetex.db')
-SCHEMA_PATH = os.path.join(os.path.dirname(__file__), 'schema.sql')
+_db_env_path = os.environ.get('DATABASE_URL') or 'hypetex.db'
+if os.name == 'nt' and _db_env_path.startswith('/var/www/'):
+    _db_env_path = 'hypetex.db'
+
+if not os.path.isabs(_db_env_path):
+    DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), _db_env_path)
+else:
+    DB_PATH = _db_env_path
+SCHEMA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'schema.sql')
 
 _ARGON2_HASHER = PasswordHasher(type=Type.ID)
 _LEGACY_SHA256_RE = re.compile(r'^[0-9a-f]{64}$')
@@ -920,7 +927,7 @@ def ensure_rbac():
         print(f"[DB Speed] {exc}")
     if locals().get('_should_lock'):
         try:
-            import data_protection as _data_protection
+            from services import data_protection as _data_protection
             result = _data_protection.lock_genuine_records()
             if any(result.values()):
                 print(
