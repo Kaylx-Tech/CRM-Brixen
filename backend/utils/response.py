@@ -57,7 +57,7 @@ def error_response(start_response, message="An error occurred", status_code=400,
 
 def success_response(start_response, data=None, message=None, status_code=200, headers=None):
     """Standardized JSON success response."""
-    resp_data = {"success": True}
+    resp_data = {"success": True, "status": "success"}
     if message:
         resp_data["message"] = message
     if data is not None:

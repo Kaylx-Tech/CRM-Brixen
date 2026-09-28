@@ -35,15 +35,16 @@ def _load_env_file():
 
 _load_env_file()
 
-_db_env_path = os.environ.get('DATABASE_URL') or 'hypetex.db'
+_db_env_path = os.environ.get('DATABASE_URL') or 'database/hypetex.db'
 if os.name == 'nt' and _db_env_path.startswith('/var/www/'):
-    _db_env_path = 'hypetex.db'
+    _db_env_path = 'database/hypetex.db'
 
 if not os.path.isabs(_db_env_path):
     DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), _db_env_path)
 else:
     DB_PATH = _db_env_path
 SCHEMA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'schema.sql')
+
 
 _ARGON2_HASHER = PasswordHasher(type=Type.ID)
 _LEGACY_SHA256_RE = re.compile(r'^[0-9a-f]{64}$')

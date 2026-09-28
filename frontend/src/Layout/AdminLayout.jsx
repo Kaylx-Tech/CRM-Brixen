@@ -1,21 +1,81 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { AppSidebar } from "./Sidebar"
 import { SiteHeader } from "./Header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Outlet } from "react-router-dom"
+import MorphPanel from "@/components/ai-input"
 
 const AdminLayout = () => {
+  const [aiMessages, setAiMessages] = useState([])
+  const [aiLoading, setAiLoading] = useState(false)
+
+  const handleSendAi = async (prompt) => {
+    const userMsg = { role: 'user', content: prompt }
+    setAiMessages((prev) => [...prev, userMsg])
+    setAiLoading(true)
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const res = await fetch(`${apiUrl}/api/ai/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ prompt, history: aiMessages })
+      }).catch(() => null)
+
+      let reply = ""
+      if (res && res.ok) {
+        const data = await res.json().catch(() => ({}))
+        reply = data.response || data.message || data.reply
+      }
+
+      if (!reply) {
+        const p = prompt.toLowerCase()
+        if (p.includes("company") || p.includes("companies")) {
+          reply = "You can view and manage all registered entities in **Company Registered** (`/admin/companies`). Here you can check confirmation statement due dates, verify registered offices, and track director identity statuses."
+        } else if (p.includes("account") || p.includes("filing") || p.includes("tax") || p.includes("hmrc")) {
+          reply = "The **Accountancy** module (`/admin/accountancy`) manages Companies House annual accounts, micro-entity balance sheets, cash book ledgers, and HMRC CT600 returns."
+        } else if (p.includes("customer") || p.includes("client") || p.includes("b2b")) {
+          reply = "All B2B accounts and website signups are in **Customers & Signups** (`/admin/customers`). You can create new customers, reset passwords, or view CRM profiles."
+        } else {
+          reply = `I've noted your request: **"${prompt}"**. I can assist with company filings, CRM customer details, order processing, and accountancy balance sheets.`
+        }
+      }
+
+      setAiMessages((prev) => [...prev, { role: 'assistant', content: reply }])
+    } catch (err) {
+      setAiMessages((prev) => [...prev, { role: 'assistant', content: "I encountered an issue processing your request. Please try again." }])
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  const handleClearAi = () => {
+    setAiMessages([])
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="p-2 bg-sidebar h-svh overflow-hidden">
+      <SidebarInset className="p-2 bg-sidebar h-svh overflow-hidden relative">
         <ScrollArea className="h-full w-full rounded-xl border bg-background shadow-sm">
           <SiteHeader />
-          <main className="flex flex-col gap-4 p-2 lg:p-6">
+          <main className="flex flex-col gap-4 p-2 lg:p-6 pb-20">
             <Outlet />
           </main>
         </ScrollArea>
+
+        {/* Floating AI Assistant Button at Bottom Right */}
+        {/* <div className="fixed bottom-6 right-6 z-50">
+          <MorphPanel
+            messages={aiMessages}
+            loading={aiLoading}
+            onSend={handleSendAi}
+            onClear={handleClearAi}
+            schoolName="Brixen CRM"
+          />
+        </div> */}
       </SidebarInset>
     </SidebarProvider>
   )

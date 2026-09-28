@@ -61,9 +61,13 @@ const ViewCustomer = ({ customer, isOpen, onClose }) => {
     setIsSaving(true)
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const token = localStorage.getItem("token")
       const res = await fetch(`${apiUrl}/admin/customers/notification-email`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
         credentials: "include",
         body: JSON.stringify({
           user_id: customer.id,
@@ -71,10 +75,10 @@ const ViewCustomer = ({ customer, isOpen, onClose }) => {
         })
       })
       const data = await res.json()
-      if (data.status === "success") {
+      if (res.ok && (data.status === "success" || data.success === true)) {
         toast.success("Notification email updated successfully")
       } else {
-        toast.error(data.message || "Failed to update notification email")
+        toast.error(data.message || data.error || "Failed to update notification email")
       }
     } catch (err) {
       toast.error("Network error while saving notification email")

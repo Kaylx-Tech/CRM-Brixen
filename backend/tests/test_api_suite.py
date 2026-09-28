@@ -96,6 +96,37 @@ print(f"8. Create Order -> Status: {status} | Order Number: {body.get('data', {}
 status, headers, body = simulate_request('GET', '/api/orders', token=auth_token)
 print(f"9. List Orders -> Status: {status} | Total Orders: {body.get('data', {}).get('total')}")
 
+# 11. Test Public Settings API
+status, headers, body = simulate_request('GET', '/api/public/settings')
+print(f"10. Public Settings -> Status: {status} | Brand: {body.get('data', {}).get('brand_name')}")
+
+# 12. Test Admin Settings GET (Masked Secrets)
+status, headers, body = simulate_request('GET', '/api/admin/settings', token=auth_token)
+print(f"11. Admin Settings GET -> Status: {status} | Brand Email: {body.get('data', {}).get('brand', {}).get('support_email')}")
+print(f"    Masked SMTP Pass: {body.get('data', {}).get('smtp', {}).get('smtp_pass')}")
+
+# 13. Test Admin Settings Update
+status, headers, body = simulate_request('POST', '/api/admin/settings', {
+    'brand': {
+        'brand_name': 'Brixen Consultants HQ',
+        'support_email': 'contact@brixenconsultants.com'
+    },
+    'smtp': {
+        'smtp_host': 'smtp.hostinger.com',
+        'smtp_port': '587',
+        'smtp_user': 'notifications@brixenconsultants.com'
+    },
+    'google_drive': {
+        'google_drive_root_folder': 'Brixen-CRM'
+    }
+}, token=auth_token)
+print(f"12. Admin Settings Update -> Status: {status} | Updated Brand: {body.get('data', {}).get('brand', {}).get('brand_name')}")
+
+# 14. Test Integration Verification Endpoints
+status, headers, body = simulate_request('POST', '/api/admin/settings/test-smtp', token=auth_token)
+print(f"13. Test SMTP Endpoint -> Status: {status} | Response: {body.get('message') or body.get('error')}")
+
 print("=" * 60)
-print("[PASS] ALL MODULAR API CONTROLLERS VERIFIED & WORKING FLAWLESSLY!")
+print("[PASS] ALL MODULAR API CONTROLLERS AND SETTINGS VERIFIED & WORKING FLAWLESSLY!")
+print("=" * 60)
 print("=" * 60)

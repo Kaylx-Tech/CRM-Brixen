@@ -36,13 +36,20 @@ const Customers = () => {
     setIsLoading(true)
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const token = localStorage.getItem("token")
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      }
       const res = await fetch(`${apiUrl}/admin/customers`, {
         credentials: "include",
+        headers,
       })
       if (res.ok) {
         const data = await res.json()
-        if (data.status === "success" && Array.isArray(data.customers)) {
-          const mapped = data.customers.map((c) => {
+        const rawList = data.customers || data.data?.customers || data.data?.clients || (Array.isArray(data.data) ? data.data : null) || (Array.isArray(data) ? data : [])
+        if (Array.isArray(rawList)) {
+          const mapped = rawList.map((c) => {
             let type = 'Individual'
             if (Number(c.is_b2b) === 1 || String(c.client_type || '').toUpperCase() === 'B2B') {
               type = 'B2B'
@@ -82,9 +89,13 @@ const Customers = () => {
     setIsDeleting(true)
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const token = localStorage.getItem("token")
       const res = await fetch(`${apiUrl}/admin/customers/delete`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         credentials: 'include',
         body: JSON.stringify({
           customer_id: customerToDelete.id,
@@ -93,12 +104,12 @@ const Customers = () => {
       })
 
       const data = await res.json().catch(() => ({}))
-      if (res.ok && data.status === 'success') {
+      if (res.ok && (data.status === 'success' || data.success === true)) {
         toast.success(data.message || `Customer "${customerToDelete.name}" deleted successfully.`)
         setCustomerToDelete(null)
         loadCustomers()
       } else {
-        toast.error(data.message || 'Failed to delete customer.')
+        toast.error(data.message || data.error || 'Failed to delete customer.')
       }
     } catch (err) {
       toast.error('Network error while deleting customer: ' + err.message)
@@ -116,9 +127,13 @@ const Customers = () => {
     setIsDeleting(true)
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const token = localStorage.getItem("token")
       const res = await fetch(`${apiUrl}/admin/customers/bulk-delete`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         credentials: 'include',
         body: JSON.stringify({
           customer_ids: customerIds,
@@ -127,12 +142,12 @@ const Customers = () => {
       })
 
       const data = await res.json().catch(() => ({}))
-      if (res.ok && data.status === 'success') {
+      if (res.ok && (data.status === 'success' || data.success === true)) {
         toast.success(data.message || `Successfully removed ${customerIds.length} customer account(s).`)
         setBulkDeleteRows(null)
         loadCustomers()
       } else {
-        toast.error(data.message || 'Failed to bulk delete customers.')
+        toast.error(data.message || data.error || 'Failed to bulk delete customers.')
       }
     } catch (err) {
       toast.error('Network error during bulk delete: ' + err.message)
@@ -208,29 +223,56 @@ const Customers = () => {
       header: "Type",
       cell: ({ row }) => {
         const type = row.getValue("type")
-        let badgeVariant = 'secondary'
-        if (type === 'B2B') badgeVariant = 'default'
-        else if (type === 'Business') badgeVariant = 'outline'
-        return <Badge variant={badgeVariant}>{type}</Badge>
+        if (type === 'B2B') {
+          return <Badge className="badge-purple">B2B</Badge>
+        }
+        if (type === 'Business') {
+          return <Badge className="badge-amber">Business</Badge>
+        }
+        return <Badge className="badge-blue">{type || 'Individual'}</Badge>
       }
     }),
     columnHelper.accessor("signedUp", {
       header: "Signed up",
+      cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.getValue("signedUp")}</span>,
     }),
     columnHelper.accessor("source", {
       header: "Source",
+      cell: ({ row }) => {
+        const source = row.getValue("source")
+        if (source === 'Website signup') {
+          return <Badge className="badge-sky">Website signup</Badge>
+        }
+        return <Badge className="badge-green">{source || 'CRM'}</Badge>
+      }
     }),
     columnHelper.accessor("companies", {
       header: "Companies",
+      cell: ({ row }) => (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+          {row.getValue("companies")}
+        </span>
+      ),
     }),
     columnHelper.accessor("orders", {
       header: "Orders",
+      cell: ({ row }) => (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+          {row.getValue("orders")}
+        </span>
+      ),
     }),
     columnHelper.accessor("status", {
       header: "Status",
       cell: ({ row }) => {
         const status = row.getValue("status")
-        return <Badge variant={status === 'Active' ? 'outline' : 'destructive'}>{status}</Badge>
+        if (status === 'Active') {
+          return <Badge className="badge-green">Active</Badge>
+        }
+        if (status === 'Pending') {
+          return <Badge className="badge-amber">Pending</Badge>
+        }
+        return <Badge className="badge-red">{status || 'Inactive'}</Badge>
       }
     }),
     columnHelper.display({

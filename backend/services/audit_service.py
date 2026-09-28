@@ -8,11 +8,12 @@ def log_activity(user_id, action, target_type=None, target_id=None, details=None
     try:
         execute_db("""
             INSERT INTO activity_logs (
-                user_id, action, target_type, target_id, details, ip_address, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'));
-        """, (user_id, action, target_type, str(target_id) if target_id else None, details, ip_address))
+                user_id, action, entity_type, entity_id, details, created_at
+            ) VALUES (?, ?, ?, ?, ?, datetime('now'));
+        """, (user_id, action, target_type, str(target_id) if target_id else None, details))
     except Exception as e:
         print(f"[Audit Log Error] Failed to log activity: {e}")
+
 
 def log_order_timeline(order_id, status, title, description=None, created_by=None):
     """Record an event in an order's historical timeline."""

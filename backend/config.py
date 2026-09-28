@@ -7,7 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent
 
 # Environment Variables Loading
 def _load_env_file():
-    for fname in ('.env.production', '.env'):
+    for fname in ('.env', '.env.local', '.env.production'):
         fpath = BASE_DIR / fname
         if fpath.exists():
             try:
@@ -31,8 +31,15 @@ PORT = int(os.environ.get('PORT', '5050'))
 HOST = os.environ.get('HOST', '0.0.0.0')
 
 # Database
-DB_PATH = os.environ.get('DATABASE_URL') or str(BASE_DIR / 'hypetex.db')
+_raw_db = os.environ.get('DATABASE_URL') or 'database/hypetex.db'
+if os.name == 'nt' and _raw_db.startswith('/var/www/'):
+    _raw_db = 'database/hypetex.db'
+if not os.path.isabs(_raw_db):
+    DB_PATH = str(BASE_DIR / _raw_db)
+else:
+    DB_PATH = _raw_db
 SCHEMA_PATH = str(BASE_DIR / 'schema.sql')
+
 
 # Storage Directories
 STORAGE_DIR = str(BASE_DIR / 'storage')

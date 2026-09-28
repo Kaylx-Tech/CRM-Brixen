@@ -59,19 +59,23 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const token = localStorage.getItem("token")
       const res = await fetch(`${apiUrl}/admin/staff`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         credentials: 'include',
         body: JSON.stringify(payload),
       })
 
       const data = await res.json().catch(() => ({}))
-      if (res.ok && data.status === 'success') {
+      if (res.ok && (data.status === 'success' || data.success === true)) {
         if (onCustomerCreated) onCustomerCreated()
         onClose()
       } else {
-        setError(data.message || 'Failed to create customer.')
+        setError(data.message || data.error || 'Failed to create customer.')
       }
     } catch (err) {
       setError('Connection error: ' + err.message)

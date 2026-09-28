@@ -13,6 +13,8 @@ from .notification_routes import handle_notification_routes
 from .audit_routes import handle_audit_routes
 from .webhook_routes import handle_webhook_routes
 from .accounts_routes import handle_accountancy_routes
+from .settings_routes import handle_settings_routes
+
 
 # Accounts file integration
 try:
@@ -87,6 +89,12 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
     res = handle_accountancy_routes(environ, start_response, path, method, user, body, query)
     if res is not None:
         return res
+
+    # 14. System Settings & Integrations
+    res = handle_settings_routes(environ, start_response, path, method, user, body, query)
+    if res is not None:
+        return res
+
 
     # 14. UK Accounts & Tax Engine Fallback
     if accounts_file and (path.startswith('/accounts') or path.startswith('/api/accounts')):

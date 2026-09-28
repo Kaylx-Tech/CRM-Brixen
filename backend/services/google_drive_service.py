@@ -38,14 +38,34 @@ def get_drive_service():
 
     credentials = None
 
-    # 1. From .env as direct JSON string (GOOGLE_SERVICE_ACCOUNT_JSON)
-    raw_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON', '').strip()
-    if raw_json:
+    # 1. From OAuth 2.0 User Refresh Token (GOOGLE_REFRESH_TOKEN + GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET)
+    refresh_token = os.environ.get('GOOGLE_REFRESH_TOKEN', '').strip()
+    client_id = os.environ.get('GOOGLE_CLIENT_ID', '').strip()
+    client_secret = os.environ.get('GOOGLE_CLIENT_SECRET', '').strip()
+    if refresh_token and client_id and client_secret:
         try:
-            info = json.loads(raw_json)
-            credentials = service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
+            from google.oauth2.credentials import Credentials as UserCredentials  # type: ignore
+            credentials = UserCredentials(
+                None,
+                refresh_token=refresh_token,
+                token_uri='https://oauth2.googleapis.com/token',
+                client_id=client_id,
+                client_secret=client_secret,
+                scopes=SCOPES
+            )
+            logger.info("Using Google Drive OAuth2 User Credentials (User Quota active)")
         except Exception as e:
-            logger.error(f"Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON from .env: {e}")
+            logger.error(f"Failed to initialize OAuth2 User Credentials: {e}")
+
+    # 2. From .env as direct JSON string (GOOGLE_SERVICE_ACCOUNT_JSON)
+    if credentials is None:
+        raw_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON', '').strip()
+        if raw_json:
+            try:
+                info = json.loads(raw_json)
+                credentials = service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
+            except Exception as e:
+                logger.error(f"Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON from .env: {e}")
 
     # 2. From .env as Base64 string (GOOGLE_SERVICE_ACCOUNT_BASE64)
     if credentials is None:
@@ -98,6 +118,9 @@ def get_or_create_folder(folder_name, parent_id=None):
     ]
     if parent_id:
         query_parts.append(f"'{parent_id}' in parents")
+    else:
+        # Search anywhere accessible (including shared with me)
+        pass
 
     query = " and ".join(query_parts)
     try:
@@ -105,7 +128,9 @@ def get_or_create_folder(folder_name, parent_id=None):
             q=query,
             spaces='drive',
             fields='files(id, name)',
-            pageSize=1
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True,
+            pageSize=5
         ).execute()
 
         files = results.get('files', [])
@@ -113,6 +138,22 @@ def get_or_create_folder(folder_name, parent_id=None):
             folder_id = files[0]['id']
             _folder_cache[cache_key] = folder_id
             return folder_id
+
+        # If searching for root folder and not found, check sharedWithMe
+        if not parent_id:
+            shared_results = service.files().list(
+                q=f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and sharedWithMe = true and trashed = false",
+                spaces='drive',
+                fields='files(id, name)',
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True,
+                pageSize=5
+            ).execute()
+            shared_files = shared_results.get('files', [])
+            if shared_files:
+                folder_id = shared_files[0]['id']
+                _folder_cache[cache_key] = folder_id
+                return folder_id
 
         # Create new folder
         folder_metadata = {
@@ -124,7 +165,8 @@ def get_or_create_folder(folder_name, parent_id=None):
 
         folder = service.files().create(
             body=folder_metadata,
-            fields='id'
+            fields='id',
+            supportsAllDrives=True
         ).execute()
 
         folder_id = folder.get('id')
@@ -139,21 +181,25 @@ def get_customer_folder_id(customer_name):
     Brixen-CRM -> customer -> <Customer Name>
     """
     clean_name = str(customer_name or 'General Client').strip()
-    root_folder_name = os.environ.get('GOOGLE_DRIVE_ROOT_FOLDER', 'Brixen-CRM')
     
-    # 1. Root: Brixen-CRM
-    root_id = get_or_create_folder(root_folder_name)
+    # Check if direct root folder ID is specified in .env
+    root_id = os.environ.get('GOOGLE_DRIVE_FOLDER_ID', '').strip()
     if not root_id:
+        root_folder_name = os.environ.get('GOOGLE_DRIVE_ROOT_FOLDER', 'Brixen-CRM')
+        root_id = get_or_create_folder(root_folder_name)
+    
+    if not root_id:
+        logger.error("Root Google Drive folder could not be found or created.")
         return None
 
     # 2. Subfolder: customer
     customer_base_id = get_or_create_folder('customer', parent_id=root_id)
     if not customer_base_id:
-        return None
+        customer_base_id = root_id
 
     # 3. Client Folder: <Customer Name>
     client_folder_id = get_or_create_folder(clean_name, parent_id=customer_base_id)
-    return client_folder_id
+    return client_folder_id or customer_base_id or root_id
 
 def upload_file_to_google_drive(customer_name, filename, file_bytes, mime_type='application/octet-stream'):
     """Upload a file to Google Drive under:
@@ -188,7 +234,8 @@ def upload_file_to_google_drive(customer_name, filename, file_bytes, mime_type='
         uploaded_file = service.files().create(
             body=file_metadata,
             media_body=media,
-            fields='id, name, webViewLink, webContentLink, size'
+            fields='id, name, webViewLink, webContentLink, size',
+            supportsAllDrives=True
         ).execute()
 
         file_id = uploaded_file.get('id')
@@ -206,3 +253,10 @@ def upload_file_to_google_drive(customer_name, filename, file_bytes, mime_type='
     except Exception as e:
         logger.error(f"Google Drive upload failed for {filename}: {e}")
         return {"success": False, "error": str(e)}
+
+def reset_drive_client():
+    """Reset cached Google Drive client instance and folder cache."""
+    global _drive_service_instance, _folder_cache
+    _drive_service_instance = None
+    _folder_cache.clear()
+

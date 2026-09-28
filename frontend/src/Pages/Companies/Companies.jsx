@@ -1,55 +1,88 @@
 import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
-import { IconUpload, IconBuildingPlus, IconSearch, IconRefresh } from '@tabler/icons-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import {
+  IconUpload,
+  IconBuildingPlus,
+  IconSearch,
+  IconRefresh,
+  IconTrash,
+  IconAlertTriangle,
+  IconLoader2,
+  IconCheck,
+} from '@tabler/icons-react'
 import CompanyCard from './CompanyCard'
 import AddCompany from './AddCompany'
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-const fallbackCompanies = [
-  { name: "SHAMIMAKHTAR 3340 LTD", number: "17456855", director: "Shamim Akhtar", address: "Office 1828 85 Dunstall Hill, Wolverhampton, England", status: "Active", countryName: "UK", countryFlag: "🇬🇧" },
-  { name: "H & Z TRADERS LTD", number: "17456856", director: "John Doe", address: "123 Business Rd, London, England", status: "Active", countryName: "UK", countryFlag: "🇬🇧" },
-  { name: "HEXA FALIR LTD", number: "17456857", director: "Jane Smith", address: "456 Tech Park, Manchester, England", status: "Active", countryName: "UK", countryFlag: "🇬🇧" },
-  { name: "LEADER TELECOMMUNICATION COMPANY LTD", number: "17456858", director: "Alan Turing", address: "789 Comm St, Birmingham, England", status: "Inactive", countryName: "UK", countryFlag: "🇬🇧" },
-]
+import ImportWebfilingModal from './ImportWebfilingModal'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { toast } from 'sonner'
+import { Card, CardContent } from '@/components/ui/card'
+import DeleteConfirmation from '@/components/DeleteConfirmation'
 
 const Companies = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isWebfilingModalOpen, setIsWebfilingModalOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [companies, setCompanies] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('all')
 
+  // Selection & Bulk delete state
+  const [selectedIds, setSelectedIds] = useState([])
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [singleDeleteId, setSingleDeleteId] = useState(null)
+
   const fetchCompanies = async () => {
     setIsLoading(true)
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const res = await fetch(`${apiUrl}/admin/companies`, {
-        credentials: "include",
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${apiUrl}/admin/companies?limit=500`, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       })
       if (res.ok) {
         const data = await res.json()
-        if (data.status === "success" && Array.isArray(data.companies) && data.companies.length > 0) {
-          setCompanies(data.companies.map(c => ({
-            id: c.id,
-            name: c.company_name || c.name || "Unnamed Company",
-            number: c.company_number || c.number || "#00000000",
-            director: c.director_name || c.director || "Director",
-            address: c.registered_office_address || c.address || "United Kingdom",
-            status: c.status || "Active",
-            countryFlag: "🇬🇧",
-            countryName: "UK",
-            deadlineText: c.accounts_next_due ? `Accounts due: ${c.accounts_next_due}` : "Compliant with Companies House"
-          })))
+        const rawList =
+          data.companies ||
+          data.data?.companies ||
+          (Array.isArray(data.data) ? data.data : null) ||
+          (Array.isArray(data) ? data : [])
+        if (Array.isArray(rawList)) {
+          setCompanies(
+            rawList.map((c) => ({
+              id: c.id,
+              name: c.company_name || c.name || 'Unnamed Company',
+              number: c.company_number || c.number || '#00000000',
+              director: c.director_name || c.director || 'Director',
+              address: c.registered_office_address || c.reg_office || c.address || 'United Kingdom',
+              status: c.status || 'Active',
+              countryFlag: '🇬🇧',
+              countryName: 'UK',
+              deadlineText: c.accounts_next_due ? `Accounts due: ${c.accounts_next_due}` : 'No upcoming deadlines',
+            }))
+          )
           return
         }
       }
-      setCompanies(fallbackCompanies)
+      setCompanies([])
     } catch (err) {
-      console.error("Failed to load companies:", err)
-      setCompanies(fallbackCompanies)
+      console.error('Failed to load companies:', err)
+      setCompanies([])
     } finally {
       setIsLoading(false)
     }
@@ -59,9 +92,9 @@ const Companies = () => {
     fetchCompanies()
   }, [])
 
-  const filteredCompanies = companies.filter(company => {
+  const filteredCompanies = companies.filter((company) => {
     const term = searchTerm.toLowerCase()
-    const matchesSearch = 
+    const matchesSearch =
       (company.name && company.name.toLowerCase().includes(term)) ||
       (company.number && company.number.toLowerCase().includes(term)) ||
       (company.director && company.director.toLowerCase().includes(term))
@@ -77,6 +110,80 @@ const Companies = () => {
     return true
   })
 
+  // Selection handlers
+  const handleToggleSelect = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    )
+  }
+
+  const handleSelectAll = () => {
+    const visibleIds = filteredCompanies.map((c) => c.id).filter(Boolean)
+    const allSelected = visibleIds.every((id) => selectedIds.includes(id))
+    if (allSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !visibleIds.includes(id)))
+    } else {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...visibleIds])))
+    }
+  }
+
+  const handleDeselectAll = () => {
+    setSelectedIds([])
+  }
+
+  // Delete Handlers
+  const handleConfirmDelete = async () => {
+    const idsToDelete = singleDeleteId ? [singleDeleteId] : selectedIds
+    if (!idsToDelete.length) return
+
+    setIsDeleting(true)
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const token = localStorage.getItem('token')
+
+      let res
+      if (idsToDelete.length === 1 && singleDeleteId) {
+        res = await fetch(`${apiUrl}/admin/companies/${singleDeleteId}`, {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        })
+      } else {
+        res = await fetch(`${apiUrl}/admin/companies/bulk-delete`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ company_ids: idsToDelete }),
+        })
+      }
+
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.success !== false) {
+        toast.success(data.message || `Deleted ${idsToDelete.length} company records`)
+        setSelectedIds((prev) => prev.filter((id) => !idsToDelete.includes(id)))
+        setDeleteConfirmOpen(false)
+        setSingleDeleteId(null)
+        fetchCompanies()
+      } else {
+        throw new Error(data.message || 'Failed to delete companies')
+      }
+    } catch (err) {
+      toast.error(err.message || 'Error deleting companies')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const isAllVisibleSelected =
+    filteredCompanies.length > 0 &&
+    filteredCompanies.every((c) => selectedIds.includes(c.id))
+
   return (
     <div className="flex flex-col gap-6 w-full">
       {/* Header */}
@@ -88,8 +195,8 @@ const Companies = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="icon"
             onClick={fetchCompanies}
             disabled={isLoading}
@@ -97,7 +204,7 @@ const Companies = () => {
           >
             <IconRefresh className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => setIsWebfilingModalOpen(true)}>
             <IconUpload className="mr-2 h-4 w-4" />
             Import WebFiling
           </Button>
@@ -125,7 +232,10 @@ const Companies = () => {
                 {isLoading ? <Skeleton className="h-3 w-4 rounded-xs" /> : companies.length}
               </span>
             </TabsTrigger>
-            <TabsTrigger value="attention" className="py-2 data-[state=active]:bg-destructive/10 data-[state=active]:text-destructive text-destructive">
+            <TabsTrigger
+              value="attention"
+              className="py-2 data-[state=active]:bg-destructive/10 data-[state=active]:text-destructive text-destructive"
+            >
               Attention
             </TabsTrigger>
             <TabsTrigger value="not-registered" className="py-2">
@@ -133,10 +243,10 @@ const Companies = () => {
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        
+
         {/* Search */}
         <div className="relative w-full md:w-auto shrink-0">
-          <IconSearch className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <IconSearch className="absolute left-2.5 top-1.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search name, number, director…"
             className="w-full md:w-[280px] pl-9"
@@ -146,6 +256,48 @@ const Companies = () => {
         </div>
       </div>
 
+      {/* Bulk Action Bar when items selected */}
+      {selectedIds.length > 0 && (
+        <Card className="animate-in animate-out p-2 fade-in slide-in-from-top-2  duration-200">
+          <CardContent className="w-full p-0.5 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={isAllVisibleSelected}
+                onCheckedChange={handleSelectAll}
+                id="select-all-header"
+              />
+              <label htmlFor="select-all-header" className="cursor-pointer">
+                {isAllVisibleSelected ? 'Deselect visible' : `Select all visible (${filteredCompanies.length})`}
+              </label>
+            </div>
+            <span className="text-muted-foreground">•</span>
+            <span className="text-primary font-medium">
+              {selectedIds.length} {selectedIds.length === 1 ? 'company' : 'companies'} selected
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={handleDeselectAll} className="text-xs h-8">
+              Clear selection
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="text-xs h-8"
+              onClick={() => {
+                setSingleDeleteId(null)
+                setDeleteConfirmOpen(true)
+              }}
+            >
+              <IconTrash className="mr-1.5 h-3.5 w-3.5" />
+              Delete Selected ({selectedIds.length})
+            </Button>
+          </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Grid / Skeletons */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 pb-8">
@@ -154,23 +306,71 @@ const Companies = () => {
           ))}
         </div>
       ) : filteredCompanies.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          No companies found matching your query.
+        <div className="flex flex-col items-center justify-center py-16 px-4 rounded-xl border border-dashed text-center bg-card/40 my-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted/60 mb-3 text-muted-foreground">
+            <IconSearch className="h-6 w-6" />
+          </div>
+          <h3 className="text-lg font-semibold tracking-tight">No companies found</h3>
+          <p className="text-sm text-muted-foreground max-w-sm mt-1 mb-4">
+            {searchTerm
+              ? `No records found matching "${searchTerm}". Try searching by a different name or number.`
+              : 'No registered company records available for the selected view.'}
+          </p>
+          {searchTerm && (
+            <Button variant="outline" size="sm" onClick={() => setSearchTerm('')}>
+              Clear Search
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 pb-8">
           {filteredCompanies.map((company, i) => (
-            <CompanyCard key={company.id || i} company={company} />
+            <CompanyCard
+              key={company.id || i}
+              company={company}
+              isSelected={selectedIds.includes(company.id)}
+              onToggleSelect={handleToggleSelect}
+              onDelete={(id) => {
+                setSingleDeleteId(id)
+                setDeleteConfirmOpen(true)
+              }}
+            />
           ))}
         </div>
       )}
 
-      <AddCompany 
-        isOpen={isAddModalOpen} 
+      {/* Reusable Delete Confirmation Dialog */}
+      <DeleteConfirmation
+        isOpen={deleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false)
+          setSingleDeleteId(null)
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title={singleDeleteId ? "Delete Company" : "Delete Selected Companies"}
+        description={
+          singleDeleteId
+            ? "Are you sure you want to permanently delete this company record?"
+            : `Are you sure you want to permanently delete ${selectedIds.length} selected company records?`
+        }
+        confirmText={isDeleting ? "Deleting..." : singleDeleteId ? "Delete" : `Delete (${selectedIds.length})`}
+      />
+
+      <AddCompany
+        isOpen={isAddModalOpen}
         onClose={() => {
           setIsAddModalOpen(false)
           fetchCompanies()
-        }} 
+        }}
+      />
+
+      <ImportWebfilingModal
+        isOpen={isWebfilingModalOpen}
+        onClose={() => setIsWebfilingModalOpen(false)}
+        onImportSuccess={() => {
+          fetchCompanies()
+        }}
       />
     </div>
   )

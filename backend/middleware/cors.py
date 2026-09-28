@@ -30,3 +30,4 @@ def handle_options_preflight(environ, start_response):
     cors_headers = handle_cors_headers(environ)
     start_response('204 No Content', cors_headers)
     return [b'']
+    

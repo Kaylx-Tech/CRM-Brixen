@@ -39,9 +39,13 @@ const SetCustomerPassword = ({ customer, isOpen, onClose, onPasswordSet }) => {
     setIsLoading(true)
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const token = localStorage.getItem("token")
       const res = await fetch(`${apiUrl}/admin/customers/password`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         credentials: 'include',
         body: JSON.stringify({
           customer_id: customer?.id,
@@ -51,12 +55,12 @@ const SetCustomerPassword = ({ customer, isOpen, onClose, onPasswordSet }) => {
       })
 
       const data = await res.json().catch(() => ({}))
-      if (res.ok && data.status === 'success') {
+      if (res.ok && (data.status === 'success' || data.success === true)) {
         toast.success(data.message || `Password for ${customer?.name || 'customer'} updated successfully!`)
         if (onPasswordSet) onPasswordSet()
         handleClose()
       } else {
-        setError(data.message || 'Failed to update customer password.')
+        setError(data.message || data.error || 'Failed to update customer password.')
       }
     } catch (err) {
       setError('Connection error: ' + err.message)

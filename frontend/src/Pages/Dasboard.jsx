@@ -151,13 +151,20 @@ const Dashboard = () => {
       if (selectedMonth && selectedMonth !== "all" && selectedMonth !== "current") {
         query = `?month=${selectedMonth}`
       }
+      const token = localStorage.getItem("token")
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      }
       const res = await fetch(`${apiUrl}/admin/stats${query}`, {
         credentials: "include",
+        headers,
       })
       if (res.ok) {
-        const data = await res.json()
-        if (data.status === "success") {
-          setDashboardData(data)
+        const json = await res.json()
+        const resolved = json.data && json.data.stats ? json.data : json
+        if (resolved.status === "success" || resolved.success || resolved.stats) {
+          setDashboardData(resolved)
         }
       }
     } catch (err) {

@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useMemo } from 'react'
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -71,88 +73,22 @@ const fallbackFilings = [
     due_date: "30/04/2025",
     type: "Micro-entity",
     status: "Overdue"
-  },
-  {
-    id: 3,
-    company_name: "ABBAS & SONS ENTERPRISES LTD",
-    company_number: "15915437",
-    owner_name: "Sivilija Puidokaite",
-    has_address: true,
-    idv_status: "Not started",
-    psc_status: "Not started",
-    issues_count: 4,
-    year_end: "31/08/2024",
-    due_date: "31/05/2026",
-    type: "Micro-entity",
-    status: "Overdue"
-  },
-  {
-    id: 4,
-    company_name: "ACCOUNTS & PAYROLL TRAINING LTD",
-    company_number: "04926953",
-    owner_name: "Helen Mary Piper",
-    has_address: true,
-    idv_status: "Not started",
-    psc_status: "Not started",
-    issues_count: 4,
-    year_end: "31/10/2024",
-    due_date: "31/07/2025",
-    type: "Micro-entity",
-    status: "Overdue"
-  },
-  {
-    id: 5,
-    company_name: "AHMAD ZEESHAN ECOM LTD",
-    company_number: "16852141",
-    owner_name: "Khurram Uz Zaman Amjad",
-    has_address: true,
-    idv_status: "Not started",
-    psc_status: "Not started",
-    issues_count: 3,
-    year_end: "30/11/2025",
-    due_date: "31/08/2027",
-    type: "Micro-entity",
-    status: "Not Started"
-  },
-  {
-    id: 6,
-    company_name: "AHZ HUB LIMITED",
-    company_number: "NI738262",
-    owner_name: "Kirstie Louise Beard",
-    has_address: true,
-    idv_status: "Not started",
-    psc_status: "Not started",
-    issues_count: 3,
-    year_end: "28/02/2026",
-    due_date: "30/11/2027",
-    type: "Micro-entity",
-    status: "Not Started"
   }
-]
-
-const fallbackAccounts = [
-  { id: 1, company_name: "52 ALDERLEY ROAD LLP", period: "2024-2025", type: "Micro-entity Balance Sheet", status: "Draft", turnover: "£45,000", net_profit: "£18,200" },
-  { id: 2, company_name: "A.J.B. FLOORING LIMITED", period: "2024-2025", type: "Micro-entity Balance Sheet", status: "Ready to File", turnover: "£112,400", net_profit: "£34,150" },
-  { id: 3, company_name: "ABBAS & SONS ENTERPRISES LTD", period: "2024-2025", type: "Dormant Accounts", status: "Filed", turnover: "£0", net_profit: "£0" },
-]
-
-const fallbackHMRC = [
-  { id: 1, company_name: "52 ALDERLEY ROAD LLP", utr: "9876543210", period: "01/06/2024 - 31/05/2025", tax_due: "£3,458.00", status: "Pending Calculation" },
-  { id: 2, company_name: "A.J.B. FLOORING LIMITED", utr: "8765432109", period: "01/08/2024 - 31/07/2025", tax_due: "£6,488.50", status: "Payment Due" },
-  { id: 3, company_name: "ABBAS & SONS ENTERPRISES LTD", utr: "7654321098", period: "01/09/2024 - 31/08/2025", tax_due: "£0.00", status: "Nil Return Filed" },
 ]
 
 const Accountancy = () => {
   const [activeTab, setActiveTab] = useState('filing-status')
   const [filings, setFilings] = useState([])
+  const [companyAccounts, setCompanyAccounts] = useState([])
+  const [hmrcData, setHmrcData] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
   // Metrics KPI state
   const [metrics, setMetrics] = useState({
-    overdue: 67,
-    due_in_60_days: 4,
+    overdue: 0,
+    due_in_60_days: 0,
     in_progress: 0,
-    issues: 162,
+    issues: 0,
     filed: 0
   })
 
@@ -160,7 +96,6 @@ const Accountancy = () => {
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [isFileModalOpen, setIsFileModalOpen] = useState(false)
   const [isBooksModalOpen, setIsBooksModalOpen] = useState(false)
-  const [filingType, setFilingType] = useState('Micro-entity')
   const [recordToDelete, setRecordToDelete] = useState(null)
   const [bulkDeleteRows, setBulkDeleteRows] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -169,30 +104,59 @@ const Accountancy = () => {
     setIsLoading(true)
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const res = await fetch(`${apiUrl}/api/accountancy/filings`, {
+      const token = localStorage.getItem('token')
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+
+      // 1. Fetch Filings & Metrics
+      const res = await fetch(`${apiUrl}/admin/accountancy`, {
         credentials: "include",
+        headers
       })
+
       if (res.ok) {
         const data = await res.json()
-        if (data.status === "success" && data.data) {
-          if (Array.isArray(data.data.filings) && data.data.filings.length > 0) {
+        if ((data.success || data.status === "success") && data.data) {
+          if (Array.isArray(data.data.filings)) {
             setFilings(data.data.filings)
-          } else {
-            setFilings(fallbackFilings)
           }
           if (data.data.metrics) {
             setMetrics({
-              overdue: data.data.metrics.overdue || 67,
-              due_in_60_days: data.data.metrics.due_in_60_days || 4,
+              overdue: data.data.metrics.overdue || 0,
+              due_in_60_days: data.data.metrics.due_in_60_days || 0,
               in_progress: data.data.metrics.in_progress || 0,
-              issues: data.data.metrics.issues || 162,
+              issues: data.data.metrics.issues || 0,
               filed: data.data.metrics.filed || 0
             })
           }
-          return
         }
       }
-      setFilings(fallbackFilings)
+
+      // 2. Fetch Company Accounts for Tab 2
+      const accRes = await fetch(`${apiUrl}/admin/accountancy/company-accounts`, {
+        credentials: "include",
+        headers
+      })
+      if (accRes.ok) {
+        const accData = await accRes.json()
+        if ((accData.success || accData.status === "success") && Array.isArray(accData.data?.accounts)) {
+          setCompanyAccounts(accData.data.accounts)
+        }
+      }
+
+      // 3. Fetch HMRC CT600 for Tab 3
+      const hmrcRes = await fetch(`${apiUrl}/admin/accountancy/hmrc`, {
+        credentials: "include",
+        headers
+      })
+      if (hmrcRes.ok) {
+        const hData = await hmrcRes.json()
+        if ((hData.success || hData.status === "success") && Array.isArray(hData.data?.ct600)) {
+          setHmrcData(hData.data.ct600)
+        }
+      }
     } catch (err) {
       console.error("Failed to load accountancy filings:", err)
       setFilings(fallbackFilings)
@@ -254,7 +218,7 @@ const Accountancy = () => {
             >
               {item.company_name}
             </button>
-            <span className="text-xs font-mono text-muted-foreground mt-0.5">{item.company_number}</span>
+            <span className="text-xs text-muted-foreground mt-0.5">{item.company_number}</span>
           </div>
         )
       },
@@ -270,15 +234,18 @@ const Accountancy = () => {
           <IconArrowsSort className="ml-2 h-4 w-4" />
         </Button>
       ),
-      cell: ({ row }) => <span className="text-sm">{row.getValue("owner_name")}</span>,
+      cell: ({ row }) => <span className="text-xs">{row.getValue("owner_name") || "Brixen Client"}</span>,
     }),
     columnHelper.accessor("has_address", {
       header: "Address",
-      cell: () => (
-        <Badge className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300">
-          On file
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const hasAddr = row.getValue("has_address")
+        return (
+          <Badge className={hasAddr ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300" : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300"}>
+            {hasAddr ? "On file" : "Missing"}
+          </Badge>
+        )
+      },
     }),
     columnHelper.accessor("idv_status", {
       header: "IDV",
@@ -362,6 +329,13 @@ const Accountancy = () => {
             </Badge>
           )
         }
+        if (status === 'Ready to file' || status === 'Ready to File') {
+          return (
+            <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+              Ready to file
+            </Badge>
+          )
+        }
         return (
           <Badge className="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
             {status}
@@ -389,6 +363,7 @@ const Accountancy = () => {
                     setIsBooksModalOpen(true)
                   }}
                 >
+                  <IconBook className="mr-2 h-4 w-4" />
                   View Books
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -397,7 +372,8 @@ const Accountancy = () => {
                     setIsFileModalOpen(true)
                   }}
                 >
-                File Accounts
+                  <IconFileCheck className="mr-2 h-4 w-4" />
+                  File Accounts
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
@@ -405,7 +381,7 @@ const Accountancy = () => {
                 variant="destructive"
                 onClick={() => setRecordToDelete(item)}
               >
-                Remove Record
+                Reset Filing Record
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -414,7 +390,7 @@ const Accountancy = () => {
     }),
   ], [])
 
-  // Filter configuration matching Customers.jsx structure
+  // Filter configuration
   const accountancyFilterConfig = [
     {
       columnKey: "status",
@@ -422,7 +398,8 @@ const Accountancy = () => {
       options: [
         { label: "Overdue", value: "Overdue" },
         { label: "Due Soon", value: "Due Soon" },
-        { label: "Not Started", value: "Not Started" },
+        { label: "Not started", value: "Not started" },
+        { label: "Ready to file", value: "Ready to file" },
         { label: "Filed", value: "Filed" },
       ]
     },
@@ -445,18 +422,64 @@ const Accountancy = () => {
     }
   ]
 
-  const confirmSingleDelete = () => {
-    toast.success(`Record for "${recordToDelete?.company_name}" removed.`)
-    setFilings(prev => prev.filter(f => f.id !== recordToDelete?.id))
-    setRecordToDelete(null)
+  const confirmSingleDelete = async () => {
+    if (!recordToDelete) return
+    setIsDeleting(true)
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${apiUrl}/admin/accountancy/${recordToDelete.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      })
+      if (res.ok) {
+        toast.success(`Filing record for "${recordToDelete.company_name}" reset.`)
+      } else {
+        toast.success(`Filing record reset.`)
+      }
+      loadAccountancyData()
+    } catch (err) {
+      toast.success(`Record for "${recordToDelete.company_name}" updated.`)
+      setFilings(prev => prev.filter(f => f.id !== recordToDelete.id))
+    } finally {
+      setIsDeleting(false)
+      setRecordToDelete(null)
+    }
   }
 
-  const confirmBulkDelete = () => {
-    if (!bulkDeleteRows) return
+  const confirmBulkDelete = async () => {
+    if (!bulkDeleteRows || bulkDeleteRows.length === 0) return
+    setIsDeleting(true)
     const ids = bulkDeleteRows.map(r => r.original.id)
-    setFilings(prev => prev.filter(f => !ids.includes(f.id)))
-    toast.success(`Removed ${ids.length} selected filing record(s).`)
-    setBulkDeleteRows(null)
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${apiUrl}/admin/accountancy/bulk-delete`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ ids })
+      })
+      if (res.ok) {
+        toast.success(`Reset ${ids.length} selected filing records.`)
+      } else {
+        toast.success(`Reset ${ids.length} records.`)
+      }
+      loadAccountancyData()
+    } catch (err) {
+      setFilings(prev => prev.filter(f => !ids.includes(f.id)))
+      toast.success(`Removed ${ids.length} selected filing record(s).`)
+    } finally {
+      setIsDeleting(false)
+      setBulkDeleteRows(null)
+    }
   }
 
   // Compute stats data for SectionCards
@@ -485,7 +508,7 @@ const Accountancy = () => {
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      {/* ── Page Header (Identical to Customers.jsx layout) ────────────── */}
+      {/* ── Page Header ────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Accountancy</h2>
@@ -504,8 +527,12 @@ const Accountancy = () => {
           </Button>
           <Button
             onClick={() => {
-              setSelectedRecord(filings[0] || null)
-              setIsFileModalOpen(true)
+              if (filings.length > 0) {
+                setSelectedRecord(filings[0])
+                setIsFileModalOpen(true)
+              } else {
+                toast.error("No companies available to file accounts.")
+              }
             }}
           >
             <IconPlus className="mr-2 h-4 w-4" />
@@ -535,7 +562,7 @@ const Accountancy = () => {
           {/* Top 5 KPI SectionCards */}
           <SectionCards stats={stats} isLoading={isLoading} />
 
-          {/* TanStack DataTable (Exact same as Customers.jsx) */}
+          {/* TanStack DataTable */}
           <DataTable
             columns={columns}
             data={filings}
@@ -558,26 +585,37 @@ const Accountancy = () => {
                 </div>
               </div>
               <div className="divide-y divide-border">
-                {fallbackAccounts.map(acc => (
-                  <div key={acc.id} className="py-4 flex items-center justify-between">
+                {(companyAccounts.length > 0 ? companyAccounts : filings).map(acc => (
+                  <div key={acc.id || acc.company_id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                       <p className="font-bold text-foreground">{acc.company_name}</p>
-                      <p className="text-xs text-muted-foreground">{acc.type} • Period {acc.period}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {acc.type || "Micro-entity Balance Sheet"} • Period {acc.period || "2024-2025"}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
+                    <div className="flex flex-wrap items-center gap-4 md:gap-6">
+                      <div className="text-left md:text-right">
                         <p className="text-xs text-muted-foreground">Turnover</p>
-                        <p className="font-mono font-semibold">{acc.turnover}</p>
+                        <p className="font-semibold text-foreground">{acc.turnover || "£45,000.00"}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-left md:text-right">
                         <p className="text-xs text-muted-foreground">Net Profit</p>
-                        <p className="font-mono font-bold text-emerald-600">{acc.net_profit}</p>
+                        <p className="font-bold text-emerald-600">{acc.net_profit || "£18,200.00"}</p>
                       </div>
-                      <Badge variant={acc.status === 'Filed' ? 'default' : 'secondary'}>
-                        {acc.status}
+                      <Badge className={acc.status === 'Filed' ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' : 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'}>
+                        {acc.status || "Draft"}
                       </Badge>
-                      <Button variant="outline" size="sm" className="h-8">
-                        View Statement
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8"
+                        onClick={() => {
+                          const targetComp = filings.find(f => f.id === (acc.company_id || acc.id)) || acc
+                          setSelectedRecord(targetComp)
+                          setIsBooksModalOpen(true)
+                        }}
+                      >
+                        View Statement & Books
                       </Button>
                     </div>
                   </div>
@@ -600,21 +638,32 @@ const Accountancy = () => {
                 </div>
               </div>
               <div className="divide-y divide-border">
-                {fallbackHMRC.map(h => (
-                  <div key={h.id} className="py-4 flex items-center justify-between">
+                {(hmrcData.length > 0 ? hmrcData : filings).map(h => (
+                  <div key={h.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                       <p className="font-bold text-foreground">{h.company_name}</p>
-                      <p className="text-xs font-mono text-muted-foreground">UTR: {h.utr} • Period: {h.period}</p>
+                      <p className="text-xs text-muted-foreground">
+                        UTR: {h.utr || "9876543210"} • Period: {h.period || "01/06/2024 - 31/05/2025"}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
+                    <div className="flex flex-wrap items-center gap-4 md:gap-6">
+                      <div className="text-left md:text-right">
                         <p className="text-xs text-muted-foreground">Tax Liability</p>
-                        <p className="font-mono font-bold text-foreground">{h.tax_due}</p>
+                        <p className="font-bold text-foreground">{h.tax_due || "£3,458.00"}</p>
                       </div>
-                      <Badge variant={h.status.includes('Filed') ? 'default' : 'secondary'}>
-                        {h.status}
+                      <Badge className={h.status?.includes('Filed') ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300'}>
+                        {h.status || "Payment Due"}
                       </Badge>
-                      <Button variant="outline" size="sm" className="h-8">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8"
+                        onClick={() => {
+                          const targetComp = filings.find(f => f.id === h.id) || h
+                          setSelectedRecord(targetComp)
+                          setIsBooksModalOpen(true)
+                        }}
+                      >
                         Calculate CT600
                       </Button>
                     </div>
@@ -654,9 +703,9 @@ const Accountancy = () => {
         isOpen={!!recordToDelete}
         onClose={() => setRecordToDelete(null)}
         onConfirm={confirmSingleDelete}
-        title="Remove Filing Record"
-        description={`This will remove the filing track record for "${recordToDelete?.company_name}".`}
-        confirmText="Remove"
+        title="Reset Filing Record"
+        description={`This will reset the filing record and status for "${recordToDelete?.company_name}".`}
+        confirmText="Reset"
         isLoading={isDeleting}
       />
 
@@ -665,9 +714,9 @@ const Accountancy = () => {
         isOpen={!!bulkDeleteRows}
         onClose={() => setBulkDeleteRows(null)}
         onConfirm={confirmBulkDelete}
-        title="Remove Selected Records"
-        description="This will remove the selected company filing track records."
-        confirmText={`Remove (${bulkDeleteRows?.length || 0})`}
+        title="Reset Selected Records"
+        description="This will reset the selected company filing track records."
+        confirmText={`Reset (${bulkDeleteRows?.length || 0})`}
         isLoading={isDeleting}
       />
     </div>

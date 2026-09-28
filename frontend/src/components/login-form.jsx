@@ -42,12 +42,17 @@ export function LoginForm({
       
       const data = await res.json()
 
-      if (data.status === "success") {
-        localStorage.setItem("user", JSON.stringify(data.user || { name: email.split('@')[0], email }))
+      if (data.status === "success" || data.success === true) {
+        const token = data.token || data.data?.token || data.session_token || data.data?.session_token
+        if (token) {
+          localStorage.setItem("token", token)
+        }
+        localStorage.setItem("user", JSON.stringify(userObj))
         navigate("/admin/dashboard")
       } else {
-        setError(data.message || "Login failed")
+        setError(data.message || data.error || "Login failed")
       }
+
     } catch (err) {
       // If server is offline/dev fallback, allow valid login for demo or show error
       setError("Failed to connect to server. Please check backend connection.")

@@ -259,24 +259,24 @@ export const FileCard = ({ formatFile }) => {
     filePlaceholder = (
       <div className="space-y-1">
         <div className="flex items-center gap-0.5">
-          <div className="text-foreground/30 font-mono text-[5px]">&lt;</div>
+          <div className="text-foreground/30   text-[5px]">&lt;</div>
           <div className="h-0.75 w-3 rounded-full bg-emerald-400/60" />
-          <div className="text-foreground/30 font-mono text-[5px]">&gt;</div>
+          <div className="text-foreground/30   text-[5px]">&gt;</div>
         </div>
         <div className="flex items-center gap-0.5 pl-1">
-          <div className="text-foreground/30 font-mono text-[5px]">&lt;</div>
+          <div className="text-foreground/30   text-[5px]">&lt;</div>
           <div className="h-0.75 w-2.5 rounded-full bg-sky-400/60" />
-          <div className="text-foreground/30 font-mono text-[5px]">&gt;</div>
+          <div className="text-foreground/30   text-[5px]">&gt;</div>
         </div>
         <div className="flex items-center gap-0.5 pl-1">
-          <div className="text-foreground/30 font-mono text-[5px]">&lt;/</div>
+          <div className="text-foreground/30   text-[5px]">&lt;/</div>
           <div className="h-0.75 w-2.5 rounded-full bg-sky-400/60" />
-          <div className="text-foreground/30 font-mono text-[5px]">&gt;</div>
+          <div className="text-foreground/30   text-[5px]">&gt;</div>
         </div>
         <div className="flex items-center gap-0.5">
-          <div className="text-foreground/30 font-mono text-[5px]">&lt;</div>
+          <div className="text-foreground/30   text-[5px]">&lt;</div>
           <div className="h-0.75 w-1 rounded-full bg-emerald-400/60" />
-          <div className="text-foreground/30 font-mono text-[5px]">/&gt;</div>
+          <div className="text-foreground/30   text-[5px]">/&gt;</div>
         </div>
       </div>
     );
@@ -286,7 +286,7 @@ export const FileCard = ({ formatFile }) => {
     filePlaceholder = (
       <div className="space-y-1">
         <div className="flex items-center gap-1">
-          <div className="text-foreground/40 font-mono text-[6px]">{"{"}</div>
+          <div className="text-foreground/40   text-[6px]">{"{"}</div>
         </div>
         <div className="flex items-center gap-1 pl-1.5">
           <div className="h-0.75 w-3 rounded-full bg-sky-400/60" />
@@ -301,7 +301,7 @@ export const FileCard = ({ formatFile }) => {
           <div className="h-0.75 w-4 rounded-full bg-sky-400/60" />
         </div>
         <div className="flex items-center gap-1">
-          <div className="text-foreground/40 font-mono text-[6px]">{"}"}</div>
+          <div className="text-foreground/40   text-[6px]">{"}"}</div>
         </div>
       </div>
     );
@@ -311,7 +311,7 @@ export const FileCard = ({ formatFile }) => {
     filePlaceholder = (
       <div className="space-y-1">
         <div className="flex items-center gap-1">
-          <div className="text-foreground/40 font-mono text-[6px]">{"{"}</div>
+          <div className="text-foreground/40   text-[6px]">{"{"}</div>
         </div>
         <div className="flex items-center gap-1 pl-1.5">
           <div className="bg-foreground/20 h-0.75 w-3 rounded-full" />
@@ -329,7 +329,7 @@ export const FileCard = ({ formatFile }) => {
           <div className="bg-foreground/10 h-0.75 w-3 rounded-full" />
         </div>
         <div className="flex items-center gap-1">
-          <div className="text-foreground/40 font-mono text-[6px]">{"}"}</div>
+          <div className="text-foreground/40   text-[6px]">{"}"}</div>
         </div>
       </div>
     );

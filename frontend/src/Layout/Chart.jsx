@@ -31,9 +31,9 @@ const barChartConfig = {
   },
 }
 
-export function ChartBarMultiple({ 
-  data = [], 
-  timeFilter = "This Year", 
+export function ChartBarMultiple({
+  data = [],
+  timeFilter = "This Year",
   onTimeFilterChange,
   isLoading = false,
 }) {
@@ -75,7 +75,7 @@ export function ChartBarMultiple({
               axisLine={false}
               tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
             />
-            <YAxis 
+            <YAxis
               tickLine={false}
               axisLine={false}
               tickMargin={10}
@@ -85,11 +85,11 @@ export function ChartBarMultiple({
             <ChartTooltip
               cursor={false}
               content={
-                <ChartTooltipContent 
+                <ChartTooltipContent
                   formatter={(value) => (
                     <div className="flex items-center justify-between w-full min-w-[130px] gap-2">
                       <span className="text-muted-foreground">Sales Revenue</span>
-                      <span className="font-mono font-medium text-foreground tabular-nums">
+                      <span className="  font-medium text-foreground tabular-nums">
                         £{Number(value || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
@@ -217,7 +217,7 @@ export function ChartAreaSalesTrend({ data = [], isLoading = false }) {
               tickMargin={8}
               tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
             />
-            <YAxis 
+            <YAxis
               tickLine={false}
               axisLine={false}
               tickMargin={8}

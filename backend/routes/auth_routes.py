@@ -44,10 +44,13 @@ def handle_auth_routes(environ, start_response, path, method, user, body):
             "role": user_row['role']
         }
         
+        cookie_header = f"session_token={session_token}; Path=/; SameSite=Lax; Max-Age=2592000"
         return success_response(start_response, data={
             "token": session_token,
-            "user": user_data
-        }, message="Login successful.")
+            "session_token": session_token,
+            "user": user_data,
+            "status": "success"
+        }, message="Login successful.", headers=[('Set-Cookie', cookie_header)])
 
     # ── GET /api/auth/me ──────────────────────────────────────────────────
     if path == '/api/auth/me' and method == 'GET':
@@ -72,7 +75,8 @@ def handle_auth_routes(environ, start_response, path, method, user, body):
                 WHERE session_token = ?;
             """, (user['session_token'],))
             
-        return success_response(start_response, message="Logged out successfully.")
+        cookie_clear = "session_token=; Path=/; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
+        return success_response(start_response, message="Logged out successfully.", headers=[('Set-Cookie', cookie_clear)])
 
     # ── POST /api/auth/forgot-password ────────────────────────────────────
     if path == '/api/auth/forgot-password' and method == 'POST':
