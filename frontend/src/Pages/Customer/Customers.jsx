@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
+import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 
 const columnHelper = createColumnHelper()
 
@@ -31,49 +32,59 @@ const Customers = () => {
 
   const [customers, setCustomers] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
 
   const loadCustomers = async () => {
     setIsLoading(true)
+    setLoadError(null)
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const token = localStorage.getItem("token")
-      const headers = {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      const res = await apiRequest('/admin/customers', { label: 'Customers' })
+      if (!res.ok) {
+        setCustomers([])
+        setLoadError(res.reason)
+        return
       }
-      const res = await fetch(`${apiUrl}/admin/customers`, {
-        credentials: "include",
-        headers,
-      })
-      if (res.ok) {
-        const data = await res.json()
-        const rawList = data.customers || data.data?.customers || data.data?.clients || (Array.isArray(data.data) ? data.data : null) || (Array.isArray(data) ? data : [])
-        if (Array.isArray(rawList)) {
-          const mapped = rawList.map((c) => {
-            let type = 'Individual'
-            if (Number(c.is_b2b) === 1 || String(c.client_type || '').toUpperCase() === 'B2B') {
-              type = 'B2B'
-            } else if (String(c.client_type || '').toLowerCase() === 'business') {
-              type = 'Business'
-            }
-            return {
-              id: c.id,
-              name: c.full_name || 'Customer',
-              email: c.email || '',
-              type: type,
-              signedUp: c.created_at ? new Date(c.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent',
-              source: c.wordpress_user_id ? 'Website signup' : 'CRM',
-              companies: c.companies_count ?? 0,
-              orders: c.orders_count ?? 0,
-              status: c.status || 'Active',
-              raw: c,
-            }
-          })
-          setCustomers(mapped)
-        }
+      const data = res.data || {}
+      const rawList = data.customers || data.data?.customers || data.data?.clients || (Array.isArray(data.data) ? data.data : null) || (Array.isArray(data) ? data : [])
+      if (Array.isArray(rawList)) {
+        const mapped = rawList.map((c) => {
+          let type = 'Individual'
+          if (Number(c.is_b2b) === 1 || String(c.client_type || '').toUpperCase() === 'B2B') {
+            type = 'B2B'
+          } else if (String(c.client_type || '').toLowerCase() === 'business') {
+            type = 'Business'
+          }
+          return {
+            id: c.id,
+            name: c.full_name || 'Customer',
+            email: c.email || '',
+            type: type,
+            signedUp: c.created_at ? new Date(c.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent',
+            source: c.wordpress_user_id ? 'Website signup' : 'CRM',
+            companies: c.companies_count ?? 0,
+            orders: c.orders_count ?? 0,
+            status: c.status || 'Active',
+            raw: c,
+          }
+        })
+        setCustomers(mapped)
+        if (mapped.length === 0) toastApiEmpty('Customers', getApiBase())
+      } else {
+        setCustomers([])
+        setLoadError('API returned an unexpected response shape (no customers list).')
+        toast.error('Customers failed to load', {
+          description: 'API returned an unexpected response shape (no customers list).',
+          duration: 8000,
+        })
       }
     } catch (err) {
       console.error("Failed to load customers from backend", err)
+      setCustomers([])
+      setLoadError(err?.message || 'Unexpected error')
+      toast.error('Customers failed to load', {
+        description: err?.message || 'Unexpected error',
+        duration: 8000,
+      })
     } finally {
       setIsLoading(false)
     }
@@ -353,6 +364,14 @@ const Customers = () => {
           Create Customer
         </Button>
       </div>
+
+      {loadError ? (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <p className="font-medium">Could not load customers</p>
+          <p className="mt-1 text-destructive/90 whitespace-pre-wrap">{loadError}</p>
+          <p className="mt-1 text-muted-foreground text-xs">API: {getApiBase()}</p>
+        </div>
+      ) : null}
 
       <DataTable
         columns={columns}

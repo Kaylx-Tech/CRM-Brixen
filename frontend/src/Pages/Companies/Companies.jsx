@@ -28,6 +28,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
+import { apiRequest, getApiBase, toastApiEmpty } from '@/lib/api'
 
 const Companies = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
@@ -35,6 +36,7 @@ const Companies = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [companies, setCompanies] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [activeTab, setActiveTab] = useState('all')
 
   // Selection & Bulk delete state
@@ -45,44 +47,51 @@ const Companies = () => {
 
   const fetchCompanies = async () => {
     setIsLoading(true)
+    setLoadError(null)
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${apiUrl}/admin/companies?limit=500`, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      })
-      if (res.ok) {
-        const data = await res.json()
-        const rawList =
-          data.companies ||
-          data.data?.companies ||
-          (Array.isArray(data.data) ? data.data : null) ||
-          (Array.isArray(data) ? data : [])
-        if (Array.isArray(rawList)) {
-          setCompanies(
-            rawList.map((c) => ({
-              id: c.id,
-              name: c.company_name || c.name || 'Unnamed Company',
-              number: c.company_number || c.number || '#00000000',
-              director: c.director_name || c.director || 'Director',
-              address: c.registered_office_address || c.reg_office || c.address || 'United Kingdom',
-              status: c.status || 'Active',
-              countryFlag: '🇬🇧',
-              countryName: 'UK',
-              deadlineText: c.accounts_next_due ? `Accounts due: ${c.accounts_next_due}` : 'No upcoming deadlines',
-            }))
-          )
-          return
-        }
+      const res = await apiRequest('/admin/companies?limit=500', { label: 'Companies' })
+      if (!res.ok) {
+        setCompanies([])
+        setLoadError(res.reason)
+        return
+      }
+      const data = res.data || {}
+      const rawList =
+        data.companies ||
+        data.data?.companies ||
+        (Array.isArray(data.data) ? data.data : null) ||
+        (Array.isArray(data) ? data : [])
+      if (Array.isArray(rawList)) {
+        setCompanies(
+          rawList.map((c) => ({
+            id: c.id,
+            name: c.company_name || c.name || 'Unnamed Company',
+            number: c.company_number || c.number || '#00000000',
+            director: c.director_name || c.director || 'Director',
+            address: c.registered_office_address || c.reg_office || c.address || 'United Kingdom',
+            status: c.status || 'Active',
+            countryFlag: '🇬🇧',
+            countryName: 'UK',
+            deadlineText: c.accounts_next_due ? `Accounts due: ${c.accounts_next_due}` : 'No upcoming deadlines',
+          }))
+        )
+        if (rawList.length === 0) toastApiEmpty('Companies', getApiBase())
+        return
       }
       setCompanies([])
+      setLoadError('API returned an unexpected response shape (no companies list).')
+      toast.error('Companies failed to load', {
+        description: 'API returned an unexpected response shape (no companies list).',
+        duration: 8000,
+      })
     } catch (err) {
       console.error('Failed to load companies:', err)
       setCompanies([])
+      setLoadError(err?.message || 'Unexpected error')
+      toast.error('Companies failed to load', {
+        description: err?.message || 'Unexpected error',
+        duration: 8000,
+      })
     } finally {
       setIsLoading(false)
     }
@@ -214,6 +223,14 @@ const Companies = () => {
           </Button>
         </div>
       </div>
+
+      {loadError ? (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <p className="font-medium">Could not load companies</p>
+          <p className="mt-1 text-destructive/90 whitespace-pre-wrap">{loadError}</p>
+          <p className="mt-1 text-muted-foreground text-xs">API: {getApiBase()}</p>
+        </div>
+      ) : null}
 
       {/* Stats/Tabs & Search */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

@@ -42,39 +42,9 @@ import {
   IconFileText
 } from "@tabler/icons-react"
 import { toast } from "sonner"
+import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 
 const columnHelper = createColumnHelper()
-
-const fallbackFilings = [
-  {
-    id: 1,
-    company_name: "52 ALDERLEY ROAD LLP",
-    company_number: "OC385142",
-    owner_name: "Brixen Admin",
-    has_address: true,
-    idv_status: "Not started",
-    psc_status: "Not started",
-    issues_count: 4,
-    year_end: "31/05/2024",
-    due_date: "28/02/2025",
-    type: "Micro-entity",
-    status: "Overdue"
-  },
-  {
-    id: 2,
-    company_name: "A.J.B. FLOORING LIMITED",
-    company_number: "04832315",
-    owner_name: "Andrew John Bendell",
-    has_address: true,
-    idv_status: "Not started",
-    psc_status: "Not started",
-    issues_count: 4,
-    year_end: "31/07/2024",
-    due_date: "30/04/2025",
-    type: "Micro-entity",
-    status: "Overdue"
-  }
-]
 
 const Accountancy = () => {
   const [activeTab, setActiveTab] = useState('filing-status')
@@ -82,6 +52,7 @@ const Accountancy = () => {
   const [companyAccounts, setCompanyAccounts] = useState([])
   const [hmrcData, setHmrcData] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
 
   // Metrics KPI state
   const [metrics, setMetrics] = useState({
@@ -102,64 +73,66 @@ const Accountancy = () => {
 
   const loadAccountancyData = async () => {
     setIsLoading(true)
+    setLoadError(null)
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const token = localStorage.getItem('token')
-      const headers = {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      const res = await apiRequest('/admin/accountancy', { label: 'Accountancy filings' })
+      if (!res.ok) {
+        setFilings([])
+        setLoadError(res.reason)
+        return
       }
 
-      // 1. Fetch Filings & Metrics
-      const res = await fetch(`${apiUrl}/admin/accountancy`, {
-        credentials: "include",
-        headers
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        if ((data.success || data.status === "success") && data.data) {
-          if (Array.isArray(data.data.filings)) {
-            setFilings(data.data.filings)
-          }
-          if (data.data.metrics) {
-            setMetrics({
-              overdue: data.data.metrics.overdue || 0,
-              due_in_60_days: data.data.metrics.due_in_60_days || 0,
-              in_progress: data.data.metrics.in_progress || 0,
-              issues: data.data.metrics.issues || 0,
-              filed: data.data.metrics.filed || 0
-            })
-          }
+      const data = res.data
+      if (data?.data) {
+        const list = Array.isArray(data.data.filings) ? data.data.filings : []
+        setFilings(list)
+        if (data.data.metrics) {
+          setMetrics({
+            overdue: data.data.metrics.overdue || 0,
+            due_in_60_days: data.data.metrics.due_in_60_days || 0,
+            in_progress: data.data.metrics.in_progress || 0,
+            issues: data.data.metrics.issues || 0,
+            filed: data.data.metrics.filed || 0
+          })
+        }
+        if (list.length === 0) {
+          toastApiEmpty('Accountancy filings', getApiBase())
         }
       }
 
-      // 2. Fetch Company Accounts for Tab 2
-      const accRes = await fetch(`${apiUrl}/admin/accountancy/company-accounts`, {
-        credentials: "include",
-        headers
+      const accRes = await apiRequest('/admin/accountancy/company-accounts', {
+        label: 'Company accounts',
+        silent: true,
       })
-      if (accRes.ok) {
-        const accData = await accRes.json()
-        if ((accData.success || accData.status === "success") && Array.isArray(accData.data?.accounts)) {
-          setCompanyAccounts(accData.data.accounts)
-        }
+      if (accRes.ok && Array.isArray(accRes.data?.data?.accounts)) {
+        setCompanyAccounts(accRes.data.data.accounts)
+      } else if (!accRes.ok) {
+        toast.error('Company accounts tab failed to load', {
+          description: accRes.reason,
+          duration: 8000,
+        })
       }
 
-      // 3. Fetch HMRC CT600 for Tab 3
-      const hmrcRes = await fetch(`${apiUrl}/admin/accountancy/hmrc`, {
-        credentials: "include",
-        headers
+      const hmrcRes = await apiRequest('/admin/accountancy/hmrc', {
+        label: 'HMRC CT600',
+        silent: true,
       })
-      if (hmrcRes.ok) {
-        const hData = await hmrcRes.json()
-        if ((hData.success || hData.status === "success") && Array.isArray(hData.data?.ct600)) {
-          setHmrcData(hData.data.ct600)
-        }
+      if (hmrcRes.ok && Array.isArray(hmrcRes.data?.data?.ct600)) {
+        setHmrcData(hmrcRes.data.data.ct600)
+      } else if (!hmrcRes.ok) {
+        toast.error('HMRC tab failed to load', {
+          description: hmrcRes.reason,
+          duration: 8000,
+        })
       }
     } catch (err) {
       console.error("Failed to load accountancy filings:", err)
-      setFilings(fallbackFilings)
+      setFilings([])
+      setLoadError(err?.message || 'Unexpected error')
+      toast.error('Accountancy failed to load', {
+        description: err?.message || 'Unexpected error',
+        duration: 8000,
+      })
     } finally {
       setIsLoading(false)
     }
@@ -426,25 +399,16 @@ const Accountancy = () => {
     if (!recordToDelete) return
     setIsDeleting(true)
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${apiUrl}/admin/accountancy/${recordToDelete.id}`, {
+      const res = await apiRequest(`/admin/accountancy/${recordToDelete.id}`, {
         method: 'DELETE',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        }
+        label: 'Reset filing',
       })
       if (res.ok) {
         toast.success(`Filing record for "${recordToDelete.company_name}" reset.`)
-      } else {
-        toast.success(`Filing record reset.`)
+        loadAccountancyData()
       }
-      loadAccountancyData()
     } catch (err) {
-      toast.success(`Record for "${recordToDelete.company_name}" updated.`)
-      setFilings(prev => prev.filter(f => f.id !== recordToDelete.id))
+      toast.error('Failed to reset filing', { description: err?.message })
     } finally {
       setIsDeleting(false)
       setRecordToDelete(null)
@@ -456,26 +420,17 @@ const Accountancy = () => {
     setIsDeleting(true)
     const ids = bulkDeleteRows.map(r => r.original.id)
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${apiUrl}/admin/accountancy/bulk-delete`, {
+      const res = await apiRequest('/admin/accountancy/bulk-delete', {
         method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ ids })
+        label: 'Bulk reset filings',
+        body: JSON.stringify({ ids }),
       })
       if (res.ok) {
         toast.success(`Reset ${ids.length} selected filing records.`)
-      } else {
-        toast.success(`Reset ${ids.length} records.`)
+        loadAccountancyData()
       }
-      loadAccountancyData()
     } catch (err) {
-      setFilings(prev => prev.filter(f => !ids.includes(f.id)))
-      toast.success(`Removed ${ids.length} selected filing record(s).`)
+      toast.error('Bulk reset failed', { description: err?.message })
     } finally {
       setIsDeleting(false)
       setBulkDeleteRows(null)
@@ -540,6 +495,14 @@ const Accountancy = () => {
           </Button>
         </div>
       </div>
+
+      {loadError ? (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <p className="font-medium">Could not load accountancy data</p>
+          <p className="mt-1 text-destructive/90 whitespace-pre-wrap">{loadError}</p>
+          <p className="mt-1 text-muted-foreground text-xs">API: {getApiBase()}</p>
+        </div>
+      ) : null}
 
       {/* ── Tabs Navigation ────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

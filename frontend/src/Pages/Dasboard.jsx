@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/select"
 import { IconCalendarWeek, IconPlus, IconRefresh, IconShoppingBag, IconUserCheck, IconSparkles } from "@tabler/icons-react"
 import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
+import { apiRequest, getApiBase } from "@/lib/api"
 
 // ==========================================
 // Helper Functions for Data Formatting
@@ -146,29 +148,33 @@ const Dashboard = () => {
   const fetchDashboardData = useCallback(async () => {
     setIsLoading(true)
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
       let query = ""
       if (selectedMonth && selectedMonth !== "all" && selectedMonth !== "current") {
         query = `?month=${selectedMonth}`
       }
-      const token = localStorage.getItem("token")
-      const headers = {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      const res = await apiRequest(`/admin/stats${query}`, { label: 'Dashboard stats' })
+      if (!res.ok) {
+        setDashboardData(null)
+        return
       }
-      const res = await fetch(`${apiUrl}/admin/stats${query}`, {
-        credentials: "include",
-        headers,
-      })
-      if (res.ok) {
-        const json = await res.json()
-        const resolved = json.data && json.data.stats ? json.data : json
-        if (resolved.status === "success" || resolved.success || resolved.stats) {
-          setDashboardData(resolved)
-        }
+      const json = res.data
+      const resolved = json?.data && json.data.stats ? json.data : json
+      if (resolved && (resolved.status === "success" || resolved.success || resolved.stats)) {
+        setDashboardData(resolved)
+      } else {
+        setDashboardData(null)
+        toast.error('Dashboard failed to load', {
+          description: `Unexpected response from ${getApiBase()}/admin/stats`,
+          duration: 8000,
+        })
       }
     } catch (err) {
       console.error("Error loading dashboard data:", err)
+      setDashboardData(null)
+      toast.error('Dashboard failed to load', {
+        description: err?.message || 'Unexpected error',
+        duration: 8000,
+      })
     } finally {
       setIsLoading(false)
     }

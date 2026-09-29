@@ -20,69 +20,50 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { IconPlus, IconDotsVertical, IconEdit, IconTrash } from "@tabler/icons-react"
+import { toast } from "sonner"
+import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 
 const columnHelper = createColumnHelper()
-
-const mockData = [
-  {
-    id: 1,
-    name: 'VAT Registration',
-    category: 'Corporate',
-    sellPrice: '£150',
-    originalPrice: '£50',
-    profit: '£100',
-    duration: '12 Months',
-    status: 'Active'
-  },
-  {
-    id: 2,
-    name: 'Company Formation',
-    category: 'Corporate',
-    sellPrice: '£100',
-    originalPrice: '£12',
-    profit: '£88',
-    duration: 'One Time',
-    status: 'Active'
-  }
-]
 
 const Services = () => {
   const [data, setData] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [isAddOpen, setIsAddOpen] = useState(false)
 
   const fetchServices = async () => {
     setIsLoading(true)
+    setLoadError(null)
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${apiUrl}/catalog/services`, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      })
-      if (res.ok) {
-        const json = await res.json()
-        const servicesData = json.data || json
-        const formatted = (Array.isArray(servicesData) ? servicesData : []).map(s => {
-          const price = Number(s.price) || 0
-          const costPrice = Number(s.cost_price ?? s.originalPrice) || 0
-          return {
-            ...s,
-            sellPrice: `£${price}`,
-            originalPrice: `£${costPrice}`,
-            profit: `£${price - costPrice}`
-          }
-        })
-        setData(formatted)
-      } else {
-        setData(mockData)
+      const res = await apiRequest('/catalog/services', { label: 'Services' })
+      if (!res.ok) {
+        setData([])
+        setLoadError(res.reason)
+        return
       }
+      const json = res.data
+      const servicesData = json?.data || json
+      const list = Array.isArray(servicesData) ? servicesData : []
+      const formatted = list.map(s => {
+        const price = Number(s.price) || 0
+        const costPrice = Number(s.cost_price ?? s.originalPrice) || 0
+        return {
+          ...s,
+          sellPrice: `£${price}`,
+          originalPrice: `£${costPrice}`,
+          profit: `£${price - costPrice}`
+        }
+      })
+      setData(formatted)
+      if (formatted.length === 0) toastApiEmpty('Services', getApiBase())
     } catch (err) {
       console.error("Failed to load services", err)
-      setData(mockData)
+      setData([])
+      setLoadError(err?.message || 'Unexpected error')
+      toast.error('Services failed to load', {
+        description: err?.message || 'Unexpected error',
+        duration: 8000,
+      })
     } finally {
       setIsLoading(false)
     }
@@ -222,6 +203,14 @@ const Services = () => {
           onSuccess={fetchServices}
         />
       </div>
+
+      {loadError ? (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <p className="font-medium">Could not load services</p>
+          <p className="mt-1 text-destructive/90 whitespace-pre-wrap">{loadError}</p>
+          <p className="mt-1 text-muted-foreground text-xs">API: {getApiBase()}</p>
+        </div>
+      ) : null}
 
       <DataTable
         columns={columns}

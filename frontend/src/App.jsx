@@ -14,6 +14,7 @@ import Services from './Pages/Services/Services'
 import ComingSoon from './Pages/ComingSoon'
 import { TooltipProvider } from './components/ui/tooltip'
 import { ThemeProvider } from './hooks/theme-provider'
+import { Toaster } from './components/ui/sonner'
 
 const App = () => {
   return (
@@ -61,6 +62,7 @@ const App = () => {
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </BrowserRouter>
+        <Toaster richColors closeButton position="top-right" />
       </TooltipProvider>
     </ThemeProvider>
   )
