@@ -32,4 +32,7 @@ backend/*.db-wal
 backend/*.db-shm
 backend/storage/
 backend/.env.production
-.env.production
+
+# Local-only env (secrets). .env.production is committed for Coolify builds.
+.env.local
+.env.*.local

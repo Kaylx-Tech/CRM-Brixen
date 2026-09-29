@@ -17,7 +17,7 @@ const AdminLayout = () => {
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const res = await fetch(`${apiUrl}/api/ai/chat`, {
+      const res = await fetch(`${apiUrl}/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

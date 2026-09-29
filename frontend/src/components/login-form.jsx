@@ -32,8 +32,8 @@ export function LoginForm({
     setIsLoading(true)
 
     try {
-      // Connect to the API using the environment variable
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const res = await fetch(`${apiUrl}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
