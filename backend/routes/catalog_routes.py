@@ -65,6 +65,32 @@ def handle_catalog_routes(environ, start_response, path, method, user, body, que
 
         return success_response(start_response, data=[])
 
+    # ── POST /api/catalog/services ─────────────────────────────
+    if path == '/api/catalog/services' and method == 'POST':
+        name = body.get('name', '').strip()
+        category = body.get('category', 'Corporate')
+        description = body.get('description', '')
+        price = float(body.get('sellPrice', 0) or 0)
+        original_price = float(body.get('originalPrice', 0) or 0)
+        duration = body.get('duration', '12 Months')
+
+        if not name:
+            return error_response(start_response, "Service name is required", 400)
+
+        try:
+            # We assume the services table exists and has these columns or similar.
+            # Some columns might not exist depending on the schema (like original_price might not exist, but price does).
+            # We will insert standard fields. We will attempt to insert original_price if the column exists, otherwise omit it.
+            # To be safe against schema changes, we insert what we know exists from the GET query.
+            # GET query selected: id, name, description, category, price, duration, vat_rate, estimated_delivery_time, status
+            execute_db("""
+                INSERT INTO services (name, description, category, price, duration, status)
+                VALUES (?, ?, ?, ?, ?, 'Active')
+            """, (name, description, category, price, duration))
+            return success_response(start_response, message="Service created successfully")
+        except Exception as e:
+            return error_response(start_response, f"Failed to create service: {str(e)}", 500)
+
     # ── GET /api/catalog/schema (Dynamic form config for service) ──────────
     if path == '/api/catalog/schema' and method == 'GET':
         product_name = (query.get('product') or [''])[0].strip()

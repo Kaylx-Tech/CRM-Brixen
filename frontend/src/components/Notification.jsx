@@ -200,25 +200,23 @@ export default function Notifications() {
 
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
-        <button
-          className="relative inline-flex items-center justify-center rounded-md p-1.5 hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
-          aria-label="Notifications"
-        >
-          {unreadCount > 0 ? (
-            <IconBellRinging className="h-4 w-4 text-primary animate-pulse" />
-          ) : (
-            <IconBell className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-          )}
-          {unreadCount > 0 && (
-            <Badge
-              variant="default"
-              className="absolute -top-1.5 -right-1.5 font-semibold text-[9px] min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background"
-            >
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </Badge>
-          )}
-        </button>
+      <PopoverTrigger
+        className="relative inline-flex items-center justify-center rounded-md p-1.5 hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+        aria-label="Notifications"
+      >
+        {unreadCount > 0 ? (
+          <IconBellRinging className="h-4 w-4 text-primary animate-pulse" />
+        ) : (
+          <IconBell className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+        )}
+        {unreadCount > 0 && (
+          <Badge
+            variant="default"
+            className="absolute -top-1.5 -right-1.5 font-semibold text-[9px] min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background"
+          >
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </Badge>
+        )}
       </PopoverTrigger>
 
       <PopoverContent

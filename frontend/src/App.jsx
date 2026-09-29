@@ -8,6 +8,9 @@ import Dashboard from './Pages/Dasboard'
 import Customers from './Pages/Customer/Customers'
 import Companies from './Pages/Companies/Companies'
 import Accountancy from './Pages/Accountancy/Accountancy'
+import Orders from './Pages/Orders/Orders'
+import Tasks from './Pages/Tasks/Tasks'
+import Services from './Pages/Services/Services'
 import ComingSoon from './Pages/ComingSoon'
 import { TooltipProvider } from './components/ui/tooltip'
 import { ThemeProvider } from './hooks/theme-provider'
@@ -42,9 +45,9 @@ const App = () => {
                 <Route path="customers" element={<Customers />} />
                 <Route path="companies" element={<Companies />} />
                 <Route path="accountancy" element={<Accountancy />} />
-                <Route path="orders" element={<ComingSoon />} />
-                <Route path="tasks" element={<ComingSoon />} />
-                <Route path="services" element={<ComingSoon />} />
+                <Route path="orders" element={<Orders />} />
+                <Route path="tasks" element={<Tasks />} />
+                <Route path="services" element={<Services />} />
                 <Route path="payments" element={<ComingSoon />} />
                 <Route path="documents" element={<ComingSoon />} />
                 <Route path="intake" element={<ComingSoon />} />

@@ -676,14 +676,13 @@ const Accountancy = () => {
       </Tabs>
 
       {/* ── File Accounts Modal ──────────────────────────────────── */}
-      {selectedRecord && (
-        <FileAccount
-          isOpen={isFileModalOpen}
-          onClose={() => setIsFileModalOpen(false)}
-          company={selectedRecord}
-          onFileSubmitted={() => loadAccountancyData()}
-        />
-      )}
+      <FileAccount
+        isOpen={isFileModalOpen}
+        onClose={() => setIsFileModalOpen(false)}
+        company={selectedRecord}
+        companies={filings}
+        onFileSubmitted={() => loadAccountancyData()}
+      />
 
       {/* ── View Account / Books Workspace Modal ──────────────────── */}
       {selectedRecord && (

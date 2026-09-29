@@ -1,267 +1,342 @@
 import React, { useState, useEffect } from 'react'
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
-import { toast } from "sonner"
-import {
-    IconFileCheck,
-    IconBuildingSkyscraper,
-    IconAlertTriangle,
-    IconCheck,
-    IconCalendar,
-    IconShieldCheck
-} from "@tabler/icons-react"
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { toast } from 'sonner'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { format } from 'date-fns'
+import { IconCalendar } from '@tabler/icons-react'
 
-const FileAccount = ({ isOpen, onClose, company, onFileSubmitted }) => {
-    const [accountsType, setAccountsType] = useState('Micro-entity')
-    const [status, setStatus] = useState('In progress')
-    const [periodStart, setPeriodStart] = useState('')
-    const [periodEnd, setPeriodEnd] = useState('')
-    const [dueDate, setDueDate] = useState('')
-    const [confirmationNumber, setConfirmationNumber] = useState('')
-    const [notes, setNotes] = useState('')
-    const [isSubmitting, setIsSubmitting] = useState(false)
+// Helper to convert DD/MM/YYYY or ISO date string to YYYY-MM-DD for standard date input
+const toDateInputValue = (dateStr) => {
+  if (!dateStr) return ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+    const [day, month, year] = dateStr.split('/')
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+  }
+  try {
+    const d = new Date(dateStr)
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split('T')[0]
+    }
+  } catch {
+    return ''
+  }
+  return ''
+}
 
-    useEffect(() => {
-        if (company) {
-            setAccountsType(company.type || 'Micro-entity')
-            setStatus(company.status === 'Overdue' ? 'In progress' : (company.status || 'In progress'))
-            setDueDate(company.due_date || '')
-            setPeriodEnd(company.year_end || '')
-            setPeriodStart('01/06/2024')
-            setConfirmationNumber('')
-            setNotes('')
+const InlineDatePicker = ({ dateString, onChange }) => {
+  const date = dateString ? new Date(dateString) : null;
+  return (
+    <Popover>
+      <PopoverTrigger
+        render={
+          <Button
+            type="button"
+            variant="outline"
+            data-empty={!date}
+            className={`w-full justify-start text-left font-normal text-sm ${!date ? 'text-muted-foreground' : ''}`}
+          />
         }
-    }, [company])
-
-    if (!company) return null
-
-    const isAddressOk = company.has_address
-    const isIdvOk = company.idv_status === 'Verified'
-    const isPscOk = company.psc_status === 'Verified'
-    const issuesCount = company.issues_count || 0
-    const canFileOfficial = isAddressOk && isIdvOk && isPscOk && issuesCount === 0
-
-    const handleSubmit = async (e) => {
-        e.preventDefault()
-        setIsSubmitting(true)
-        try {
-            const apiUrl = import.meta.env.VITE_API_URL || '/api'
-            const token = localStorage.getItem('token')
-            const res = await fetch(`${apiUrl}/admin/accountancy/${company.id}/file`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {})
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                    company_id: company.id,
-                    accounts_type: accountsType,
-                    status: status,
-                    period_start: periodStart,
-                    period_end: periodEnd,
-                    due_date: dueDate,
-                    confirmation_number: confirmationNumber,
-                    notes: notes,
-                })
-            })
-
-            const data = await res.json().catch(() => ({}))
-            if (res.ok && data.status === 'success') {
-                toast.success(data.message || `Accounts for ${company.company_name} filed successfully!`)
+      >
+        <IconCalendar className="mr-2 h-4 w-4" />
+        {date ? format(date, "PPP") : <span>Pick a date</span>}
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={(d) => {
+            if (d) {
+              const adjusted = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+              onChange(adjusted.toISOString().split('T')[0]);
             } else {
-                toast.error(data.message || `Failed to file accounts.`)
+              onChange('');
             }
+          }}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+};
 
-            if (onFileSubmitted) onFileSubmitted()
-            onClose()
-        } catch (err) {
-            console.error("Filing error:", err)
-            toast.success(`Accounts submission recorded for ${company.company_name}!`)
-            if (onFileSubmitted) onFileSubmitted()
-            onClose()
-        } finally {
-            setIsSubmitting(false)
-        }
+const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted }) => {
+  const [selectedCompanyId, setSelectedCompanyId] = useState('')
+  const [accountsType, setAccountsType] = useState('Micro-entity')
+  const [status, setStatus] = useState('In progress')
+  const [periodStart, setPeriodStart] = useState('2024-06-01')
+  const [periodEnd, setPeriodEnd] = useState('2025-05-31')
+  const [dueDate, setDueDate] = useState('2026-02-28')
+  const [confirmationNumber, setConfirmationNumber] = useState('')
+  const [notes, setNotes] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const applyCompanyData = (comp) => {
+    if (!comp) return
+    setSelectedCompanyId(String(comp.id || comp.company_id || ''))
+    setAccountsType(comp.type || 'Micro-entity')
+    setStatus(comp.status === 'Overdue' ? 'In progress' : comp.status || 'In progress')
+
+    if (comp.due_date) {
+      setDueDate(toDateInputValue(comp.due_date) || '2026-02-28')
+    }
+    if (comp.year_end) {
+      setPeriodEnd(toDateInputValue(comp.year_end) || '2025-05-31')
+    }
+    if (comp.period_start) {
+      setPeriodStart(toDateInputValue(comp.period_start) || '2024-06-01')
+    }
+    setConfirmationNumber(comp.confirmation_number || '')
+    setNotes(comp.notes || '')
+  }
+
+  useEffect(() => {
+    if (company) {
+      applyCompanyData(company)
+    } else if (companies.length > 0) {
+      applyCompanyData(companies[0])
+    }
+  }, [company, companies, isOpen])
+
+  const handleCompanySelect = (compId) => {
+    setSelectedCompanyId(compId)
+    const found = companies.find((c) => String(c.id || c.company_id) === String(compId))
+    if (found) {
+      applyCompanyData(found)
+    }
+  }
+
+  const currentCompany =
+    companies.find((c) => String(c.id || c.company_id) === String(selectedCompanyId)) || company
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    const targetId = selectedCompanyId || company?.id
+    if (!targetId) {
+      toast.error('Please select a company to file accounts.')
+      return
     }
 
-    return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && !isSubmitting && onClose()}>
-            <DialogContent className="sm:max-w-[560px] p-0 overflow-hidden">
-                {/* Header */}
-                <div className="p-6 border-b bg-muted/20">
-                    <DialogHeader className="space-y-1 text-left">
-                        <div className="flex items-center gap-2">
-                            <IconFileCheck className="h-5 w-5 text-primary" />
-                            <DialogTitle className="text-xl font-bold">File Annual Accounts</DialogTitle>
-                        </div>
-                        <DialogDescription className="text-xs">
-                            Companies House statutory accounts filing & compliance validation.
-                        </DialogDescription>
-                    </DialogHeader>
-                </div>
+    setIsSubmitting(true)
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${apiUrl}/admin/accountancy/${targetId}/file`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          company_id: targetId,
+          accounts_type: accountsType,
+          status: status,
+          period_start: periodStart,
+          period_end: periodEnd,
+          due_date: dueDate,
+          confirmation_number: confirmationNumber,
+          notes: notes,
+        }),
+      })
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                    {/* Company Banner */}
-                    <div className="flex items-center justify-between p-3.5 bg-muted/40 rounded-xl border">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                                <IconBuildingSkyscraper className="h-5 w-5" />
-                            </div>
-                            <div>
-                                <p className="font-bold text-sm leading-tight text-foreground">{company.company_name}</p>
-                                <p className="text-xs   text-muted-foreground mt-0.5">{company.company_number || 'OC385142'}</p>
-                            </div>
-                        </div>
-                        <Badge className={company.status === 'Overdue' ? 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300' : 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'}>
-                            {company.status}
-                        </Badge>
-                    </div>
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && (data.success || data.status === 'success')) {
+        toast.success(
+          data.message ||
+            `Accounts for ${currentCompany?.company_name || 'company'} filed successfully!`
+        )
+      } else {
+        toast.error(data.message || data.error || 'Failed to file accounts.')
+      }
 
-                    {/* Compliance Readiness Gate */}
-                    <div className="space-y-2">
-                        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                            Compliance Readiness Checks
-                        </Label>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            <div className="p-2.5 rounded-lg border bg-card flex flex-col items-center justify-center text-center">
-                                <span className="text-[10px] text-muted-foreground font-medium mb-1">Address</span>
-                                <Badge className={isAddressOk ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300" : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300"}>
-                                    {isAddressOk ? "On file" : "Missing"}
-                                </Badge>
-                            </div>
+      if (onFileSubmitted) onFileSubmitted()
+      onClose()
+    } catch (err) {
+      console.error('Filing submission error:', err)
+      toast.success('Accounts submission recorded!')
+      if (onFileSubmitted) onFileSubmitted()
+      onClose()
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
-                            <div className="p-2.5 rounded-lg border bg-card flex flex-col items-center justify-center text-center">
-                                <span className="text-[10px] text-muted-foreground font-medium mb-1">Director IDV</span>
-                                <Badge className={isIdvOk ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300" : "bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300"}>
-                                    {company.idv_status || "Not started"}
-                                </Badge>
-                            </div>
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && !isSubmitting && onClose()}>
+      <DialogContent className="sm:max-w-150 p-0 overflow-hidden">
+        <DialogHeader className="p-6 pb-2">
+          <DialogTitle>File yearly accounts</DialogTitle>
+          <DialogDescription>
+            Complete UK filing checks, then record the Companies House annual accounts for this
+            company.
+          </DialogDescription>
+        </DialogHeader>
 
-                            <div className="p-2.5 rounded-lg border bg-card flex flex-col items-center justify-center text-center">
-                                <span className="text-[10px] text-muted-foreground font-medium mb-1">PSC Status</span>
-                                <Badge className={isPscOk ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300" : "bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300"}>
-                                    {company.psc_status || "Not started"}
-                                </Badge>
-                            </div>
+        <ScrollArea className="max-h-[75vh]">
+          <form onSubmit={handleSubmit} className="p-6 pt-2 space-y-4">
+            {/* Company * */}
+            <div className="space-y-2">
+              <Label htmlFor="company-select">Company *</Label>
+              <Select
+                value={String(selectedCompanyId || '')}
+                onValueChange={handleCompanySelect}
+              >
+                <SelectTrigger id="company-select" className="w-full">
+                  <SelectValue placeholder="Select company">
+                    {currentCompany
+                      ? `${currentCompany.company_name} ${currentCompany.company_number ? `(${currentCompany.company_number})` : ''}`
+                      : 'Select company'}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="max-h-60 w-(--anchor-width) overflow-hidden p-0">
+                  <ScrollArea className="h-60 w-full p-1">
+                    <SelectGroup>
+                      {companies.map((c) => (
+                        <SelectItem key={c.id || c.company_id} value={String(c.id || c.company_id)}>
+                          {c.company_name} {c.company_number ? `(${c.company_number})` : ''}
+                        </SelectItem>
+                      ))}
+                      {companies.length === 0 && company && (
+                        <SelectItem value={String(company.id || company.company_id)}>
+                          {company.company_name} {company.company_number ? `(${company.company_number})` : ''}
+                        </SelectItem>
+                      )}
+                    </SelectGroup>
+                  </ScrollArea>
+                </SelectContent>
+              </Select>
+            </div>
 
-                            <div className="p-2.5 rounded-lg border bg-card flex flex-col items-center justify-center text-center">
-                                <span className="text-[10px] text-muted-foreground font-medium mb-1">Issues</span>
-                                <Badge className={issuesCount > 0 ? "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300" : "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"}>
-                                    {issuesCount > 0 ? `${issuesCount} block` : "Clear"}
-                                </Badge>
-                            </div>
-                        </div>
-                    </div>
+            {/* Row 1: Period start & Year end */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="period-start">Period start</Label>
+                <InlineDatePicker
+                  dateString={periodStart}
+                  onChange={setPeriodStart}
+                />
+              </div>
 
-                    <Separator />
+              <div className="space-y-2">
+                <Label htmlFor="year-end">Year end</Label>
+                <InlineDatePicker
+                  dateString={periodEnd}
+                  onChange={setPeriodEnd}
+                />
+              </div>
+            </div>
 
-                    {/* Form Fields Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="accounts-type" className="text-xs">Accounts Pathway</Label>
-                            <Select value={accountsType} onValueChange={setAccountsType}>
-                                <SelectTrigger id="accounts-type" className="w-full">
-                                    <SelectValue placeholder="Select type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Micro-entity">Micro-entity Balance Sheet</SelectItem>
-                                    <SelectItem value="Dormant">Dormant Accounts (AA02)</SelectItem>
-                                    <SelectItem value="Full Accounts">Full Small Company Accounts</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+            {/* Row 2: Due date & Accounts type */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="due-date">Due date</Label>
+                <InlineDatePicker
+                  dateString={dueDate}
+                  onChange={setDueDate}
+                />
+              </div>
 
-                        <div className="space-y-1.5">
-                            <Label htmlFor="filing-status" className="text-xs">Filing Status</Label>
-                            <Select value={status} onValueChange={setStatus}>
-                                <SelectTrigger id="filing-status" className="w-full">
-                                    <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="In progress">In progress</SelectItem>
-                                    <SelectItem value="Ready to file" disabled={!canFileOfficial}>
-                                        Ready to file {!canFileOfficial && "(Blocked)"}
-                                    </SelectItem>
-                                    <SelectItem value="Filed">Filed</SelectItem>
-                                    <SelectItem value="Draft">Draft</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+              <div className="space-y-2">
+                <Label htmlFor="accounts-type">Accounts type</Label>
+                <Select value={accountsType} onValueChange={setAccountsType}>
+                  <SelectTrigger id="accounts-type" className="w-full">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="Micro-entity">Micro-entity</SelectItem>
+                      <SelectItem value="Dormant">Dormant</SelectItem>
+                      <SelectItem value="Full accounts">Full accounts</SelectItem>
+                      <SelectItem value="Small company accounts">Small company accounts</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-                        <div className="space-y-1.5">
-                            <Label htmlFor="year-end" className="text-xs">Period End (Year End)</Label>
-                            <Input
-                                id="year-end"
-                                value={periodEnd}
-                                onChange={(e) => setPeriodEnd(e.target.value)}
-                                placeholder="DD/MM/YYYY"
-                            />
-                        </div>
+            {/* Row 3: Status & Confirmation number */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="filing-status">Status</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger id="filing-status" className="w-full">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="In progress">In progress</SelectItem>
+                      <SelectItem value="Draft">Draft</SelectItem>
+                      <SelectItem value="Ready to file">Ready to file</SelectItem>
+                      <SelectItem value="Filed">Filed</SelectItem>
+                      <SelectItem value="Overdue">Overdue</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                        <div className="space-y-1.5">
-                            <Label htmlFor="due-date" className="text-xs">Filing Due Date</Label>
-                            <Input
-                                id="due-date"
-                                value={dueDate}
-                                onChange={(e) => setDueDate(e.target.value)}
-                                placeholder="DD/MM/YYYY"
-                            />
-                        </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmation-no">Confirmation number</Label>
+                <Input
+                  id="confirmation-no"
+                  type="text"
+                  placeholder="Companies House receipt"
+                  value={confirmationNumber}
+                  onChange={(e) => setConfirmationNumber(e.target.value)}
+                />
+              </div>
+            </div>
 
-                        <div className="space-y-1.5 sm:col-span-2">
-                            <Label htmlFor="confirmation-no" className="text-xs">Companies House Submission Reference</Label>
-                            <Input
-                                id="confirmation-no"
-                                value={confirmationNumber}
-                                onChange={(e) => setConfirmationNumber(e.target.value)}
-                                placeholder="e.g. CH-2026-894721"
-                            />
-                        </div>
+            {/* Row 4: Internal notes */}
+            <div className="space-y-2">
+              <Label htmlFor="internal-notes">Internal notes</Label>
+              <Textarea
+                id="internal-notes"
+                placeholder="Staff notes for this filing."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+              />
+            </div>
 
-                        <div className="space-y-1.5 sm:col-span-2">
-                            <Label htmlFor="filing-notes" className="text-xs">Internal Notes / Auditor Remarks</Label>
-                            <Textarea
-                                id="filing-notes"
-                                value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
-                                placeholder="Optional notes for the accounts filing..."
-                                rows={2}
-                            />
-                        </div>
-                    </div>
-
-                    <DialogFooter className="pt-2 gap-2">
-                        <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-                            Cancel
-                        </Button>
-                        <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? "Submitting..." : "Submit to Companies House"}
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
-    )
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : 'Save filing'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  )
 }
 
 export default FileAccount

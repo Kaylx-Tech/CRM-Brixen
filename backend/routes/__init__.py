@@ -96,10 +96,38 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
         return res
 
 
-    # 14. UK Accounts & Tax Engine Fallback
-    if accounts_file and (path.startswith('/accounts') or path.startswith('/api/accounts')):
+    # 15. UK Accounts & Tax Engine Fallback (accounts-file / accounts)
+    if accounts_file and (path.startswith('/accounts') or path.startswith('/api/accounts') or 'accounts-file' in path):
         try:
-            return accounts_file.route(path, method, user, body, query)
+            result = accounts_file.route(path, method, user, body, query)
+            if result is not None:
+                kind = result[0]
+                status_str = result[1] if len(result) > 1 else '200 OK'
+                if kind == 'file':
+                    payload = result[2] if len(result) > 2 else b''
+                    file_type = result[3] if len(result) > 3 else 'application/octet-stream'
+                    filename = result[4] if len(result) > 4 else 'download'
+                    if isinstance(payload, str):
+                        payload = payload.encode('utf-8')
+                    elif not isinstance(payload, (bytes, bytearray)):
+                        payload = b''
+                    import re
+                    safe_name = re.sub(r'[^A-Za-z0-9._-]+', '_', str(filename or 'download'))
+                    start_response(status_str, [
+                        ('Content-Type', file_type or 'application/octet-stream'),
+                        ('Content-Length', str(len(payload))),
+                        ('Content-Disposition', f'attachment; filename="{safe_name}"'),
+                    ])
+                    return [bytes(payload)]
+                
+                payload = result[2] if len(result) > 2 else {'status': 'error', 'message': 'Route not found'}
+                import json
+                body_bytes = json.dumps(payload).encode('utf-8')
+                start_response(status_str, [
+                    ('Content-Type', 'application/json; charset=utf-8'),
+                    ('Content-Length', str(len(body_bytes)))
+                ])
+                return [body_bytes]
         except Exception as e:
             print(f"[AccountsFile Error] {e}")
 
