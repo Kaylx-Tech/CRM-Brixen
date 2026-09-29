@@ -1,7 +1,49 @@
 """Authentication & Session Middleware Guard
 """
+import os
 import urllib.parse
 from db import query_db, execute_db
+
+# Session lifetime kept in sync with auth_routes login (30 days).
+SESSION_LIFETIME_SQL = "+30 days"
+
+# Sensitive columns that must never travel inside the in-memory user object.
+_SENSITIVE_USER_FIELDS = ('password_hash', 'password_reset_token', 'password_reset_expires')
+
+
+def _dev_auth_bypass_enabled():
+    """Dev-only escape hatch. When DEV_AUTH_BYPASS is truthy, requests without a
+    valid session are treated as the first SUPER_ADMIN user.
+
+    SECURITY: This MUST stay disabled (unset) in production. It exists only so
+    local development can hit APIs without logging in.
+    """
+    return str(os.environ.get('DEV_AUTH_BYPASS', '')).strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+def _sanitize_user(row):
+    """Convert a DB row to a plain dict with sensitive fields stripped."""
+    if not row:
+        return None
+    data = dict(row)
+    for field in _SENSITIVE_USER_FIELDS:
+        data.pop(field, None)
+    return data
+
+
+def _dev_admin_user():
+    """Return the first SUPER_ADMIN only when the dev bypass flag is enabled."""
+    if not _dev_auth_bypass_enabled():
+        return None
+    dev_admin = query_db("""
+        SELECT u.*, u.full_name AS name
+        FROM users u
+        WHERE u.role = 'SUPER_ADMIN'
+        ORDER BY u.id ASC
+        LIMIT 1;
+    """, one=True)
+    return _sanitize_user(dev_admin)
+
 
 def extract_session_token(environ):
     """Extract session token from Bearer header, custom header, or cookie."""
@@ -27,24 +69,24 @@ def extract_session_token(environ):
                 k = k.strip()
                 if k in ('session_token', 'session', 'auth_token'):
                     return urllib.parse.unquote(v.strip())
-    
+
     return None
 
+
 def get_authenticated_user(environ):
-    """Fetch the authenticated user dictionary for the incoming request."""
+    """Fetch the authenticated user dictionary for the incoming request.
+
+    Returns None for unauthenticated / invalid / expired sessions (unless the
+    dev bypass flag is explicitly enabled).
+    """
     token = extract_session_token(environ)
     if not token:
-        dev_admin = query_db("""
-            SELECT id, email, full_name as name, role, status, created_at
-            FROM users
-            WHERE role = 'SUPER_ADMIN'
-            LIMIT 1;
-        """, one=True)
-        return dict(dev_admin) if dev_admin else None
+        return _dev_admin_user()
 
-    # Query active session
+    # Full user record (u.*) so downstream logic (B2B, department, theme, etc.)
+    # has every field it needs; `name` alias kept for existing route code.
     row = query_db("""
-        SELECT u.id, u.email, u.full_name as name, u.role, u.status, u.created_at,
+        SELECT u.*, u.full_name AS name,
                s.session_token, s.expires_at
         FROM user_sessions s
         JOIN users u ON s.user_id = u.id
@@ -56,23 +98,17 @@ def get_authenticated_user(environ):
     """, (token,), one=True)
 
     if not row:
-        # Fallback to default Super Admin for development if session not found
-        dev_admin = query_db("""
-            SELECT id, email, full_name as name, role, status, created_at
-            FROM users
-            WHERE role = 'SUPER_ADMIN'
-            LIMIT 1;
-        """, one=True)
-        return dict(dev_admin) if dev_admin else None
+        return _dev_admin_user()
 
-    # Update last activity in background
+    # Keep active sessions alive: slide expiry forward + track activity.
     try:
-        execute_db("""
+        execute_db(f"""
             UPDATE user_sessions
-            SET last_activity_at = datetime('now')
-            WHERE session_token = ?;
+            SET last_activity_at = datetime('now'),
+                expires_at = datetime('now', '{SESSION_LIFETIME_SQL}')
+            WHERE session_token = ? AND revoked_at IS NULL;
         """, (token,))
     except Exception:
         pass
 
-    return dict(row)
+    return _sanitize_user(row)

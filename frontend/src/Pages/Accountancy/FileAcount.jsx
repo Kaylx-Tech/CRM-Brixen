@@ -166,17 +166,15 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
           data.message ||
             `Accounts for ${currentCompany?.company_name || 'company'} filed successfully!`
         )
+        if (onFileSubmitted) onFileSubmitted()
+        onClose()
       } else {
+        // Failed: surface the error and keep the dialog open so the user can retry
         toast.error(data.message || data.error || 'Failed to file accounts.')
       }
-
-      if (onFileSubmitted) onFileSubmitted()
-      onClose()
     } catch (err) {
       console.error('Filing submission error:', err)
-      toast.success('Accounts submission recorded!')
-      if (onFileSubmitted) onFileSubmitted()
-      onClose()
+      toast.error('Network error: could not file accounts. Please try again.')
     } finally {
       setIsSubmitting(false)
     }

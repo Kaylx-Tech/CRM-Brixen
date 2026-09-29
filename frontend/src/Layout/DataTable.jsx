@@ -27,6 +27,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { IconAdjustmentsHorizontal, IconSearch, IconX, IconPlus, IconTrash } from "@tabler/icons-react"
 import { features } from "./data-table-features"
+import { TablePagination } from "@/components/TablePagination"
 import { cn } from "cn"
 
 export const DataTable = ({ columns, data, filterConfig, onDeleteSelected, isLoading = false }) => {
@@ -35,6 +36,7 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected, isLoa
   const [globalFilter, setGlobalFilter] = React.useState("")
   const [columnVisibility, setColumnVisibility] = React.useState({})
   const [rowSelection, setRowSelection] = React.useState({})
+  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 })
 
   const table = useTable({
     features,
@@ -45,18 +47,15 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected, isLoa
     onGlobalFilterChange: setGlobalFilter,
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    onPaginationChange: setPagination,
     globalFilterFn: "includesString",
-    initialState: {
-      pagination: {
-        pageSize: 10000,
-      },
-    },
     state: {
       sorting,
       columnFilters,
       globalFilter,
       columnVisibility,
       rowSelection,
+      pagination,
     },
   })
 
@@ -101,6 +100,7 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected, isLoa
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
+                    <SelectItem value="all">All</SelectItem>
                     {config.options.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
                         {opt.label}
@@ -246,17 +246,22 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected, isLoa
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-between py-3">
-        <div className="text-sm text-muted-foreground">
-          {isLoading ? (
-            <Skeleton className="h-4 w-40" />
-          ) : table.getFilteredSelectedRowModel().rows.length > 0 ? (
-            `${table.getFilteredSelectedRowModel().rows.length} of ${table.getFilteredRowModel().rows.length} row(s) selected.`
-          ) : (
-            `Showing all ${table.getFilteredRowModel().rows.length} record(s)`
-          )}
+      {isLoading ? (
+        <div className="py-4">
+          <Skeleton className="h-4 w-40" />
         </div>
-      </div>
+      ) : (
+        <TablePagination
+          currentPage={pagination.pageIndex + 1}
+          totalPages={Math.max(1, table.getPageCount())}
+          onPageChange={(page) => table.setPageIndex(page - 1)}
+          rowsPerPage={pagination.pageSize}
+          onRowsPerPageChange={(size) => table.setPageSize(size)}
+          totalRows={table.getFilteredRowModel().rows.length}
+          selectedRows={table.getFilteredSelectedRowModel().rows.length}
+          showSelectionMsg={table.getFilteredSelectedRowModel().rows.length > 0}
+        />
+      )}
     </div>
   )
 }

@@ -3,6 +3,7 @@ Decoupled & Database-Driven architecture.
 """
 from db import query_db, execute_db
 from utils.response import json_response, success_response, error_response
+import re
 
 # Optional fallback catalog import (never crashes if missing)
 try:
@@ -30,19 +31,30 @@ DEFAULT_DOCUMENT_REQUIREMENTS = [
 ]
 
 def handle_catalog_routes(environ, start_response, path, method, user, body, query):
-    """Route handler for /api/catalog endpoints."""
-    if not path.startswith('/api/catalog'):
+    """Route handler for /api/catalog and /api/admin/services endpoints."""
+    if not (path.startswith('/api/catalog') or path.startswith('/api/admin/services')):
         return None
 
-    # ── GET /api/catalog/products or /services ─────────────────────────────
-    if path in ('/api/catalog/products', '/api/catalog/services') and method == 'GET':
-        # 1. Fetch live services from Database
+    user_role = (user or {}).get('role', 'CLIENT')
+    is_staff = user_role in ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
+
+    def _require_staff():
+        if not user:
+            return error_response(start_response, "Authentication required", 401)
+        if not is_staff:
+            return error_response(start_response, "Insufficient permissions", 403)
+        return None
+
+    # ── GET /api/catalog/products or /services (and /api/admin/services) ──
+    if path in ('/api/catalog/products', '/api/catalog/services', '/api/admin/services') and method == 'GET':
+        # Staff catalog UI needs Inactive rows too; public/client listing stays Active-only
+        status_clause = "" if is_staff else "WHERE status = 'Active'"
         try:
-            db_services = query_db("""
+            db_services = query_db(f"""
                 SELECT id, name, description, category, price, duration,
-                       vat_rate, estimated_delivery_time, status
+                       vat_rate, estimated_delivery_time, status, cost_price
                 FROM services
-                WHERE status = 'Active'
+                {status_clause}
                 ORDER BY category ASC, price ASC;
             """)
         except Exception:
@@ -65,31 +77,89 @@ def handle_catalog_routes(environ, start_response, path, method, user, body, que
 
         return success_response(start_response, data=[])
 
-    # ── POST /api/catalog/services ─────────────────────────────
-    if path == '/api/catalog/services' and method == 'POST':
+    # ── POST /api/catalog/services or /api/admin/services ─────────────────
+    if path in ('/api/catalog/services', '/api/admin/services') and method == 'POST':
+        denied = _require_staff()
+        if denied:
+            return denied
+
         name = body.get('name', '').strip()
         category = body.get('category', 'Corporate')
         description = body.get('description', '')
-        price = float(body.get('sellPrice', 0) or 0)
-        original_price = float(body.get('originalPrice', 0) or 0)
         duration = body.get('duration', '12 Months')
 
         if not name:
             return error_response(start_response, "Service name is required", 400)
 
         try:
-            # We assume the services table exists and has these columns or similar.
-            # Some columns might not exist depending on the schema (like original_price might not exist, but price does).
-            # We will insert standard fields. We will attempt to insert original_price if the column exists, otherwise omit it.
-            # To be safe against schema changes, we insert what we know exists from the GET query.
-            # GET query selected: id, name, description, category, price, duration, vat_rate, estimated_delivery_time, status
-            execute_db("""
-                INSERT INTO services (name, description, category, price, duration, status)
-                VALUES (?, ?, ?, ?, ?, 'Active')
-            """, (name, description, category, price, duration))
-            return success_response(start_response, message="Service created successfully")
+            price = float(body.get('sellPrice') if body.get('sellPrice') not in (None, '') else body.get('price', 0) or 0)
+            cost_price = float(body.get('originalPrice') if body.get('originalPrice') not in (None, '') else body.get('cost_price', 0) or 0)
+        except (TypeError, ValueError):
+            return error_response(start_response, "Sell price and original price must be valid numbers", 400)
+
+        if price < 0 or cost_price < 0:
+            return error_response(start_response, "Prices cannot be negative", 400)
+
+        try:
+            sid = execute_db("""
+                INSERT INTO services (name, description, category, price, duration, cost_price, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'Active')
+            """, (name, description, category, price, duration, cost_price))
+            return success_response(start_response, data={"id": sid}, message="Service created successfully")
         except Exception as e:
             return error_response(start_response, f"Failed to create service: {str(e)}", 500)
+
+    # ── PUT/PATCH/DELETE /api/catalog/services/<id> and /api/admin/services/<id>
+    match_svc = re.match(r'^/api/(?:catalog/services|admin/services)/(\d+)$', path)
+    if match_svc and method in ('PUT', 'PATCH', 'DELETE'):
+        denied = _require_staff()
+        if denied:
+            return denied
+        sid = int(match_svc.group(1))
+        existing = query_db("SELECT * FROM services WHERE id = ? LIMIT 1;", (sid,), one=True)
+        if not existing:
+            return error_response(start_response, "Service not found", 404)
+
+        if method == 'DELETE':
+            if user.get('role') not in ('SUPER_ADMIN', 'ADMIN'):
+                return error_response(start_response, "Deletion is restricted to Administrator accounts only.", 403)
+            execute_db("UPDATE orders SET service_id = NULL WHERE service_id = ?;", (sid,))
+            execute_db("DELETE FROM services WHERE id = ?;", (sid,))
+            return success_response(start_response, message="Service deleted.", data={"service_id": sid})
+
+        name = (body.get('name') if 'name' in body else existing.get('name') or '').strip()
+        description = (body.get('description') if 'description' in body else existing.get('description') or '').strip()
+        category = (body.get('category') if 'category' in body else existing.get('category') or '').strip() or 'Corporate'
+        duration = (body.get('duration') if 'duration' in body else existing.get('duration') or '').strip() or '12 Months'
+        if not name:
+            return error_response(start_response, "Service name is required", 400)
+
+        try:
+            if 'sellPrice' in body or 'price' in body:
+                price = float(body.get('sellPrice') if body.get('sellPrice') not in (None, '') else body.get('price', 0) or 0)
+            else:
+                price = float(existing.get('price') or 0)
+            if 'originalPrice' in body or 'cost_price' in body:
+                cost_price = float(body.get('originalPrice') if body.get('originalPrice') not in (None, '') else body.get('cost_price', 0) or 0)
+            else:
+                cost_price = float(existing.get('cost_price') or 0)
+        except (TypeError, ValueError):
+            return error_response(start_response, "Prices must be valid numbers", 400)
+
+        if price < 0 or cost_price < 0:
+            return error_response(start_response, "Prices cannot be negative", 400)
+
+        status_raw = body.get('status') if 'status' in body else existing.get('status')
+        status = 'Active' if str(status_raw or 'Active').strip().lower() in ('active', 'publish', '1', 'true') else 'Inactive'
+
+        execute_db("""
+            UPDATE services
+            SET name = ?, description = ?, category = ?, price = ?, cost_price = ?, duration = ?, status = ?
+            WHERE id = ?;
+        """, (name, description or name, category, price, cost_price, duration, status, sid))
+        updated = query_db("SELECT * FROM services WHERE id = ?;", (sid,), one=True)
+        return success_response(start_response, data=dict(updated) if updated else {"id": sid}, message="Service updated.")
+
 
     # ── GET /api/catalog/schema (Dynamic form config for service) ──────────
     if path == '/api/catalog/schema' and method == 'GET':

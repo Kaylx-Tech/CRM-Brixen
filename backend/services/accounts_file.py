@@ -710,7 +710,7 @@ def _companies_house_book_period(company):
     """Use the live Companies House accounts window, not a 31 March tax year."""
     filing = None
     try:
-        from app import live_companies_house_filing
+        from services.companies_house_service import live_companies_house_filing
         filing = live_companies_house_filing(company, force=False)
     except Exception:
         filing = None
@@ -964,7 +964,10 @@ def _ensure_subscriber_share_capital(book, company):
         return
     capital = None
     try:
-        from app import live_companies_house_filing, fetch_companies_house_share_capital
+        from services.companies_house_service import (
+            live_companies_house_filing,
+            fetch_companies_house_share_capital,
+        )
         filing = live_companies_house_filing(company, force=False) or {}
         capital = filing.get('share_capital')
         if not capital:

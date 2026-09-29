@@ -32,15 +32,15 @@ def handle_task_routes(environ, start_response, path, method, user, body, query)
             params.append(status_filter)
 
         if assigned_to:
-            conditions.append("t.assigned_to = ?")
+            conditions.append("t.assigned_staff_id = ?")
             params.append(assigned_to)
 
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
         rows = query_db(f"""
-            SELECT t.*, u.full_name as assignee_name, c.company_name
+            SELECT t.*, u.full_name as assignee_name, c.name as company_name
             FROM tasks t
-            LEFT JOIN users u ON t.assigned_to = u.id
+            LEFT JOIN users u ON t.assigned_staff_id = u.id
             LEFT JOIN companies c ON t.company_id = c.id
             {where_clause}
             ORDER BY t.created_at DESC;
@@ -53,19 +53,24 @@ def handle_task_routes(environ, start_response, path, method, user, body, query)
         title = (body.get('title') or '').strip()
         description = body.get('description', '')
         priority = body.get('priority', 'Medium')
-        status = body.get('status', 'Todo')
+        status = body.get('status', 'Open')
         due_date = body.get('due_date')
-        assigned_to = body.get('assigned_to') or user_id
+        assigned_to = body.get('assigned_to') or body.get('assigned_staff_id') or user_id
         company_id = body.get('company_id')
         order_id = body.get('order_id')
 
         if not title:
             return error_response(start_response, "Task title is required", status_code=400)
 
+        if status not in ('Open', 'In Progress', 'Completed', 'Cancelled'):
+            status = 'Open'
+        if priority not in ('Low', 'Medium', 'High', 'Urgent'):
+            priority = 'Medium'
+
         task_id = execute_db("""
             INSERT INTO tasks (
                 title, description, priority, status, due_date,
-                assigned_to, company_id, order_id, created_by, created_at, updated_at
+                assigned_staff_id, company_id, order_id, created_by_id, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'));
         """, (title, description, priority, status, due_date, assigned_to, company_id, order_id, user_id))
 
@@ -76,7 +81,7 @@ def handle_task_routes(environ, start_response, path, method, user, body, query)
     if match_task and method in ('PUT', 'PATCH'):
         task_id = int(match_task.group(1))
 
-        allowed_fields = ['title', 'description', 'priority', 'status', 'due_date', 'assigned_to']
+        allowed_fields = ['title', 'description', 'priority', 'status', 'due_date']
         updates = []
         params = []
 
@@ -84,6 +89,9 @@ def handle_task_routes(environ, start_response, path, method, user, body, query)
             if field in body:
                 updates.append(f"{field} = ?")
                 params.append(body[field])
+        if 'assigned_to' in body or 'assigned_staff_id' in body:
+            updates.append("assigned_staff_id = ?")
+            params.append(body.get('assigned_staff_id') or body.get('assigned_to'))
 
         if updates:
             updates.append("updated_at = datetime('now')")

@@ -1,15 +1,5 @@
-# ============================================================
-# Brixen CRM — Production Docker Image (with seed data)
-# ============================================================
-# Includes the SQLite database and client uploads baked into
-# the image as seed data. On first run, the entrypoint copies
-# them into the persistent Docker volumes so your data survives
-# container rebuilds.
-# ============================================================
-
 FROM python:3.12-slim
 
-# ── System dependencies ────────────────────────────────────
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         tesseract-ocr \
@@ -24,38 +14,39 @@ RUN apt-get update && \
         sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
-# ── App directory ──────────────────────────────────────────
 WORKDIR /app
 
-# ── Python dependencies (cached layer) ────────────────────
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ── Application source ────────────────────────────────────
-COPY app.py db.py schema.sql seed_db.py ./
-COPY email_engine.py compliance_alerts.py product_catalog_config.py ./
-COPY templates/ templates/
-COPY scripts/ scripts/
-COPY tests/ tests/
-COPY test_app.py test_ci_smoke.py ./
+# Modular application
+COPY config.py db.py main.py schema.sql ./
+COPY middleware/ middleware/
+COPY routes/ routes/
+COPY services/ services/
+COPY utils/ utils/
+COPY database/ database/
 
-# ── Runtime data directories ───────────────────────────────
-# Production database and client files are mounted from the VPS.
-RUN mkdir -p /app/seed /app/data /app/storage/clients
+# Static assets (optional; create empty dir if repo has none)
+COPY static/ static/
 
-# ── Entrypoint ─────────────────────────────────────────────
+RUN mkdir -p /app/data /app/storage /app/storage/clients /app/seed
+
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 
-# ── Runtime configuration ─────────────────────────────────
 ENV HOST=0.0.0.0
 ENV PORT=5050
+ENV CRM_ENV=production
 ENV DATABASE_URL=/app/data/hypetex.db
+ENV STORAGE_PATH=/app/storage
+ENV DEV_AUTH_BYPASS=0
+ENV COOKIE_SECURE=true
+ENV PYTHONUNBUFFERED=1
 
 EXPOSE 5050
 
-# ── Healthcheck ────────────────────────────────────────────
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:5050/ || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -f http://127.0.0.1:${PORT:-5050}/api/health || exit 1
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]

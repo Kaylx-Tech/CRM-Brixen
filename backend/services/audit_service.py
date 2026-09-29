@@ -16,12 +16,13 @@ def log_activity(user_id, action, target_type=None, target_id=None, details=None
 
 
 def log_order_timeline(order_id, status, title, description=None, created_by=None):
-    """Record an event in an order's historical timeline."""
+    """Record an event in an order's historical timeline (schema: title, status, step_date)."""
     try:
+        step_status = status if status in ('Completed', 'Current', 'Pending') else 'Pending'
         execute_db("""
             INSERT INTO order_timeline (
-                order_id, status, title, description, created_by, created_at
-            ) VALUES (?, ?, ?, ?, ?, datetime('now'));
-        """, (order_id, status, title, description, created_by))
+                order_id, title, status, step_date
+            ) VALUES (?, ?, ?, datetime('now'));
+        """, (order_id, title or description or 'Update', step_status))
     except Exception as e:
         print(f"[Timeline Log Error] Failed to record timeline for order {order_id}: {e}")

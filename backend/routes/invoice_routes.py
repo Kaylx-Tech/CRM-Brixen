@@ -32,8 +32,8 @@ def handle_invoice_routes(environ, start_response, path, method, user, body, que
             params.append(user_id)
 
         if search:
-            conditions.append("(i.invoice_number LIKE ? OR u.full_name LIKE ? OR i.description LIKE ?)")
-            params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
+            conditions.append("(i.invoice_number LIKE ? OR u.full_name LIKE ?)")
+            params.extend([f"%{search}%", f"%{search}%"])
 
         if status_filter:
             conditions.append("i.status = ?")
@@ -46,8 +46,8 @@ def handle_invoice_routes(environ, start_response, path, method, user, body, que
 
         params.extend([limit, offset])
         rows = query_db(f"""
-            SELECT i.id, i.invoice_number, i.amount, i.currency, i.status, i.due_date,
-                   i.paid_at, i.created_at, i.order_id, i.description,
+            SELECT i.id, i.invoice_number, i.amount, i.tax, i.total, i.status, i.due_date,
+                   i.paid_at, i.created_at, i.order_id, i.payment_method, i.amount_paid,
                    u.full_name as client_name, u.email as client_email
             FROM invoices i
             LEFT JOIN users u ON i.user_id = u.id
@@ -94,21 +94,25 @@ def handle_invoice_routes(environ, start_response, path, method, user, body, que
         client_id = body.get('user_id')
         order_id = body.get('order_id')
         amount = float(body.get('amount', 0))
-        currency = body.get('currency', 'GBP')
-        description = body.get('description', 'Brixen Professional Services')
+        tax = float(body.get('tax', 0) or 0)
+        total = float(body.get('total') or (amount + tax))
         due_date = body.get('due_date')
 
         if not client_id or amount <= 0:
             return error_response(start_response, "Client ID and valid amount required", status_code=400)
+        if not order_id:
+            return error_response(start_response, "Order ID is required", status_code=400)
+        if not due_date:
+            return error_response(start_response, "Due date is required", status_code=400)
 
         inv_num = f"INV-{secrets.randbelow(900000) + 100000}"
 
         inv_id = execute_db("""
             INSERT INTO invoices (
-                invoice_number, user_id, order_id, amount, currency,
-                description, status, due_date, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, 'Unpaid', ?, datetime('now'), datetime('now'));
-        """, (inv_num, client_id, order_id, amount, currency, description, due_date))
+                invoice_number, user_id, order_id, amount, tax, total,
+                status, due_date, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 'Pending', ?, datetime('now'));
+        """, (inv_num, client_id, order_id, amount, tax, total, due_date))
 
         return success_response(start_response, data={
             "id": inv_id,
@@ -125,18 +129,14 @@ def handle_invoice_routes(environ, start_response, path, method, user, body, que
         if not row:
             return error_response(start_response, "Invoice not found", status_code=404)
 
+        if not is_staff and row['user_id'] != user_id:
+            return error_response(start_response, "Access denied", status_code=403)
+
         execute_db("""
             UPDATE invoices
-            SET status = 'Paid', paid_at = datetime('now'), updated_at = datetime('now')
+            SET status = 'Paid', paid_at = datetime('now'), amount_paid = total
             WHERE id = ?;
         """, (inv_id,))
-
-        if row.get('order_id'):
-            execute_db("""
-                UPDATE orders
-                SET payment_status = 'Paid', updated_at = datetime('now')
-                WHERE id = ?;
-            """, (row['order_id'],))
 
         return success_response(start_response, message="Payment recorded successfully.")
 

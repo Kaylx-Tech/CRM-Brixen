@@ -66,12 +66,16 @@ const Services = () => {
       if (res.ok) {
         const json = await res.json()
         const servicesData = json.data || json
-        const formatted = servicesData.map(s => ({
-          ...s,
-          sellPrice: `£${s.price || 0}`,
-          originalPrice: `£${s.originalPrice || 0}`,
-          profit: `£${(s.price || 0) - (s.originalPrice || 0)}`
-        }))
+        const formatted = (Array.isArray(servicesData) ? servicesData : []).map(s => {
+          const price = Number(s.price) || 0
+          const costPrice = Number(s.cost_price ?? s.originalPrice) || 0
+          return {
+            ...s,
+            sellPrice: `£${price}`,
+            originalPrice: `£${costPrice}`,
+            profit: `£${price - costPrice}`
+          }
+        })
         setData(formatted)
       } else {
         setData(mockData)

@@ -136,6 +136,18 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         client_type = body.get('client_type') or 'Individual'
         is_b2b = 1 if (body.get('is_b2b') or client_type == 'B2B') else 0
 
+        if path in ('/api/admin/customers', '/api/clients'):
+            role = 'CLIENT'
+
+        creatable = {
+            'SUPER_ADMIN': {'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF', 'CLIENT'},
+            'ADMIN': {'ADMIN', 'MANAGER', 'STAFF', 'CLIENT'},
+            'MANAGER': {'STAFF', 'CLIENT'},
+            'STAFF': {'CLIENT'},
+        }.get(user_role, set())
+        if role not in creatable:
+            return error_response(start_response, "You cannot create an account with that role", status_code=403)
+
         if not email or not full_name:
             return error_response(start_response, "Full name and email are required", status_code=400)
 

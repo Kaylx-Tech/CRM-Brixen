@@ -107,12 +107,14 @@ def get_or_create_folder(folder_name, parent_id=None):
     if not service:
         return None
 
+    # Escape single quotes for Drive query language
+    safe_name = str(folder_name or '').replace("\\", "\\\\").replace("'", "\\'")
     cache_key = f"{parent_id}_{folder_name}"
     if cache_key in _folder_cache:
         return _folder_cache[cache_key]
 
     query_parts = [
-        f"name = '{folder_name}'",
+        f"name = '{safe_name}'",
         "mimeType = 'application/vnd.google-apps.folder'",
         "trashed = false"
     ]
@@ -142,7 +144,7 @@ def get_or_create_folder(folder_name, parent_id=None):
         # If searching for root folder and not found, check sharedWithMe
         if not parent_id:
             shared_results = service.files().list(
-                q=f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and sharedWithMe = true and trashed = false",
+                q=f"name = '{safe_name}' and mimeType = 'application/vnd.google-apps.folder' and sharedWithMe = true and trashed = false",
                 spaces='drive',
                 fields='files(id, name)',
                 supportsAllDrives=True,

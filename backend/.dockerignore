@@ -17,47 +17,31 @@ __pycache__/
 .venv/
 venv/
 
-# ── Database — allow hypetex.db through for seeding ────────
+# ── Local DBs / backups (mount volume in Coolify instead) ─
 *.sqlite
 *.sqlite3
+*.db
+*.db-shm
+*.db-wal
+*.db.bak
+backup-DB/
+hypetex.db.bak
+ledger.db
 
-# ── Environment / secrets ─────────────────────────────────
+# ── Environment / secrets (set in Coolify UI) ──────────────
 .env
-.env.*
+.env.local
+.env.production
 
-# ── Build artifacts & temp scripts ─────────────────────────
+# ── Docs / noise noise ───────────────────────────────────
+*.md
+*.html
+*.pdf
+PORTAL_DOCUMENTATION*
+get_oauth_token.py
+tests/
+debug-*.log
+crm.log
+tmp-inv/
 *.zip
 *.patch
-css_diff.txt
-css_history.patch
-deploy_to_portal.sh
-tmp-inv/
-crm.log
-
-# ── One-off fix scripts ───────────────────────────────────
-fix_*.py
-recover_dash.py
-restore_dash.py
-bust_cache*.py
-enforce_hover.py
-remove_shadows.py
-size_buttons.py
-sm_btns.py
-stripe_theme.py
-tweak_buttons.py
-update_final.py
-update_styles.py
-rewrite_*.py
-fix_render_admin_chart.py
-
-# ── Backups ────────────────────────────────────────────────
-static/css/styles_restored.css
-
-# ── Docker itself ──────────────────────────────────────────
-Dockerfile
-docker-compose.yml
-.dockerignore
-
-# ── Docs ───────────────────────────────────────────────────
-*.md
-LICENSE

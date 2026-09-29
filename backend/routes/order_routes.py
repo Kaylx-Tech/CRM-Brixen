@@ -7,7 +7,7 @@ from utils.response import json_response, success_response, error_response
 
 def handle_order_routes(environ, start_response, path, method, user, body, query):
     """Route handler for /api/orders endpoints."""
-    if not path.startswith('/api/orders'):
+    if not (path.startswith('/api/orders') or path.startswith('/api/admin/orders') or path.startswith('/api/client/orders')):
         return None
 
     if not user:
@@ -18,7 +18,7 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
     is_staff = user_role in ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
 
     # ── GET /api/orders (List) ─────────────────────────────────────────────
-    if path == '/api/orders' and method == 'GET':
+    if path in ('/api/orders', '/api/admin/orders', '/api/client/orders') and method == 'GET':
         search = (query.get('search') or [''])[0].strip()
         status_filter = (query.get('status') or [''])[0].strip()
         limit = min(int((query.get('limit') or ['50'])[0]), 100)
@@ -66,7 +66,7 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         })
 
     # ── GET /api/orders/<id> (Detail) ─────────────────────────────────────
-    match_detail = re.match(r'^/api/orders/(\d+)$', path)
+    match_detail = re.match(r'^/api/(?:admin/|client/)?orders/(\d+)$', path)
     if match_detail and method == 'GET':
         order_id = int(match_detail.group(1))
         
@@ -87,7 +87,7 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
             return error_response(start_response, "Access denied", status_code=403)
 
         # Timeline / History notes
-        events = query_db("SELECT * FROM order_timeline WHERE order_id = ? ORDER BY created_at DESC;", (order_id,))
+        events = query_db("SELECT * FROM order_timeline WHERE order_id = ? ORDER BY step_date DESC, id DESC;", (order_id,))
         # Uploaded documents
         docs = query_db("SELECT * FROM documents WHERE order_id = ? ORDER BY created_at DESC;", (order_id,))
 
@@ -98,13 +98,16 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         return success_response(start_response, data=data)
 
     # ── POST /api/orders (Create Order) ────────────────────────────────────
-    if path == '/api/orders' and method == 'POST':
+    if path in ('/api/orders', '/api/admin/orders', '/api/client/orders') and method == 'POST':
         service_name = (body.get('service_name') or '').strip()
         amount = float(body.get('amount') or body.get('price') or 0)
         vat = float(body.get('vat', 0))
         total = float(body.get('total') or (amount + vat))
         client_id = body.get('user_id') or body.get('client_id') or user_id
         company_id = body.get('company_id')
+
+        if not is_staff:
+            client_id = user_id
 
         if not service_name:
             return error_response(start_response, "Service name is required", status_code=400)
@@ -125,7 +128,7 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         }, message="Order created successfully.", status_code=201)
 
     # ── PATCH /api/orders/<id>/status (Update Status) ─────────────────────
-    match_status = re.match(r'^/api/orders/(\d+)/status$', path)
+    match_status = re.match(r'^/api/(?:admin/)?orders/(\d+)/status$', path)
     if match_status and method in ('POST', 'PATCH', 'PUT'):
         order_id = int(match_status.group(1))
         new_status = body.get('status')

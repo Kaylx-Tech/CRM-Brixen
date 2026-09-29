@@ -25,14 +25,21 @@ _UK_NUM_RE = re.compile(r'[^A-Z0-9]', re.I)
 
 
 def _base_dir():
-    return os.path.dirname(os.path.abspath(__file__))
+    # services/permanent_purge.py → backend/
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def storage_dir():
     env = os.environ.get('STORAGE_PATH')
     if env:
+        if not os.path.isabs(env):
+            return os.path.join(_base_dir(), env)
         return env
-    return os.path.join(_base_dir(), 'storage')
+    try:
+        from config import STORAGE_DIR
+        return STORAGE_DIR
+    except Exception:
+        return os.path.join(_base_dir(), 'storage')
 
 
 def ledger_path():

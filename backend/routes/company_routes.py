@@ -1,7 +1,7 @@
 """Company Management Routes (/api/companies)
 """
 import re
-from db import query_db, execute_db
+from db import query_db, execute_db, unusable_password_hash
 from utils.response import json_response, success_response, error_response
 
 def handle_company_routes(environ, start_response, path, method, user, body, query):
@@ -85,7 +85,7 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
     if (path in ('/api/companies', '/api/admin/companies')) and method == 'GET':
         search = (query.get('search') or [''])[0].strip()
         status_filter = (query.get('status') or [''])[0].strip()
-        limit = min(int((query.get('limit') or ['50'])[0]), 100)
+        limit = min(int((query.get('limit') or ['50'])[0]), 500)
         offset = max(int((query.get('offset') or ['0'])[0]), 0)
 
         params = []
@@ -129,7 +129,7 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
         })
 
     # ── GET /api/companies/<id> (Detail) ──────────────────────────────────
-    match_detail = re.match(r'^/api/companies/(\d+)$', path)
+    match_detail = re.match(r'^/api/(?:admin/)?companies/(\d+)$', path)
     if match_detail and method == 'GET':
         comp_id = int(match_detail.group(1))
         
@@ -175,11 +175,13 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
                     client_id = existing_user['id']
                 else:
                     client_id = execute_db("""
-                        INSERT INTO users (full_name, email, role, client_type, is_b2b, status, created_at)
-                        VALUES (?, ?, 'CLIENT', 'Individual', 0, 'Active', datetime('now'));
-                    """, (new_name, new_email))
+                        INSERT INTO users (full_name, email, password_hash, role, client_type, is_b2b, status, created_at)
+                        VALUES (?, ?, ?, 'CLIENT', 'Individual', 0, 'Active', datetime('now'));
+                    """, (new_name, new_email, unusable_password_hash()))
         if not client_id:
             client_id = body.get('user_id') or body.get('client_id') or user_id
+        if not is_staff:
+            client_id = user_id
 
         if not name:
             return error_response(start_response, "Company name is required", status_code=400)
@@ -233,9 +235,9 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
                 target_client_id = existing_user['id']
             else:
                 target_client_id = execute_db("""
-                    INSERT INTO users (full_name, email, role, client_type, is_b2b, status, created_at)
-                    VALUES (?, ?, 'CLIENT', 'Individual', 0, 'Active', datetime('now'));
-                """, (new_name, new_email))
+                    INSERT INTO users (full_name, email, password_hash, role, client_type, is_b2b, status, created_at)
+                    VALUES (?, ?, ?, 'CLIENT', 'Individual', 0, 'Active', datetime('now'));
+                """, (new_name, new_email, unusable_password_hash()))
         else:
             cid = body.get('client_id')
             if cid:

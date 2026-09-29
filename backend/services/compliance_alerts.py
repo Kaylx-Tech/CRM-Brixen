@@ -40,11 +40,22 @@ SETTING_KEYS = (
 )
 
 
+# Short aliases used by settings_service / admin UI
+_SETTING_ALIASES = {
+    'compliance_alerts_send_hour': ('compliance_send_hour',),
+    'compliance_alerts_test_recipient': ('compliance_test_recipient',),
+}
+
+
 def _setting(key, default=''):
     row = query_db('SELECT value FROM settings WHERE key = ?;', (key,), one=True)
-    if not row or row.get('value') is None:
-        return default
-    return str(row.get('value') or '').strip()
+    if row and row.get('value') is not None and str(row.get('value') or '').strip() != '':
+        return str(row.get('value') or '').strip()
+    for alias in _SETTING_ALIASES.get(key, ()):
+        row = query_db('SELECT value FROM settings WHERE key = ?;', (alias,), one=True)
+        if row and row.get('value') is not None and str(row.get('value') or '').strip() != '':
+            return str(row.get('value') or '').strip()
+    return default
 
 
 def _setting_bool(key, default=False):
@@ -351,7 +362,7 @@ def collect_compliance_attention_issues(company, today=None):
     explicit KYC/PSC failure states — never invents filings.
     """
     # Lazy import to avoid circular import at module load.
-    import app as app_mod
+    from services import portal_compat as app_mod
 
     issues = list(app_mod.company_attention_issues(company) or [])
     seen = {str(item.get('code') or '') for item in issues}
@@ -555,7 +566,7 @@ def format_issue_guidance_extra_message(blocks):
 
 
 def brand_contact_block():
-    import app as app_mod
+    from services import portal_compat as app_mod
 
     brand = app_mod.brand_settings()
     cfg = compliance_alert_settings()
@@ -577,7 +588,7 @@ def brand_contact_block():
 
 
 def engagement_track_url(token, target_url):
-    import app as app_mod
+    from services import portal_compat as app_mod
     import urllib.parse
     base = app_mod.portal_base_url().rstrip('/')
     qs = urllib.parse.urlencode({'to': target_url})
@@ -585,8 +596,8 @@ def engagement_track_url(token, target_url):
 
 
 def render_compliance_email_template(vars_map, *, test=False, issues=None, track_token=None):
-    import app as app_mod
-    import email_engine as eng
+    from services import portal_compat as app_mod
+    from services import email_engine as eng
     from html import escape as html_escape
 
     v = {k: str(vars_map.get(k) or '').strip() for k in (
@@ -878,7 +889,7 @@ def evaluate_compliance_send(company, *, force=False, test=False, actor=None, tr
     if not company_id:
         return {'ok': False, 'blocked_reason': 'INSUFFICIENT_VERIFIED_INFORMATION'}
 
-    import app as app_mod
+    from services import portal_compat as app_mod
     if app_mod.is_pending_company_number((company or {}).get('company_number')):
         return {'ok': False, 'blocked_reason': 'INSUFFICIENT_VERIFIED_INFORMATION'}
 
@@ -981,7 +992,7 @@ def send_compliance_attention_email(company, *, force=False, test=False, actor=N
         )
         return {'ok': False, 'blocked_reason': render_err, 'notification_id': notification_id}
 
-    import app as app_mod
+    from services import portal_compat as app_mod
 
     try:
         ok, detail = app_mod.EmailService.send_notification_email(

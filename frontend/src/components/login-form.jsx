@@ -44,10 +44,12 @@ export function LoginForm({
 
       if (data.status === "success" || data.success === true) {
         const token = data.token || data.data?.token || data.session_token || data.data?.session_token
+        const userObj = data.user || data.data?.user || null
         if (token) {
           localStorage.setItem("token", token)
         }
-        localStorage.setItem("user", JSON.stringify(userObj))
+        // ProtectedRoute gate relies on a "user" entry existing in localStorage
+        localStorage.setItem("user", JSON.stringify(userObj || { email }))
         navigate("/admin/dashboard")
       } else {
         setError(data.message || data.error || "Login failed")

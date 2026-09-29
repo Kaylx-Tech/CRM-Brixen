@@ -72,8 +72,11 @@ DEFAULT_SETTINGS = {
     'secret_key': 'brixen_crm_secure_local_dev_key_2026',
     'cookie_secure': 'false',
     'compliance_alerts_enabled': '0',
-    'compliance_send_hour': '9',
-    'compliance_test_recipient': ''
+    'compliance_alerts_send_hour': '11',
+    'compliance_alerts_test_recipient': '',
+    # Short aliases kept for older admin payloads / env
+    'compliance_send_hour': '11',
+    'compliance_test_recipient': '',
 }
 
 def get_setting(key: str, default=None):
@@ -177,8 +180,11 @@ def get_all_settings(raw: bool = False):
         },
         'compliance': {
             'compliance_alerts_enabled': str(merged.get('compliance_alerts_enabled', '0')) in ('1', 'true', 'True'),
-            'compliance_send_hour': merged.get('compliance_send_hour', '9'),
-            'compliance_test_recipient': merged.get('compliance_test_recipient', '')
+            'compliance_alerts_send_hour': merged.get('compliance_alerts_send_hour') or merged.get('compliance_send_hour', '11'),
+            'compliance_alerts_test_recipient': merged.get('compliance_alerts_test_recipient') or merged.get('compliance_test_recipient', ''),
+            # Aliases for older UI
+            'compliance_send_hour': merged.get('compliance_alerts_send_hour') or merged.get('compliance_send_hour', '11'),
+            'compliance_test_recipient': merged.get('compliance_alerts_test_recipient') or merged.get('compliance_test_recipient', ''),
         },
         'security': {
             'crm_env': merged.get('crm_env', 'development'),
@@ -229,6 +235,26 @@ def update_settings(payload: dict, user_id=None, ip_address=None):
         os.environ[key.upper()] = val_str
         os.environ[key] = val_str
         saved_keys.append(key)
+
+    # Keep compliance key aliases in sync (admin UI vs compliance_alerts engine)
+    alias_pairs = (
+        ('compliance_send_hour', 'compliance_alerts_send_hour'),
+        ('compliance_alerts_send_hour', 'compliance_send_hour'),
+        ('compliance_test_recipient', 'compliance_alerts_test_recipient'),
+        ('compliance_alerts_test_recipient', 'compliance_test_recipient'),
+    )
+    for src, dest in alias_pairs:
+        if src in saved_keys and dest not in flat_updates:
+            val_str = str(flat_updates[src] if flat_updates[src] is not None else '')
+            if "******" in val_str or val_str == "[CONFIGURED]":
+                continue
+            execute_db(
+                "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?);",
+                (dest, val_str),
+            )
+            os.environ[dest.upper()] = val_str
+            os.environ[dest] = val_str
+            saved_keys.append(dest)
 
     # Invalidate Google Drive client cache if drive credentials changed
     drive_related = {'google_service_account_json', 'google_service_account_base64', 'google_drive_root_folder'}

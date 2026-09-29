@@ -1,11 +1,11 @@
-"""Activity Log & Audit Trail Routes (/api/activity-logs)
+"""Activity Log & Audit Trail Routes (/api/activity-logs, /api/admin/activity-logs)
 """
 from db import query_db
-from utils.response import json_response, success_response, error_response
+from utils.response import success_response, error_response
 
 def handle_audit_routes(environ, start_response, path, method, user, body, query):
-    """Route handler for /api/activity-logs endpoints."""
-    if not path.startswith('/api/activity-logs'):
+    """Route handler for activity-log endpoints."""
+    if not (path.startswith('/api/activity-logs') or path.startswith('/api/admin/activity-logs')):
         return None
 
     if not user:
@@ -15,14 +15,20 @@ def handle_audit_routes(environ, start_response, path, method, user, body, query
     if user_role not in ('SUPER_ADMIN', 'ADMIN'):
         return error_response(start_response, "Access denied. Admin only.", status_code=403)
 
-    # ── GET /api/activity-logs (List system audit trail) ──────────────────
-    if path == '/api/activity-logs' and method == 'GET':
-        limit = min(int((query.get('limit') or ['50'])[0]), 100)
-        offset = max(int((query.get('offset') or ['0'])[0]), 0)
+    # ── GET list (schema columns: entity_type / entity_id, no ip_address) ─
+    if path in ('/api/activity-logs', '/api/admin/activity-logs') and method == 'GET':
+        try:
+            limit = min(int((query.get('limit') or ['50'])[0]), 100)
+        except (TypeError, ValueError):
+            limit = 50
+        try:
+            offset = max(int((query.get('offset') or ['0'])[0]), 0)
+        except (TypeError, ValueError):
+            offset = 0
 
         rows = query_db("""
-            SELECT a.id, a.user_id, a.action, a.target_type, a.target_id, a.details,
-                   a.ip_address, a.created_at, u.full_name as user_name, u.email as user_email
+            SELECT a.id, a.user_id, a.user_email, a.action, a.entity_type, a.entity_id,
+                   a.details, a.created_at, u.full_name as user_name, u.email as actor_email
             FROM activity_logs a
             LEFT JOIN users u ON a.user_id = u.id
             ORDER BY a.created_at DESC
@@ -32,8 +38,17 @@ def handle_audit_routes(environ, start_response, path, method, user, body, query
         count_row = query_db("SELECT COUNT(*) as total FROM activity_logs;", one=True)
         total_count = count_row['total'] if count_row else 0
 
+        logs = []
+        for r in rows:
+            item = dict(r)
+            # Aliases so older UI that expected target_* still works
+            item['target_type'] = item.get('entity_type')
+            item['target_id'] = item.get('entity_id')
+            item['user_email'] = item.get('actor_email') or item.get('user_email')
+            logs.append(item)
+
         return success_response(start_response, data={
-            "logs": [dict(r) for r in rows],
+            "logs": logs,
             "total": total_count,
             "limit": limit,
             "offset": offset

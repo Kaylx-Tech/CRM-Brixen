@@ -1,31 +1,35 @@
 services:
-  # ── Brixen CRM Web Application ───────────────────────────
-  brixen-crm:
+  brixen-api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: brixen-crm
+    container_name: brixen-api
     restart: unless-stopped
     ports:
-      - "5050:5050"
+      - "${PORT:-5050}:5050"
+    env_file:
+      - .env
     environment:
       - HOST=0.0.0.0
       - PORT=5050
+      - CRM_ENV=production
       - DATABASE_URL=/app/data/hypetex.db
-      # ── SMTP (optional — override in .env) ───────────────
-      - SMTP_HOST=${SMTP_HOST:-}
-      - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USER=${SMTP_USER:-}
-      - SMTP_PASS=${SMTP_PASS:-}
-      - SMTP_FROM=${SMTP_FROM:-}
+      - STORAGE_PATH=/app/storage
+      - DEV_AUTH_BYPASS=0
+      - COOKIE_SECURE=true
+      - FRONTEND_URL=${FRONTEND_URL:-https://admin.brixenconsultants.com}
+      - PORTAL_URL=${PORTAL_URL:-https://portal.brixenconsultants.com}
     volumes:
-      # The VPS database stays outside the image and Git repository.
-      - ${DATABASE_HOST_PATH:-./hypetex.db}:/app/data/hypetex.db
-      # Client uploads also remain on the VPS host.
-      - ${STORAGE_HOST_PATH:-./storage/clients}:/app/storage/clients
+      # Persist SQLite + uploads across redeploys (Coolify: map persistent storage here)
+      - brixen_data:/app/data
+      - brixen_storage:/app/storage
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5050/"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:5050/api/health"]
       interval: 30s
       timeout: 5s
-      start_period: 10s
+      start_period: 20s
       retries: 3
+
+volumes:
+  brixen_data:
+  brixen_storage:

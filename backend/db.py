@@ -737,6 +737,8 @@ def ensure_rbac():
     try:
         doc_cols = {info[1] for info in conn.execute("PRAGMA table_info(documents)").fetchall()}
         new_cols = [
+            ('drive_file_id', 'TEXT'),
+            ('drive_web_link', 'TEXT'),
             ('file_hash', 'TEXT'),
             ('ocr_status', "TEXT DEFAULT 'COMPLETED'"),
             ('identity_status', "TEXT DEFAULT 'COMPLETED'"),

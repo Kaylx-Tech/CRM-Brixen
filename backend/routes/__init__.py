@@ -1,5 +1,8 @@
 """Routes Package Dispatcher
 """
+import re
+import json
+
 from .auth_routes import handle_auth_routes
 from .stats_routes import handle_stats_routes
 from .company_routes import handle_company_routes
@@ -26,7 +29,7 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
     """Try to dispatch to any modular API route handler."""
     
     # 1. Authentication
-    res = handle_auth_routes(environ, start_response, path, method, user, body)
+    res = handle_auth_routes(environ, start_response, path, method, user, body, query)
     if res is not None:
         return res
 
@@ -40,7 +43,7 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
     if res is not None:
         return res
 
-    # 4. Orders & Services
+    # 4. Orders
     res = handle_order_routes(environ, start_response, path, method, user, body, query)
     if res is not None:
         return res
@@ -111,7 +114,6 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
                         payload = payload.encode('utf-8')
                     elif not isinstance(payload, (bytes, bytearray)):
                         payload = b''
-                    import re
                     safe_name = re.sub(r'[^A-Za-z0-9._-]+', '_', str(filename or 'download'))
                     start_response(status_str, [
                         ('Content-Type', file_type or 'application/octet-stream'),
@@ -121,7 +123,6 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
                     return [bytes(payload)]
                 
                 payload = result[2] if len(result) > 2 else {'status': 'error', 'message': 'Route not found'}
-                import json
                 body_bytes = json.dumps(payload).encode('utf-8')
                 start_response(status_str, [
                     ('Content-Type', 'application/json; charset=utf-8'),

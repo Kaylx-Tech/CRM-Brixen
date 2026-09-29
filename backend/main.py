@@ -3,6 +3,8 @@
 import os
 import sys
 import json
+import email
+import email.policy
 import urllib.parse
 from wsgiref.simple_server import make_server, WSGIServer
 from socketserver import ThreadingMixIn
@@ -14,15 +16,64 @@ from middleware.auth_guard import get_authenticated_user
 from utils.response import json_response, error_response
 from routes import dispatch_api_routes
 
+
 class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
     """Multi-threaded WSGI Server for parallel API request processing."""
     daemon_threads = True
     block_on_close = False
 
+
+def parse_multipart_form(raw_body, content_type):
+    """Parse multipart/form-data into (fields_dict, files_dict)."""
+    if not raw_body or 'multipart/form-data' not in (content_type or '').lower():
+        return {}, {}
+    header = f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode('utf-8', errors='ignore')
+    try:
+        msg = email.message_from_bytes(header + raw_body, policy=email.policy.default)
+    except Exception:
+        return {}, {}
+    fields = {}
+    files = {}
+    if not msg.is_multipart():
+        return {}, {}
+    for part in msg.iter_parts():
+        name = part.get_param('name', header='content-disposition')
+        if not name:
+            continue
+        filename = part.get_filename()
+        payload = part.get_payload(decode=True)
+        if payload is None:
+            payload = b''
+        if isinstance(payload, str):
+            payload = payload.encode('utf-8', errors='ignore')
+        if filename:
+            files[name] = {
+                'filename': filename,
+                'content_type': part.get_content_type() or 'application/octet-stream',
+                'bytes': payload,
+            }
+        else:
+            try:
+                fields[name] = payload.decode('utf-8', errors='replace')
+            except Exception:
+                fields[name] = ''
+    return fields, files
+
+
 def app(environ, start_response):
     """Main WSGI Application Handler."""
     method = environ.get('REQUEST_METHOD', 'GET').upper()
     path = environ.get('PATH_INFO', '/')
+
+    # Coolify / load-balancer health probes (no auth)
+    if method == 'GET' and path in ('/', '/api/health', '/health'):
+        payload = b'{"success":true,"status":"ok","service":"brixen-crm-api"}'
+        start_response('200 OK', [
+            ('Content-Type', 'application/json; charset=utf-8'),
+            ('Content-Length', str(len(payload))),
+            ('Cache-Control', 'no-store'),
+        ])
+        return [payload]
 
     # 1. CORS Preflight
     if method == 'OPTIONS':
@@ -44,7 +95,7 @@ def app(environ, start_response):
     query_string = environ.get('QUERY_STRING', '')
     query_params = urllib.parse.parse_qs(query_string)
 
-    # 3. Parse JSON Body (if any)
+    # 3. Parse Body (JSON / form / multipart)
     body = {}
     content_length = environ.get('CONTENT_LENGTH')
     if content_length:
@@ -52,9 +103,15 @@ def app(environ, start_response):
             cl = int(content_length)
             if cl > 0:
                 raw_body = environ['wsgi.input'].read(cl)
+                environ['brixen.raw_body'] = raw_body
                 content_type = environ.get('CONTENT_TYPE', '')
                 if 'application/json' in content_type:
                     body = json.loads(raw_body.decode('utf-8'))
+                elif 'multipart/form-data' in content_type.lower():
+                    fields, files = parse_multipart_form(raw_body, content_type)
+                    body = dict(fields)
+                    if files:
+                        body['_files'] = files
                 elif 'application/x-www-form-urlencoded' in content_type:
                     body = {k: v[0] for k, v in urllib.parse.parse_qs(raw_body.decode('utf-8')).items()}
         except Exception:
@@ -72,19 +129,35 @@ def app(environ, start_response):
         print(f"[API Server Error] Path: {path} Method: {method} Error: {exc}")
         import traceback
         traceback.print_exc()
-        return error_response(custom_start_response, "Internal Server Error", status_code=500, details=str(exc))
+        # Do not leak exception details to clients
+        return error_response(custom_start_response, "Internal Server Error", status_code=500)
 
     # 6. Fallback 404
     return error_response(custom_start_response, f"Endpoint not found: {method} {path}", status_code=404)
 
+
 def run_server():
-    """Start the multi-threaded WSGI server."""
+    """Start the multi-threaded WSGI server (Waitress in production)."""
     ensure_schema()
+    try:
+        from services.permanent_purge import enforce_live_database
+        enforce_live_database()
+        print("[PermanentPurge] Live database enforcement complete")
+    except Exception as exc:
+        print(f"[PermanentPurge] Startup enforce skipped: {exc}")
+
     print("=" * 60)
-    print(f"🚀 Brixen CRM Modular API Server Started")
-    print(f"📡 Listening on http://{HOST}:{PORT}")
-    print(f"🔒 CORS Enabled for: {', '.join(ALLOWED_CORS_ORIGINS)}")
+    print("Brixen CRM Modular API Server Started")
+    print(f"Listening on http://{HOST}:{PORT}")
+    print(f"CORS Enabled for: {', '.join(sorted(ALLOWED_CORS_ORIGINS))}")
     print("=" * 60)
+
+    try:
+        from waitress import serve
+        serve(app, host=HOST, port=PORT, threads=8, ident='brixen-crm')
+        return
+    except ImportError:
+        pass
 
     server = make_server(HOST, PORT, app, server_class=ThreadingWSGIServer)
     try:
@@ -92,6 +165,7 @@ def run_server():
     except KeyboardInterrupt:
         print("\nStopping server...")
         server.server_close()
+
 
 if __name__ == '__main__':
     run_server()

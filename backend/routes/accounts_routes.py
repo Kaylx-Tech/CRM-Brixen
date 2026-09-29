@@ -18,6 +18,13 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
     user_id = user.get('id')
     is_staff = user_role in ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
 
+    def _can_access_company(company_row):
+        if not company_row:
+            return False
+        if is_staff:
+            return True
+        return company_row.get('user_id') == user_id
+
     # ── 1. GET /api/admin/accountancy OR /api/accountancy/filings ─────────
     if path in (
         '/api/accountancy',
@@ -142,8 +149,8 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
                 "id": cid,
                 "company_id": cid,
                 "company_name": r['company_name'],
-                "company_number": r['company_number'] or "OC385142",
-                "owner_name": r['owner_name'] or "Brixen Admin",
+                "company_number": r['company_number'] or "",
+                "owner_name": r['owner_name'] or "",
                 "owner_email": r['owner_email'] or "",
                 "has_address": bool(r.get('reg_office')),
                 "idv_status": "Verified" if str(r.get('identity_verified') or '').lower() in ('verified', '1', 'true') else 'Not started',
@@ -174,6 +181,8 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
 
     # ── 2. GET /api/admin/accountancy/company-accounts ──────────────────────
     if path in ('/api/accountancy/company-accounts', '/api/admin/accountancy/company-accounts') and method == 'GET':
+        if not is_staff:
+            return error_response(start_response, "Access denied. Staff only.", status_code=403)
         rows = query_db("""
             SELECT c.id as company_id, c.name as company_name, c.company_number,
                    ca.id as filing_id, ca.period_start, ca.period_end, ca.accounts_type, ca.status,
@@ -198,8 +207,8 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
                 turnover_str = f"£{income:,.2f}"
                 net_profit_str = f"£{profit:,.2f}"
             else:
-                turnover_str = "£45,000.00"
-                net_profit_str = "£18,200.00"
+                turnover_str = "£0.00"
+                net_profit_str = "£0.00"
 
             accounts.append({
                 "id": r['filing_id'] or r['company_id'],
@@ -218,6 +227,8 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
 
     # ── 3. GET /api/admin/accountancy/hmrc ──────────────────────────────────
     if path in ('/api/accountancy/hmrc', '/api/admin/accountancy/hmrc') and method == 'GET':
+        if not is_staff:
+            return error_response(start_response, "Access denied. Staff only.", status_code=403)
         rows = query_db("""
             SELECT c.id, c.name as company_name, c.utr_number, c.status, c.accounts_next_due,
                    ca.status as filing_status
@@ -228,9 +239,14 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
 
         ct600_data = []
         for r in rows:
-            utr = r.get('utr_number') or f"98765{str(r['id']).zfill(5)}"
-            status = "Nil Return Filed" if r.get('filing_status') == 'Filed' else ("Payment Due" if r.get('status') == 'Active' else "Pending Calculation")
-            tax = "£0.00" if status == "Nil Return Filed" else ("£3,458.00" if r.get('status') == 'Active' else "£0.00")
+            utr = r.get('utr_number') or ""
+            if r.get('filing_status') == 'Filed':
+                status = "Nil Return Filed"
+            elif r.get('status') == 'Active':
+                status = "Pending Calculation"
+            else:
+                status = r.get('status') or "Pending"
+            tax = "£0.00"
             ct600_data.append({
                 "id": r['id'],
                 "company_id": r['id'],
@@ -246,6 +262,8 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
     # ── 4. POST /api/admin/accountancy or /api/admin/accountancy/<id>/file ─
     match_file = re.match(r'^/api/(?:admin/)?accountancy/(?:(\d+)/file|file)$', path)
     if (path in ('/api/accountancy', '/api/admin/accountancy', '/api/client/accountancy') or match_file) and method == 'POST':
+        if not is_staff:
+            return error_response(start_response, "Use the staff Accountancy menu to file accounts", status_code=403)
         comp_id_from_path = match_file.group(1) if match_file else None
         company_id = comp_id_from_path or body.get('company_id')
         if not company_id:
@@ -302,6 +320,8 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
     # ── 5. DELETE /api/admin/accountancy/<company_id> (Remove / Reset Filing) ─
     match_del_filing = re.match(r'^/api/(?:admin/)?accountancy/(\d+)$', path)
     if match_del_filing and method == 'DELETE':
+        if not is_staff:
+            return error_response(start_response, "Access denied. Staff only.", status_code=403)
         comp_id = int(match_del_filing.group(1))
         execute_db("DELETE FROM company_accounts WHERE company_id = ?;", (comp_id,))
         execute_db("UPDATE companies SET account_status = 'Not started' WHERE id = ?;", (comp_id,))
@@ -309,6 +329,8 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
 
     # ── 6. POST /api/admin/accountancy/bulk-delete ─────────────────────────
     if path in ('/api/accountancy/bulk-delete', '/api/admin/accountancy/bulk-delete') and method == 'POST':
+        if not is_staff:
+            return error_response(start_response, "Access denied. Staff only.", status_code=403)
         ids = body.get('ids', [])
         if not ids or not isinstance(ids, list):
             return error_response(start_response, "No record IDs provided for deletion", status_code=400)
@@ -324,9 +346,11 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
         comp_id = int(match_books.group(1))
         entry_id = int(match_books.group(2)) if match_books.group(2) else None
 
-        company = query_db("SELECT id, name, company_number, director, accounts_next_due FROM companies WHERE id = ? LIMIT 1;", (comp_id,), one=True)
+        company = query_db("SELECT id, name, company_number, director, accounts_next_due, user_id FROM companies WHERE id = ? LIMIT 1;", (comp_id,), one=True)
         if not company:
             return error_response(start_response, "Company not found", status_code=404)
+        if not _can_access_company(company):
+            return error_response(start_response, "Access denied", status_code=403)
 
         if method == 'GET':
             entries = query_db("""
@@ -366,6 +390,8 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
             })
 
         if method == 'POST':
+            if not is_staff:
+                return error_response(start_response, "Access denied. Staff only.", status_code=403)
             desc = (body.get('description') or body.get('desc') or '').strip()
             amount_val = body.get('amount')
             category = body.get('category') or 'Other'
@@ -403,6 +429,8 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
             return success_response(start_response, data={"id": eid}, message="Book entry recorded successfully.", status_code=201)
 
         if method == 'DELETE' and entry_id:
+            if not is_staff:
+                return error_response(start_response, "Access denied. Staff only.", status_code=403)
             execute_db("DELETE FROM company_book_entries WHERE id = ? AND company_id = ?;", (entry_id, comp_id))
             return success_response(start_response, message="Book entry deleted successfully.")
 

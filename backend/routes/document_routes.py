@@ -41,7 +41,7 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
             params.append(order_id)
 
         if doc_type:
-            conditions.append("d.document_type = ?")
+            conditions.append("d.category = ?")
             params.append(doc_type)
 
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
@@ -63,8 +63,8 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
         file_base64 = body.get('file_data') or body.get('file_base64')
         mime_type = body.get('mime_type', 'application/pdf')
         doc_type = body.get('document_type', 'KYC')
-        target_user_id = body.get('user_id') if is_staff else user_id
-        target_user_name = body.get('customer_name') if is_staff else user_name
+        target_user_id = (body.get('user_id') or user_id) if is_staff else user_id
+        target_user_name = (body.get('customer_name') or user_name) if is_staff else user_name
         order_id = body.get('order_id')
         company_id = body.get('company_id')
 
@@ -89,23 +89,29 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
         if not res.get('success'):
             return error_response(start_response, message=res.get('error', 'Failed to upload to Google Drive'), status_code=500)
 
-        # Save record in Database
+        # Save record in Database (column names must match the `documents` schema)
         drive_path = res.get('file_path')
         file_size = res.get('file_size')
         clean_title = res.get('title')
+        drive_file_id = res.get('drive_file_id')
+        drive_web_link = res.get('drive_web_link')
 
         doc_id = execute_db("""
             INSERT INTO documents (
-                title, file_path, file_size, mime_type, document_type,
-                user_id, order_id, company_id, uploaded_by, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'));
-        """, (clean_title, drive_path, file_size, mime_type, doc_type, target_user_id, order_id, company_id, user_id))
+                name, category, file_path, file_type, file_size,
+                user_id, order_id, company_id, uploaded_by,
+                drive_file_id, drive_web_link, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'));
+        """, (clean_title, doc_type, drive_path, mime_type, str(file_size),
+              target_user_id, order_id, company_id, user_name,
+              drive_file_id, drive_web_link))
 
         return success_response(start_response, data={
             "id": doc_id,
             "title": clean_title,
             "google_drive_path": drive_path,
-            "google_drive_link": res.get('drive_web_link'),
+            "google_drive_link": drive_web_link,
+            "drive_file_id": drive_file_id,
             "file_size": file_size
         }, message="Document uploaded directly to Google Drive.", status_code=201)
 
@@ -128,7 +134,7 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
             if content_bytes:
                 start_response('200 OK', [
                     ('Content-Type', meta.get('mimeType', 'application/octet-stream')),
-                    ('Content-Disposition', f'attachment; filename="{doc.get("title")}"'),
+                    ('Content-Disposition', f'attachment; filename="{doc.get("name") or "document"}"'),
                     ('Content-Length', str(len(content_bytes)))
                 ])
                 return [content_bytes]

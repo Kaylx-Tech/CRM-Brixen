@@ -3,7 +3,7 @@
 import re
 from db import query_db, execute_db
 from utils.response import json_response, success_response, error_response
-from services.notification_service import mark_notification_read, get_user_unread_count
+from services.notification_service import get_user_unread_count
 
 def handle_notification_routes(environ, start_response, path, method, user, body, query):
     """Route handler for /api/notifications and /api/client/notifications endpoints."""
@@ -30,23 +30,29 @@ def handle_notification_routes(environ, start_response, path, method, user, body
 
         unread_count = get_user_unread_count(user_id)
 
-        return success_response(start_response, data={
+        # Top-level shape matches app.py + Notification.jsx (data.notifications)
+        return json_response(start_response, {
             "status": "success",
+            "success": True,
             "notifications": [dict(r) for r in rows],
             "unread_count": unread_count
         })
 
     # ── POST read (Mark all or single as read) ─────────────────────────────
     if (path in ('/api/notifications/read', '/api/client/notifications/read', '/api/notifications/read-all')) and method == 'POST':
-        execute_db("UPDATE notifications SET is_read = 1 WHERE user_id = ?;", (user_id,))
-        return success_response(start_response, data={"status": "success"}, message="All notifications marked as read.")
+        note_id = body.get('id') if isinstance(body, dict) else None
+        if note_id:
+            execute_db("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND id = ?;", (user_id, note_id))
+        else:
+            execute_db("UPDATE notifications SET is_read = 1 WHERE user_id = ?;", (user_id,))
+        return json_response(start_response, {"status": "success", "success": True, "message": "Notifications marked read."})
 
     # ── POST /api/notifications/<id>/read (Mark single as read) ───────────
     match_read = re.match(r'^/(?:api/notifications|api/client/notifications)/(\d+)/read$', path)
     if match_read and method == 'POST':
         nid = int(match_read.group(1))
-        mark_notification_read(nid, user_id)
-        return success_response(start_response, data={"status": "success"}, message="Notification marked as read.")
+        execute_db("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?;", (nid, user_id))
+        return json_response(start_response, {"status": "success", "success": True, "message": "Notification marked as read."})
 
     # ── DELETE /api/client/notifications (Clear notifications) ───────────
     if (path in ('/api/notifications/clear', '/api/client/notifications/clear', '/api/client/notifications')) and method in ('POST', 'DELETE'):

@@ -102,6 +102,11 @@ const Orders = () => {
   const [activeTab, setActiveTab] = useState('All Orders')
   const [companyOptions, setCompanyOptions] = useState([])
 
+  // Update an editable field in-place so inline edits persist across re-renders
+  const updateOrderField = React.useCallback((id, field, value) => {
+    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)))
+  }, [])
+
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
@@ -180,6 +185,11 @@ const Orders = () => {
     }),
     columnHelper.accessor("products", {
       header: "PRODUCT",
+      filterFn: (row, columnId, filterValue) => {
+        if (!filterValue) return true
+        const products = row.getValue(columnId) || []
+        return products.some((p) => p.name === filterValue)
+      },
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1.5 max-w-[250px]">
           {row.original.products.map((p, idx) => {
@@ -205,16 +215,22 @@ const Orders = () => {
     columnHelper.accessor("price", {
       header: "PRICE",
       cell: ({ row }) => (
-        <Input 
-          defaultValue={row.getValue("price")} 
+        <Input
+          value={row.original.price}
+          onChange={(e) => updateOrderField(row.original.id, "price", e.target.value)}
           className="h-8 w-20 text-sm font-bold bg-transparent"
         />
       ),
     }),
     columnHelper.accessor("payment", {
       header: "PAYMENT",
+      filterFn: (row, columnId, filterValue) =>
+        !filterValue || row.getValue(columnId) === filterValue,
       cell: ({ row }) => (
-        <Select defaultValue={row.getValue("payment")}>
+        <Select
+          value={row.original.payment}
+          onValueChange={(val) => updateOrderField(row.original.id, "payment", val)}
+        >
           <SelectTrigger className="w-24 h-8 text-xs">
             <SelectValue placeholder="Select" />
           </SelectTrigger>
@@ -230,6 +246,8 @@ const Orders = () => {
     }),
     columnHelper.accessor("status", {
       header: "STATUS",
+      filterFn: (row, columnId, filterValue) =>
+        !filterValue || row.getValue(columnId) === filterValue,
       cell: ({ row }) => {
         const color = row.original.statusColor;
         if (color === 'green') return <Badge className="badge-green">{row.getValue("status")}</Badge>;
@@ -255,7 +273,20 @@ const Orders = () => {
         </DropdownMenu>
       ),
     }),
-  ], [])
+  ], [updateOrderField])
+
+  // Build product/status filter options from the actual data so filters always match
+  const productOptions = useMemo(() => {
+    const names = new Set()
+    orders.forEach((o) => (o.products || []).forEach((p) => p?.name && names.add(p.name)))
+    return Array.from(names).sort().map((name) => ({ label: name, value: name }))
+  }, [orders])
+
+  const statusOptions = useMemo(() => {
+    const values = new Set()
+    orders.forEach((o) => o?.status && values.add(o.status))
+    return Array.from(values).sort().map((s) => ({ label: s, value: s }))
+  }, [orders])
 
   const filterConfig = [
     {
@@ -266,38 +297,21 @@ const Orders = () => {
     {
       columnKey: "status",
       placeholder: "Status",
-      options: [
-        { label: "Pending Verification", value: "Pending Verification" },
-        { label: "Pending", value: "Pending" },
-        { label: "Processing", value: "Processing" },
-        { label: "In Progress", value: "In Progress" },
-        { label: "Completed", value: "Completed" },
-        { label: "Cancelled", value: "Cancelled" },
-        { label: "Refunded", value: "Refunded" },
-      ]
+      options: statusOptions
     },
     {
-      columnKey: "product",
+      columnKey: "products",
       placeholder: "Product",
-      options: [
-        { label: "Tide", value: "Tide" },
-        { label: "KYC", value: "KYC" },
-      ]
+      options: productOptions
     },
     {
       columnKey: "payment",
       placeholder: "Payment",
       options: [
-        { label: "Paid", value: "Paid" },
-        { label: "Pending", value: "Pending" },
-        { label: "Overdue", value: "Overdue" },
-        { label: "Unpaid", value: "Unpaid" },
+        { label: "PKR", value: "PKR" },
+        { label: "GBP", value: "GBP" },
+        { label: "Website", value: "Website" },
       ]
-    },
-    {
-      columnKey: "date",
-      placeholder: "Date",
-      options: []
     }
   ];
 

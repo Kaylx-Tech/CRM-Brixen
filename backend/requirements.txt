@@ -8,3 +8,4 @@ pytesseract==0.3.13
 google-api-python-client>=2.140.0
 google-auth>=2.30.0
 google-auth-httplib2>=0.2.0
+waitress>=3.0.0
