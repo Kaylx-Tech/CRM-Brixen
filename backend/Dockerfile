@@ -38,8 +38,8 @@ RUN chmod +x /app/docker-entrypoint.sh
 ENV HOST=0.0.0.0
 ENV PORT=5050
 ENV CRM_ENV=production
-ENV DATABASE_URL=/app/data/hypetex.db
-ENV STORAGE_PATH=/app/storage
+ENV DATABASE_URL=/var/www/brixen-crm/hypetex.db
+ENV STORAGE_PATH=/var/www/brixen-crm/storage
 ENV DEV_AUTH_BYPASS=0
 ENV COOKIE_SECURE=true
 ENV PYTHONUNBUFFERED=1

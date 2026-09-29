@@ -13,23 +13,20 @@ services:
       - HOST=0.0.0.0
       - PORT=5050
       - CRM_ENV=production
-      - DATABASE_URL=/app/data/hypetex.db
-      - STORAGE_PATH=/app/storage
+      # Live VPS database (same file used by previous CRM install)
+      - DATABASE_URL=/var/www/brixen-crm/hypetex.db
+      - STORAGE_PATH=/var/www/brixen-crm/storage
       - DEV_AUTH_BYPASS=0
       - COOKIE_SECURE=true
       - FRONTEND_URL=${FRONTEND_URL:-https://admin.brixenconsultants.com}
       - PORTAL_URL=${PORTAL_URL:-https://portal.brixenconsultants.com}
     volumes:
-      # Persist SQLite + uploads across redeploys (Coolify: map persistent storage here)
-      - brixen_data:/app/data
-      - brixen_storage:/app/storage
+      # Bind host production DB + storage into the container (Coolify: File/Dir mounts)
+      - /var/www/brixen-crm/hypetex.db:/var/www/brixen-crm/hypetex.db
+      - /var/www/brixen-crm/storage:/var/www/brixen-crm/storage
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:5050/api/health"]
       interval: 30s
       timeout: 5s
       start_period: 20s
       retries: 3
-
-volumes:
-  brixen_data:
-  brixen_storage:
