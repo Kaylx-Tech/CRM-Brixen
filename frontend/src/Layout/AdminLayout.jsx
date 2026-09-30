@@ -5,6 +5,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Outlet } from "react-router-dom"
 import MorphPanel from "@/components/ai-input"
+import { authHeaders } from "@/lib/api"
 
 const AdminLayout = () => {
   const [aiMessages, setAiMessages] = useState([])
@@ -19,8 +20,8 @@ const AdminLayout = () => {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
       const res = await fetch(`${apiUrl}/ai/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, history: aiMessages })
       }).catch(() => null)
 

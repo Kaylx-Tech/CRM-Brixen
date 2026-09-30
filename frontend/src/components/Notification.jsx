@@ -23,6 +23,7 @@ import { ScrollArea } from "./ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
+import { authHeaders } from "@/lib/api"
 
 // ==========================================
 // Time Helper
@@ -88,6 +89,7 @@ export default function Notifications() {
     try {
       const res = await fetch(`${apiUrl}/client/notifications`, {
         credentials: "include",
+        headers: { ...authHeaders() },
       })
       if (res.ok) {
         const data = await res.json()
@@ -126,7 +128,7 @@ export default function Notifications() {
     try {
       const res = await fetch(`${apiUrl}/client/notifications/read`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({}),
       })
@@ -146,7 +148,7 @@ export default function Notifications() {
       try {
         await fetch(`${apiUrl}/client/notifications/read`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { ...authHeaders(), "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ id: item.id }),
         })
@@ -174,7 +176,7 @@ export default function Notifications() {
     try {
       const res = await fetch(`${apiUrl}/client/notifications/clear`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({}),
       })
@@ -185,6 +187,7 @@ export default function Notifications() {
       } else {
         const delRes = await fetch(`${apiUrl}/client/notifications`, {
           method: "DELETE",
+          headers: { ...authHeaders() },
           credentials: "include",
         })
         if (delRes.ok) {

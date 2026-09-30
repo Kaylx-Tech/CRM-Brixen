@@ -42,22 +42,32 @@ export function LoginForm({
       
       const data = await res.json()
 
-      if (data.status === "success" || data.success === true) {
-        const token = data.token || data.data?.token || data.session_token || data.data?.session_token
-        const userObj = data.user || data.data?.user || null
-        if (token) {
-          localStorage.setItem("token", token)
-        }
-        // ProtectedRoute gate relies on a "user" entry existing in localStorage
+      // Robustly extract token from all possible backend response shapes:
+      // { token } | { data: { token } } | { session_token } | { data: { session_token } }
+      const isSuccess = data.status === "success" || data.success === true || res.ok
+      const nested = data.data || {}
+      const token =
+        data.token ||
+        nested.token ||
+        data.session_token ||
+        nested.session_token ||
+        null
+
+      const userObj = data.user || nested.user || null
+
+      if (isSuccess && token) {
+        localStorage.setItem("token", token)
         localStorage.setItem("user", JSON.stringify(userObj || { email }))
         navigate("/admin/dashboard")
+      } else if (isSuccess && !token) {
+        // Logged in but no token in response — should not happen
+        setError("Login succeeded but no session token received. Contact support.")
       } else {
-        setError(data.message || data.error || "Login failed")
+        setError(data.message || data.error || "Invalid email or password.")
       }
 
     } catch (err) {
-      // If server is offline/dev fallback, allow valid login for demo or show error
-      setError("Failed to connect to server. Please check backend connection.")
+      setError("Failed to connect to server. Please check your connection.")
     } finally {
       setIsLoading(false)
     }
