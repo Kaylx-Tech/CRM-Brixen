@@ -19,6 +19,9 @@ export default defineConfig({
         secure: false,
       },
     },
+    watch: {
+      // Ignore binary font files — fixes EBUSY lock error on Windows
+      ignored: ['**/*.OTF', '**/*.TTF', '**/*.WOFF', '**/*.WOFF2'],
+    },
   },
-
 })
