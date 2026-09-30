@@ -1,467 +1,736 @@
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from "@/components/ui/tabs"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
-import { toast } from "sonner"
 import {
-    IconBook,
-    IconBuildingSkyscraper,
-    IconPlus,
-    IconTrash,
-    IconFileCheck,
-    IconScale,
-    IconReceiptTax,
-    IconCoins
-} from "@tabler/icons-react"
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { toast } from "sonner"
+import { apiRequest } from "@/lib/api"
+import { IconFileCheck, IconLoader2, IconTrash, IconUpload } from "@tabler/icons-react"
 
-const defaultEntries = [
-    { id: 1, date: "15/01/2025", desc: "Client Corporate Retainer", category: "Sales", direction: "in", amount: "£4,500.00", raw_amount: 4500 },
-    { id: 2, date: "22/01/2025", desc: "Director Salary / Payroll", category: "Staff costs", direction: "out", amount: "£2,100.00", raw_amount: -2100 },
-    { id: 3, date: "02/02/2025", desc: "Software & Cloud Services", category: "Operating charges", direction: "out", amount: "£320.00", raw_amount: -320 },
-    { id: 4, date: "18/02/2025", desc: "Consulting Invoiced Receipt", category: "Sales", direction: "in", amount: "£6,800.00", raw_amount: 6800 },
+const IDENTITY_STATUSES = ["Not started", "In progress", "Verified", "Failed"]
+const PSC_STATUSES = ["Not started", "In progress", "Verified", "Update required"]
+const BOOK_CATEGORIES = [
+  "Turnover",
+  "Other income",
+  "Cost of sales",
+  "Staff costs",
+  "Other operating charges",
+  "Tax",
+  "Dividends / drawings",
+  "Bank charges",
+  "Director loan",
+  "VAT",
+  "Other",
 ]
+const OUTFLOW_CATEGORIES = new Set([
+  "Cost of sales",
+  "Staff costs",
+  "Other operating charges",
+  "Tax",
+  "Dividends / drawings",
+  "Bank charges",
+  "VAT",
+])
+
+function formatUkDate(value) {
+  const s = String(value || "").trim().slice(0, 10)
+  if (!s) return "—"
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`
+  if (/^\d{2}\/\d{2}\/\d{2,4}$/.test(s)) return s
+  return s
+}
+
+function formatGbp(amount) {
+  const n = Number(amount || 0)
+  const sign = n < 0 ? "-" : ""
+  return `${sign}£${Math.abs(n).toLocaleString("en-GB", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`
+}
+
+function unwrapPayload(res) {
+  const root = res?.data
+  if (!root || typeof root !== "object") return {}
+  if (root.data && typeof root.data === "object" && (root.data.readiness || root.data.company || root.data.entries)) {
+    return root.data
+  }
+  if (root.readiness || root.company || root.entries) return root
+  return root.data || root
+}
+
+function CheckCard({ label, ok, detail }) {
+  return (
+    <div
+      className={`rounded-lg border px-3 py-2.5 ${
+        ok
+          ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100"
+          : "border-amber-200 bg-amber-50/80 text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100"
+      }`}
+    >
+      <div className={`text-[11px] font-semibold ${ok ? "text-emerald-700 dark:text-emerald-300" : "text-amber-800 dark:text-amber-200"}`}>
+        {label}
+      </div>
+      <div className="mt-0.5 text-sm font-semibold leading-snug break-words">{detail}</div>
+    </div>
+  )
+}
+
+function IssueBanner({ issue }) {
+  const block = issue?.severity === "block"
+  return (
+    <div
+      className={`rounded-lg border px-3 py-2 text-sm ${
+        block
+          ? "border-red-200 bg-red-50 text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100"
+          : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100"
+      }`}
+    >
+      <strong className="font-semibold">{issue.title}</strong>
+      {issue.detail ? <span className="ml-1 opacity-90">{issue.detail}</span> : null}
+    </div>
+  )
+}
 
 const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
-    const [activeTab, setActiveTab] = useState("balance-sheet")
-    const [entries, setEntries] = useState(defaultEntries)
-    const [summary, setSummary] = useState({
-        turnover: "£11,300.00",
-        net_profit: "£8,880.00",
-        cash_at_bank: "£8,880.00",
-        total_income: 11300,
-        total_expense: 2420,
-        net: 8880
+  const companyId = company?.id || company?.company_id
+  const [workspace, setWorkspace] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [identity, setIdentity] = useState("Not started")
+  const [psc, setPsc] = useState("Not started")
+  const [savingChecks, setSavingChecks] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadStatus, setUploadStatus] = useState("")
+  const [entryDate, setEntryDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [entryDesc, setEntryDesc] = useState("")
+  const [entryCategory, setEntryCategory] = useState("Turnover")
+  const [entryAmount, setEntryAmount] = useState("")
+  const [entryDirection, setEntryDirection] = useState("in")
+  const [savingEntry, setSavingEntry] = useState(false)
+
+  const periodEnd = useMemo(() => {
+    const raw =
+      company?.period_end ||
+      company?.year_end ||
+      company?.accounts_next_due ||
+      workspace?.period_end ||
+      ""
+    const s = String(raw).trim()
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10)
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+      const [d, m, y] = s.split("/")
+      return `${y}-${m}-${d}`
+    }
+    return ""
+  }, [company, workspace?.period_end])
+
+  const applyWorkspace = useCallback((data) => {
+    setWorkspace(data || null)
+    const readiness = data?.readiness || {}
+    setIdentity(readiness.identity?.status || "Not started")
+    setPsc(readiness.psc?.status || "Not started")
+  }, [])
+
+  const fetchBooks = useCallback(async () => {
+    if (!companyId) return
+    setIsLoading(true)
+    setError("")
+    try {
+      const qs = periodEnd ? `?period_end=${encodeURIComponent(periodEnd)}` : ""
+      const res = await apiRequest(`/admin/accountancy/${companyId}/books${qs}`, {
+        label: "Accounts workspace",
+        silent: true,
+      })
+      if (!res.ok) {
+        const res2 = await apiRequest(`/accountancy/${companyId}/books${qs}`, {
+          label: "Accounts workspace",
+          silent: true,
+        })
+        if (!res2.ok) {
+          setWorkspace(null)
+          setError(res2.reason || res.reason || "Unable to load the cash book.")
+          return
+        }
+        applyWorkspace(unwrapPayload(res2))
+        return
+      }
+      applyWorkspace(unwrapPayload(res))
+    } catch (err) {
+      setWorkspace(null)
+      setError(err?.message || "Unable to load the cash book.")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [applyWorkspace, companyId, periodEnd])
+
+  useEffect(() => {
+    if (isOpen && companyId) fetchBooks()
+  }, [isOpen, companyId, fetchBooks])
+
+  const readiness = workspace?.readiness || {}
+  const issues = Array.isArray(readiness.issues) ? readiness.issues : []
+  const statements = Array.isArray(workspace?.statements) ? workspace.statements : []
+  const entries = Array.isArray(workspace?.entries) ? workspace.entries : []
+  const totals = workspace?.totals || {}
+  const wsCompany = workspace?.company || {}
+
+  const title =
+    wsCompany.name || company?.company_name || company?.name || "Accounts workspace"
+  const subtitleBits = [
+    wsCompany.company_number || company?.company_number,
+    [wsCompany.director || company?.director || company?.owner_name, wsCompany.client_email || company?.owner_email]
+      .filter(Boolean)
+      .join(" · "),
+    `year end ${formatUkDate(periodEnd || workspace?.period_end || company?.year_end)}`,
+  ].filter(Boolean)
+
+  const checks = [
+    {
+      label: "Registered office",
+      ok: Boolean(readiness.address?.ok),
+      detail: readiness.address?.value || "Missing",
+    },
+    {
+      label: "Identity verification",
+      ok: Boolean(readiness.identity?.ok),
+      detail: readiness.identity?.status || "Not started",
+    },
+    {
+      label: "PSC register",
+      ok: Boolean(readiness.psc?.ok),
+      detail: readiness.psc?.status || "Not started",
+    },
+    {
+      label: "Authentication code",
+      ok: Boolean(readiness.authentication_code?.ok),
+      detail: readiness.authentication_code?.ok ? "On file" : "Missing",
+    },
+    {
+      label: "Personal 11 digits code",
+      ok: Boolean(readiness.personal_code?.ok),
+      detail: readiness.personal_code?.ok ? "On file" : "Missing",
+    },
+    {
+      label: "UTR",
+      ok: Boolean(readiness.utr?.ok),
+      detail: readiness.utr?.ok ? "On file" : "Missing",
+    },
+  ]
+
+  const handleSaveChecks = async () => {
+    if (!companyId) return
+    setSavingChecks(true)
+    setError("")
+    try {
+      const res = await apiRequest(`/admin/companies/${companyId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          identity_verified: identity,
+          psc_verified: psc,
+        }),
+        label: "Save checks",
+      })
+      if (!res.ok) {
+        const res2 = await apiRequest(`/companies/${companyId}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            identity_verified: identity,
+            psc_verified: psc,
+          }),
+          label: "Save checks",
+        })
+        if (!res2.ok) {
+          setError(res2.reason || res.reason || "Could not save verification.")
+          return
+        }
+      }
+      toast.success("Checks saved")
+      await fetchBooks()
+    } finally {
+      setSavingChecks(false)
+    }
+  }
+
+  const handleUpload = async (event) => {
+    event.preventDefault()
+    const fileInput = event.currentTarget.elements.namedItem("statementFile")
+    const file = fileInput?.files?.[0]
+    if (!companyId || !file) {
+      setUploadStatus("Choose a bank statement file.")
+      return
+    }
+    setUploading(true)
+    setUploadStatus("Uploading…")
+    try {
+      const b64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => {
+          const result = String(reader.result || "")
+          const parts = result.split(",")
+          resolve(parts.length > 1 ? parts[1] : result)
+        }
+        reader.onerror = () => reject(reader.error || new Error("Read failed"))
+        reader.readAsDataURL(file)
+      })
+      const payload = {
+        company_id: companyId,
+        name: file.name,
+        file_name: file.name,
+        category: "Bank statement",
+        file_content_base64: b64,
+        mime_type: file.type || "application/pdf",
+      }
+      if (wsCompany.client_id || company?.user_id || company?.client_id) {
+        payload.client_id = wsCompany.client_id || company.user_id || company.client_id
+      }
+      let res = await apiRequest("/admin/documents", {
+        method: "POST",
+        body: JSON.stringify(payload),
+        label: "Upload statement",
+        silent: true,
+      })
+      if (!res.ok) {
+        res = await apiRequest("/documents", {
+          method: "POST",
+          body: JSON.stringify(payload),
+          label: "Upload statement",
+        })
+      }
+      if (!res.ok) {
+        setUploadStatus(res.reason || "Upload failed")
+        return
+      }
+      setUploadStatus("Uploaded")
+      toast.success("Bank statement uploaded")
+      if (fileInput) fileInput.value = ""
+      await fetchBooks()
+    } catch (err) {
+      setUploadStatus(err?.message || "Upload failed")
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleAddEntry = async (event) => {
+    event.preventDefault()
+    if (!entryDesc.trim() || !entryAmount) {
+      toast.error("Please enter a description and amount")
+      return
+    }
+    setSavingEntry(true)
+    try {
+      const res = await apiRequest(`/admin/accountancy/${companyId}/books`, {
+        method: "POST",
+        body: JSON.stringify({
+          description: entryDesc.trim(),
+          amount: entryAmount,
+          category: entryCategory,
+          direction: entryDirection,
+          entry_date: entryDate,
+          period_end: periodEnd || undefined,
+        }),
+        label: "Cash book entry",
+      })
+      if (!res.ok) {
+        toast.error(res.reason || "Failed to add line")
+        return
+      }
+      toast.success("Cash book line entry recorded.")
+      setEntryDesc("")
+      setEntryAmount("")
+      await fetchBooks()
+    } finally {
+      setSavingEntry(false)
+    }
+  }
+
+  const handleDeleteEntry = async (id) => {
+    const res = await apiRequest(`/admin/accountancy/${companyId}/books/${id}`, {
+      method: "DELETE",
+      label: "Remove entry",
     })
-    const [isLoadingBooks, setIsLoadingBooks] = useState(false)
-    const [newDesc, setNewDesc] = useState("")
-    const [newAmount, setNewAmount] = useState("")
-    const [newCategory, setNewCategory] = useState("Sales")
-    const [newDirection, setNewDirection] = useState("in")
-    const [newDate, setNewDate] = useState(new Date().toLocaleDateString('en-GB'))
-
-    const fetchBooks = async () => {
-        if (!company?.id) return
-        setIsLoadingBooks(true)
-        try {
-            const apiUrl = import.meta.env.VITE_API_URL || '/api'
-            const token = localStorage.getItem('token')
-            const res = await fetch(`${apiUrl}/admin/accountancy/${company.id}/books`, {
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {})
-                }
-            })
-            if (res.ok) {
-                const data = await res.json()
-                if ((data.success || data.status === 'success') && data.data) {
-                    if (Array.isArray(data.data.entries)) {
-                        setEntries(data.data.entries)
-                    }
-                    if (data.data.summary) {
-                        setSummary(data.data.summary)
-                    }
-                }
-            }
-        } catch (err) {
-            console.error("Failed to load books:", err)
-        } finally {
-            setIsLoadingBooks(false)
-        }
+    if (res.ok) {
+      toast.success("Entry removed from cash book.")
+      await fetchBooks()
     }
+  }
 
-    useEffect(() => {
-        if (isOpen && company?.id) {
-            fetchBooks()
-        }
-    }, [isOpen, company?.id])
+  const categoryOptions = workspace?.book_categories?.length
+    ? workspace.book_categories
+    : BOOK_CATEGORIES
 
-    if (!company) return null
+  if (!company && !isOpen) return null
 
-    const handleAddEntry = async (e) => {
-        e.preventDefault()
-        if (!newDesc.trim() || !newAmount) {
-            toast.error("Please enter a description and amount")
-            return
-        }
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[720px] p-0 overflow-hidden gap-0">
+        <DialogHeader className="px-6 pt-5 pb-3 border-b text-left space-y-1 shrink-0">
+          <DialogTitle className="text-lg font-bold tracking-tight">{title}</DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground">
+            {subtitleBits.join(" · ")}
+          </DialogDescription>
+        </DialogHeader>
 
-        const val = parseFloat(newAmount.replace(/[^0-9.-]+/g, "")) || 0
-        const formatted = `£${val.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        <ScrollArea className="max-h-[min(70vh,640px)]">
+          <div className="px-6 py-4 space-y-6">
+            {error ? (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {error}
+              </div>
+            ) : null}
 
-        try {
-            const apiUrl = import.meta.env.VITE_API_URL || '/api'
-            const token = localStorage.getItem('token')
-            const res = await fetch(`${apiUrl}/admin/accountancy/${company.id}/books`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {})
-                },
-                body: JSON.stringify({
-                    description: newDesc.trim(),
-                    amount: val,
-                    category: newCategory,
-                    direction: newDirection,
-                    entry_date: newDate
-                })
-            })
+            {isLoading && !workspace ? (
+              <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+                <IconLoader2 className="h-4 w-4 animate-spin" />
+                Loading workspace…
+              </div>
+            ) : (
+              <>
+                {/* UK filing checks */}
+                <section className="space-y-3">
+                  <div>
+                    <h4 className="text-sm font-bold">UK filing checks</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Companies Act registered office, ECCTA identity verification, PSC register, and Companies House codes.
+                    </p>
+                  </div>
 
-            if (res.ok) {
-                toast.success("Cash book line entry recorded.")
-                fetchBooks()
-            } else {
-                // Local state fallback
-                const newRow = {
-                    id: Date.now(),
-                    date: newDate,
-                    desc: newDesc.trim(),
-                    category: newCategory,
-                    direction: newDirection,
-                    amount: formatted,
-                    raw_amount: newDirection === 'in' ? val : -val
-                }
-                setEntries([newRow, ...entries])
-                toast.success("Cash book line entry added.")
-            }
-        } catch (err) {
-            const newRow = {
-                id: Date.now(),
-                date: newDate,
-                desc: newDesc.trim(),
-                category: newCategory,
-                direction: newDirection,
-                amount: formatted,
-                raw_amount: newDirection === 'in' ? val : -val
-            }
-            setEntries([newRow, ...entries])
-            toast.success("Cash book line entry added.")
-        } finally {
-            setNewDesc("")
-            setNewAmount("")
-        }
-    }
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {checks.map((item) => (
+                      <CheckCard key={item.label} {...item} />
+                    ))}
+                  </div>
 
-    const handleDeleteEntry = async (id) => {
-        try {
-            const apiUrl = import.meta.env.VITE_API_URL || '/api'
-            const token = localStorage.getItem('token')
-            await fetch(`${apiUrl}/admin/accountancy/${company.id}/books/${id}`, {
-                method: 'DELETE',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {})
-                }
-            })
-            setEntries(entries.filter(e => e.id !== id))
-            toast.success("Entry removed from cash book.")
-            fetchBooks()
-        } catch (err) {
-            setEntries(entries.filter(e => e.id !== id))
-            toast.success("Entry removed from cash book.")
-        }
-    }
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">Identity verification</Label>
+                      <Select value={identity} onValueChange={setIdentity}>
+                        <SelectTrigger className="w-full text-xs">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60 overflow-hidden p-0">
+                          <ScrollArea className="h-auto max-h-60 w-full p-1">
+                            <SelectGroup>
+                              {(workspace?.identity_statuses || IDENTITY_STATUSES).map((s) => (
+                                <SelectItem key={s} value={s}>{s}</SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </ScrollArea>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">PSC verification</Label>
+                      <Select value={psc} onValueChange={setPsc}>
+                        <SelectTrigger className="w-full text-xs">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60 overflow-hidden p-0">
+                          <ScrollArea className="h-auto max-h-60 w-full p-1">
+                            <SelectGroup>
+                              {(workspace?.psc_statuses || PSC_STATUSES).map((s) => (
+                                <SelectItem key={s} value={s}>{s}</SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </ScrollArea>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={savingChecks}
+                      onClick={handleSaveChecks}
+                    >
+                      {savingChecks ? <IconLoader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                      Save checks
+                    </Button>
+                  </div>
 
-    // Dynamic turnover and net calculations
-    const turnoverDisplay = summary?.turnover || "£45,200.00"
-    const netProfitDisplay = summary?.net_profit || "£18,340.00"
-    const cashAtBankDisplay = summary?.cash_at_bank || "£14,250.00"
+                  <div className="space-y-2">
+                    {issues.length ? (
+                      issues.map((issue, idx) => <IssueBanner key={`${issue.code}-${idx}`} issue={issue} />)
+                    ) : (
+                      <p className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">
+                        UK filing checks are complete for this period.
+                      </p>
+                    )}
+                  </div>
+                </section>
 
-    return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-[760px] p-0 overflow-hidden flex flex-col max-h-[90vh]">
-                {/* Modal Header */}
-                <div className="p-6 border-b bg-muted/20">
-                    <DialogHeader className="flex flex-row items-center justify-between text-left space-y-0">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
-                                <IconBook className="h-6 w-6" />
+                {/* Bank statements */}
+                <section className="space-y-3">
+                  <div>
+                    <h4 className="text-sm font-bold">Bank statements</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Upload the period statements, then post each line into the cash book.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {statements.length ? (
+                      statements.map((doc) => (
+                        <div
+                          key={doc.id}
+                          className="flex items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2"
+                        >
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold truncate">{doc.name || "Bank statement"}</div>
+                            <div className="text-[11px] text-muted-foreground">
+                              {[doc.file_size, formatUkDate(String(doc.created_at || "").slice(0, 10))]
+                                .filter(Boolean)
+                                .join(" · ")}
                             </div>
-                            <div>
-                                <DialogTitle className="text-xl font-bold">{company.company_name}</DialogTitle>
-                                <DialogDescription className="text-xs mt-0.5">
-                                    Company No: <span className="font-medium text-foreground">{company.company_number || 'OC385142'}</span> • Director: <span className="text-foreground">{company.owner_name || company.director || 'Brixen Client'}</span>
-                                </DialogDescription>
-                            </div>
+                          </div>
                         </div>
-                        <Badge className={company.status === 'Overdue' ? 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300' : 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300'}>
-                            {company.status}
-                        </Badge>
-                    </DialogHeader>
-                </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No bank statements on file for this company yet.</p>
+                    )}
+                  </div>
 
-                {/* Modal Tabs */}
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col overflow-hidden">
-                    <div className="px-6 pt-3 border-b bg-background">
-                        <TabsList className="w-full justify-start h-auto p-1 bg-muted/60 rounded-lg">
-                            <TabsTrigger value="balance-sheet" className="text-xs">
-                                Balance Sheet &amp; Overview
-                            </TabsTrigger>
-                            <TabsTrigger value="cash-book" className="text-xs">
-                                Cash Book Ledger ({entries.length})
-                            </TabsTrigger>
-                            <TabsTrigger value="hmrc" className="text-xs">
-                                HMRC CT600
-                            </TabsTrigger>
-                        </TabsList>
+                  <form onSubmit={handleUpload} className="space-y-3 rounded-xl border bg-card p-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">Statement file</Label>
+                      <Input
+                        name="statementFile"
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.zip"
+                        className="w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-xs file:font-medium"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
+                      <span className="text-[11px] text-muted-foreground min-h-4">
+                        {uploadStatus || "PDF, image, Word, or ZIP"}
+                      </span>
+                      <Button type="submit" variant="outline" size="sm" className="w-full sm:w-auto" disabled={uploading}>
+                        {uploading ? <IconLoader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <IconUpload className="h-3.5 w-3.5 mr-1.5" />}
+                        Upload statement
+                      </Button>
+                    </div>
+                  </form>
+                </section>
+
+                {/* Cash book */}
+                <section className="space-y-3">
+                  <div>
+                    <h4 className="text-sm font-bold">Cash book</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      FRS 105 headings for micro-entity accounts. Receipts are positive; costs and drawings are payments out.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleAddEntry} className="space-y-4 rounded-xl border bg-card p-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold">Date</Label>
+                        <Input
+                          type="date"
+                          value={entryDate}
+                          onChange={(e) => setEntryDate(e.target.value)}
+                          className="w-full text-xs"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold">Heading</Label>
+                        <Select
+                          value={entryCategory}
+                          onValueChange={(val) => {
+                            setEntryCategory(val)
+                            setEntryDirection(OUTFLOW_CATEGORIES.has(val) ? "out" : "in")
+                          }}
+                        >
+                          <SelectTrigger className="w-full text-xs">
+                            <SelectValue placeholder="Select heading" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60 w-(--anchor-width) overflow-hidden p-0">
+                            <ScrollArea className="h-60 w-full p-1">
+                              <SelectGroup>
+                                {categoryOptions.map((c) => (
+                                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </ScrollArea>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
-                    <ScrollArea className="flex-1 p-6">
-                        {/* ════════════════════════════════════════════════════
-                            TAB 1: BALANCE SHEET & OVERVIEW
-                        ════════════════════════════════════════════════════ */}
-                        <TabsContent value="balance-sheet" className="space-y-5 m-0">
-                            {/* Metric Summary Banner */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                <div className="p-3.5 border rounded-xl bg-card text-center">
-                                    <p className="text-[10px] uppercase font-semibold text-muted-foreground">Turnover</p>
-                                    <p className="text-lg font-bold text-foreground mt-1">{turnoverDisplay}</p>
-                                </div>
-                                <div className="p-3.5 border rounded-xl bg-card text-center">
-                                    <p className="text-[10px] uppercase font-semibold text-muted-foreground">Net Profit</p>
-                                    <p className="text-lg font-bold text-emerald-600 mt-1">{netProfitDisplay}</p>
-                                </div>
-                                <div className="p-3.5 border rounded-xl bg-card text-center">
-                                    <p className="text-[10px] uppercase font-semibold text-muted-foreground">Cash at Bank</p>
-                                    <p className="text-lg font-bold text-foreground mt-1">{cashAtBankDisplay}</p>
-                                </div>
-                                <div className="p-3.5 border rounded-xl bg-card text-center">
-                                    <p className="text-[10px] uppercase font-semibold text-muted-foreground">Accounts Due</p>
-                                    <p className="text-sm font-bold text-rose-600 mt-2">{company.due_date || '28/02/2026'}</p>
-                                </div>
-                            </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">Description</Label>
+                      <Input
+                        value={entryDesc}
+                        onChange={(e) => setEntryDesc(e.target.value)}
+                        placeholder="Statement narrative"
+                        maxLength={200}
+                        className="w-full text-xs"
+                        required
+                      />
+                    </div>
 
-                            {/* Statutory Balance Sheet Ledger */}
-                            <div className="border rounded-xl p-4 bg-muted/20 space-y-3">
-                                <div className="flex items-center justify-between border-b pb-2">
-                                    <span className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
-                                        Micro-Entity Balance Sheet Items
-                                    </span>
-                                    <span className="text-xs font-medium text-muted-foreground">As at {company.year_end || '31/05/2025'}</span>
-                                </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold">Amount (£)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          value={entryAmount}
+                          onChange={(e) => setEntryAmount(e.target.value)}
+                          placeholder="0.00"
+                          className="w-full text-xs"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold">Direction</Label>
+                        <Select value={entryDirection} onValueChange={setEntryDirection}>
+                          <SelectTrigger className="w-full text-xs">
+                            <SelectValue placeholder="In / Out" />
+                          </SelectTrigger>
+                          <SelectContent className="overflow-hidden p-0">
+                            <SelectGroup className="p-1">
+                              <SelectItem value="in">In (receipt)</SelectItem>
+                              <SelectItem value="out">Out (payment)</SelectItem>
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
 
-                                <div className="flex justify-between items-center text-sm py-1">
-                                    <span className="text-muted-foreground">Called up share capital:</span>
-                                    <span className="font-semibold">£100.00</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm py-1">
-                                    <span className="text-muted-foreground">Total fixed assets:</span>
-                                    <span className="font-semibold">£0.00</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm py-1">
-                                    <span className="text-muted-foreground">Current assets (Bank &amp; debtors):</span>
-                                    <span className="font-semibold text-foreground">{cashAtBankDisplay}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm py-1">
-                                    <span className="text-muted-foreground">Creditors: amounts due within 1 year:</span>
-                                    <span className="font-semibold text-rose-600">(£2,850.00)</span>
-                                </div>
-                                <Separator />
-                                <div className="flex justify-between items-center text-sm font-bold pt-1">
-                                    <span>Net Current Assets (Working Capital):</span>
-                                    <span className="text-emerald-600">{netProfitDisplay}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm font-bold">
-                                    <span>Total Net Assets:</span>
-                                    <span className="text-emerald-600">{netProfitDisplay}</span>
-                                </div>
-                            </div>
-                        </TabsContent>
+                    <div className="flex justify-end pt-1">
+                      <Button type="submit" size="sm" className="w-full sm:w-auto" disabled={savingEntry}>
+                        {savingEntry ? <IconLoader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                        Add line
+                      </Button>
+                    </div>
+                  </form>
 
-                        {/* ════════════════════════════════════════════════════
-                            TAB 2: CASH BOOK LEDGER
-                        ════════════════════════════════════════════════════ */}
-                        <TabsContent value="cash-book" className="space-y-5 m-0">
-                            {/* Add Entry Form */}
-                            <form onSubmit={handleAddEntry} className="p-4 border rounded-xl bg-card space-y-3">
-                                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                    Record New Cash Book Entry
-                                </Label>
-                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
-                                    <Input
-                                        placeholder="Description / Ref"
-                                        value={newDesc}
-                                        onChange={(e) => setNewDesc(e.target.value)}
-                                        className="sm:col-span-2 text-xs"
-                                    />
-                                    <Select value={newCategory} onValueChange={setNewCategory}>
-                                        <SelectTrigger className="text-xs">
-                                            <SelectValue placeholder="Category" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Sales">Sales Revenue</SelectItem>
-                                            <SelectItem value="Staff costs">Staff costs / Payroll</SelectItem>
-                                            <SelectItem value="Operating charges">Operating Charges</SelectItem>
-                                            <SelectItem value="Cost of sales">Cost of sales</SelectItem>
-                                            <SelectItem value="VAT">VAT</SelectItem>
-                                            <SelectItem value="Tax">Corporation Tax</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className="rounded-full border bg-muted/40 px-2.5 py-1 text-[11px] font-medium">
+                      In {formatGbp(totals.inflows)}
+                    </span>
+                    <span className="rounded-full border bg-muted/40 px-2.5 py-1 text-[11px] font-medium">
+                      Out {formatGbp(totals.outflows)}
+                    </span>
+                    <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                      Net {formatGbp(totals.net)}
+                    </span>
+                    {(totals.by_category || []).map((item) => (
+                      <span key={item.category} className="rounded-full border bg-card px-2.5 py-1 text-[11px]">
+                        {item.category} {formatGbp(item.amount)}
+                      </span>
+                    ))}
+                  </div>
 
-                                    <Input
-                                        placeholder="Amount (£)"
-                                        value={newAmount}
-                                        onChange={(e) => setNewAmount(e.target.value)}
-                                        className="text-xs"
-                                    />
-                                </div>
-                                <div className="flex justify-between items-center pt-1">
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant={newDirection === 'in' ? 'default' : 'outline'}
-                                            className="h-7 text-xs px-3"
-                                            onClick={() => setNewDirection('in')}
-                                        >
-                                            Money In (+)
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant={newDirection === 'out' ? 'destructive' : 'outline'}
-                                            className="h-7 text-xs px-3"
-                                            onClick={() => setNewDirection('out')}
-                                        >
-                                            Money Out (−)
-                                        </Button>
-                                    </div>
-                                    <Button type="submit" size="sm" className="h-7 text-xs gap-1.5">
-                                        <IconPlus className="h-3.5 w-3.5" /> Add Line
-                                    </Button>
-                                </div>
-                            </form>
+                  <div className="rounded-lg border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Date</TableHead>
+                          <TableHead className="text-xs">Description</TableHead>
+                          <TableHead className="text-xs">Heading</TableHead>
+                          <TableHead className="text-xs">Amount</TableHead>
+                          <TableHead className="text-xs">Source</TableHead>
+                          <TableHead className="text-xs w-10" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {entries.length ? (
+                          entries.map((entry) => {
+                            const amount = Number(entry.amount || 0)
+                            return (
+                              <TableRow key={entry.id}>
+                                <TableCell className="text-xs">{formatUkDate(entry.entry_date)}</TableCell>
+                                <TableCell className="text-xs font-medium">{entry.description || entry.desc || ""}</TableCell>
+                                <TableCell className="text-xs">{entry.category || "Other"}</TableCell>
+                                <TableCell className={`text-xs font-semibold ${amount >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                                  {formatGbp(amount)}
+                                </TableCell>
+                                <TableCell className="text-xs text-muted-foreground">
+                                  {entry.source === "bank_statement" ? "Statement" : "Manual"}
+                                </TableCell>
+                                <TableCell>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                    onClick={() => handleDeleteEntry(entry.id)}
+                                  >
+                                    <IconTrash className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={6} className="h-20 text-center text-xs text-muted-foreground">
+                              No cash book lines yet. Post each bank statement line here.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </section>
+              </>
+            )}
+          </div>
+        </ScrollArea>
 
-                            {/* Transactions Table */}
-                            <div className="border rounded-xl overflow-hidden">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="text-xs">Date</TableHead>
-                                            <TableHead className="text-xs">Description</TableHead>
-                                            <TableHead className="text-xs">Category</TableHead>
-                                            <TableHead className="text-xs text-right">Amount</TableHead>
-                                            <TableHead className="text-xs text-right w-10"></TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {entries.map((entry) => (
-                                            <TableRow key={entry.id}>
-                                                <TableCell className="text-xs">{entry.date}</TableCell>
-                                                <TableCell className="text-xs font-medium">{entry.desc}</TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline" className="text-[10px]">
-                                                        {entry.category}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className={`text-xs font-bold text-right ${entry.direction === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                                    {entry.direction === 'in' ? `+${entry.amount}` : `−${entry.amount}`}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                                        onClick={() => handleDeleteEntry(entry.id)}
-                                                    >
-                                                        <IconTrash className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        </TabsContent>
-
-                        {/* ════════════════════════════════════════════════════
-                            TAB 3: HMRC CT600
-                        ════════════════════════════════════════════════════ */}
-                        <TabsContent value="hmrc" className="space-y-4 m-0">
-                            <div className="border rounded-xl p-4 bg-muted/20 space-y-3">
-                                <div className="flex justify-between items-center text-sm py-1">
-                                    <span className="text-muted-foreground">HMRC UTR Number:</span>
-                                    <span className="font-bold">98765 43210</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm py-1">
-                                    <span className="text-muted-foreground">Accounting Period:</span>
-                                    <span className="font-semibold">01/06/2024 - 31/05/2025</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm py-1">
-                                    <span className="text-muted-foreground">Taxable Profit:</span>
-                                    <span className="font-bold">{netProfitDisplay}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm py-1">
-                                    <span className="text-muted-foreground">Estimated Corporation Tax (19%):</span>
-                                    <span className="font-bold text-foreground">
-                                        £{(Math.max(0, (summary?.net || 18340)) * 0.19).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </span>
-                                </div>
-                                <Separator />
-                                <div className="flex justify-between items-center text-sm font-bold">
-                                    <span>CT600 Return Status:</span>
-                                    <Badge className="bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300">
-                                        {company.status === 'Filed' ? 'Return Filed' : 'Payment Due'}
-                                    </Badge>
-                                </div>
-                            </div>
-                        </TabsContent>
-                    </ScrollArea>
-                </Tabs>
-
-                {/* Modal Footer */}
-                <div className="p-4 border-t bg-muted/20 flex justify-between items-center">
-                    <Button variant="outline" size="sm" onClick={onClose}>
-                        Close
-                    </Button>
-                    <Button
-                        size="sm"
-                        className="gap-2"
-                        onClick={() => {
-                            onClose()
-                            if (onProceedToFile) onProceedToFile(company)
-                        }}
-                    >
-                        <IconFileCheck className="h-4 w-4" />
-                        Proceed to File Accounts
-                    </Button>
-                </div>
-            </DialogContent>
-        </Dialog>
-    )
+        <DialogFooter className="px-6 py-3 border-t bg-muted/20 flex-row justify-between sm:justify-between gap-2 shrink-0">
+          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+            Close
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => {
+              onClose()
+              if (onProceedToFile) onProceedToFile(company)
+            }}
+          >
+            <IconFileCheck className="h-4 w-4" />
+            {readiness.can_file ? "File accounts" : "File anyway"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
 }
 
 export default ViewAccount

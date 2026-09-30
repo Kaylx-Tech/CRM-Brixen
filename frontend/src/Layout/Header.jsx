@@ -92,7 +92,7 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-2">
           <Notification />
-          <ModeToggle />
+          {/* <ModeToggle /> */}
         </div>
       </div>
     </header>

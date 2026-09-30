@@ -11,6 +11,8 @@ import Accountancy from './Pages/Accountancy/Accountancy'
 import Orders from './Pages/Orders/Orders'
 import Tasks from './Pages/Tasks/Tasks'
 import Services from './Pages/Services/Services'
+import Payments from './Pages/Payments/Payments'
+import Documents from './Pages/Documents/Documents'
 import ComingSoon from './Pages/ComingSoon'
 import { TooltipProvider } from './components/ui/tooltip'
 import { ThemeProvider } from './hooks/theme-provider'
@@ -49,8 +51,8 @@ const App = () => {
                 <Route path="orders" element={<Orders />} />
                 <Route path="tasks" element={<Tasks />} />
                 <Route path="services" element={<Services />} />
-                <Route path="payments" element={<ComingSoon />} />
-                <Route path="documents" element={<ComingSoon />} />
+                <Route path="payments" element={<Payments />} />
+                <Route path="documents" element={<Documents />} />
                 <Route path="intake" element={<ComingSoon />} />
                 <Route path="logs" element={<ComingSoon />} />
                 <Route path="settings" element={<ComingSoon />} />
@@ -62,7 +64,7 @@ const App = () => {
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </BrowserRouter>
-        <Toaster richColors closeButton position="top-right" />
+        <Toaster richColors closeButton position="top-right" offset={12} />
       </TooltipProvider>
     </ThemeProvider>
   )

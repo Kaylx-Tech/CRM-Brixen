@@ -50,7 +50,6 @@ const Tasks = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Tasks & Team</h2>
-          <p className="text-muted-foreground text-sm mt-1">Manage all pending form tasks and team workflows.</p>
         </div>
       </div>
 

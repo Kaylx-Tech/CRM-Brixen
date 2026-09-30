@@ -109,6 +109,30 @@ def handle_catalog_routes(environ, start_response, path, method, user, body, que
         except Exception as e:
             return error_response(start_response, f"Failed to create service: {str(e)}", 500)
 
+    # ── POST /api/catalog/services/bulk-delete ───────────────────────────────
+    if path in ('/api/catalog/services/bulk-delete', '/api/admin/services/bulk-delete') and method == 'POST':
+        denied = _require_staff()
+        if denied:
+            return denied
+        if user.get('role') not in ('SUPER_ADMIN', 'ADMIN'):
+            return error_response(start_response, "Bulk deletion is restricted to Administrator accounts only.", 403)
+
+        service_ids = body.get('service_ids', [])
+        if not isinstance(service_ids, list) or len(service_ids) == 0:
+            return error_response(start_response, "service_ids array is required", 400)
+
+        deleted = 0
+        for sid in service_ids:
+            try:
+                sid = int(sid)
+                execute_db("UPDATE orders SET service_id = NULL WHERE service_id = ?;", (sid,))
+                execute_db("DELETE FROM services WHERE id = ?;", (sid,))
+                deleted += 1
+            except Exception:
+                continue
+
+        return success_response(start_response, message=f"Successfully deleted {deleted} service(s).", data={"deleted": deleted})
+
     # ── PUT/PATCH/DELETE /api/catalog/services/<id> and /api/admin/services/<id>
     match_svc = re.match(r'^/api/(?:catalog/services|admin/services)/(\d+)$', path)
     if match_svc and method in ('PUT', 'PATCH', 'DELETE'):

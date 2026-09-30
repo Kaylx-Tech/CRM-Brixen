@@ -85,6 +85,7 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
     if (path in ('/api/companies', '/api/admin/companies')) and method == 'GET':
         search = (query.get('search') or [''])[0].strip()
         status_filter = (query.get('status') or [''])[0].strip()
+        client_id_filter = (query.get('client_id') or query.get('user_id') or [''])[0].strip()
         limit = min(int((query.get('limit') or ['50'])[0]), 500)
         offset = max(int((query.get('offset') or ['0'])[0]), 0)
 
@@ -94,6 +95,9 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
         if not is_staff:
             conditions.append("c.user_id = ?")
             params.append(user_id)
+        elif client_id_filter:
+            conditions.append("c.user_id = ?")
+            params.append(client_id_filter)
 
         if search:
             conditions.append("(c.name LIKE ? OR c.company_number LIKE ?)")
@@ -406,8 +410,9 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
             return error_response(start_response, "Access denied", status_code=403)
 
         allowed_fields = [
-            'name', 'company_number', 'status', 'authentication_code', 'utr_number',
-            'accounts_next_due', 'confirmation_next_due', 'sic_codes', 'director', 'reg_office'
+            'name', 'company_number', 'status', 'authentication_code', 'activation_code',
+            'utr_number', 'accounts_next_due', 'confirmation_next_due', 'sic_codes',
+            'director', 'reg_office', 'identity_verified', 'psc_verified',
         ]
         
         updates = []
@@ -421,6 +426,11 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
                 params.append(val)
 
         if updates:
+            # Stamp verification timestamps when staff update IDV / PSC
+            if 'identity_verified' in body:
+                updates.append("identity_verified_at = datetime('now')")
+            if 'psc_verified' in body:
+                updates.append("psc_verified_at = datetime('now')")
             params.append(comp_id)
             execute_db(f"UPDATE companies SET {', '.join(updates)} WHERE id = ?;", params)
 

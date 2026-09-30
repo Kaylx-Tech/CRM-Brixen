@@ -8,18 +8,19 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { createColumnHelper } from "@tanstack/react-table"
 import { DataTable } from "../../Layout/DataTable"
 import AddService from "./AddService"
+import ViewService from "./ViewService"
+import DeleteConfirmation from "../../components/DeleteConfirmation"
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogTrigger,
   DialogFooter,
-  DialogClose
+  DialogDescription,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { IconPlus, IconDotsVertical, IconEdit, IconTrash } from "@tabler/icons-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { IconPlus, IconDotsVertical, IconLoader2 } from "@tabler/icons-react"
 import { toast } from "sonner"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 
@@ -30,6 +31,20 @@ const Services = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [isAddOpen, setIsAddOpen] = useState(false)
+  const [viewingService, setViewingService] = useState(null)
+
+  // Edit state
+  const [editService, setEditService] = useState(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editForm, setEditForm] = useState({
+    name: '', category: 'Corporate', description: '',
+    sellPrice: '', originalPrice: '0', duration: '12 Months', status: 'Active'
+  })
+
+  // Delete state
+  const [serviceToDelete, setServiceToDelete] = useState(null)
+  const [bulkDeleteRows, setBulkDeleteRows] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const fetchServices = async () => {
     setIsLoading(true)
@@ -73,6 +88,116 @@ const Services = () => {
     fetchServices()
   }, [])
 
+  // ── Open Edit Dialog ──
+  const openEditDialog = (service) => {
+    setEditService(service)
+    setEditForm({
+      name: service.name || '',
+      category: service.category || 'Corporate',
+      description: service.description || '',
+      sellPrice: String(Number(service.price) || ''),
+      originalPrice: String(Number(service.cost_price) || '0'),
+      duration: service.duration || '12 Months',
+      status: service.status || 'Active',
+    })
+  }
+
+  // ── Submit Edit ──
+  const handleEditSubmit = async () => {
+    if (!editForm.name.trim() || !editForm.sellPrice) {
+      toast.error("Name and Sell price are required.")
+      return
+    }
+
+    setIsEditing(true)
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${apiUrl}/catalog/services/${editService.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(editForm)
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(data.message || "Service updated successfully")
+        setEditService(null)
+        fetchServices()
+      } else {
+        toast.error(data.message || data.error || "Failed to update service")
+      }
+    } catch (error) {
+      toast.error("Network error: " + error.message)
+    } finally {
+      setIsEditing(false)
+    }
+  }
+
+  // ── Confirm Delete ──
+  const confirmDelete = async () => {
+    if (!serviceToDelete?.id) return
+    setIsDeleting(true)
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${apiUrl}/catalog/services/${serviceToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(data.message || "Service deleted successfully")
+        setServiceToDelete(null)
+        fetchServices()
+      } else {
+        toast.error(data.message || data.error || "Failed to delete service")
+      }
+    } catch (error) {
+      toast.error("Network error: " + error.message)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  // ── Confirm Bulk Delete ──
+  const confirmBulkDelete = async () => {
+    if (!bulkDeleteRows || bulkDeleteRows.length === 0) return
+    const serviceIds = bulkDeleteRows.map(r => r.original.id).filter(Boolean)
+    if (serviceIds.length === 0) return
+
+    setIsDeleting(true)
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${apiUrl}/catalog/services/bulk-delete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ service_ids: serviceIds })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(data.message || `Successfully deleted ${serviceIds.length} service(s).`)
+        setBulkDeleteRows(null)
+        fetchServices()
+      } else {
+        toast.error(data.message || data.error || 'Failed to bulk delete services.')
+      }
+    } catch (error) {
+      toast.error('Network error: ' + error.message)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const columns = useMemo(() => [
     columnHelper.display({
       id: "select",
@@ -98,7 +223,18 @@ const Services = () => {
     }),
     columnHelper.accessor("name", {
       header: "Service",
-      cell: ({ row }) => <span className="font-medium text-foreground">{row.getValue("name")}</span>,
+      cell: ({ row }) => {
+        const service = row.original
+        return (
+          <button
+            type="button"
+            className="text-left font-medium text-foreground hover:text-primary hover:underline transition-colors cursor-pointer"
+            onClick={() => setViewingService(service)}
+          >
+            {row.getValue("name")}
+          </button>
+        )
+      },
     }),
     columnHelper.accessor("category", {
       header: "Category",
@@ -134,23 +270,33 @@ const Services = () => {
     columnHelper.display({
       id: "actions",
       header: "Actions",
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-              <IconDotsVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>
-              <IconEdit className="mr-2 h-4 w-4" /> Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
-              <IconTrash className="mr-2 h-4 w-4" /> Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
+      cell: ({ row }) => {
+        const service = row.original
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+                <IconDotsVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setViewingService(service)}>
+                View Details
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openEditDialog(service)}>
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => setServiceToDelete(service)}
+              >
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
     }),
   ], [])
 
@@ -190,7 +336,6 @@ const Services = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Services Catalog</h2>
-          <p className="text-muted-foreground text-sm mt-1">Manage services, prices, and categories.</p>
         </div>
         
         <Button onClick={ () => setIsAddOpen(true)}>
@@ -217,6 +362,160 @@ const Services = () => {
         data={data}
         filterConfig={filterConfig}
         isLoading={isLoading}
+        onDeleteSelected={(rows) => setBulkDeleteRows(rows)}
+      />
+
+      {/* ── Edit Service Dialog ── */}
+      <Dialog open={!!editService} onOpenChange={(open) => !open && setEditService(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Service</DialogTitle>
+            <DialogDescription>
+              Update the service details below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-name">Name *</Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                disabled={isEditing}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="edit-category">Category *</Label>
+              <Select
+                value={editForm.category}
+                onValueChange={(val) => setEditForm(prev => ({ ...prev, category: val }))}
+                disabled={isEditing}
+              >
+                <SelectTrigger id="edit-category" className="w-full">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Solutions">Solutions</SelectItem>
+                  <SelectItem value="Professional">Professional</SelectItem>
+                  <SelectItem value="Forms">Forms</SelectItem>
+                  <SelectItem value="Digital">Digital</SelectItem>
+                  <SelectItem value="Corporate">Corporate</SelectItem>
+                  <SelectItem value="Accountancy">Accountancy</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                className="min-h-[80px]"
+                value={editForm.description}
+                onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                disabled={isEditing}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-sellPrice">Sell price (£) *</Label>
+                <Input
+                  id="edit-sellPrice"
+                  type="number"
+                  value={editForm.sellPrice}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, sellPrice: e.target.value }))}
+                  disabled={isEditing}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-originalPrice">Original / cost price (£)</Label>
+                <Input
+                  id="edit-originalPrice"
+                  type="number"
+                  value={editForm.originalPrice}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, originalPrice: e.target.value }))}
+                  disabled={isEditing}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-duration">Duration</Label>
+                <Select
+                  value={editForm.duration}
+                  onValueChange={(val) => setEditForm(prev => ({ ...prev, duration: val }))}
+                  disabled={isEditing}
+                >
+                  <SelectTrigger id="edit-duration" className="w-full">
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="One Time">One Time</SelectItem>
+                    <SelectItem value="1 Month">1 Month</SelectItem>
+                    <SelectItem value="3 Months">3 Months</SelectItem>
+                    <SelectItem value="6 Months">6 Months</SelectItem>
+                    <SelectItem value="12 Months">12 Months</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-status">Status</Label>
+                <Select
+                  value={editForm.status}
+                  onValueChange={(val) => setEditForm(prev => ({ ...prev, status: val }))}
+                  disabled={isEditing}
+                >
+                  <SelectTrigger id="edit-status" className="w-full">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-3">
+            <Button variant="outline" onClick={() => setEditService(null)} disabled={isEditing}>Cancel</Button>
+            <Button onClick={handleEditSubmit} disabled={isEditing}>
+              {isEditing && <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── View Service Modal ── */}
+      <ViewService
+        service={viewingService}
+        isOpen={!!viewingService}
+        onClose={() => setViewingService(null)}
+        onEdit={openEditDialog}
+      />
+
+      {/* ── Delete Confirmation ── */}
+      <DeleteConfirmation
+        isOpen={!!serviceToDelete}
+        onClose={() => setServiceToDelete(null)}
+        onConfirm={confirmDelete}
+        title="Delete Service"
+        description={`This will permanently delete "${serviceToDelete?.name || 'this service'}" from the catalog.`}
+        confirmText="Delete"
+        isLoading={isDeleting}
+      />
+
+      {/* ── Bulk Delete Confirmation ── */}
+      <DeleteConfirmation
+        isOpen={!!bulkDeleteRows}
+        onClose={() => setBulkDeleteRows(null)}
+        onConfirm={confirmBulkDelete}
+        title="Delete Selected Services"
+        description={`This will permanently delete ${bulkDeleteRows?.length || 0} selected service(s) from the catalog.`}
+        confirmText={`Delete (${bulkDeleteRows?.length || 0})`}
+        isLoading={isDeleting}
       />
     </div>
   )

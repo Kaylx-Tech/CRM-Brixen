@@ -27,16 +27,35 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { IconAdjustmentsHorizontal, IconSearch, IconX, IconPlus, IconTrash } from "@tabler/icons-react"
 import { features } from "./data-table-features"
-import { TablePagination } from "@/components/TablePagination"
+
 import { cn } from "cn"
 
-export const DataTable = ({ columns, data, filterConfig, onDeleteSelected, isLoading = false }) => {
+export const DataTable = ({
+  columns,
+  data,
+  filterConfig,
+  onDeleteSelected,
+  isLoading = false,
+  searchValue,
+  onSearchChange,
+  searchPlaceholder = "Search data...",
+  onClearFilters,
+  hideSearch = false,
+}) => {
+  const isSearchControlled = typeof onSearchChange === "function"
   const [sorting, setSorting] = React.useState([])
   const [columnFilters, setColumnFilters] = React.useState([])
   const [globalFilter, setGlobalFilter] = React.useState("")
   const [columnVisibility, setColumnVisibility] = React.useState({})
   const [rowSelection, setRowSelection] = React.useState({})
-  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 })
+  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: data?.length || 9999 })
+
+  // Always show all rows on one page
+  React.useEffect(() => {
+    if (data?.length) {
+      setPagination(prev => ({ ...prev, pageSize: data.length }))
+    }
+  }, [data?.length])
 
   const table = useTable({
     features,
@@ -52,7 +71,7 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected, isLoa
     state: {
       sorting,
       columnFilters,
-      globalFilter,
+      globalFilter: isSearchControlled ? "" : globalFilter,
       columnVisibility,
       rowSelection,
       pagination,
@@ -61,8 +80,23 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected, isLoa
 
   const [filterResetKey, setFilterResetKey] = React.useState(0)
 
+  const hasControlledFilterActive = (filterConfig || []).some((config) => {
+    if (config.value === undefined) return false
+    const v = config.value
+    return v != null && v !== "" && v !== "all"
+  })
+
+  const searchDisplay = isSearchControlled ? (searchValue ?? "") : (globalFilter ?? "")
+  const hasLocalFilters = !isSearchControlled && (!!globalFilter || columnFilters.length > 0)
+  const showClear = hasControlledFilterActive || hasLocalFilters || (isSearchControlled && !!String(searchValue || "").trim())
+
   const handleClearFilters = () => {
-    setGlobalFilter("")
+    if (typeof onClearFilters === "function") {
+      onClearFilters()
+    }
+    if (!isSearchControlled) {
+      setGlobalFilter("")
+    }
     table.resetColumnFilters()
     setColumnFilters([])
     setFilterResetKey((prev) => prev + 1)
@@ -72,35 +106,44 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected, isLoa
     <div>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-4 gap-4">
         <div className="flex items-center gap-2 flex-wrap flex-1">
-          <div className="relative">
-            <IconSearch className="absolute left-2.5 top-1.5 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search data..."
-              value={globalFilter ?? ""}
-              className="max-w-xs pl-8"
-              onChange={(event) => setGlobalFilter(event.target.value)}
-              disabled={isLoading}
-            />
-          </div>
+          {!hideSearch && (
+            <div className="relative">
+              <IconSearch className="absolute left-2.5 top-1.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder={searchPlaceholder}
+                value={searchDisplay}
+                className="max-w-xs pl-8 text-xs"
+                onChange={(event) => {
+                  if (isSearchControlled) onSearchChange(event.target.value)
+                  else setGlobalFilter(event.target.value)
+                }}
+                disabled={isLoading}
+              />
+            </div>
+          )}
           {filterConfig && filterConfig.map((config) => {
-            const column = table.getColumn(config.columnKey);
-            const currentValue = column?.getFilterValue();
+            const isControlled = config.value !== undefined && typeof config.onValueChange === "function"
+            const column = !isControlled && config.columnKey ? table.getColumn(config.columnKey) : null
+            const currentValue = isControlled
+              ? (config.value === "all" || config.value == null || config.value === "" ? null : config.value)
+              : column?.getFilterValue()
 
             return (
-              <Select 
-                key={`${config.columnKey}-${filterResetKey}-${currentValue ?? 'none'}`} 
+              <Select
+                key={`${config.key || config.columnKey}-${filterResetKey}-${currentValue ?? "none"}`}
                 value={currentValue ?? null}
                 onValueChange={(val) => {
-                  column?.setFilterValue(val === "all" ? undefined : val);
+                  if (isControlled) config.onValueChange(val === "all" ? "all" : val)
+                  else column?.setFilterValue(val === "all" ? undefined : val)
                 }}
                 disabled={isLoading}
               >
-                <SelectTrigger className="w-35">
+                <SelectTrigger className="w-35 h-8 text-xs">
                   <SelectValue placeholder={config.placeholder} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="all">{config.allLabel || "All"}</SelectItem>
                     {config.options.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
                         {opt.label}
@@ -109,14 +152,14 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected, isLoa
                   </SelectGroup>
                 </SelectContent>
               </Select>
-            );
+            )
           })}
-          
-          {(globalFilter || columnFilters.length > 0) && (
-            <Button 
-              variant="destructive" 
+
+          {showClear && (
+            <Button
+              variant="destructive"
               size="sm"
-              onClick={handleClearFilters} 
+              onClick={handleClearFilters}
               className="h-7"
             >
               Clear
@@ -152,7 +195,7 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected, isLoa
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="overflow-hidden rounded-md border bg-card">
+      <div className="overflow-x-auto rounded-md border bg-card">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -204,19 +247,20 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected, isLoa
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              Array.from({ length: 6 }).map((_, rIdx) => (
-                <TableRow key={rIdx} className="hover:bg-transparent">
+              Array.from({ length: 8 }).map((_, rIdx) => (
+                <TableRow key={rIdx} className="hover:bg-transparent h-[52px]">
                   {columns.map((col, cIdx) => (
-                    <TableCell key={cIdx} className="py-4">
+                    <TableCell key={cIdx}>
                       <Skeleton 
                         className={cn(
                           "h-4",
                           cIdx === 0 ? "size-4 rounded-sm" :
-                          cIdx === 1 ? "w-28" :
-                          cIdx === 2 ? "w-40" :
-                          cIdx === 3 ? "w-20 rounded-full h-5" :
-                          cIdx === columns.length - 1 ? "size-8 rounded-md" :
-                          "w-20"
+                          cIdx === 1 ? "w-16 h-5 rounded-full" :
+                          cIdx === 2 ? "w-12 h-4" :
+                          cIdx === 3 ? "w-32 h-4" :
+                          cIdx === 4 ? "w-24 h-4" :
+                          cIdx === columns.length - 1 ? "size-7 rounded-md" :
+                          "w-20 h-4"
                         )} 
                       />
                     </TableCell>
@@ -228,6 +272,7 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected, isLoa
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className="min-h-[52px] h-auto"
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -246,22 +291,14 @@ export const DataTable = ({ columns, data, filterConfig, onDeleteSelected, isLoa
           </TableBody>
         </Table>
       </div>
-      {isLoading ? (
-        <div className="py-4">
-          <Skeleton className="h-4 w-40" />
-        </div>
-      ) : (
-        <TablePagination
-          currentPage={pagination.pageIndex + 1}
-          totalPages={Math.max(1, table.getPageCount())}
-          onPageChange={(page) => table.setPageIndex(page - 1)}
-          rowsPerPage={pagination.pageSize}
-          onRowsPerPageChange={(size) => table.setPageSize(size)}
-          totalRows={table.getFilteredRowModel().rows.length}
-          selectedRows={table.getFilteredSelectedRowModel().rows.length}
-          showSelectionMsg={table.getFilteredSelectedRowModel().rows.length > 0}
-        />
-      )}
+      <div className={cn("flex items-center justify-between py-3 px-1 text-xs text-muted-foreground", isLoading && "invisible")}>
+        <span>
+          {table.getFilteredSelectedRowModel().rows.length > 0
+            ? `${table.getFilteredSelectedRowModel().rows.length} of ${table.getFilteredRowModel().rows.length} row(s) selected`
+            : `${table.getFilteredRowModel().rows.length} row(s) total`
+          }
+        </span>
+      </div>
     </div>
   )
 }

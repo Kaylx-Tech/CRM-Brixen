@@ -257,13 +257,6 @@ const Dashboard = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-          {isLoading ? (
-            <Skeleton className="h-4 w-60 mt-1" />
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              {monthLabel} · Real-time backend analytics
-            </p>
-          )}
         </div>
         <div className="flex items-center gap-2">
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>

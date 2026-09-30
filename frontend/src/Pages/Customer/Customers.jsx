@@ -357,7 +357,6 @@ const Customers = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Customers & New Signups</h2>
-          <p className="text-muted-foreground text-sm mt-1">Normal website customers and B2B portal accounts.</p>
         </div>
         <Button onClick={() => setIsModalOpen(true)}>
           <IconUserPlus className="mr-2 h-4 w-4" />

@@ -1,9 +1,163 @@
 """Orders & Service Management Routes (/api/orders)
 """
+import json
 import re
 import secrets
 from db import query_db, execute_db
 from utils.response import json_response, success_response, error_response
+from services.invoice_service import attach_order_profit_fields
+from services.order_service import build_admin_order_list
+from services.manual_order_service import create_manual_crm_order
+
+
+def _wizard_line_items(body):
+    items = body.get('line_items')
+    if isinstance(items, list) and items:
+        return items
+    return []
+
+
+def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False):
+    """Create or update an order from the universal order wizard payload."""
+    service_name = (body.get('service_name') or '').strip()
+    line_items = _wizard_line_items(body)
+    if not service_name and line_items:
+        names = [str(i.get('product_name') or i.get('name') or '').strip() for i in line_items]
+        names = [n for n in names if n]
+        service_name = names[0] if len(names) == 1 else ('Multiple Products' if names else '')
+
+    client_id = body.get('user_id') or body.get('client_id') or user_id
+    company_id = body.get('company_id')
+    service_id = body.get('service_id')
+    notes = (body.get('notes') or '').strip() or None
+    form_values = body.get('form_values') if isinstance(body.get('form_values'), dict) else {}
+    repeatable = body.get('repeatable_data') if isinstance(body.get('repeatable_data'), dict) else {}
+    uploaded_docs = body.get('uploaded_docs') if isinstance(body.get('uploaded_docs'), dict) else {}
+    current_step = int(body.get('current_step') or 1)
+    draft_id = body.get('order_id') or body.get('draft_order_id')
+
+    if not is_staff:
+        client_id = user_id
+
+    if not service_name:
+        return None, 'Service name is required'
+
+    price_sum = 0.0
+    for item in line_items:
+        try:
+            price_sum += float(item.get('price') or item.get('unit_price') or item.get('line_total') or 0)
+        except (TypeError, ValueError):
+            pass
+    amount = float(body.get('amount') or body.get('price') or price_sum or 0)
+    vat = float(body.get('vat', 0) or 0)
+    total = float(body.get('total') or (amount + vat))
+
+    owner_name = (form_values.get('full_name') or body.get('owner_name') or '').strip() or None
+    owner_email = (
+        form_values.get('email')
+        or body.get('company_email')
+        or body.get('owner_form_email')
+        or ''
+    ).strip() or None
+    access_email = (form_values.get('access_email') or body.get('access_email') or '').strip() or None
+    access_password = (
+        form_values.get('access_email_password') or body.get('access_email_password') or ''
+    ).strip() or None
+
+    checkout_payload = {
+        'form_values': form_values,
+        'repeatable_data': repeatable,
+        'uploaded_docs': uploaded_docs,
+        'line_items': line_items,
+        'notes': notes,
+    }
+    checkout_json = json.dumps(checkout_payload)
+    form_json = json.dumps(form_values)
+    status = 'Draft' if as_draft else 'Pending'
+    is_draft = 1 if as_draft else 0
+
+    if draft_id:
+        existing = query_db("SELECT id, order_number FROM orders WHERE id = ? LIMIT 1;", (draft_id,), one=True)
+        if existing:
+            execute_db("""
+                UPDATE orders SET
+                    user_id = ?, company_id = ?, service_id = ?, service_name = ?,
+                    price = ?, vat = ?, total = ?, status = ?, notes = ?,
+                    owner_name = ?, owner_form_email = ?,
+                    checkout_form_json = ?, order_form_values_json = ?,
+                    is_draft = ?, current_step = ?,
+                    access_email = ?, access_email_password = ?,
+                    updated_at = datetime('now')
+                WHERE id = ?;
+            """, (
+                client_id, company_id, service_id, service_name,
+                amount, vat, total, status, notes,
+                owner_name, owner_email,
+                checkout_json, form_json,
+                is_draft, current_step,
+                access_email, access_password,
+                draft_id,
+            ))
+            execute_db("DELETE FROM order_line_items WHERE order_id = ?;", (draft_id,))
+            order_id = int(draft_id)
+            order_num = existing.get('order_number')
+        else:
+            draft_id = None
+
+    if not draft_id:
+        order_num = f"#GB-{secrets.randbelow(900000) + 100000}"
+        order_id = execute_db("""
+            INSERT INTO orders (
+                order_number, user_id, company_id, service_id, service_name,
+                price, vat, total, status, notes,
+                owner_name, owner_form_email,
+                checkout_form_json, order_form_values_json,
+                is_draft, current_step,
+                access_email, access_email_password,
+                created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'));
+        """, (
+            order_num, client_id, company_id, service_id, service_name,
+            amount, vat, total, status, notes,
+            owner_name, owner_email,
+            checkout_json, form_json,
+            is_draft, current_step,
+            access_email, access_password,
+        ))
+
+    for idx, item in enumerate(line_items):
+        pname = (item.get('product_name') or item.get('name') or service_name or 'Product').strip()
+        try:
+            unit = float(item.get('price') or item.get('unit_price') or item.get('line_total') or 0)
+        except (TypeError, ValueError):
+            unit = 0.0
+        execute_db("""
+            INSERT INTO order_line_items (
+                order_id, product_name, category_name, quantity, unit_price, line_total, sort_order
+            ) VALUES (?, ?, ?, 1, ?, ?, ?);
+        """, (
+            order_id,
+            pname,
+            (item.get('category_name') or item.get('category') or '') or None,
+            unit,
+            unit,
+            idx,
+        ))
+
+    return {
+        'id': order_id,
+        'order_id': order_id,
+        'order_number': order_num,
+        'service_name': service_name,
+        'status': status,
+        'order': {
+            'id': order_id,
+            'order_number': order_num,
+            'service_name': service_name,
+            'status': status,
+        },
+    }, None
+
 
 def handle_order_routes(environ, start_response, path, method, user, body, query):
     """Route handler for /api/orders endpoints."""
@@ -17,59 +171,56 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
     user_id = user.get('id')
     is_staff = user_role in ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
 
-    # ── GET /api/orders (List) ─────────────────────────────────────────────
+    # ── GET /api/orders | /api/admin/orders (List) ─────────────────────────
     if path in ('/api/orders', '/api/admin/orders', '/api/client/orders') and method == 'GET':
+        if is_staff or path.startswith('/api/admin/'):
+            payload = build_admin_order_list(user, query)
+            # Keep Payments page fields
+            orders = payload.get('orders') or []
+            payload['total'] = (payload.get('pagination') or {}).get('total', len(orders))
+            payload['total_sell'] = sum(float(o.get('total') or 0) for o in orders)
+            payload['total_cost'] = sum(float(o.get('resolved_cost') or 0) for o in orders)
+            payload['net_profit'] = payload['total_sell'] - payload['total_cost']
+            payload['limit'] = (payload.get('pagination') or {}).get('limit')
+            payload['offset'] = ((payload.get('pagination') or {}).get('page', 1) - 1) * (payload.get('limit') or 25)
+            return success_response(start_response, data=payload)
+
+        # Client-scoped simple list
         search = (query.get('search') or [''])[0].strip()
         status_filter = (query.get('status') or [''])[0].strip()
         limit = min(int((query.get('limit') or ['50'])[0]), 100)
         offset = max(int((query.get('offset') or ['0'])[0]), 0)
-
-        params = []
-        conditions = []
-
-        if not is_staff:
-            conditions.append("o.user_id = ?")
-            params.append(user_id)
-
+        params = [user_id]
+        conditions = ["o.user_id = ?"]
         if search:
-            conditions.append("(o.order_number LIKE ? OR o.service_name LIKE ? OR u.full_name LIKE ?)")
-            params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
-
+            conditions.append("(o.order_number LIKE ? OR o.service_name LIKE ?)")
+            params.extend([f"%{search}%", f"%{search}%"])
         if status_filter:
             conditions.append("o.status = ?")
             params.append(status_filter)
-
-        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-
-        count_row = query_db(f"SELECT COUNT(*) as total FROM orders o LEFT JOIN users u ON o.user_id = u.id {where_clause};", params, one=True)
-        total_count = count_row['total'] if count_row else 0
-
-        params.extend([limit, offset])
+        where_clause = "WHERE " + " AND ".join(conditions)
         rows = query_db(f"""
-            SELECT o.id, o.order_number, o.service_name, o.price, o.vat, o.total as amount,
-                   o.status, o.created_at, o.user_id,
-                   u.full_name as client_name, u.email as client_email,
-                   c.name as company_name, c.company_number
+            SELECT o.id, o.order_number, o.service_name, o.price, o.vat, o.total as amount, o.total,
+                   o.status, o.created_at, o.payment_mode,
+                   c.name as company_name
             FROM orders o
-            LEFT JOIN users u ON o.user_id = u.id
             LEFT JOIN companies c ON o.company_id = c.id
             {where_clause}
             ORDER BY o.created_at DESC
             LIMIT ? OFFSET ?;
-        """, params)
-
+        """, params + [limit, offset])
         return success_response(start_response, data={
             "orders": [dict(r) for r in rows],
-            "total": total_count,
+            "total": len(rows),
             "limit": limit,
-            "offset": offset
+            "offset": offset,
         })
 
     # ── GET /api/orders/<id> (Detail) ─────────────────────────────────────
     match_detail = re.match(r'^/api/(?:admin/|client/)?orders/(\d+)$', path)
     if match_detail and method == 'GET':
         order_id = int(match_detail.group(1))
-        
+
         row = query_db("""
             SELECT o.*, o.total as amount, u.full_name as client_name, u.email as client_email, u.phone as client_phone,
                    c.name as company_name, c.company_number
@@ -86,46 +237,105 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         if not is_staff and row['user_id'] != user_id:
             return error_response(start_response, "Access denied", status_code=403)
 
-        # Timeline / History notes
         events = query_db("SELECT * FROM order_timeline WHERE order_id = ? ORDER BY step_date DESC, id DESC;", (order_id,))
-        # Uploaded documents
         docs = query_db("SELECT * FROM documents WHERE order_id = ? ORDER BY created_at DESC;", (order_id,))
 
-        data = dict(row)
+        data = attach_order_profit_fields(dict(row))
         data['timeline'] = [dict(e) for e in events]
         data['documents'] = [dict(d) for d in docs]
 
         return success_response(start_response, data=data)
 
-    # ── POST /api/orders (Create Order) ────────────────────────────────────
+    # ── POST /api/orders/draft (Wizard draft save) ─────────────────────────
+    if path in ('/api/orders/draft', '/api/admin/orders/draft', '/api/client/orders/draft') and method == 'POST':
+        result, err = _upsert_wizard_order(body=body or {}, user_id=user_id, is_staff=is_staff, as_draft=True)
+        if err:
+            return error_response(start_response, err, status_code=400)
+        return success_response(
+            start_response,
+            data=result,
+            message=f"Draft saved as {result.get('order_number')}.",
+        )
+
+    # ── POST /api/orders (Create Order / Wizard submit / Manual CRM) ───────
     if path in ('/api/orders', '/api/admin/orders', '/api/client/orders') and method == 'POST':
-        service_name = (body.get('service_name') or '').strip()
-        amount = float(body.get('amount') or body.get('price') or 0)
-        vat = float(body.get('vat', 0))
-        total = float(body.get('total') or (amount + vat))
-        client_id = body.get('user_id') or body.get('client_id') or user_id
-        company_id = body.get('company_id')
+        payload = body or {}
+        is_manual = bool(
+            payload.get('client_mode')
+            or payload.get('new_client_email')
+            or payload.get('company_email')
+            or payload.get('company_type')
+            or payload.get('sic_code')
+        )
+        if is_manual:
+            result, err = create_manual_crm_order(payload, actor=user)
+        else:
+            result, err = _upsert_wizard_order(body=payload, user_id=user_id, is_staff=is_staff, as_draft=False)
+        if err:
+            return error_response(start_response, err, status_code=400)
+        return success_response(
+            start_response,
+            data=result,
+            message=f"Order {result.get('order_number')} created successfully.",
+            status_code=201,
+        )
 
+    # ── PATCH /api/orders/<id>/cost (Update Cost Price) ───────────────────
+    match_cost = re.match(r'^/api/(?:admin/)?orders/(\d+)/cost$', path)
+    if match_cost and method in ('POST', 'PATCH', 'PUT'):
+        order_id = int(match_cost.group(1))
         if not is_staff:
-            client_id = user_id
+            return error_response(start_response, "Only staff can update order cost", status_code=403)
 
-        if not service_name:
-            return error_response(start_response, "Service name is required", status_code=400)
+        if 'cost_price' in body and body.get('cost_price') is None:
+            execute_db("UPDATE orders SET cost_price = NULL, updated_at = datetime('now') WHERE id = ?;", (order_id,))
+            return success_response(start_response, data={"id": order_id, "cost_price": None}, message="Order cost reset.")
 
-        order_num = f"#GB-{secrets.randbelow(900000) + 100000}"
+        cost_price = float(body.get('cost_price', 0) or 0)
+        execute_db(
+            "UPDATE orders SET cost_price = ?, updated_at = datetime('now') WHERE id = ?;",
+            (cost_price, order_id)
+        )
+        return success_response(
+            start_response,
+            data={"id": order_id, "cost_price": cost_price},
+            message="Order cost updated successfully."
+        )
 
-        order_id = execute_db("""
-            INSERT INTO orders (
-                order_number, user_id, company_id, service_name,
-                price, vat, total, status, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending', datetime('now'));
-        """, (order_num, client_id, company_id, service_name, amount, vat, total))
+    # ── PATCH/PUT /api/orders/<id> (Update Order) ─────────────────────────
+    match_update = re.match(r'^/api/(?:admin/)?orders/(\d+)$', path)
+    if match_update and method in ('PATCH', 'PUT'):
+        order_id = int(match_update.group(1))
+        if not is_staff:
+            return error_response(start_response, "Only staff can update orders", status_code=403)
 
-        return success_response(start_response, data={
-            "id": order_id,
-            "order_number": order_num,
-            "service_name": service_name
-        }, message="Order created successfully.", status_code=201)
+        updates = []
+        params = []
+        if 'cost_price' in body:
+            if body.get('cost_price') is None or str(body.get('cost_price')).strip() == '':
+                updates.append("cost_price = NULL")
+            else:
+                updates.append("cost_price = ?")
+                params.append(float(body['cost_price'] or 0))
+        if 'price' in body:
+            updates.append("price = ?")
+            params.append(float(body['price'] or 0))
+        if 'total' in body:
+            updates.append("total = ?")
+            params.append(float(body['total'] or 0))
+        if 'payment_mode' in body:
+            updates.append("payment_mode = ?")
+            params.append(body['payment_mode'])
+        if 'status' in body:
+            updates.append("status = ?")
+            params.append(body['status'])
+
+        if updates:
+            updates.append("updated_at = datetime('now')")
+            params.append(order_id)
+            execute_db(f"UPDATE orders SET {', '.join(updates)} WHERE id = ?;", params)
+
+        return success_response(start_response, message="Order updated successfully.")
 
     # ── PATCH /api/orders/<id>/status (Update Status) ─────────────────────
     match_status = re.match(r'^/api/(?:admin/)?orders/(\d+)/status$', path)
@@ -142,5 +352,26 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         execute_db("UPDATE orders SET status = ? WHERE id = ?;", (new_status, order_id))
 
         return success_response(start_response, message=f"Order status updated to {new_status}.")
+
+    # ── DELETE /api/orders/<id> (Cancel / soft-delete) ─────────────────────
+    match_delete = re.match(r'^/api/(?:admin/)?orders/(\d+)$', path)
+    if match_delete and method == 'DELETE':
+        order_id = int(match_delete.group(1))
+        if not is_staff:
+            return error_response(start_response, "Only staff can delete orders", status_code=403)
+
+        existing = query_db("SELECT id, order_number FROM orders WHERE id = ?;", (order_id,), one=True)
+        if not existing:
+            return error_response(start_response, "Order not found", status_code=404)
+
+        execute_db(
+            "UPDATE orders SET status = 'Cancelled', updated_at = datetime('now') WHERE id = ?;",
+            (order_id,),
+        )
+        return success_response(
+            start_response,
+            data={"id": order_id, "status": "Cancelled"},
+            message="Order cancelled successfully.",
+        )
 
     return None

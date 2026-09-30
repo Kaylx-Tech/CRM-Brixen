@@ -1,371 +1,615 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 import { createColumnHelper } from "@tanstack/react-table"
 import { DataTable } from "../../Layout/DataTable"
 import { SectionCards } from "../../Layout/StatsCard"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  IconArrowsSort,
   IconPlus,
   IconFileInvoice,
-  IconPencil,
   IconFolderOpen,
   IconTrash,
-  IconInfoCircle,
-  IconChevronDown,
-  IconChevronUp,
-  IconDotsVertical
+  IconDotsVertical,
+  IconRefresh,
 } from "@tabler/icons-react"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { OverflowTooltip } from "@/components/OverflowTooltip"
+import { toast } from "sonner"
+import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
+import CreateOrderWizard from "./CreateOrderWizard"
+import QuickCrmOrder from "./QuickCrmOrder"
 
 const columnHelper = createColumnHelper()
 
-const mockData = [
-  {
-    id: 1,
-    orderNum: '#GB15335',
-    date: '28/09/26',
-    ownerName: 'Ishrat Sajjad',
-    ownerEmail: 'Clockcarkltd@gmail.com',
-    company: 'CLOCK CARK LTD',
-    products: [{ name: 'Tide', color: 'teal' }],
-    price: '£50',
-    payment: 'PKR',
-    status: '100%',
-    statusColor: 'green'
-  },
-  {
-    id: 2,
-    orderNum: '#GB15334',
-    date: '28/09/26',
-    ownerName: 'Ahmed Shahid',
-    ownerEmail: 'jareenaqvi2@gmail.com',
-    company: 'FLIP ELEVATE LTD',
-    products: [
-      { name: 'AD01 Form', color: 'blue' },
-      { name: 'Registered Office Address', color: 'pink' },
-      { name: 'KYC', color: 'green' }
-    ],
-    price: '£80',
-    payment: 'PKR',
-    status: '0%',
-    statusColor: 'blue'
-  },
-  {
-    id: 3,
-    orderNum: '#GB15333',
-    date: '23/09/26',
-    ownerName: 'Syed Khadim Hussain Shah',
-    ownerEmail: 'syedkhadimhussain@outlook.com',
-    company: 'ONLINE SWITCH LTD',
-    products: [{ name: 'Confirmation', color: 'gray' }],
-    price: '£70',
-    payment: 'PKR',
-    status: '100%',
-    statusColor: 'green'
-  },
-  {
-    id: 4,
-    orderNum: '#GB15332',
-    date: '23/09/26',
-    ownerName: 'Muhammad Imran Aslam',
-    ownerEmail: 'inprotelltd@gmail.com',
-    company: 'INPROTEL LTD',
-    products: [{ name: 'Confirmation', color: 'gray' }],
-    price: '£70',
-    payment: 'PKR',
-    status: '100%',
-    statusColor: 'green'
-  },
-  {
-    id: 5,
-    orderNum: '#GB15331',
-    date: '23/09/26',
-    ownerName: 'Muhammad Rohan Nasim',
-    ownerEmail: 'Rohanltdduk01@gmail.com',
-    company: 'ROHAN DEALS LTD',
-    products: [{ name: 'Tide', color: 'teal' }],
-    price: '£0',
-    payment: 'GBP',
-    status: '100%',
-    statusColor: 'green'
+const PAYMENT_MODES = [
+  { value: 'PKR(Bank Transfer)', label: 'PKR' },
+  { value: 'GBP(Bank Transfer)', label: 'GBP' },
+  { value: 'Website Charge', label: 'Website' },
+]
+
+const STATUS_OPTIONS = [
+  'Pending Verification',
+  'Pending',
+  'Processing',
+  'In Progress',
+  'Completed',
+  'Cancelled',
+  'Refunded',
+]
+
+const DATE_PRESETS = [
+  { value: 'all', label: 'All dates' },
+  { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
+  { value: 'this_week', label: 'This week' },
+  { value: 'this_month', label: 'This month' },
+  { value: 'last_month', label: 'Last month' },
+  { value: 'this_year', label: 'This year' },
+]
+
+function formatOrderNumberDisplay(raw) {
+  const s = String(raw ?? '').trim()
+  if (!s || s === '—') return '—'
+  const tail = s.match(/(\d+)\s*$/)
+  const digits = tail ? tail[1] : s.replace(/\D/g, '')
+  if (!digits) return s
+  return `#GB${String(parseInt(digits, 10))}`
+}
+
+function truncateWords(text, maxWords = 4) {
+  const full = String(text || '').trim()
+  if (!full) return { short: '—', full: '—', truncated: false }
+  const words = full.split(/\s+/).filter(Boolean)
+  if (words.length <= maxWords) return { short: full, full, truncated: false }
+  return { short: `${words.slice(0, maxWords).join(' ')}…`, full, truncated: true }
+}
+
+function progressPercent(order) {
+  const status = String(order?.status || '')
+  const active = Number(order?.line_item_active_count ?? order?.line_item_count ?? 0)
+  const done = Number(order?.line_items_completed || 0)
+  if (active >= 1) {
+    if (status === 'Cancelled' || status === 'Refunded') return 0
+    return Math.max(0, Math.min(100, Math.round((100 * done) / Math.max(active, 1))))
   }
-];
+  if (status === 'Completed') return 100
+  if (status === 'Cancelled' || status === 'Refunded') return 0
+  const stored = Number(order?.progress_percent)
+  if (Number.isFinite(stored)) return Math.max(0, Math.min(100, stored))
+  if (status === 'In Progress') return 50
+  if (status === 'Processing') return 25
+  if (status === 'Pending Verification') return 10
+  return 0
+}
 
-const Orders = () => {
-  const [orders, setOrders] = useState(mockData)
-  const [isLoading, setIsLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('All Orders')
-  const [companyOptions, setCompanyOptions] = useState([])
+function statusTone(order, pct) {
+  const status = String(order?.status || 'Pending')
+  if (status === 'Completed' || pct >= 100) return 'badge-green'
+  if (status === 'Cancelled' || status === 'Refunded') return 'bg-destructive/15 text-destructive'
+  if (status === 'In Progress' || status === 'Processing') return 'badge-sky'
+  return 'badge-amber'
+}
 
-  // Update an editable field in-place so inline edits persist across re-renders
-  const updateOrderField = React.useCallback((id, field, value) => {
-    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)))
-  }, [])
+function productTone(name) {
+  const n = String(name || '').toLowerCase()
+  if (/tide|bank/.test(n)) return 'badge-green'
+  if (/kyc|identity/.test(n)) return 'badge-green'
+  if (/registered office|address/.test(n)) return 'badge-purple'
+  if (/confirmation|ad01|form/.test(n)) return 'badge-sky'
+  return 'badge-sky'
+}
+
+function TruncatedTooltip({ text, className }) {
+  return <OverflowTooltip text={text} className={className} />
+}
+
+function ProductPills({ summary }) {
+  const parts = String(summary || '').split(',').map((p) => p.trim()).filter(Boolean)
+  if (!parts.length) return <span className="text-muted-foreground text-xs">—</span>
+  return (
+    <div className="flex flex-wrap gap-1 max-w-[220px]">
+      {parts.map((name, idx) => {
+        const { short, full, truncated } = truncateWords(name, 3)
+        const pill = (
+          <Badge key={`${name}-${idx}`} className={`${productTone(name)} text-[10px] font-medium`}>
+            <span className="w-1 h-1 rounded-full bg-current mr-1 opacity-60" />
+            {short}
+          </Badge>
+        )
+        if (!truncated) return pill
+        return (
+          <Tooltip key={`${name}-${idx}`}>
+            <TooltipTrigger className="inline-flex">{pill}</TooltipTrigger>
+            <TooltipContent className="max-w-xs break-words">{full}</TooltipContent>
+          </Tooltip>
+        )
+      })}
+    </div>
+  )
+}
+
+export default function Orders() {
+  const [orders, setOrders] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+  const [stats, setStats] = useState({ total_orders: 0, pending: 0, in_progress: 0, completed: 0, revenue: 0 })
+  const [facets, setFacets] = useState({ products: [], companies: [], customers: [] })
+  const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0, total_pages: 1 })
+
+  const [clientType, setClientType] = useState('All')
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [productFilter, setProductFilter] = useState('all')
+  const [companyFilter, setCompanyFilter] = useState('all')
+  const [paymentFilter, setPaymentFilter] = useState('all')
+  const [datePreset, setDatePreset] = useState('all')
+  const [b2bClientId, setB2bClientId] = useState('all')
+  const [priceDrafts, setPriceDrafts] = useState({})
+  const [savingId, setSavingId] = useState(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [quickCrmOpen, setQuickCrmOpen] = useState(false)
+
+  const fetchOrders = useCallback(async (page = 1) => {
+    setIsLoading(true)
+    setLoadError(null)
+    try {
+      const qs = new URLSearchParams({ page: String(page), limit: '25' })
+      if (search.trim()) qs.set('search', search.trim())
+      if (statusFilter !== 'all') qs.set('status', statusFilter)
+      if (productFilter !== 'all') qs.set('product', productFilter)
+      if (companyFilter !== 'all') qs.set('company_id', companyFilter)
+      if (paymentFilter !== 'all') qs.set('payment_status', paymentFilter)
+      if (datePreset !== 'all') qs.set('date_preset', datePreset)
+      if (clientType === 'B2B') {
+        qs.set('client_type', 'B2B')
+        if (b2bClientId !== 'all') qs.set('customer_id', b2bClientId)
+      } else if (clientType === 'Customer') {
+        qs.set('client_type', 'Customer')
+      }
+
+      const res = await apiRequest(`/admin/orders?${qs.toString()}`, { label: 'Orders' })
+      if (!res.ok) {
+        // Fallback to /orders if admin alias fails
+        const res2 = await apiRequest(`/orders?${qs.toString()}`, { label: 'Orders' })
+        if (!res2.ok) {
+          setOrders([])
+          setLoadError(res2.reason || res.reason)
+          return
+        }
+        const data = res2.data?.data || res2.data || {}
+        applyPayload(data, page)
+        return
+      }
+      const data = res.data?.data || res.data || {}
+      applyPayload(data, page)
+    } catch (err) {
+      setOrders([])
+      setLoadError(err?.message || 'Unexpected error')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [search, statusFilter, productFilter, companyFilter, paymentFilter, datePreset, clientType, b2bClientId])
+
+  function applyPayload(data, page) {
+    const list = data.orders || []
+    setOrders(list)
+    if (data.stats) setStats(data.stats)
+    if (data.facets) setFacets(data.facets)
+    if (data.pagination) setPagination(data.pagination)
+    else setPagination((p) => ({ ...p, page, total: data.total || list.length }))
+    const drafts = {}
+    list.forEach((o) => { drafts[o.id] = Number(o.total || 0).toFixed(2) })
+    setPriceDrafts(drafts)
+    if (list.length === 0) toastApiEmpty('Orders', getApiBase())
+  }
 
   useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        const apiUrl = import.meta.env.VITE_API_URL || '/api'
-        const token = localStorage.getItem('token')
-        const res = await fetch(`${apiUrl}/admin/companies?limit=500`, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        })
-        if (res.ok) {
-          const data = await res.json()
-          const rawList = data.companies || data.data?.companies || (Array.isArray(data.data) ? data.data : []) || []
-          if (Array.isArray(rawList)) {
-            const opts = rawList.map(c => ({
-              label: c.company_name || c.name || 'Unknown',
-              value: c.company_name || c.name || c.id
-            }))
-            opts.sort((a, b) => a.label.localeCompare(b.label))
-            setCompanyOptions(opts)
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load companies for filter", err)
-      }
-    }
-    fetchCompanies()
-  }, [])
+    const t = setTimeout(() => fetchOrders(1), 200)
+    return () => clearTimeout(t)
+  }, [fetchOrders])
 
+  const b2bCustomers = useMemo(
+    () => (facets.customers || []).filter((c) => Number(c.is_b2b) === 1 || String(c.client_type || '').toUpperCase() === 'B2B'),
+    [facets.customers]
+  )
+
+  const updateOrder = async (orderId, payload) => {
+    setSavingId(orderId)
+    try {
+      const res = await apiRequest(`/orders/${orderId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+        label: 'Update order',
+      })
+      if (res.ok) {
+        toast.success('Order updated')
+        fetchOrders(pagination.page || 1)
+      }
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const handleDelete = async (order) => {
+    if (!window.confirm(`Cancel order ${order.order_number || order.id}?`)) return
+    const res = await apiRequest(`/orders/${order.id}`, {
+      method: 'DELETE',
+      label: 'Cancel order',
+    })
+    if (res.ok) {
+      toast.success('Order cancelled')
+      fetchOrders(pagination.page || 1)
+    }
+  }
+
+  const statCards = useMemo(() => [
+    { title: 'Total Orders', value: String(stats.total_orders ?? 0), footerSubText: 'Matching filters' },
+    { title: 'Pending', value: String(stats.pending ?? 0), footerSubText: 'Pending / verification' },
+    { title: 'In Progress', value: String(stats.in_progress ?? 0), footerSubText: 'Processing + in progress' },
+    { title: 'Completed', value: String(stats.completed ?? 0), footerSubText: 'Finished orders' },
+    {
+      title: 'Total Revenue',
+      value: `£${Number(stats.revenue || 0).toFixed(2)}`,
+      footerSubText: 'Excluding cancelled',
+    },
+  ], [stats])
 
   const columns = useMemo(() => [
     columnHelper.display({
-      id: "select",
+      id: 'select',
       header: ({ table }) => (
         <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
+          onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)}
           aria-label="Select all"
         />
       ),
       cell: ({ row }) => (
         <Checkbox
           checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          onCheckedChange={(v) => row.toggleSelected(!!v)}
           aria-label="Select row"
         />
       ),
       enableSorting: false,
       enableHiding: false,
     }),
-    columnHelper.accessor("orderNum", {
-      header: "ORDER #",
+    columnHelper.accessor('order_number', {
+      header: 'Order #',
       cell: ({ row }) => (
-        <Badge className="badge-sky rounded-full cursor-pointer">
-          {row.getValue("orderNum")}
+        <Badge className="badge-sky rounded-full font-mono cursor-pointer">
+          {formatOrderNumberDisplay(row.original.order_number)}
         </Badge>
       ),
     }),
-    columnHelper.accessor("ownerName", {
-      header: "OWNER",
+    columnHelper.accessor('created_at', {
+      header: 'Date',
       cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="font-medium text-sm text-foreground">{row.original.ownerName}</span>
-          <span className="text-xs text-muted-foreground">{row.original.ownerEmail}</span>
-        </div>
+        <span className="text-xs text-muted-foreground">
+          {row.original.created_at
+            ? new Date(row.original.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' })
+            : '—'}
+        </span>
       ),
-    }),
-    columnHelper.accessor("company", {
-      header: "COMPANY",
-      cell: ({ row }) => <span className=" text-xs">{row.getValue("company")}</span>,
-    }),
-    columnHelper.accessor("products", {
-      header: "PRODUCT",
-      filterFn: (row, columnId, filterValue) => {
-        if (!filterValue) return true
-        const products = row.getValue(columnId) || []
-        return products.some((p) => p.name === filterValue)
-      },
-      cell: ({ row }) => (
-        <div className="flex flex-wrap gap-1.5 max-w-[250px]">
-          {row.original.products.map((p, idx) => {
-            let badgeClass = "badge-sky";
-            if (p.color === 'teal' || p.color === 'green') badgeClass = "badge-green";
-            if (p.color === 'pink') badgeClass = "badge-purple";
-            if (p.color === 'gray') badgeClass = "bg-muted text-muted-foreground";
-
-            return (
-              <Badge key={idx} className={badgeClass}>
-                <span className="w-1 h-1 rounded-full bg-current mr-1.5 opacity-60"></span>
-                {p.name}
-              </Badge>
-            )
-          })}
-        </div>
-      ),
-    }),
-    columnHelper.accessor("date", {
-      header: "DATE",
-      cell: ({ row }) => <span className="font-medium text-xs text-muted-foreground">{row.getValue("date")}</span>,
-    }),
-    columnHelper.accessor("price", {
-      header: "PRICE",
-      cell: ({ row }) => (
-        <Input
-          value={row.original.price}
-          onChange={(e) => updateOrderField(row.original.id, "price", e.target.value)}
-          className="h-8 w-20 text-sm font-bold bg-transparent"
-        />
-      ),
-    }),
-    columnHelper.accessor("payment", {
-      header: "PAYMENT",
-      filterFn: (row, columnId, filterValue) =>
-        !filterValue || row.getValue(columnId) === filterValue,
-      cell: ({ row }) => (
-        <Select
-          value={row.original.payment}
-          onValueChange={(val) => updateOrderField(row.original.id, "payment", val)}
-        >
-          <SelectTrigger className="w-24 h-8 text-xs">
-            <SelectValue placeholder="Select" />
-          </SelectTrigger>
-          <SelectContent className="w-24">
-            <SelectGroup>
-              <SelectItem value="PKR">PKR</SelectItem>
-              <SelectItem value="GBP">GBP</SelectItem>
-              <SelectItem value="Website">Website</SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      ),
-    }),
-    columnHelper.accessor("status", {
-      header: "STATUS",
-      filterFn: (row, columnId, filterValue) =>
-        !filterValue || row.getValue(columnId) === filterValue,
-      cell: ({ row }) => {
-        const color = row.original.statusColor;
-        if (color === 'green') return <Badge className="badge-green">{row.getValue("status")}</Badge>;
-        if (color === 'blue') return <Badge className="badge-sky">{row.getValue("status")}</Badge>;
-
-        return <Badge variant="secondary">{row.getValue("status")}</Badge>;
-      }
     }),
     columnHelper.display({
-      id: "actions",
-      header: "ACTION",
+      id: 'owner',
+      header: 'Owner',
+      cell: ({ row }) => {
+        const o = row.original
+        const name = o.owner_name || o.client_name || '—'
+        const email = o.owner_form_email || o.client_email || '—'
+        return (
+          <div className="flex flex-col max-w-[160px] min-w-0">
+            <TruncatedTooltip text={name} className="block max-w-full truncate text-left font-medium text-sm cursor-default" />
+            <TruncatedTooltip text={email} className="block max-w-full truncate text-left text-xs text-muted-foreground cursor-default" />
+          </div>
+        )
+      },
+    }),
+    columnHelper.accessor('company_name', {
+      header: 'Company',
+      cell: ({ row }) => {
+        const name = row.getValue('company_name') || '—'
+        return (
+          <TruncatedTooltip
+            text={name}
+            className="block max-w-[140px] truncate text-left text-xs cursor-default"
+          />
+        )
+      },
+    }),
+    columnHelper.display({
+      id: 'product',
+      header: 'Product',
       cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-              <IconDotsVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>View Details</DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">Delete</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ProductPills summary={row.original.products_summary || row.original.service_name} />
       ),
     }),
-  ], [updateOrderField])
+    columnHelper.display({
+      id: 'price',
+      header: 'Price',
+      cell: ({ row }) => {
+        const o = row.original
+        const val = priceDrafts[o.id] !== undefined ? priceDrafts[o.id] : Number(o.total || 0).toFixed(2)
+        return (
+          <div className="inline-flex items-center gap-0.5">
+            <span className="text-[10px] text-muted-foreground">£</span>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              disabled={savingId === o.id}
+              className="h-6 w-16 px-1 text-[11px] font-semibold text-center"
+              value={val}
+              onChange={(e) => setPriceDrafts((p) => ({ ...p, [o.id]: e.target.value }))}
+              onBlur={() => {
+                const n = parseFloat(val)
+                if (!Number.isFinite(n) || Math.abs(n - Number(o.total || 0)) < 0.001) return
+                updateOrder(o.id, { total: n, price: n })
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+            />
+          </div>
+        )
+      },
+    }),
+    columnHelper.display({
+      id: 'payment',
+      header: 'Payment',
+      cell: ({ row }) => {
+        const o = row.original
+        const current = o.payment_mode || ''
+        return (
+          <Select
+            value={current || 'none'}
+            onValueChange={(val) => updateOrder(o.id, { payment_mode: val === 'none' ? null : val })}
+            disabled={savingId === o.id}
+          >
+            <SelectTrigger className="h-7 w-[88px] text-xs">
+              <SelectValue placeholder="Select" />
+            </SelectTrigger>
+            <SelectContent className="overflow-hidden p-0">
+              <SelectGroup className="p-1">
+                <SelectItem value="none">Select</SelectItem>
+                {PAYMENT_MODES.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        )
+      },
+    }),
+    columnHelper.display({
+      id: 'status',
+      header: 'Status',
+      cell: ({ row }) => {
+        const o = row.original
+        const pct = progressPercent(o)
+        return (
+          <Tooltip>
+            <TooltipTrigger className="inline-flex">
+              <Badge className={`${statusTone(o, pct)} tabular-nums`}>{pct}%</Badge>
+            </TooltipTrigger>
+            <TooltipContent>{o.status || 'Pending'} · {pct}%</TooltipContent>
+          </Tooltip>
+        )
+      },
+    }),
+    columnHelper.display({
+      id: 'actions',
+      header: 'Action',
+      cell: ({ row }) => {
+        const o = row.original
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+                <IconDotsVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => toast.info(`Order ${o.order_number}: ${o.status}`)}>
+                <IconFolderOpen className="w-4 h-4 mr-2" />
+                Open order
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => handleDelete(o)}
+              >
+                <IconTrash className="w-4 h-4 mr-2" />
+                Delete / Cancel
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
+    }),
+  ], [priceDrafts, savingId])
 
-  // Build product/status filter options from the actual data so filters always match
-  const productOptions = useMemo(() => {
-    const names = new Set()
-    orders.forEach((o) => (o.products || []).forEach((p) => p?.name && names.add(p.name)))
-    return Array.from(names).sort().map((name) => ({ label: name, value: name }))
-  }, [orders])
-
-  const statusOptions = useMemo(() => {
-    const values = new Set()
-    orders.forEach((o) => o?.status && values.add(o.status))
-    return Array.from(values).sort().map((s) => ({ label: s, value: s }))
-  }, [orders])
-
-  const filterConfig = [
+  const tableFilterConfig = useMemo(() => [
     {
-      columnKey: "company",
-      placeholder: "Company name",
-      options: companyOptions
+      key: 'company',
+      placeholder: 'Company',
+      allLabel: 'All Companies',
+      value: companyFilter,
+      onValueChange: setCompanyFilter,
+      options: (facets.companies || []).map((c) => ({ label: c.name, value: String(c.id) })),
     },
     {
-      columnKey: "status",
-      placeholder: "Status",
-      options: statusOptions
+      key: 'status',
+      placeholder: 'Status',
+      allLabel: 'All Statuses',
+      value: statusFilter,
+      onValueChange: setStatusFilter,
+      options: STATUS_OPTIONS.map((s) => ({ label: s, value: s })),
     },
     {
-      columnKey: "products",
-      placeholder: "Product",
-      options: productOptions
+      key: 'product',
+      placeholder: 'Product',
+      allLabel: 'All Products',
+      value: productFilter,
+      onValueChange: setProductFilter,
+      options: (facets.products || []).map((p) => ({ label: p, value: p })),
     },
     {
-      columnKey: "payment",
-      placeholder: "Payment",
+      key: 'payment',
+      placeholder: 'Payment',
+      allLabel: 'All Payments',
+      value: paymentFilter,
+      onValueChange: setPaymentFilter,
       options: [
-        { label: "PKR", value: "PKR" },
-        { label: "GBP", value: "GBP" },
-        { label: "Website", value: "Website" },
-      ]
-    }
-  ];
+        { label: 'Paid', value: 'Paid' },
+        { label: 'Pending', value: 'Pending' },
+        { label: 'Overdue', value: 'Overdue' },
+        { label: 'Unpaid', value: 'Unpaid' },
+      ],
+    },
+    {
+      key: 'date',
+      placeholder: 'Date',
+      allLabel: 'All Dates',
+      value: datePreset,
+      onValueChange: setDatePreset,
+      options: DATE_PRESETS.filter((d) => d.value !== 'all').map((d) => ({ label: d.label, value: d.value })),
+    },
+  ], [facets.companies, facets.products, companyFilter, statusFilter, productFilter, paymentFilter, datePreset])
+
+  const clearFilters = () => {
+    setSearch('')
+    setStatusFilter('all')
+    setProductFilter('all')
+    setCompanyFilter('all')
+    setPaymentFilter('all')
+    setDatePreset('all')
+    setB2bClientId('all')
+  }
 
   return (
-    <div className="flex flex-col gap-6 w-full pb-10">
-      {/* Header section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="flex flex-col gap-4 w-full pb-10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Admin Orders Manager</h2>
-          <p className="text-muted-foreground text-sm mt-1">Manage all client orders and quick CRM orders.</p>
         </div>
-        <div className="flex gap-2">
-          <Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => fetchOrders(pagination.page || 1)}>
+            <IconRefresh className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+          <Button onClick={() => setCreateOpen(true)}>
             <IconPlus className="mr-2 h-4 w-4" />
             Create Order
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => setQuickCrmOpen(true)}>
             <IconFileInvoice className="mr-2 h-4 w-4" />
             Quick CRM Order
           </Button>
         </div>
       </div>
 
-      {/* Stat Cards */}
-      <SectionCards
-        stats={[
-          { title: 'Total Orders', value: '24' },
-          { title: 'Pending', value: '0' },
-          { title: 'In Progress', value: '6' },
-          { title: 'Completed', value: '18' },
-          { title: 'Total Revenue', value: '£2160.00' },
-        ]}
-      />
+      <SectionCards stats={statCards} isLoading={isLoading} compact />
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs
+        value={clientType === 'All' ? 'All' : clientType === 'Customer' ? 'Customer' : 'B2B'}
+        onValueChange={(v) => {
+          setClientType(v)
+          setB2bClientId('all')
+        }}
+      >
         <TabsList className="h-9 bg-background">
-          <TabsTrigger value="All Orders" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">All Orders</TabsTrigger>
-          <TabsTrigger value="Customers" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Customers</TabsTrigger>
-          <TabsTrigger value="B2B Clients" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">B2B Clients</TabsTrigger>
+          <TabsTrigger value="All" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            All Orders
+          </TabsTrigger>
+          <TabsTrigger value="Customer" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            Customers
+          </TabsTrigger>
+          <TabsTrigger value="B2B" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            B2B Clients
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
+      {clientType === 'B2B' && (
+        <div className="rounded-lg border bg-card p-3 space-y-2">
+          <div className="text-sm font-semibold">Select a B2B client</div>
+          <p className="text-xs text-muted-foreground">Open a B2B account first, then their orders appear below.</p>
+          <Select value={b2bClientId} onValueChange={setB2bClientId}>
+            <SelectTrigger className="max-w-md h-8 text-xs">
+              <SelectValue placeholder="Choose B2B client" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All B2B clients</SelectItem>
+              {b2bCustomers.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.full_name || c.email} {c.b2b_id ? `(${c.b2b_id})` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
+      <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        Click <strong>Open order</strong> on any row for details. Edit price or payment inline — same as the live CRM.
+      </div>
 
-      {/* Table */}
+      {loadError && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {loadError}
+        </div>
+      )}
+
       <DataTable
         columns={columns}
         data={orders}
-        filterConfig={filterConfig}
+        filterConfig={tableFilterConfig}
         isLoading={isLoading}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search orders…"
+        onClearFilters={clearFilters}
+      />
+
+      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        <span>
+          {pagination.total || 0} orders · page {pagination.page || 1} of {pagination.total_pages || 1}
+        </span>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={(pagination.page || 1) <= 1 || isLoading}
+            onClick={() => fetchOrders((pagination.page || 1) - 1)}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={(pagination.page || 1) >= (pagination.total_pages || 1) || isLoading}
+            onClick={() => fetchOrders((pagination.page || 1) + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+
+      <CreateOrderWizard
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={() => fetchOrders(1)}
+      />
+      <QuickCrmOrder
+        open={quickCrmOpen}
+        onClose={() => setQuickCrmOpen(false)}
+        onCreated={() => fetchOrders(1)}
       />
     </div>
   )
 }
-
-export default Orders

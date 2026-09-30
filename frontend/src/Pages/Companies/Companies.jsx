@@ -199,9 +199,6 @@ const Companies = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Registered Companies</h2>
-          <p className="text-muted-foreground text-sm mt-1">
-            Official UK company records & direct portfolio monitoring.
-          </p>
         </div>
         <div className="flex items-center gap-3">
           <Button

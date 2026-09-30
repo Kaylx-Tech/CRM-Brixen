@@ -31,12 +31,10 @@ import DeleteConfirmation from "../../components/DeleteConfirmation"
 import {
   IconDotsVertical,
   IconArrowsSort,
-  IconBook,
   IconRefresh,
   IconEye,
   IconCheck,
   IconAlertTriangle,
-  IconFileCheck,
   IconPlus,
   IconBuildingBank,
   IconFileText
@@ -336,7 +334,6 @@ const Accountancy = () => {
                     setIsBooksModalOpen(true)
                   }}
                 >
-                  <IconBook className="mr-2 h-4 w-4" />
                   View Books
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -345,7 +342,6 @@ const Accountancy = () => {
                     setIsFileModalOpen(true)
                   }}
                 >
-                  <IconFileCheck className="mr-2 h-4 w-4" />
                   File Accounts
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -354,7 +350,7 @@ const Accountancy = () => {
                 variant="destructive"
                 onClick={() => setRecordToDelete(item)}
               >
-                Reset Filing Record
+                Reset Filing
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -363,7 +359,295 @@ const Accountancy = () => {
     }),
   ], [])
 
-  // Filter configuration
+  // ── TanStack Table Columns (Company Accounts) ───────────────────────
+  const companyAccountsColumns = useMemo(() => [
+    columnHelper.display({
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    }),
+    columnHelper.accessor("company_name", {
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          className="p-0 hover:bg-transparent font-semibold"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Company
+          <IconArrowsSort className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const item = row.original
+        const targetComp = filings.find(f => f.id === (item.company_id || item.id)) || item
+        return (
+          <div className="flex flex-col">
+            <button
+              type="button"
+              className="text-left font-medium text-foreground hover:text-primary hover:underline transition-colors cursor-pointer"
+              onClick={() => {
+                setSelectedRecord(targetComp)
+                setIsBooksModalOpen(true)
+              }}
+            >
+              {item.company_name}
+            </button>
+            <span className="text-xs text-muted-foreground mt-0.5">
+              {item.type || "Micro-entity Balance Sheet"} • Period {item.period || "2024-2025"}
+            </span>
+          </div>
+        )
+      },
+    }),
+    columnHelper.accessor("period", {
+      header: "Period",
+      cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.getValue("period") || "2024-2025"}</span>,
+    }),
+    columnHelper.accessor("turnover", {
+      header: "Turnover",
+      cell: ({ row }) => <span className="text-xs font-semibold text-foreground">{row.getValue("turnover") || "£0.00"}</span>,
+    }),
+    columnHelper.accessor("net_profit", {
+      header: "Net Profit",
+      cell: ({ row }) => <span className="text-xs font-bold text-emerald-600">{row.getValue("net_profit") || "£0.00"}</span>,
+    }),
+    columnHelper.accessor("status", {
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.getValue("status") || "Draft"
+        if (status === 'Filed') {
+          return (
+            <Badge className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300">
+              Filed
+            </Badge>
+          )
+        }
+        return (
+          <Badge className="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+            {status}
+          </Badge>
+        )
+      },
+    }),
+    columnHelper.display({
+      id: "actions",
+      cell: ({ row }) => {
+        const item = row.original
+        const targetComp = filings.find(f => f.id === (item.company_id || item.id)) || item
+        return (
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs font-medium"
+              onClick={() => {
+                setSelectedRecord(targetComp)
+                setIsBooksModalOpen(true)
+              }}
+            >
+              View Statement & Books
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">Open menu</span>
+                  <IconDotsVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setSelectedRecord(targetComp)
+                      setIsBooksModalOpen(true)
+                    }}
+                  >
+                    View Books
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setSelectedRecord(targetComp)
+                      setIsFileModalOpen(true)
+                    }}
+                  >
+                    File Accounts
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )
+      },
+    }),
+  ], [filings])
+
+  // ── TanStack Table Columns (HMRC CT600) ──────────────────────────────
+  const hmrcColumns = useMemo(() => [
+    columnHelper.display({
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    }),
+    columnHelper.accessor("company_name", {
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          className="p-0 hover:bg-transparent font-semibold"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Company
+          <IconArrowsSort className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const item = row.original
+        const targetComp = filings.find(f => f.id === (item.company_id || item.id)) || item
+        return (
+          <div className="flex flex-col">
+            <button
+              type="button"
+              className="text-left font-medium text-foreground hover:text-primary hover:underline transition-colors cursor-pointer"
+              onClick={() => {
+                setSelectedRecord(targetComp)
+                setIsBooksModalOpen(true)
+              }}
+            >
+              {item.company_name}
+            </button>
+            <span className="text-xs text-muted-foreground mt-0.5">
+              UTR: {item.utr || "9876543210"} • Period: {item.period || "01/06/2024 - 31/05/2025"}
+            </span>
+          </div>
+        )
+      },
+    }),
+    columnHelper.accessor("utr", {
+      header: "UTR Number",
+      cell: ({ row }) => <span className="text-xs font-mono text-muted-foreground">{row.getValue("utr") || "N/A"}</span>,
+    }),
+    columnHelper.accessor("tax_due", {
+      header: "Tax Liability",
+      cell: ({ row }) => <span className="text-xs font-bold text-foreground">{row.getValue("tax_due") || "£0.00"}</span>,
+    }),
+    columnHelper.accessor("status", {
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.getValue("status") || "Pending Calculation"
+        if (status.includes('Filed') || status === 'Nil Return Filed') {
+          return (
+            <Badge className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300">
+              {status}
+            </Badge>
+          )
+        }
+        if (status === 'Dissolved') {
+          return (
+            <Badge className="bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+              Dissolved
+            </Badge>
+          )
+        }
+        if (status === 'Strike off proposed') {
+          return (
+            <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+              Strike off proposed
+            </Badge>
+          )
+        }
+        return (
+          <Badge className="bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+            {status}
+          </Badge>
+        )
+      },
+    }),
+    columnHelper.display({
+      id: "actions",
+      cell: ({ row }) => {
+        const item = row.original
+        const targetComp = filings.find(f => f.id === (item.company_id || item.id)) || item
+        return (
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs font-medium"
+              onClick={() => {
+                setSelectedRecord(targetComp)
+                setIsBooksModalOpen(true)
+              }}
+            >
+              Calculate CT600
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">Open menu</span>
+                  <IconDotsVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setSelectedRecord(targetComp)
+                      setIsBooksModalOpen(true)
+                    }}
+                  >
+                    View Books
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setSelectedRecord(targetComp)
+                      setIsFileModalOpen(true)
+                    }}
+                  >
+                    File Accounts
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )
+      },
+    }),
+  ], [filings])
+
+  // Filter configurations
   const accountancyFilterConfig = [
     {
       columnKey: "status",
@@ -394,6 +678,69 @@ const Accountancy = () => {
       ]
     }
   ]
+
+  const companyAccountsFilterConfig = [
+    {
+      columnKey: "status",
+      placeholder: "Status",
+      options: [
+        { label: "Draft", value: "Draft" },
+        { label: "Filed", value: "Filed" },
+        { label: "Ready to file", value: "Ready to file" },
+      ]
+    },
+    {
+      columnKey: "type",
+      placeholder: "Account Type",
+      options: [
+        { label: "Micro-entity Balance Sheet", value: "Micro-entity Balance Sheet" },
+        { label: "Full Accounts", value: "Full Accounts" },
+        { label: "Dormant", value: "Dormant" },
+      ]
+    }
+  ]
+
+  const hmrcFilterConfig = [
+    {
+      columnKey: "status",
+      placeholder: "Status",
+      options: [
+        { label: "Pending Calculation", value: "Pending Calculation" },
+        { label: "Nil Return Filed", value: "Nil Return Filed" },
+        { label: "Payment Due", value: "Payment Due" },
+        { label: "Dissolved", value: "Dissolved" },
+        { label: "Strike off proposed", value: "Strike off proposed" },
+      ]
+    }
+  ]
+
+  // Prepared data with guaranteed unique IDs
+  const companyAccountsData = useMemo(() => {
+    const list = companyAccounts.length > 0 ? companyAccounts : filings
+    return list.map((acc, index) => ({
+      ...acc,
+      id: acc.id || acc.company_id || `acc-${index}`,
+      company_id: acc.company_id || acc.id || index,
+      period: acc.period || "2024-2025",
+      type: acc.type || "Micro-entity Balance Sheet",
+      turnover: acc.turnover || "£0.00",
+      net_profit: acc.net_profit || "£0.00",
+      status: acc.status || "Draft",
+    }))
+  }, [companyAccounts, filings])
+
+  const hmrcTableData = useMemo(() => {
+    const list = hmrcData.length > 0 ? hmrcData : filings
+    return list.map((h, index) => ({
+      ...h,
+      id: h.id || h.company_id || `hmrc-${index}`,
+      company_id: h.company_id || h.id || index,
+      utr: h.utr || h.utr_number || "9876543210",
+      period: h.period || "01/06/2024 - 31/05/2025",
+      tax_due: h.tax_due || h.tax_liability || "£0.00",
+      status: h.status || (h.company_status === 'Dissolved' ? 'Dissolved' : 'Pending Calculation'),
+    }))
+  }, [hmrcData, filings])
 
   const confirmSingleDelete = async () => {
     if (!recordToDelete) return
@@ -467,9 +814,6 @@ const Accountancy = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Accountancy</h2>
-          <p className="text-muted-foreground text-sm mt-1">
-            Companies House Annual Accounts, Micro-entity filing status & HMRC Corporation Tax.
-          </p>
         </div>
         <div className="flex items-center gap-3">
           <Button
@@ -539,102 +883,28 @@ const Accountancy = () => {
             TAB 2: COMPANY ACCOUNTS
         ════════════════════════════════════════════════════════════ */}
         <TabsContent value="company-accounts" className="space-y-6 m-0">
-          <Card className="shadow-none border border-border/70 rounded-2xl">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-bold">Company Balance Sheets & Profit/Loss</h3>
-                  <p className="text-sm text-muted-foreground">Detailed accounting statements ready for year-end submission.</p>
-                </div>
-              </div>
-              <div className="divide-y divide-border">
-                {(companyAccounts.length > 0 ? companyAccounts : filings).map(acc => (
-                  <div key={acc.id || acc.company_id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                      <p className="font-bold text-foreground">{acc.company_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {acc.type || "Micro-entity Balance Sheet"} • Period {acc.period || "2024-2025"}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4 md:gap-6">
-                      <div className="text-left md:text-right">
-                        <p className="text-xs text-muted-foreground">Turnover</p>
-                        <p className="font-semibold text-foreground">{acc.turnover || "£45,000.00"}</p>
-                      </div>
-                      <div className="text-left md:text-right">
-                        <p className="text-xs text-muted-foreground">Net Profit</p>
-                        <p className="font-bold text-emerald-600">{acc.net_profit || "£18,200.00"}</p>
-                      </div>
-                      <Badge className={acc.status === 'Filed' ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' : 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'}>
-                        {acc.status || "Draft"}
-                      </Badge>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8"
-                        onClick={() => {
-                          const targetComp = filings.find(f => f.id === (acc.company_id || acc.id)) || acc
-                          setSelectedRecord(targetComp)
-                          setIsBooksModalOpen(true)
-                        }}
-                      >
-                        View Statement & Books
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <DataTable
+            columns={companyAccountsColumns}
+            data={companyAccountsData}
+            filterConfig={companyAccountsFilterConfig}
+            isLoading={isLoading}
+            searchPlaceholder="Search company accounts..."
+            onDeleteSelected={(rows) => setBulkDeleteRows(rows)}
+          />
         </TabsContent>
 
         {/* ════════════════════════════════════════════════════════════
             TAB 3: HMRC
         ════════════════════════════════════════════════════════════ */}
         <TabsContent value="hmrc" className="space-y-6 m-0">
-          <Card className="shadow-none border border-border/70 rounded-2xl">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-bold">HMRC Corporation Tax Returns (CT600)</h3>
-                  <p className="text-sm text-muted-foreground">Track UTR numbers, tax computations, and payment obligations.</p>
-                </div>
-              </div>
-              <div className="divide-y divide-border">
-                {(hmrcData.length > 0 ? hmrcData : filings).map(h => (
-                  <div key={h.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                      <p className="font-bold text-foreground">{h.company_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        UTR: {h.utr || "9876543210"} • Period: {h.period || "01/06/2024 - 31/05/2025"}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4 md:gap-6">
-                      <div className="text-left md:text-right">
-                        <p className="text-xs text-muted-foreground">Tax Liability</p>
-                        <p className="font-bold text-foreground">{h.tax_due || "£3,458.00"}</p>
-                      </div>
-                      <Badge className={h.status?.includes('Filed') ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300'}>
-                        {h.status || "Payment Due"}
-                      </Badge>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8"
-                        onClick={() => {
-                          const targetComp = filings.find(f => f.id === h.id) || h
-                          setSelectedRecord(targetComp)
-                          setIsBooksModalOpen(true)
-                        }}
-                      >
-                        Calculate CT600
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <DataTable
+            columns={hmrcColumns}
+            data={hmrcTableData}
+            filterConfig={hmrcFilterConfig}
+            isLoading={isLoading}
+            searchPlaceholder="Search HMRC CT600 filings..."
+            onDeleteSelected={(rows) => setBulkDeleteRows(rows)}
+          />
         </TabsContent>
       </Tabs>
 

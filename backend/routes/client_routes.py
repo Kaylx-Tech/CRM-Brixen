@@ -9,6 +9,7 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
     valid_prefixes = (
         '/api/clients',
         '/api/admin/customers',
+        '/api/admin/clients',
         '/api/admin/staff'
     )
     if not any(path.startswith(prefix) for prefix in valid_prefixes):
@@ -44,7 +45,7 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
 
         sql = f"""
             SELECT u.id, u.full_name, u.email, u.phone, u.role, u.status, u.created_at,
-                   u.client_type, u.is_b2b, u.wordpress_user_id,
+                   u.client_type, u.is_b2b, u.b2b_id, u.wordpress_user_id,
                    (SELECT COUNT(*) FROM companies WHERE user_id = u.id) as companies_count,
                    (SELECT COUNT(*) FROM orders WHERE user_id = u.id) as orders_count
             FROM users u
@@ -185,5 +186,40 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         data['invoices'] = [dict(i) for i in invoices]
 
         return success_response(start_response, data=data)
+
+    # ── 8b. GET /api/admin/clients/<id>/full (legacy deliver-doc associations) ─
+    match_full = re.match(r'^/api/admin/clients/(\d+)/full$', path)
+    if match_full and method == 'GET':
+        client_id = int(match_full.group(1))
+        row = query_db("""
+            SELECT id, full_name, email, phone, role, status, created_at, client_type, is_b2b
+            FROM users WHERE id = ? AND role = 'CLIENT' LIMIT 1;
+        """, (client_id,), one=True)
+        if not row:
+            return error_response(start_response, "Client not found", status_code=404)
+
+        companies = query_db(
+            "SELECT id, name, company_number, status FROM companies WHERE user_id = ? ORDER BY name;",
+            (client_id,),
+        )
+        orders = query_db(
+            """
+            SELECT id, order_number, service_name, status, company_id, total as amount, created_at
+            FROM orders WHERE user_id = ? ORDER BY created_at DESC;
+            """,
+            (client_id,),
+        )
+        return json_response(start_response, {
+            "success": True,
+            "status": "success",
+            "client": dict(row),
+            "companies": [dict(c) for c in (companies or [])],
+            "orders": [dict(o) for o in (orders or [])],
+            "data": {
+                "client": dict(row),
+                "companies": [dict(c) for c in (companies or [])],
+                "orders": [dict(o) for o in (orders or [])],
+            },
+        })
 
     return None

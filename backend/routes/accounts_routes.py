@@ -4,6 +4,10 @@ import re
 from datetime import datetime, timedelta
 from db import query_db, execute_db
 from utils.response import json_response, success_response, error_response
+from services.accountancy_books import (
+    build_company_books_workspace,
+    BOOK_OUTFLOW_CATEGORIES,
+)
 
 def handle_accountancy_routes(environ, start_response, path, method, user, body, query):
     """Route handler for Accountancy and UK filing APIs."""
@@ -346,48 +350,28 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
         comp_id = int(match_books.group(1))
         entry_id = int(match_books.group(2)) if match_books.group(2) else None
 
-        company = query_db("SELECT id, name, company_number, director, accounts_next_due, user_id FROM companies WHERE id = ? LIMIT 1;", (comp_id,), one=True)
+        company = query_db(
+            "SELECT id, name, company_number, director, accounts_next_due, user_id, account_status FROM companies WHERE id = ? LIMIT 1;",
+            (comp_id,),
+            one=True,
+        )
         if not company:
             return error_response(start_response, "Company not found", status_code=404)
         if not _can_access_company(company):
             return error_response(start_response, "Access denied", status_code=403)
 
+        period_end = (query.get('period_end') or [''])[0].strip() if isinstance(query.get('period_end'), list) else str(query.get('period_end') or '').strip()
+
         if method == 'GET':
-            entries = query_db("""
-                SELECT id, company_id, period_end, entry_date, description, amount, category, source, created_at
-                FROM company_book_entries
-                WHERE company_id = ?
-                ORDER BY entry_date DESC, id DESC;
-            """, (comp_id,))
-
-            total_income = sum(float(e['amount']) for e in entries if float(e['amount']) > 0)
-            total_expense = sum(abs(float(e['amount'])) for e in entries if float(e['amount']) < 0)
-            net = total_income - total_expense
-
-            return success_response(start_response, data={
-                "company": dict(company),
-                "entries": [
-                    {
-                        "id": e['id'],
-                        "date": datetime.strptime(str(e['entry_date'])[:10], '%Y-%m-%d').strftime('%d/%m/%Y') if e['entry_date'] else "N/A",
-                        "desc": e['description'],
-                        "category": e['category'],
-                        "direction": "in" if float(e['amount']) >= 0 else "out",
-                        "amount": f"£{abs(float(e['amount'])):,.2f}",
-                        "raw_amount": float(e['amount'])
-                    }
-                    for e in entries
-                ],
-                "summary": {
-                    "turnover": f"£{total_income:,.2f}",
-                    "net_profit": f"£{net:,.2f}",
-                    "cash_at_bank": f"£{max(0, net):,.2f}",
-                    "total_income": total_income,
-                    "total_expense": total_expense,
-                    "net": net,
-                    "count": len(entries)
-                }
-            })
+            workspace, err = build_company_books_workspace(
+                comp_id,
+                period_end=period_end or None,
+                status_hint=company.get('account_status'),
+            )
+            if err:
+                return error_response(start_response, err, status_code=404)
+            # Flatten for success_response(data=...) — also keep top-level keys like app.py
+            return success_response(start_response, data=workspace)
 
         if method == 'POST':
             if not is_staff:
@@ -397,22 +381,24 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
             category = body.get('category') or 'Other'
             direction = body.get('direction', 'in')
             entry_date = body.get('entry_date') or body.get('date') or str(datetime.now().date())
-            period_end = body.get('period_end') or str(datetime.now().date())
+            period_end_body = body.get('period_end') or period_end or str(datetime.now().date())
 
             if not desc:
                 return error_response(start_response, "Description is required", status_code=400)
 
             try:
-                # Clean amount string if formatted with currency symbols
                 if isinstance(amount_val, str):
                     amount_val = re.sub(r'[^\d.-]', '', amount_val)
                 amount = float(amount_val)
                 if direction == 'out' and amount > 0:
                     amount = -amount
+                elif direction == 'in':
+                    amount = abs(amount)
+                elif amount > 0 and category in BOOK_OUTFLOW_CATEGORIES:
+                    amount = -amount
             except (ValueError, TypeError):
                 return error_response(start_response, "Valid amount is required", status_code=400)
 
-            # Standardize date to YYYY-MM-DD
             try:
                 if '/' in str(entry_date):
                     parts = str(entry_date).split('/')
@@ -424,15 +410,26 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
             eid = execute_db("""
                 INSERT INTO company_book_entries (company_id, period_end, entry_date, description, amount, category, source, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, 'manual', datetime('now'));
-            """, (comp_id, period_end, entry_date, desc, amount, category))
+            """, (comp_id, period_end_body, entry_date, desc, amount, category))
 
-            return success_response(start_response, data={"id": eid}, message="Book entry recorded successfully.", status_code=201)
+            workspace, _ = build_company_books_workspace(comp_id, period_end=period_end_body)
+            return success_response(
+                start_response,
+                data={"id": eid, **(workspace or {})},
+                message="Book entry recorded successfully.",
+                status_code=201,
+            )
 
         if method == 'DELETE' and entry_id:
             if not is_staff:
                 return error_response(start_response, "Access denied. Staff only.", status_code=403)
             execute_db("DELETE FROM company_book_entries WHERE id = ? AND company_id = ?;", (entry_id, comp_id))
-            return success_response(start_response, message="Book entry deleted successfully.")
+            workspace, _ = build_company_books_workspace(comp_id, period_end=period_end or None)
+            return success_response(
+                start_response,
+                data=workspace or {},
+                message="Book entry deleted successfully.",
+            )
 
     return None
 

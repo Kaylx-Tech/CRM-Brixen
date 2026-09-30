@@ -109,7 +109,7 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
               onValueChange={(val) => handleSelectChange('category', val)}
               disabled={isSubmitting}
             >
-              <SelectTrigger id="category">
+              <SelectTrigger id="category" className="w-full">
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
@@ -167,7 +167,7 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
               onValueChange={(val) => handleSelectChange('duration', val)}
               disabled={isSubmitting}
             >
-              <SelectTrigger id="duration">
+              <SelectTrigger id="duration" className="w-full">
                 <SelectValue placeholder="Select duration" />
               </SelectTrigger>
               <SelectContent>
@@ -182,7 +182,7 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
             </Select>
           </div>
         </div>
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="gap-3">
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={isSubmitting}>
             {isSubmitting && <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />}

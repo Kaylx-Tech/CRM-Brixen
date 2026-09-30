@@ -1,5 +1,5 @@
 import * as React from "react"
-import brixenLogo from "@/assets/brixen-logo.png"
+import brixenLogo from "@/assets/white-logo.webp"
 import { NavMain } from "@/Layout/nav-main"
 import { NavUser } from "@/Layout/nav-user"
 import {
@@ -11,23 +11,26 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { 
-  IconDashboard, 
-  IconUsers, 
-  IconBuilding, 
-  IconCalculator, 
-  IconShoppingCart, 
-  IconListCheck, 
+import {
+  IconDashboard,
+  IconUsers,
+  IconBuilding,
+  IconCalculator,
+  IconShoppingCart,
+  IconListCheck,
 
-  IconApps, 
-  IconFileInvoice, 
-  IconFileCheck, 
-  IconBrain, 
-  IconHistory, 
-  IconSettings, 
-  IconUserCircle, 
-  IconInnerShadowTop 
+  IconApps,
+  IconFileInvoice,
+  IconFileCheck,
+  IconBrain,
+  IconHistory,
+  IconSettings,
+  IconUserCircle,
+  IconSearch,
 } from "@tabler/icons-react"
+import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd"
+import { CommandManyItems } from "@/components/ComboSearch"
 
 const data = {
   user: {
@@ -55,19 +58,28 @@ const data = {
 export function AppSidebar({
   ...props
 }) {
+  const [searchOpen, setSearchOpen] = React.useState(false)
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              className="data-[slot=sidebar-menu-button]:p-1.5! h-auto py-2"
-              render={<a href="/admin" />}
-            >
-              <img src={brixenLogo} alt="Brixen" className="h-10 w-auto dark:brightness-0 dark:invert" />
-            </SidebarMenuButton>
+            <div className="w-full flex flex-col justify-center items-center">
+            <img src={brixenLogo} alt="Brixen" className="h-18 w-auto" />
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
+        <div className="relative cursor-pointer" onClick={() => setSearchOpen(true)}>
+          <IconSearch className="absolute left-2.5 top-1.5 h-3.5 w-3.5 text-muted pointer-events-none" />
+          <Input
+            className="max-w-xs pl-8 text-xs text-muted bg-white/10 border border-input/10 cursor-pointer"
+            placeholder="Search"
+            readOnly
+            onClick={() => setSearchOpen(true)}
+          />
+          <span className="absolute right-2.5 top-1.5 text-xs text-white/50 rounded-[8px] pointer-events-none">CRTL + K</span>
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
@@ -75,6 +87,7 @@ export function AppSidebar({
       <SidebarFooter>
         <NavUser user={data.user} />
       </SidebarFooter>
+      <CommandManyItems open={searchOpen} onOpenChange={setSearchOpen} />
     </Sidebar>
   )
 }
