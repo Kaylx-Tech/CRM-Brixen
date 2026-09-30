@@ -1,10 +1,10 @@
-# SQLite Database Files
+# SQLite Database Files (keep hypetex.db in private repo for deploy)
 *.db
 *.db-shm
 *.db-wal
 *.sqlite
 *.sqlite3
-hypetex.db
+!database/hypetex.db
 
 # Environment & Secrets
 .env
