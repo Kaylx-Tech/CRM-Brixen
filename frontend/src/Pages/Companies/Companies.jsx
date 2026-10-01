@@ -70,9 +70,11 @@ const Companies = () => {
             director: c.director_name || c.director || 'Director',
             address: c.registered_office_address || c.reg_office || c.address || 'United Kingdom',
             status: c.status || 'Active',
+            incDate: c.incorporation_date || c.inc_date || null,
             countryFlag: '🇬🇧',
             countryName: 'UK',
             deadlineText: c.accounts_next_due ? `Accounts due: ${c.accounts_next_due}` : 'No upcoming deadlines',
+            raw: c,
           }))
         )
         if (rawList.length === 0) toastApiEmpty('Companies', getApiBase())

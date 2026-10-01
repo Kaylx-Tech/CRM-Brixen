@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Button } from "@/components/ui/button"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import AddCustomer from "./AddCustomer"
 import ViewCustomer from "./ViewCustomer"
 import SetCustomerPassword from "./SetCustomerPassword"
@@ -29,7 +30,7 @@ const Customers = () => {
   const [customerToDelete, setCustomerToDelete] = useState(null)
   const [bulkDeleteRows, setBulkDeleteRows] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
-
+  const [activeTypeTab, setActiveTypeTab] = useState('All')
   const [customers, setCustomers] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
@@ -321,6 +322,11 @@ const Customers = () => {
     }),
   ], [])
 
+  const filteredCustomers = useMemo(() => {
+    if (activeTypeTab === 'All') return customers
+    return customers.filter((c) => (c.type || '').toLowerCase() === activeTypeTab.toLowerCase())
+  }, [customers, activeTypeTab])
+
   const customerFilterConfig = [
     {
       columnKey: "source",
@@ -331,15 +337,6 @@ const Customers = () => {
         { label: "Social", value: "Social" },
         { label: "CRM", value: "CRM" },
         { label: "Website signup", value: "Website signup" },
-      ]
-    },
-    {
-      columnKey: "type",
-      placeholder: "Types",
-      options: [
-        { label: "Individual", value: "Individual" },
-        { label: "Business", value: "Business" },
-        { label: "B2B", value: "B2B" },
       ]
     },
     {
@@ -364,6 +361,27 @@ const Customers = () => {
         </Button>
       </div>
 
+      <Tabs
+        value={activeTypeTab}
+        onValueChange={setActiveTypeTab}
+        className="w-full"
+      >
+        <TabsList>
+          <TabsTrigger value="All" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            All
+          </TabsTrigger>
+          <TabsTrigger value="Individual" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            Individual
+          </TabsTrigger>
+          <TabsTrigger value="Business" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            Business
+          </TabsTrigger>
+          <TabsTrigger value="B2B" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            B2B
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {loadError ? (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           <p className="font-medium">Could not load customers</p>
@@ -374,7 +392,7 @@ const Customers = () => {
 
       <DataTable
         columns={columns}
-        data={customers}
+        data={filteredCustomers}
         filterConfig={customerFilterConfig}
         isLoading={isLoading}
         onDeleteSelected={(rows) => setBulkDeleteRows(rows)}

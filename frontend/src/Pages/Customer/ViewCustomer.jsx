@@ -39,7 +39,7 @@ const ViewCustomer = ({ customer, isOpen, onClose }) => {
   const email = customer?.email || raw.email || ""
   const phone = raw.phone || customer?.phone || "N/A"
   const address = raw.address || customer?.address || "N/A"
-  const country = raw.country || customer?.country || "United Kingdom"
+  const city = raw.city || customer?.city || raw.registered_city || raw.country || customer?.country || "N/A"
   const status = customer?.status || raw.status || "Active"
   const type = customer?.type || (raw.is_b2b ? "B2B" : raw.client_type || "Individual")
   const b2bId = raw.b2b_id || (type === "B2B" ? `B2B-${String(customer?.id || 1).padStart(6, '0')}` : null)
@@ -158,8 +158,8 @@ const ViewCustomer = ({ customer, isOpen, onClose }) => {
                     <span className="font-medium">{phone}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Country</span>
-                    <span className="font-medium">{country}</span>
+                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">City</span>
+                    <span className="font-medium">{city}</span>
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Registration Date</span>

@@ -691,7 +691,7 @@ export default function Payments() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="h-9 bg-background">
+        <TabsList>
           <TabsTrigger value="invoices" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             Invoices
           </TabsTrigger>

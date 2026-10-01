@@ -25,6 +25,7 @@ import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { format } from 'date-fns'
 import { IconCalendar } from '@tabler/icons-react'
+import ToastSave from '@/components/ToastSave'
 
 // Helper to convert DD/MM/YYYY or ISO date string to YYYY-MM-DD for standard date input
 const toDateInputValue = (dateStr) => {
@@ -90,6 +91,19 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
   const [confirmationNumber, setConfirmationNumber] = useState('')
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showUnsavedToast, setShowUnsavedToast] = useState(false)
+  const [toastSaveState, setToastSaveState] = useState('initial')
+
+  const isDirty = Boolean(confirmationNumber.trim() || notes.trim())
+
+  const handleAttemptClose = () => {
+    if (isSubmitting) return
+    if (isDirty) {
+      setShowUnsavedToast(true)
+    } else {
+      onClose()
+    }
+  }
 
   const applyCompanyData = (comp) => {
     if (!comp) return
@@ -181,159 +195,188 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && !isSubmitting && onClose()}>
-      <DialogContent className="sm:max-w-150 p-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-2">
-          <DialogTitle>File yearly accounts</DialogTitle>
-          <DialogDescription>
-            Complete UK filing checks, then record the Companies House annual accounts for this
-            company.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !isSubmitting) handleAttemptClose() }}>
+        <DialogContent className="sm:max-w-150 p-0 overflow-hidden">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle>File yearly accounts</DialogTitle>
+            <DialogDescription>
+              Complete UK filing checks, then record the Companies House annual accounts for this
+              company.
+            </DialogDescription>
+          </DialogHeader>
 
-        <ScrollArea className="max-h-[75vh]">
-          <form onSubmit={handleSubmit} className="p-6 pt-2 space-y-4">
-            {/* Company * */}
-            <div className="space-y-2">
-              <Label htmlFor="company-select">Company *</Label>
-              <Select
-                value={String(selectedCompanyId || '')}
-                onValueChange={handleCompanySelect}
-              >
-                <SelectTrigger id="company-select" className="w-full">
-                  <SelectValue placeholder="Select company">
-                    {currentCompany
-                      ? `${currentCompany.company_name} ${currentCompany.company_number ? `(${currentCompany.company_number})` : ''}`
-                      : 'Select company'}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="max-h-60 w-(--anchor-width) overflow-hidden p-0">
-                  <ScrollArea className="h-60 w-full p-1">
-                    <SelectGroup>
-                      {companies.map((c) => (
-                        <SelectItem key={c.id || c.company_id} value={String(c.id || c.company_id)}>
-                          {c.company_name} {c.company_number ? `(${c.company_number})` : ''}
-                        </SelectItem>
-                      ))}
-                      {companies.length === 0 && company && (
-                        <SelectItem value={String(company.id || company.company_id)}>
-                          {company.company_name} {company.company_number ? `(${company.company_number})` : ''}
-                        </SelectItem>
-                      )}
-                    </SelectGroup>
-                  </ScrollArea>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Row 1: Period start & Year end */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <ScrollArea className="max-h-[75vh]">
+            <form onSubmit={handleSubmit} className="p-6 pt-2 space-y-4">
+              {/* Company * */}
               <div className="space-y-2">
-                <Label htmlFor="period-start">Period start</Label>
-                <InlineDatePicker
-                  dateString={periodStart}
-                  onChange={setPeriodStart}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="year-end">Year end</Label>
-                <InlineDatePicker
-                  dateString={periodEnd}
-                  onChange={setPeriodEnd}
-                />
-              </div>
-            </div>
-
-            {/* Row 2: Due date & Accounts type */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="due-date">Due date</Label>
-                <InlineDatePicker
-                  dateString={dueDate}
-                  onChange={setDueDate}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="accounts-type">Accounts type</Label>
-                <Select value={accountsType} onValueChange={setAccountsType}>
-                  <SelectTrigger id="accounts-type" className="w-full">
-                    <SelectValue placeholder="Select type" />
+                <Label htmlFor="company-select">Company *</Label>
+                <Select
+                  value={String(selectedCompanyId || '')}
+                  onValueChange={handleCompanySelect}
+                >
+                  <SelectTrigger id="company-select" className="w-full">
+                    <SelectValue placeholder="Select company">
+                      {currentCompany
+                        ? `${currentCompany.company_name} ${currentCompany.company_number ? `(${currentCompany.company_number})` : ''}`
+                        : 'Select company'}
+                    </SelectValue>
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="Micro-entity">Micro-entity</SelectItem>
-                      <SelectItem value="Dormant">Dormant</SelectItem>
-                      <SelectItem value="Full accounts">Full accounts</SelectItem>
-                      <SelectItem value="Small company accounts">Small company accounts</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Row 3: Status & Confirmation number */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="filing-status">Status</Label>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger id="filing-status" className="w-full">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="In progress">In progress</SelectItem>
-                      <SelectItem value="Draft">Draft</SelectItem>
-                      <SelectItem value="Ready to file">Ready to file</SelectItem>
-                      <SelectItem value="Filed">Filed</SelectItem>
-                      <SelectItem value="Overdue">Overdue</SelectItem>
-                    </SelectGroup>
+                  <SelectContent className="max-h-60 w-(--anchor-width) overflow-hidden p-0">
+                    <ScrollArea className="h-60 w-full p-1">
+                      <SelectGroup>
+                        {companies.map((c) => (
+                          <SelectItem key={c.id || c.company_id} value={String(c.id || c.company_id)}>
+                            {c.company_name} {c.company_number ? `(${c.company_number})` : ''}
+                          </SelectItem>
+                        ))}
+                        {companies.length === 0 && company && (
+                          <SelectItem value={String(company.id || company.company_id)}>
+                            {company.company_name} {company.company_number ? `(${company.company_number})` : ''}
+                          </SelectItem>
+                        )}
+                      </SelectGroup>
+                    </ScrollArea>
                   </SelectContent>
                 </Select>
               </div>
 
+              {/* Row 1: Period start & Year end */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="period-start">Period start</Label>
+                  <InlineDatePicker
+                    dateString={periodStart}
+                    onChange={setPeriodStart}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="year-end">Year end</Label>
+                  <InlineDatePicker
+                    dateString={periodEnd}
+                    onChange={setPeriodEnd}
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Due date & Accounts type */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="due-date">Due date</Label>
+                  <InlineDatePicker
+                    dateString={dueDate}
+                    onChange={setDueDate}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="accounts-type">Accounts type</Label>
+                  <Select value={accountsType} onValueChange={setAccountsType}>
+                    <SelectTrigger id="accounts-type" className="w-full">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="Micro-entity">Micro-entity</SelectItem>
+                        <SelectItem value="Dormant">Dormant</SelectItem>
+                        <SelectItem value="Full accounts">Full accounts</SelectItem>
+                        <SelectItem value="Small company accounts">Small company accounts</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Row 3: Status & Confirmation number */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="filing-status">Status</Label>
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger id="filing-status" className="w-full">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="In progress">In progress</SelectItem>
+                        <SelectItem value="Draft">Draft</SelectItem>
+                        <SelectItem value="Ready to file">Ready to file</SelectItem>
+                        <SelectItem value="Filed">Filed</SelectItem>
+                        <SelectItem value="Overdue">Overdue</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmation-no">Confirmation number</Label>
+                  <Input
+                    id="confirmation-no"
+                    type="text"
+                    placeholder="Companies House receipt"
+                    value={confirmationNumber}
+                    onChange={(e) => setConfirmationNumber(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Row 4: Internal notes */}
               <div className="space-y-2">
-                <Label htmlFor="confirmation-no">Confirmation number</Label>
-                <Input
-                  id="confirmation-no"
-                  type="text"
-                  placeholder="Companies House receipt"
-                  value={confirmationNumber}
-                  onChange={(e) => setConfirmationNumber(e.target.value)}
+                <Label htmlFor="internal-notes">Internal notes</Label>
+                <Textarea
+                  id="internal-notes"
+                  placeholder="Staff notes for this filing."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
                 />
               </div>
-            </div>
 
-            {/* Row 4: Internal notes */}
-            <div className="space-y-2">
-              <Label htmlFor="internal-notes">Internal notes</Label>
-              <Textarea
-                id="internal-notes"
-                placeholder="Staff notes for this filing."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-              />
-            </div>
+              <DialogFooter className="pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAttemptClose}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Saving...' : 'Save filing'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
 
-            <DialogFooter className="pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : 'Save filing'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+      <ToastSave
+        open={isOpen && showUnsavedToast}
+        state={toastSaveState}
+        initialText="You have unsaved filing notes/confirmation. Discard and close?"
+        discardText="Discard & Close"
+        saveText="Save Filing"
+        cancelText="Keep Editing"
+        onCancel={() => setShowUnsavedToast(false)}
+        onDiscard={() => {
+          setShowUnsavedToast(false)
+          onClose()
+        }}
+        onSave={async (e) => {
+          setToastSaveState('loading')
+          try {
+            await handleSubmit(e || { preventDefault: () => {} })
+            setToastSaveState('success')
+            setTimeout(() => {
+              setShowUnsavedToast(false)
+              setToastSaveState('initial')
+            }, 700)
+          } catch (err) {
+            setToastSaveState('initial')
+          }
+        }}
+      />
+    </>
   )
 }
 

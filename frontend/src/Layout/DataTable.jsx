@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { IconAdjustmentsHorizontal, IconSearch, IconX, IconPlus, IconTrash } from "@tabler/icons-react"
+import { IconAdjustmentsHorizontal, IconSearch, IconX, IconMoodEmpty, IconTrash } from "@tabler/icons-react"
 import { features } from "./data-table-features"
 
 import { cn } from "cn"
@@ -284,7 +284,8 @@ export const DataTable = ({
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground">
-                  No records found.
+                  <IconMoodEmpty className="mx-auto mb-3 size-10"/>
+                  No records found! Clear all filters and try again.
                 </TableCell>
               </TableRow>
             )}

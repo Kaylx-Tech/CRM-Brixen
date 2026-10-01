@@ -17,7 +17,7 @@ function useDrawer() {
 
 function Drawer({
   modal = true,
-  showSwipeHandle = false,
+  showSwipeHandle = true,
   snapPoints,
   swipeDirection = "down",
   ...props

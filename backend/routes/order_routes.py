@@ -239,10 +239,23 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
 
         events = query_db("SELECT * FROM order_timeline WHERE order_id = ? ORDER BY step_date DESC, id DESC;", (order_id,))
         docs = query_db("SELECT * FROM documents WHERE order_id = ? ORDER BY created_at DESC;", (order_id,))
+        line_items = query_db("SELECT * FROM order_line_items WHERE order_id = ? ORDER BY id ASC;", (order_id,))
 
         data = attach_order_profit_fields(dict(row))
         data['timeline'] = [dict(e) for e in events]
         data['documents'] = [dict(d) for d in docs]
+        data['line_items'] = [dict(li) for li in line_items]
+
+        if data.get('checkout_form_json'):
+            try:
+                data['checkout_form'] = json.loads(data['checkout_form_json'])
+            except Exception:
+                data['checkout_form'] = []
+        if data.get('order_form_values_json'):
+            try:
+                data['order_form_values'] = json.loads(data['order_form_values_json'])
+            except Exception:
+                data['order_form_values'] = {}
 
         return success_response(start_response, data=data)
 
@@ -329,6 +342,25 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         if 'status' in body:
             updates.append("status = ?")
             params.append(body['status'])
+        if 'notes' in body:
+            updates.append("notes = ?")
+            params.append(body['notes'])
+        if 'access_email' in body:
+            updates.append("access_email = ?")
+            params.append(body['access_email'])
+        if 'access_email_password' in body:
+            updates.append("access_email_password = ?")
+            params.append(body['access_email_password'])
+        if 'checkout_form' in body:
+            cf = body['checkout_form']
+            cf_json = json.dumps(cf) if isinstance(cf, (list, dict)) else str(cf or '')
+            updates.append("checkout_form_json = ?")
+            params.append(cf_json)
+        if 'order_form_values_json' in body:
+            ofv = body['order_form_values_json']
+            ofv_json = json.dumps(ofv) if isinstance(ofv, (list, dict)) else str(ofv or '')
+            updates.append("order_form_values_json = ?")
+            params.append(ofv_json)
 
         if updates:
             updates.append("updated_at = datetime('now')")

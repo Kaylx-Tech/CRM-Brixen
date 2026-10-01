@@ -1,7 +1,7 @@
 /**
  * Shared API helpers — clear toast reasons when backend data fails to load.
  */
-import { toast } from "sonner"
+import { toast } from "@/components/ui/toast"
 
 export function getApiBase() {
   return String(import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "")
@@ -21,8 +21,7 @@ function networkReason(err, apiBase) {
   if (/Failed to fetch|NetworkError|Load failed|fetch/i.test(msg)) {
     return (
       `Cannot reach API at ${apiBase}. ` +
-      `Check: backend is running, CORS allows this site, and VITE_API_URL is correct ` +
-      `(expected like https://api.brixenconsultants.com/api).`
+      `Check if backend is running and CORS allows requests.`
     )
   }
   return msg || "Unknown network error"
@@ -38,47 +37,45 @@ function httpReason(res, data, apiBase, rawText) {
   if (res.status === 401) {
     return (
       serverMsg ||
-      "Not authenticated (401). Session expired or missing token — please log in again."
+      "Session expired or missing token. Please log in again."
     )
   }
   if (res.status === 403) {
-    return serverMsg || "Access denied (403). Your role cannot load this data."
+    return serverMsg || "Access denied. Your role cannot access this resource."
   }
   if (res.status === 404) {
     return (
       serverMsg ||
-      `API route not found (404) on ${apiBase}. ` +
-        `Frontend may be calling the wrong host, or this endpoint is missing on the live backend.`
+      `Resource not found (404) on ${apiBase}.`
     )
   }
   if (res.status === 502 || res.status === 503 || res.status === 504) {
     return (
       serverMsg ||
-      `API gateway/backend unavailable (${res.status}). Coolify/backend may be restarting.`
+      `Server/Gateway unavailable (${res.status}). Server might be restarting.`
     )
   }
   if (res.status >= 500) {
-    return serverMsg || `Server error (${res.status}). Check backend logs.`
+    return serverMsg || `Internal Server Error (${res.status}).`
   }
   if (typeof rawText === "string" && rawText.includes("<!doctype html")) {
     return (
-      `Got an HTML page instead of JSON from ${apiBase}. ` +
-      `VITE_API_URL is probably wrong (hitting WordPress/admin static host, not the CRM API).`
+      `Got HTML page instead of JSON from ${apiBase}. Check VITE_API_URL.`
     )
   }
-  return serverMsg || `Request failed with HTTP ${res.status}.`
+  return serverMsg || `Request failed with HTTP status ${res.status}.`
 }
 
 /**
- * Show a long, readable error toast.
+ * Show a clear, readable error toast.
  */
 export function toastApiError({ title, reason, status, url } = {}) {
-  const desc = [reason, status ? `HTTP ${status}` : null, url ? `URL: ${url}` : null]
+  const desc = [reason, status && status !== 0 ? `(Status: ${status})` : null]
     .filter(Boolean)
-    .join("\n")
-  toast.error(title || "Failed to load data", {
-    description: desc,
-    duration: 10000,
+    .join(" ")
+  toast.error(title || "API Request Failed", {
+    description: desc || "Unable to complete request. Please try again.",
+    duration: 5000,
   })
 }
 
@@ -86,9 +83,9 @@ export function toastApiError({ title, reason, status, url } = {}) {
  * Soft info when API succeeded but list is empty.
  */
 export function toastApiEmpty(label, apiBase) {
-  toast.message(`${label}: no records`, {
-    description: `API responded OK from ${apiBase}, but the list is empty (database may have no data yet).`,
-    duration: 6000,
+  toast.info(`${label}: No records found`, {
+    description: `API responded successfully, but there is no data to display.`,
+    duration: 4000,
   })
 }
 

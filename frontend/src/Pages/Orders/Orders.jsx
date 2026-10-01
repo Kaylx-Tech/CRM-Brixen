@@ -23,6 +23,7 @@ import { toast } from "sonner"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 import CreateOrderWizard from "./CreateOrderWizard"
 import QuickCrmOrder from "./QuickCrmOrder"
+import ViewOrder from "./ViewOrder"
 
 const columnHelper = createColumnHelper()
 
@@ -153,6 +154,13 @@ export default function Orders() {
   const [savingId, setSavingId] = useState(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [quickCrmOpen, setQuickCrmOpen] = useState(false)
+  const [selectedOrderId, setSelectedOrderId] = useState(null)
+  const [viewOrderOpen, setViewOrderOpen] = useState(false)
+
+  const handleOpenOrder = useCallback((orderId) => {
+    setSelectedOrderId(orderId)
+    setViewOrderOpen(true)
+  }, [])
 
   const fetchOrders = useCallback(async (page = 1) => {
     setIsLoading(true)
@@ -282,7 +290,10 @@ export default function Orders() {
     columnHelper.accessor('order_number', {
       header: 'Order #',
       cell: ({ row }) => (
-        <Badge className="badge-sky rounded-full font-mono cursor-pointer">
+        <Badge
+          className="badge-sky rounded-full font-mono cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => handleOpenOrder(row.original.id)}
+        >
           {formatOrderNumberDisplay(row.original.order_number)}
         </Badge>
       ),
@@ -305,9 +316,12 @@ export default function Orders() {
         const name = o.owner_name || o.client_name || '—'
         const email = o.owner_form_email || o.client_email || '—'
         return (
-          <div className="flex flex-col max-w-[160px] min-w-0">
-            <TruncatedTooltip text={name} className="block max-w-full truncate text-left font-medium text-sm cursor-default" />
-            <TruncatedTooltip text={email} className="block max-w-full truncate text-left text-xs text-muted-foreground cursor-default" />
+          <div
+            className="flex flex-col max-w-[160px] min-w-0 cursor-pointer hover:opacity-80"
+            onClick={() => handleOpenOrder(o.id)}
+          >
+            <TruncatedTooltip text={name} className="block max-w-full truncate text-left font-medium text-sm cursor-pointer" />
+            <TruncatedTooltip text={email} className="block max-w-full truncate text-left text-xs text-muted-foreground cursor-pointer" />
           </div>
         )
       },
@@ -395,7 +409,9 @@ export default function Orders() {
         return (
           <Tooltip>
             <TooltipTrigger className="inline-flex">
-              <Badge className={`${statusTone(o, pct)} tabular-nums`}>{pct}%</Badge>
+              <Badge className={`${statusTone(o, pct)} tabular-nums cursor-pointer`} onClick={() => handleOpenOrder(o.id)}>
+                {pct}%
+              </Badge>
             </TooltipTrigger>
             <TooltipContent>{o.status || 'Pending'} · {pct}%</TooltipContent>
           </Tooltip>
@@ -415,7 +431,7 @@ export default function Orders() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => toast.info(`Order ${o.order_number}: ${o.status}`)}>
+              <DropdownMenuItem onClick={() => handleOpenOrder(o.id)}>
                 <IconFolderOpen className="w-4 h-4 mr-2" />
                 Open order
               </DropdownMenuItem>
@@ -431,7 +447,7 @@ export default function Orders() {
         )
       },
     }),
-  ], [priceDrafts, savingId])
+  ], [priceDrafts, savingId, handleOpenOrder])
 
   const tableFilterConfig = useMemo(() => [
     {
@@ -522,7 +538,7 @@ export default function Orders() {
           setB2bClientId('all')
         }}
       >
-        <TabsList className="h-9 bg-background">
+        <TabsList>
           <TabsTrigger value="All" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             All Orders
           </TabsTrigger>
@@ -609,6 +625,15 @@ export default function Orders() {
         open={quickCrmOpen}
         onClose={() => setQuickCrmOpen(false)}
         onCreated={() => fetchOrders(1)}
+      />
+      <ViewOrder
+        orderId={selectedOrderId}
+        isOpen={viewOrderOpen}
+        onClose={() => {
+          setViewOrderOpen(false)
+          setSelectedOrderId(null)
+        }}
+        onOrderUpdated={() => fetchOrders(pagination.page || 1)}
       />
     </div>
   )

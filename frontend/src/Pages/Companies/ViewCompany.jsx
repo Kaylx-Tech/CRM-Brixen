@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -18,36 +18,112 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { IconUpload, IconBuilding } from '@tabler/icons-react'
+import { Skeleton } from '@/components/ui/skeleton'
+import { IconBuilding, IconCheck, IconFileText, IconShoppingBag, IconAlertCircle } from '@tabler/icons-react'
+import { apiRequest } from '@/lib/api'
+import { toast } from 'sonner'
 
-const ViewCompany = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState("overview")
+const getInitials = (name) => {
+  if (!name) return 'CO'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+const ViewCompany = ({ company, isOpen, onClose }) => {
+  const [activeTab, setActiveTab] = useState('overview')
+  const [detail, setDetail] = useState(null)
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false)
+
+  // Fetch full details if company has ID
+  useEffect(() => {
+    if (!isOpen || !company?.id) {
+      setDetail(null)
+      return
+    }
+    let isMounted = true
+    setIsLoadingDetail(true)
+    apiRequest(`/admin/companies/${company.id}`, { label: 'Company Details' })
+      .then((res) => {
+        if (isMounted && res.ok && res.data) {
+          setDetail(res.data)
+        }
+      })
+      .catch((err) => {
+        console.error('Error fetching company details:', err)
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingDetail(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [isOpen, company?.id])
+
+  if (!company) return null
+
+  const raw = company.raw || {}
+  const d = detail || {}
+
+  const name = d.company_name || d.name || company.name || raw.company_name || 'Unnamed Company'
+  const number = d.company_number || d.number || company.number || raw.company_number || '—'
+  const director = d.director || d.director_name || company.director || raw.director || '—'
+  const address = d.reg_office || d.registered_office_address || company.address || raw.registered_office_address || 'United Kingdom'
+  const status = d.status || company.status || raw.status || 'Active'
+  const countryFlag = company.countryFlag || '🇬🇧'
+  const countryName = company.countryName || 'UK'
+  
+  const incDateRaw = d.incorporation_date || d.inc_date || company.incDate || raw.incorporation_date || raw.inc_date
+  const incDateFormatted = incDateRaw
+    ? (isNaN(new Date(incDateRaw).getTime()) ? incDateRaw : new Date(incDateRaw).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }))
+    : '—'
+
+  const clientName = d.client_name || raw.client_name || '—'
+  const clientEmail = d.client_email || raw.client_email || raw.email || ''
+  const clientPhone = d.client_phone || raw.client_phone || raw.phone || ''
+  const accountsDue = d.accounts_next_due || raw.accounts_next_due || company.deadlineText || 'No upcoming deadlines'
+  const confirmationDue = d.confirmation_statement_next_due || d.confirmation_next_due || raw.confirmation_statement_next_due || raw.confirmation_next_due || '—'
+  const authCode = d.auth_code || raw.auth_code || ''
+  const utrNumber = d.utr_number || d.utr || raw.utr_number || ''
+  const sicCodes = d.sic_codes || raw.sic_codes || d.sic_description || raw.sic_description || 'Standard commercial trading'
+
+  const directorsList = Array.isArray(d.directors) && d.directors.length > 0 
+    ? d.directors 
+    : [{ name: director, role: 'Director' }]
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[800px]">
+      <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden">
         
         {/* Header Section */}
-        <DialogHeader className='flex-row items-center gap-4 space-y-0 text-left'>
-          <Avatar className="w-14 h-14 bg-indigo-600 text-white flex items-center justify-center text-xl font-bold">
-            <AvatarFallback>SA</AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <DialogTitle className="text-2xl font-bold">SHAMIMAKHTAR 3340 LTD</DialogTitle>
-              <Badge variant="outline" className="font-normal">Active</Badge>
+        <div className="p-6 border-b bg-muted/20">
+          <DialogHeader className="flex-row items-center gap-4 space-y-0 text-left">
+            <Avatar className="w-14 h-14 bg-primary text-primary-foreground flex items-center justify-center text-xl font-bold">
+              <AvatarFallback>{getInitials(name)}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <DialogTitle className="text-xl font-bold truncate max-w-[500px]" title={name}>{name}</DialogTitle>
+                <Badge className={
+                  status === 'Active' ? 'badge-green' :
+                  status === 'Dissolved' ? 'badge-red' :
+                  status === 'Inactive' ? 'badge-amber' : 'badge-blue'
+                }>
+                  {status}
+                </Badge>
+              </div>
+              <DialogDescription className="text-sm mt-1 flex items-center gap-2 flex-wrap">
+                <span>#{number}</span>
+                <span>•</span>
+                <span>{countryFlag} {countryName}</span>
+                <span>•</span>
+                <span className="truncate max-w-[320px]" title={address}>{address}</span>
+              </DialogDescription>
             </div>
-            <DialogDescription className="text-sm mt-1 flex items-center gap-2">
-              <span>#17456855</span>
-              <span>•</span>
-              <span>🇬🇧 UK</span>
-              <span>•</span>
-              <span className="truncate max-w-[300px]">Office 1828 85 Dunstall Hill, Wolverhampton, WV6 0SR, England</span>
-            </DialogDescription>
-          </div>
-        </DialogHeader>
+          </DialogHeader>
+        </div>
 
         {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col">
@@ -62,203 +138,194 @@ const ViewCompany = ({ isOpen, onClose }) => {
             </TabsList>
           </div>
 
-          <ScrollArea className="h-[60vh] min-h-[400px] w-full">
+          <ScrollArea className="h-[55vh] min-h-[380px] w-full">
             <div className="p-6 overflow-x-hidden">
             
-            {/* Overview Tab */}
-            <TabsContent value="overview" className="m-0 space-y-6 outline-none">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
-                <div className="flex items-center">
-                  <span className="font-bold w-36">Company name:</span>
-                  <span className="text-muted-foreground text-sm">SHAMIMAKHTAR 3340 LTD</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-bold w-36">Company number:</span>
-                  <span className="text-muted-foreground text-sm">17456855</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-bold w-36">Status:</span>
-                  <Badge variant="outline">Active</Badge>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-bold w-36">Country:</span>
-                  <span className="text-muted-foreground text-sm">United Kingdom</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-bold w-36">Incorporation date:</span>
-                  <span className="text-muted-foreground text-sm">14/09/2026</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-bold w-36">Director:</span>
-                  <span className="text-muted-foreground text-sm">Shamim Akhtar</span>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <Label className="font-bold text-sm">Verified business email</Label>
-                  <div className="flex items-center gap-3">
-                    <Input defaultValue="shamimakhtar3340@gmail.com" className="max-w-xs" disabled />
-                    <Badge variant="secondary">Verified · Locked</Badge>
+              {/* Overview Tab */}
+              <TabsContent value="overview" className="m-0 space-y-6 outline-none">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Company Name</span>
+                    <span className="font-semibold text-foreground">{name}</span>
                   </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="font-bold text-sm">WhatsApp number</Label>
-                  <div className="flex items-center gap-3">
-                    <Input defaultValue="+44 7…" className="max-w-xs" />
-                    <Button size="sm">Save</Button>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Company Number</span>
+                    <span className="font-semibold text-foreground">{number}</span>
                   </div>
-                  <p className="text-[13px] text-muted-foreground">
-                    Saved once, then locked.
-                  </p>
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* Registered Office Tab */}
-            <TabsContent value="registered-office" className="m-0 space-y-6 outline-none">
-               <div className="grid grid-cols-1 gap-y-6">
-                 <div className="space-y-1.5">
-                   <Label className="font-bold text-sm text-muted-foreground">Address</Label>
-                   <p className="text-base">Office 1828 85 Dunstall Hill, Wolverhampton, WV6 0SR, England</p>
-                 </div>
-                 <div className="space-y-1.5">
-                   <Label className="font-bold text-sm text-muted-foreground">Postcode</Label>
-                   <p className="text-base">—</p>
-                 </div>
-               </div>
-            </TabsContent>
-
-            {/* Business Activity Tab */}
-            <TabsContent value="business-activity" className="m-0 space-y-6 outline-none">
-              <div className="border rounded-xl p-4 space-y-1 bg-background shadow-sm">
-                <div className="font-bold text-base">SIC 47910</div>
-                <div className="text-sm text-muted-foreground">
-                  Retail sale via mail order houses or via Internet
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* Compliance Tab */}
-            <TabsContent value="compliance" className="m-0 space-y-6 outline-none">
-              <p className="text-sm text-muted-foreground mb-4">
-                Stored on this company card for filings and HMRC / Companies House work.
-              </p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <Label className="font-bold text-sm">UTR number</Label>
-                  <Input placeholder="e.g. 1234567890" />
-                </div>
-                <div className="space-y-3">
-                  <Label className="font-bold text-sm">Authentication code (Companies House)</Label>
-                  <Input placeholder="Companies House auth code" />
-                </div>
-                <div className="space-y-3">
-                  <Label className="font-bold text-sm">Personal 11 digits code</Label>
-                  <Input defaultValue="CKT-3P8M-2223" />
-                </div>
-                
-                <div className="col-span-1 md:col-span-2 flex flex-col md:flex-row gap-6">
-                  <div className="space-y-3">
-                    <Label className="font-bold text-sm">Identity verification</Label>
-                    <div><Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">Verified</Badge></div>
-                  </div>
-                  <div className="space-y-3">
-                    <Label className="font-bold text-sm">PSC verification</Label>
-                    <div><Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">Verified</Badge></div>
-                  </div>
-                  <div className="space-y-3">
-                    <Label className="font-bold text-sm">Standing</Label>
-                    <div><Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20">Good Standing</Badge></div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="pt-2">
-                <Button>Save codes</Button>
-              </div>
-            </TabsContent>
-
-            {/* Orders Tab */}
-            <TabsContent value="orders" className="m-0 outline-none">
-              <div className="border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background shadow-sm">
-                <div>
-                  <div className="font-bold text-base mb-1 flex items-center gap-1.5 flex-wrap">
-                    #GB15323 <span className="font-normal text-muted-foreground text-sm">— Multiple Products</span>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    In Progress
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm">View</Button>
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* Documents Tab */}
-            <TabsContent value="documents" className="m-0 space-y-6 outline-none">
-              
-              <div className="space-y-4">
-                <h3 className="font-semibold text-base border-b pb-2">Customer uploads (2)</h3>
-                
-                {/* Document Item 1 */}
-                <div className="border rounded-xl p-4 flex flex-col md:flex-row md:items-start justify-between gap-4 bg-background shadow-sm">
-                  <div className="space-y-3">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Status</span>
                     <div>
-                      <h4 className="font-bold text-[15px]">Transactions_1789155728923.pdf</h4>
-                      <p className="text-[13px] text-muted-foreground mt-0.5">
-                        Order Documents • REVIEW_REQUIRED • 10.1 KB
-                      </p>
+                      <Badge className={status === 'Active' ? 'badge-green' : 'badge-amber'}>
+                        {status}
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">Pending Review</Badge>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">View</Button>
-                    <Button size="sm">Download</Button>
-                    <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10">Delete</Button>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Country</span>
+                    <span className="font-medium text-foreground">United Kingdom</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Incorporation Date</span>
+                    <span className="font-medium text-foreground">{incDateFormatted}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Director</span>
+                    <span className="font-medium text-foreground">{director}</span>
+                  </div>
+                  {clientName !== '—' && (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Client Owner</span>
+                      <span className="font-medium text-foreground">{clientName}</span>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Business / Contact Email</Label>
+                    <div className="flex items-center gap-3">
+                      <Input value={clientEmail || '—'} className="max-w-md bg-muted/40" readOnly />
+                      {clientEmail && <Badge variant="secondary" className="shrink-0">Verified</Badge>}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Phone / WhatsApp Number</Label>
+                    <div className="flex items-center gap-3">
+                      <Input value={clientPhone || '—'} className="max-w-md bg-muted/40" readOnly />
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Registered Office Tab */}
+              <TabsContent value="registered-office" className="m-0 space-y-6 outline-none">
+                <div className="grid grid-cols-1 gap-y-4">
+                  <div className="space-y-1">
+                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Registered Office Address</span>
+                    <p className="text-sm font-medium bg-muted/30 p-3 rounded-lg border">{address}</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Jurisdiction</span>
+                      <p className="text-sm font-medium text-foreground">England & Wales</p>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Entity Type</span>
+                      <p className="text-sm font-medium text-foreground">Private Limited Company (LTD)</p>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Business Activity Tab */}
+              <TabsContent value="business-activity" className="m-0 space-y-6 outline-none">
+                <div className="border rounded-xl p-4 space-y-2 bg-background shadow-xs">
+                  <div className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Principal Activity / SIC</div>
+                  <div className="font-medium text-sm text-foreground">
+                    {sicCodes}
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Compliance Tab */}
+              <TabsContent value="compliance" className="m-0 space-y-6 outline-none">
+                <p className="text-xs text-muted-foreground">
+                  Filing deadlines and official reference codes for this company.
+                </p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5 p-3 rounded-lg border bg-muted/10">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Next Accounts Due</span>
+                    <p className="text-sm font-medium text-foreground">{accountsDue}</p>
+                  </div>
+                  
+                  <div className="space-y-1.5 p-3 rounded-lg border bg-muted/10">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Confirmation Statement Due</span>
+                    <p className="text-sm font-medium text-foreground">{confirmationDue}</p>
+                  </div>
+
+                  <div className="space-y-1.5 p-3 rounded-lg border bg-muted/10">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">UTR Number</span>
+                    <p className="text-sm font-medium text-foreground">{utrNumber || 'Not recorded'}</p>
+                  </div>
+
+                  <div className="space-y-1.5 p-3 rounded-lg border bg-muted/10">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Companies House Auth Code</span>
+                    <p className="text-sm font-medium text-foreground">{authCode || 'Not recorded'}</p>
                   </div>
                 </div>
 
-                {/* Document Item 2 */}
-                <div className="border rounded-xl p-4 flex flex-col md:flex-row md:items-start justify-between gap-4 bg-background shadow-sm">
+                <div className="flex flex-wrap gap-4 pt-2">
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground block font-medium">Identity Verification</span>
+                    <Badge variant="outline" className="badge-green">Verified</Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground block font-medium">Standing</span>
+                    <Badge variant="outline" className="badge-blue">Good Standing</Badge>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Orders Tab */}
+              <TabsContent value="orders" className="m-0 outline-none">
+                {Array.isArray(d.orders) && d.orders.length > 0 ? (
                   <div className="space-y-3">
-                    <div>
-                      <h4 className="font-bold text-[15px]">PHOTO-2026-09-12-00-39-57.jpg</h4>
-                      <p className="text-[13px] text-muted-foreground mt-0.5">
-                        Order Documents • REVIEW_REQUIRED • 201.1 KB
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">Pending Review</Badge>
+                    {d.orders.map((ord, idx) => (
+                      <div key={ord.id || idx} className="border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background shadow-xs">
+                        <div>
+                          <div className="font-semibold text-sm mb-1 flex items-center gap-1.5 flex-wrap">
+                            #{ord.order_number || ord.id} <span className="font-normal text-muted-foreground">— {ord.service_name || ord.title || 'Service'}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Status: <span className="font-medium text-foreground">{ord.status || 'In Progress'}</span>
+                          </div>
+                        </div>
+                        <div className="text-sm font-semibold">
+                          {ord.total ? `£${ord.total}` : ''}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">View</Button>
-                    <Button size="sm">Download</Button>
-                    <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10">Delete</Button>
+                ) : (
+                  <div className="border border-dashed rounded-xl p-8 text-center bg-muted/10">
+                    <IconShoppingBag className="w-8 h-8 mx-auto mb-2 text-muted-foreground opacity-40" />
+                    <p className="text-sm font-medium text-muted-foreground">No orders linked directly to this company.</p>
                   </div>
-                </div>
-              </div>
+                )}
+              </TabsContent>
 
-              <div className="space-y-4">
-                <h3 className="font-semibold text-base border-b pb-2">Posted documents (1)</h3>
-                <div className="text-sm text-muted-foreground text-center py-4">
-                  No posted documents to display.
-                </div>
-              </div>
-
-            </TabsContent>
+              {/* Documents Tab */}
+              <TabsContent value="documents" className="m-0 space-y-6 outline-none">
+                {Array.isArray(d.documents) && d.documents.length > 0 ? (
+                  <div className="space-y-3">
+                    {d.documents.map((doc, idx) => (
+                      <div key={doc.id || idx} className="border rounded-xl p-4 flex flex-col md:flex-row md:items-start justify-between gap-4 bg-background shadow-xs">
+                        <div className="space-y-1">
+                          <h4 className="font-medium text-sm text-foreground">{doc.title || doc.filename || 'Document'}</h4>
+                          <p className="text-xs text-muted-foreground">{doc.category || 'Company Document'} • {doc.size || ''}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="border border-dashed rounded-xl p-8 text-center bg-muted/10">
+                    <IconFileText className="w-8 h-8 mx-auto mb-2 text-muted-foreground opacity-40" />
+                    <p className="text-sm font-medium text-muted-foreground">No documents uploaded for this company record.</p>
+                  </div>
+                )}
+              </TabsContent>
 
             </div>
           </ScrollArea>
         </Tabs>
 
         {/* Footer Section */}
-        <div className="p-4 flex justify-end">
-          <Button onClick={onClose}>
+        <div className="p-4 border-t flex justify-end bg-muted/10">
+          <Button variant="outline" onClick={onClose}>
             Close
           </Button>
         </div>

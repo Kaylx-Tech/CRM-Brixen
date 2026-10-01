@@ -54,9 +54,9 @@ const Tasks = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="h-9 bg-background">
-          <TabsTrigger value="Tasks" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Tasks</TabsTrigger>
-          <TabsTrigger value="Team" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Team</TabsTrigger>
+        <TabsList>
+          <TabsTrigger value="Tasks" >Tasks</TabsTrigger>
+          <TabsTrigger value="Team">Team</TabsTrigger>
         </TabsList>
       </Tabs>
 

@@ -23,6 +23,7 @@ import {
 import { IconLoader2, IconUpload } from "@tabler/icons-react"
 import { toast } from "sonner"
 import { apiRequest } from "@/lib/api"
+import ToastSave from "@/components/ToastSave"
 
 export const DOCUMENT_CATEGORIES = [
   'Order Documents',
@@ -82,6 +83,19 @@ export default function UploadDocumentModal({
   const [clientVisible, setClientVisible] = useState(true)
   const [companyId, setCompanyId] = useState('')
   const [orderId, setOrderId] = useState('')
+  const [showUnsavedToast, setShowUnsavedToast] = useState(false)
+  const [toastSaveState, setToastSaveState] = useState('initial')
+
+  const isDirty = Boolean(clientId || name.trim() || file || message.trim())
+
+  const handleAttemptClose = () => {
+    if (uploading) return
+    if (isDirty) {
+      setShowUnsavedToast(true)
+    } else {
+      onOpenChange?.(false)
+    }
+  }
 
   const resetForm = () => {
     setClientId('')
@@ -95,6 +109,7 @@ export default function UploadDocumentModal({
     setCompanies([])
     setOrders([])
     setFormError('')
+    setShowUnsavedToast(false)
   }
 
   useEffect(() => {
@@ -252,8 +267,9 @@ export default function UploadDocumentModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
+    <>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) handleAttemptClose() }}>
+        <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Upload Document</DialogTitle>
           <DialogDescription>
@@ -420,7 +436,7 @@ export default function UploadDocumentModal({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange?.(false)}
+              onClick={handleAttemptClose}
               disabled={uploading}
             >
               Cancel
@@ -437,5 +453,33 @@ export default function UploadDocumentModal({
         </form>
       </DialogContent>
     </Dialog>
+
+    <ToastSave
+      open={open && showUnsavedToast}
+      state={toastSaveState}
+      initialText="You have unuploaded document details. Discard and close?"
+      discardText="Discard & Close"
+      saveText="Upload Now"
+      cancelText="Keep Editing"
+      onCancel={() => setShowUnsavedToast(false)}
+      onDiscard={() => {
+        resetForm()
+        onOpenChange?.(false)
+      }}
+      onSave={async (e) => {
+        setToastSaveState('loading')
+        try {
+          await handleSubmit(e)
+          setToastSaveState('success')
+          setTimeout(() => {
+            setShowUnsavedToast(false)
+            setToastSaveState('initial')
+          }, 700)
+        } catch (err) {
+          setToastSaveState('initial')
+        }
+      }}
+    />
+  </>
   )
 }

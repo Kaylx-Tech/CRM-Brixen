@@ -99,7 +99,11 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete }) => {
         </CardFooter>
       </Card>
       
-      <ViewCompany isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} />
+      <ViewCompany
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        company={company}
+      />
     </>
   )
 }

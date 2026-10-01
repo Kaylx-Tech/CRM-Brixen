@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select"
 import { toast } from "sonner"
 import { apiRequest } from "@/lib/api"
+import ToastSave from "@/components/ToastSave"
 import { IconLoader2, IconPlus, IconTrash } from "@tabler/icons-react"
 
 const COMPANY_TYPES = [
@@ -119,6 +120,21 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
   const [paymentMode, setPaymentMode] = useState("Manual CRM")
   const [status, setStatus] = useState("Processing")
   const [notes, setNotes] = useState("")
+  const [showUnsavedToast, setShowUnsavedToast] = useState(false)
+  const [toastSaveState, setToastSaveState] = useState("initial")
+
+  const isDirty = Boolean(
+    clientId ||
+    newClientName.trim() ||
+    newClientEmail.trim() ||
+    companyName.trim() ||
+    (companyEmail.trim() && companyEmail !== clients.find((c) => String(c.id) === String(clientId))?.email) ||
+    companyPhone.trim() ||
+    regAddress.trim() ||
+    ownerName.trim() ||
+    lines.some((l) => l.product_name.trim() || l.price) ||
+    notes.trim()
+  )
 
   const total = useMemo(
     () =>
@@ -315,22 +331,32 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
     }
   }
 
+  const handleAttemptClose = () => {
+    if (submitting) return
+    if (isDirty) {
+      setShowUnsavedToast(true)
+    } else {
+      onClose?.()
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && !submitting && onClose?.()}>
-      <DialogContent className="sm:max-w-[920px] w-[94vw] p-0 overflow-hidden gap-0 max-h-[92vh] !flex !flex-col">
-        <DialogHeader className="px-6 pt-5 pb-3 border-b text-left space-y-1 shrink-0">
-          <DialogTitle className="text-xl font-extrabold tracking-tight">
+    <>
+      <Drawer open={open} onOpenChange={(v) => { if (!v) handleAttemptClose() }}>
+        <DrawerContent className="max-w-4xl mx-auto h-[90vh] max-h-[94vh] p-0 overflow-hidden gap-0 flex flex-col">
+          <DrawerHeader className="px-6 pt-3 pb-3 border-b text-left space-y-1 shrink-0">
+          <DrawerTitle className="text-xl font-extrabold tracking-tight">
             Create Manual Order &amp; Company Registration
-          </DialogTitle>
-          <DialogDescription className="text-xs">
+          </DrawerTitle>
+          <DrawerDescription className="text-xs">
             Complete official company formation and registration details. Portal login stays on the client; work
             notifications go to the company email.
-          </DialogDescription>
-        </DialogHeader>
+          </DrawerDescription>
+        </DrawerHeader>
 
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-hidden">
-            <ScrollArea className="h-[min(68vh,620px)]">
+            <ScrollArea className="h-full">
               <div className="px-6 py-4 space-y-5">
               {error ? (
                 <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
@@ -662,17 +688,46 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
             </ScrollArea>
           </div>
 
-          <DialogFooter className="px-6 py-4 border-t bg-muted/10 gap-2 shrink-0">
-            <Button type="button" variant="outline" disabled={submitting} onClick={onClose}>
+          <DrawerFooter className="px-6 py-4 border-t bg-muted/10 flex-row items-center justify-end gap-2 shrink-0 sm:justify-end">
+            <Button type="button" variant="outline" disabled={submitting} onClick={handleAttemptClose}>
               Cancel
             </Button>
             <Button type="submit" disabled={submitting}>
               {submitting ? <IconLoader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
               Create Order & Record Registration
             </Button>
-          </DialogFooter>
+          </DrawerFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
+
+    <ToastSave
+      open={open && showUnsavedToast}
+      state={toastSaveState}
+      initialText="You have unsaved changes. Discard and close?"
+      discardText="Discard & Close"
+      saveText="Create Order"
+      cancelText="Keep Editing"
+      onCancel={() => setShowUnsavedToast(false)}
+      onDiscard={() => {
+        setShowUnsavedToast(false)
+        resetForm()
+        onClose?.()
+      }}
+      onSave={async (e) => {
+        setToastSaveState("loading")
+        try {
+          await handleSubmit(e || { preventDefault: () => {} })
+          setToastSaveState("success")
+          setTimeout(() => {
+            setShowUnsavedToast(false)
+            setToastSaveState("initial")
+          }, 700)
+        } catch (err) {
+          setToastSaveState("initial")
+        }
+      }}
+    />
+  </>
   )
 }

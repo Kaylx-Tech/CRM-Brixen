@@ -13,17 +13,49 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { IconUserPlus, IconAlertCircle } from '@tabler/icons-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import ToastSave from '@/components/ToastSave'
 
 const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
   const [custType, setCustType] = useState('individual')
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [country, setCountry] = useState('United Kingdom')
+  const [city, setCity] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showUnsavedToast, setShowUnsavedToast] = useState(false)
+  const [toastSaveState, setToastSaveState] = useState('initial')
+
+  const isDirty = Boolean(
+    fullName.trim() ||
+    email.trim() ||
+    phone.trim() ||
+    city.trim() ||
+    password ||
+    confirmPassword
+  )
+
+  const handleReset = () => {
+    setFullName('')
+    setEmail('')
+    setPhone('')
+    setCity('')
+    setPassword('')
+    setConfirmPassword('')
+    setError('')
+    setShowUnsavedToast(false)
+  }
+
+  const handleAttemptClose = () => {
+    if (isLoading) return
+    if (isDirty) {
+      setShowUnsavedToast(true)
+    } else {
+      onClose()
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -50,7 +82,7 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
       full_name: fullName.trim(),
       email: email.trim().toLowerCase(),
       phone: phone.trim() || undefined,
-      country: country.trim() || 'United Kingdom',
+      city: city.trim() || undefined,
       password: password,
       confirm_password: confirmPassword,
       client_type: typeMapped,
@@ -85,170 +117,200 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>Create Customer</DialogTitle>
-          <DialogDescription>
-            Create a new customer account (Individual, Business, or B2B Partner).
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleAttemptClose() }}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Create Customer</DialogTitle>
+            <DialogDescription>
+              Create a new customer account (Individual, Business, or B2B Partner).
+            </DialogDescription>
+          </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <Alert variant="destructive">
-              <IconAlertCircle className="size-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <Alert variant="destructive">
+                <IconAlertCircle className="size-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-          <div className="space-y-3">
-            <Label className="font-semibold">Customer Type <span className="text-destructive">*</span></Label>
-            <RadioGroup value={custType} onValueChange={setCustType} className="flex flex-col gap-2.5">
-              <Label
-                htmlFor="individual"
-                className="flex items-center justify-between gap-4 rounded-lg border border-input p-3 hover:bg-accent/50 [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/5 cursor-pointer font-normal transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <RadioGroupItem value="individual" id="individual" />
-                  <div>
-                    <span className="font-semibold text-sm">Individual</span>
-                    <p className="text-xs text-muted-foreground">
-                      Has only one company. Single / personal company owner.
-                    </p>
+            <div className="space-y-3">
+              <Label className="font-semibold">Customer Type <span className="text-destructive">*</span></Label>
+              <RadioGroup value={custType} onValueChange={setCustType} className="flex flex-col gap-2.5">
+                <Label
+                  htmlFor="individual"
+                  className="flex items-center justify-between gap-4 rounded-lg border border-input p-3 hover:bg-accent/50 [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/5 cursor-pointer font-normal transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <RadioGroupItem value="individual" id="individual" />
+                    <div>
+                      <span className="font-semibold text-sm">Individual</span>
+                      <p className="text-xs text-muted-foreground">
+                        Has only one company. Single / personal company owner.
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <span className="text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0 hidden sm:inline-block">
-                  1 Company Limit
-                </span>
-              </Label>
+                  <span className="text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0 hidden sm:inline-block">
+                    1 Company Limit
+                  </span>
+                </Label>
 
-              <Label
-                htmlFor="business"
-                className="flex items-center justify-between gap-4 rounded-lg border border-input p-3 hover:bg-accent/50 [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/5 cursor-pointer font-normal transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <RadioGroupItem value="business" id="business" />
-                  <div>
-                    <span className="font-semibold text-sm">Business</span>
-                    <p className="text-xs text-muted-foreground">
-                      Multiple companies. Direct multi-company corporate account.
-                    </p>
+                <Label
+                  htmlFor="business"
+                  className="flex items-center justify-between gap-4 rounded-lg border border-input p-3 hover:bg-accent/50 [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/5 cursor-pointer font-normal transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <RadioGroupItem value="business" id="business" />
+                    <div>
+                      <span className="font-semibold text-sm">Business</span>
+                      <p className="text-xs text-muted-foreground">
+                        Multiple companies. Direct multi-company corporate account.
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <span className="text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0 hidden sm:inline-block">
-                  Multi-Company
-                </span>
-              </Label>
+                  <span className="text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0 hidden sm:inline-block">
+                    Multi-Company
+                  </span>
+                </Label>
 
-              <Label
-                htmlFor="b2b"
-                className="flex items-center justify-between gap-4 rounded-lg border border-input p-3 hover:bg-accent/50 [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/5 cursor-pointer font-normal transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <RadioGroupItem value="b2b" id="b2b" />
-                  <div>
-                    <span className="font-semibold text-sm">B2B Account</span>
-                    <p className="text-xs text-muted-foreground">
-                      Deals on behalf of others. Intermediary/agent managing client portfolios.
-                    </p>
+                <Label
+                  htmlFor="b2b"
+                  className="flex items-center justify-between gap-4 rounded-lg border border-input p-3 hover:bg-accent/50 [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/5 cursor-pointer font-normal transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <RadioGroupItem value="b2b" id="b2b" />
+                    <div>
+                      <span className="font-semibold text-sm">B2B Account</span>
+                      <p className="text-xs text-muted-foreground">
+                        Deals on behalf of others. Intermediary/agent managing client portfolios.
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <span className="text-[11px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full shrink-0 hidden sm:inline-block">
-                  Partner / Agent
-                </span>
-              </Label>
-            </RadioGroup>
-          </div>
+                  <span className="text-[11px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full shrink-0 hidden sm:inline-block">
+                    Partner / Agent
+                  </span>
+                </Label>
+              </RadioGroup>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="fullName">Full Name <span className="text-destructive">*</span></Label>
-              <Input
-                id="fullName"
-                placeholder="e.g. Muhammad Ahmed"
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                disabled={isLoading}
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2 md:col-span-2">
+                <Label htmlFor="fullName">Full Name <span className="text-destructive">*</span></Label>
+                <Input
+                  id="fullName"
+                  placeholder="e.g. Muhammad Ahmed"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+              
+              <div className="grid gap-2 md:col-span-2">
+                <Label htmlFor="email">Email Address <span className="text-destructive">*</span></Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="customer@example.com"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  placeholder="+44 7911 123456"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="city">City</Label>
+                <Input
+                  id="city"
+                  placeholder="e.g. London"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="password">Password <span className="text-destructive">*</span></Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Minimum 10 chars"
+                  required
+                  minLength={10}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="confirmPassword">Confirm Password <span className="text-destructive">*</span></Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Repeat password"
+                  required
+                  minLength={10}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
             </div>
             
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="email">Email Address <span className="text-destructive">*</span></Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="customer@example.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleAttemptClose} disabled={isLoading}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                <IconUserPlus className="mr-2 h-4 w-4" />
+                {isLoading ? 'Creating...' : 'Create Customer'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-            <div className="grid gap-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input
-                id="phone"
-                placeholder="+44 7911 123456"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="country">Country</Label>
-              <Input
-                id="country"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="password">Password <span className="text-destructive">*</span></Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Minimum 10 chars"
-                required
-                minLength={10}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="confirmPassword">Confirm Password <span className="text-destructive">*</span></Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Repeat password"
-                required
-                minLength={10}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              <IconUserPlus className="mr-2 h-4 w-4" />
-              {isLoading ? 'Creating...' : 'Create Customer'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <ToastSave
+        open={isOpen && showUnsavedToast}
+        state={toastSaveState}
+        initialText="You have unsaved customer details. Discard and close?"
+        discardText="Discard & Close"
+        saveText="Create Customer"
+        cancelText="Keep Editing"
+        onCancel={() => setShowUnsavedToast(false)}
+        onDiscard={() => {
+          handleReset()
+          onClose()
+        }}
+        onSave={async (e) => {
+          setToastSaveState('loading')
+          try {
+            await handleSubmit(e || { preventDefault: () => {} })
+            setToastSaveState('success')
+            setTimeout(() => {
+              setShowUnsavedToast(false)
+              setToastSaveState('initial')
+            }, 700)
+          } catch (err) {
+            setToastSaveState('initial')
+          }
+        }}
+      />
+    </>
   )
 }
 

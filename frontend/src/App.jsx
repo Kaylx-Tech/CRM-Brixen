@@ -14,6 +14,7 @@ import Services from './Pages/Services/Services'
 import Payments from './Pages/Payments/Payments'
 import Documents from './Pages/Documents/Documents'
 import ComingSoon from './Pages/ComingSoon'
+import ToastPlayground from './Pages/ToastPlayground'
 import { TooltipProvider } from './components/ui/tooltip'
 import { ThemeProvider } from './hooks/theme-provider'
 import { Toaster } from './components/ui/sonner'
@@ -57,14 +58,18 @@ const App = () => {
                 <Route path="logs" element={<ComingSoon />} />
                 <Route path="settings" element={<ComingSoon />} />
                 <Route path="profile" element={<ComingSoon />} />
+                <Route path="toast-test" element={<ToastPlayground />} />
               </Route>
             </Route>
+
+            {/* Public route for direct test */}
+            <Route path="/toast-test" element={<ToastPlayground />} />
 
             {/* Catch-all fallback */}
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </BrowserRouter>
-        <Toaster richColors closeButton position="top-right" offset={12} />
+        <Toaster position="bottom-center" />
       </TooltipProvider>
     </ThemeProvider>
   )

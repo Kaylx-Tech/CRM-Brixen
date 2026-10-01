@@ -1,79 +1,38 @@
 @import "tailwindcss";
+@import "@fontsource-variable/inter";
 @plugin "tailwindcss-animate";
 
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* ── SF Pro Display — all weights ──────────────────────────── */
-@font-face {
-  font-family: 'SF Pro Display';
-  src: url('./assets/fonts/SFPRODISPLAYREGULAR.OTF') format('opentype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'SF Pro Display';
-  src: url('./assets/fonts/SFPRODISPLAYMEDIUM.OTF') format('opentype');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'SF Pro Display';
-  src: url('./assets/fonts/SFPRODISPLAYBOLD.OTF') format('opentype');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'SF Pro Display';
-  src: url('./assets/fonts/SFPRODISPLAYSEMIBOLDITALIC.OTF') format('opentype');
-  font-weight: 600;
-  font-style: italic;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'SF Pro Display';
-  src: url('./assets/fonts/SFPRODISPLAYHEAVYITALIC.OTF') format('opentype');
-  font-weight: 800;
-  font-style: italic;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'SF Pro Display';
-  src: url('./assets/fonts/SFPRODISPLAYBLACKITALIC.OTF') format('opentype');
-  font-weight: 900;
-  font-style: italic;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'SF Pro Display';
-  src: url('./assets/fonts/SFPRODISPLAYLIGHTITALIC.OTF') format('opentype');
-  font-weight: 300;
-  font-style: italic;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'SF Pro Display';
-  src: url('./assets/fonts/SFPRODISPLAYTHINITALIC.OTF') format('opentype');
-  font-weight: 100;
-  font-style: italic;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'SF Pro Display';
-  src: url('./assets/fonts/SFPRODISPLAYULTRALIGHTITALIC.OTF') format('opentype');
-  font-weight: 200;
-  font-style: italic;
-  font-display: swap;
-}
-
 @custom-variant dark (&:is(.dark *));
 
+:root {
+  --font-apple: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-inter: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  
+  /* Defaults to Inter unless Apple device is detected */
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-inter);
+}
+
+/* Apple OS condition (macOS, iOS, iPadOS) */
+html.is-apple,
+.is-apple {
+  --font-sans: var(--font-apple);
+  --font-heading: var(--font-apple);
+}
+
+/* Non-Apple OS condition (Windows, Android, Linux) */
+html.is-non-apple,
+.is-non-apple {
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-inter);
+}
+
 @theme inline {
-    --font-heading: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-sans: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-heading: var(--font-heading);
+    --font-sans: var(--font-sans);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -188,14 +147,12 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-    letter-spacing: 0.01em;
-  }
-  html {
-    @apply font-sans;
+  body, html {
+    @apply bg-background text-foreground font-sans;
+    font-family: var(--font-sans);
   }
   h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
     letter-spacing: -0.01em;
   }
 }

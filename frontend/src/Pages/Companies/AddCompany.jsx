@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { IconBuildingPlus, IconAlertCircle, IconLoader2, IconSearch, IconCheck, IconBuilding } from '@tabler/icons-react'
 import { toast } from 'sonner'
+import ToastSave from '@/components/ToastSave'
 
 const AddCompany = ({ isOpen, onClose }) => {
   // Search state
@@ -25,6 +26,8 @@ const AddCompany = ({ isOpen, onClose }) => {
   const [showDropdown, setShowDropdown] = useState(false)
   const [isAutoFilling, setIsAutoFilling] = useState(false)
   const [isAutoFilled, setIsAutoFilled] = useState(false)
+  const [showUnsavedToast, setShowUnsavedToast] = useState(false)
+  const [toastSaveState, setToastSaveState] = useState('initial')
   const searchTimeoutRef = useRef(null)
   const dropdownRef = useRef(null)
 
@@ -231,6 +234,24 @@ const AddCompany = ({ isOpen, onClose }) => {
     }
   }
 
+  const isDirty = Boolean(
+    companyName.trim() ||
+    companyNumber.trim() ||
+    director.trim() ||
+    newClientName.trim() ||
+    newClientEmail.trim() ||
+    isAutoFilled
+  )
+
+  const handleAttemptClose = () => {
+    if (isSubmitting) return
+    if (isDirty) {
+      setShowUnsavedToast(true)
+    } else {
+      onClose()
+    }
+  }
+
   const handleReset = () => {
     setSearchQuery('')
     setSearchResults([])
@@ -245,17 +266,19 @@ const AddCompany = ({ isOpen, onClose }) => {
     setNewClientEmail('')
     setIsAutoFilled(false)
     setErrorMsg('')
+    setShowUnsavedToast(false)
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-140 p-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-2">
-          <DialogTitle className="text-xl">Add Company</DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-            Search UK Companies House to auto-fill official records or enter details manually.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleAttemptClose() }}>
+        <DialogContent className="sm:max-w-140 p-0 overflow-hidden">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle className="text-xl">Add Company</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+              Search UK Companies House to auto-fill official records or enter details manually.
+            </DialogDescription>
+          </DialogHeader>
 
         <ScrollArea className="max-h-[75vh]">
           <form onSubmit={handleSubmit} className="p-6 pt-2 space-y-4">
@@ -515,7 +538,7 @@ const AddCompany = ({ isOpen, onClose }) => {
 
             {/* Footer */}
             <DialogFooter className="pt-3 gap-2">
-              <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={isSubmitting}>
+              <Button type="button" variant="ghost" size="sm" onClick={handleAttemptClose} disabled={isSubmitting}>
                 Cancel
               </Button>
               <Button type="submit" size="sm" disabled={isSubmitting}>
@@ -536,6 +559,34 @@ const AddCompany = ({ isOpen, onClose }) => {
         </ScrollArea>
       </DialogContent>
     </Dialog>
+
+    <ToastSave
+      open={isOpen && showUnsavedToast}
+      state={toastSaveState}
+      initialText="You have unsaved company details. Discard and close?"
+      discardText="Discard & Close"
+      saveText="Add Company"
+      cancelText="Keep Editing"
+      onCancel={() => setShowUnsavedToast(false)}
+      onDiscard={() => {
+        handleReset()
+        onClose()
+      }}
+      onSave={async (e) => {
+        setToastSaveState('loading')
+        try {
+          await handleSubmit(e || { preventDefault: () => {} })
+          setToastSaveState('success')
+          setTimeout(() => {
+            setShowUnsavedToast(false)
+            setToastSaveState('initial')
+          }, 700)
+        } catch (err) {
+          setToastSaveState('initial')
+        }
+      }}
+    />
+  </>
   )
 }
 
