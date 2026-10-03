@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/button'
 import { IconUserPlus, IconAlertCircle } from '@tabler/icons-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import ToastSave from '@/components/ToastSave'
+import { toast } from 'sonner'
+import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 
 const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
   const [custType, setCustType] = useState('individual')
@@ -72,6 +74,7 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
     }
 
     setIsLoading(true)
+    const toastId = toastProcessing('Creating customer…')
 
     let typeMapped = 'Individual'
     if (custType === 'b2b') typeMapped = 'B2B'
@@ -104,13 +107,21 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
 
       const data = await res.json().catch(() => ({}))
       if (res.ok && (data.status === 'success' || data.success === true)) {
+        toastDone(
+          toastId,
+          data.message || `Customer "${fullName.trim()}" created successfully.`,
+        )
         if (onCustomerCreated) onCustomerCreated()
         onClose()
       } else {
-        setError(data.message || data.error || 'Failed to create customer.')
+        const msg = data.message || data.error || 'Failed to create customer.'
+        setError(msg)
+        toastFail(toastId, msg)
       }
     } catch (err) {
-      setError('Connection error: ' + err.message)
+      const msg = 'Connection error: ' + err.message
+      setError(msg)
+      toastFail(toastId, msg)
     } finally {
       setIsLoading(false)
     }

@@ -20,6 +20,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { OverflowTooltip } from "@/components/OverflowTooltip"
 import { toast } from "sonner"
+import { toastUndoableDelete, toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 import CreateOrderWizard from "./CreateOrderWizard"
 import QuickCrmOrder from "./QuickCrmOrder"
@@ -228,31 +229,44 @@ export default function Orders() {
 
   const updateOrder = async (orderId, payload) => {
     setSavingId(orderId)
+    const toastId = toastProcessing('Updating order…')
     try {
       const res = await apiRequest(`/orders/${orderId}`, {
         method: 'PUT',
         body: JSON.stringify(payload),
         label: 'Update order',
+        silent: true,
       })
       if (res.ok) {
-        toast.success('Order updated')
+        toastDone(toastId, 'Order updated')
         fetchOrders(pagination.page || 1)
+      } else {
+        toastFail(toastId, res.reason || 'Failed to update order')
       }
     } finally {
       setSavingId(null)
     }
   }
 
-  const handleDelete = async (order) => {
+  const handleDelete = (order) => {
     if (!window.confirm(`Cancel order ${order.order_number || order.id}?`)) return
-    const res = await apiRequest(`/orders/${order.id}`, {
-      method: 'DELETE',
-      label: 'Cancel order',
+    const victim = order
+    const snapshot = orders
+    setOrders((prev) => prev.filter((o) => o.id !== victim.id))
+
+    toastUndoableDelete({
+      message: `Order ${victim.order_number || victim.id} cancelled`,
+      description: 'Undo available for a few seconds',
+      onUndo: () => setOrders(snapshot),
+      onCommit: async () => {
+        const res = await apiRequest(`/orders/${victim.id}`, {
+          method: 'DELETE',
+          label: 'Cancel order',
+          silent: true,
+        })
+        if (!res.ok) throw new Error(res.reason || 'Failed to cancel order')
+      },
     })
-    if (res.ok) {
-      toast.success('Order cancelled')
-      fetchOrders(pagination.page || 1)
-    }
   }
 
   const statCards = useMemo(() => [
@@ -575,11 +589,6 @@ export default function Orders() {
         Click <strong>Open order</strong> on any row for details. Edit price or payment inline — same as the live CRM.
       </div>
 
-      {loadError && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {loadError}
-        </div>
-      )}
 
       <DataTable
         columns={columns}

@@ -34,6 +34,134 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
     user_name = user.get('name') or user.get('full_name') or 'Client'
     is_staff = user_role in ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
 
+    # ── POST /api/admin/documents/intake/process ───────────────────────────
+    if path == '/api/admin/documents/intake/process' and method == 'POST':
+        if not is_staff:
+            return error_response(start_response, "Access denied", status_code=403)
+        try:
+            import sys, os
+            root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+            backend = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+            services = os.path.join(backend, 'services')
+            for p in (services, backend, root):
+                if p not in sys.path:
+                    sys.path.insert(0, p)
+            from app import process_smart_intake_files
+
+            files_data = []
+            batch_identities = []
+            source_mode = 'CUSTOMER_UPLOADS'
+
+            if body and body.get('_files'):
+                files = body.get('_files', {})
+                source_mode = (body.get('source_mode') or 'CUSTOMER_UPLOADS').strip().upper()
+                try:
+                    batch_identities = json.loads(body.get('batch_identities') or '[]')
+                except Exception:
+                    batch_identities = []
+                upload = files.get('file') or files.get('document')
+                if upload and upload.get('bytes'):
+                    fname = (body.get('file_name') or '').strip() or upload.get('filename') or 'document.pdf'
+                    folder_path = (body.get('folder_path') or fname).strip()
+                    files_data = [{
+                        'file_name': fname,
+                        'folder_path': folder_path,
+                        'document_type': (body.get('document_type') or '').strip(),
+                        'allowed_types': (body.get('allowed_types') or '').strip(),
+                        'hq_ocr': (body.get('hq_ocr') or '1').strip(),
+                        'file_content_base64': base64.b64encode(upload['bytes']).decode('ascii'),
+                    }]
+            else:
+                data = body or {}
+                files_data = data.get('files') or []
+                batch_identities = data.get('batch_identities') or []
+                source_mode = (data.get('source_mode') or 'CUSTOMER_UPLOADS').strip().upper()
+                top_type = (data.get('document_type') or '').strip()
+                if top_type:
+                    for item in files_data:
+                        if isinstance(item, dict) and not item.get('document_type'):
+                            item['document_type'] = top_type
+                for item in files_data:
+                    if isinstance(item, dict) and item.get('hq_ocr') is None:
+                        item['hq_ocr'] = data.get('hq_ocr', '1')
+
+            payload, err_status = process_smart_intake_files(
+                files_data, user,
+                batch_identities=batch_identities,
+                source_mode=source_mode,
+            )
+            if err_status:
+                status_int = 400
+                try:
+                    status_int = int(err_status.split()[0])
+                except Exception:
+                    pass
+                return error_response(start_response, payload.get('message', 'Intake failed'), status_code=status_int)
+            return json_response(start_response, payload)
+        except Exception as err:
+            return error_response(start_response, f"Smart intake failed: {err}", status_code=500)
+
+    # ── POST /api/admin/documents/intake/link-company ───────────────────────
+    if path == '/api/admin/documents/intake/link-company' and method == 'POST':
+        if not is_staff:
+            return error_response(start_response, "Access denied", status_code=403)
+        try:
+            import sys, os
+            root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+            backend = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+            services = os.path.join(backend, 'services')
+            for p in (services, backend, root):
+                if p not in sys.path:
+                    sys.path.insert(0, p)
+            from app import auto_import_companies_house_from_intake, normalize_company_number
+            data = body or {}
+            client_id = data.get('client_id')
+            company_id = data.get('company_id')
+            company_number = normalize_company_number(data.get('company_number'))
+            document_ids = data.get('document_ids') or []
+            if not client_id:
+                return error_response(start_response, "client_id is required", status_code=400)
+            company_obj = None
+            if company_id:
+                company_obj = query_db("SELECT * FROM companies WHERE id = ?;", (int(company_id),), one=True)
+                if company_obj and client_id and not company_obj.get('user_id'):
+                    execute_db("UPDATE companies SET user_id = ? WHERE id = ?;", (int(client_id), company_obj['id']))
+                    company_obj = query_db("SELECT * FROM companies WHERE id = ?;", (company_obj['id'],), one=True)
+            if not company_obj:
+                if not company_number:
+                    return error_response(start_response, "company_number or company_id is required", status_code=400)
+                company_obj = auto_import_companies_house_from_intake(
+                    data.get('company_name'),
+                    company_number,
+                    client_user_id=int(client_id),
+                )
+            if not company_obj:
+                return error_response(start_response, f"Could not import Companies House company #{company_number}", status_code=404)
+            linked = 0
+            for raw_id in document_ids:
+                try:
+                    doc_id = int(raw_id)
+                except (TypeError, ValueError):
+                    continue
+                row = query_db("SELECT id, user_id FROM documents WHERE id = ?;", (doc_id,), one=True)
+                if not row or int(row['user_id']) != int(client_id):
+                    continue
+                execute_db("UPDATE documents SET company_id = ? WHERE id = ?;", (company_obj['id'], doc_id))
+                linked += 1
+            display_num = company_obj.get('companies_house_number') or company_obj.get('company_number') or company_number or ''
+            return json_response(start_response, {
+                'status': 'success',
+                'message': f"Linked to {company_obj.get('name')} (#{display_num})",
+                'company': {
+                    'id': company_obj['id'],
+                    'name': company_obj.get('name'),
+                    'company_number': display_num,
+                },
+                'documents_linked': linked,
+            })
+        except Exception as err:
+            return error_response(start_response, f"Could not link company: {err}", status_code=500)
+
     # ── GET /api/admin/documents/lifecycle ─────────────────────────────────
     if path == '/api/admin/documents/lifecycle' and method == 'GET':
         if not is_staff:

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
+import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import { IconLoader2 } from '@tabler/icons-react'
 import ToastSave from '@/components/ToastSave'
 
@@ -73,6 +74,7 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
     }
 
     setIsSubmitting(true)
+    const toastId = toastProcessing('Adding service…')
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
       const token = localStorage.getItem('token')
@@ -87,15 +89,15 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
 
       const data = await res.json()
       if (res.ok) {
-        toast.success(data.message || "Service added successfully")
+        toastDone(toastId, data.message || "Service added successfully")
         resetForm()
         if (onSuccess) onSuccess()
         onClose()
       } else {
-        toast.error(data.message || data.error || "Failed to add service")
+        toastFail(toastId, data.message || data.error || "Failed to add service")
       }
     } catch (error) {
-      toast.error("Network error: " + error.message)
+      toastFail(toastId, "Network error: " + error.message)
     } finally {
       setIsSubmitting(false)
     }

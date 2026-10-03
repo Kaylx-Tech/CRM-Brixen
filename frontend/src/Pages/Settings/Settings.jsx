@@ -1,0 +1,1006 @@
+import React, { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { IconRefresh, IconDeviceFloppy, IconLoader2, IconMail, IconBuilding, IconCloud } from '@tabler/icons-react'
+import { toast } from 'sonner'
+import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
+import { apiRequest } from '@/lib/api'
+
+const MIN_PASSWORD = 10
+const SETTINGS_TABS = new Set(['general', 'email', 'integrations', 'compliance', 'profile'])
+
+function syncLocalUser(user) {
+  if (!user) return
+  try {
+    const prev = JSON.parse(localStorage.getItem('user') || '{}')
+    localStorage.setItem(
+      'user',
+      JSON.stringify({
+        ...prev,
+        ...user,
+        name: user.full_name || user.name || prev.name,
+        full_name: user.full_name || user.name || prev.full_name,
+      })
+    )
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+const EMPTY_FORM = {
+  company_name: '',
+  brand_name: '',
+  support_email: '',
+  support_phone: '',
+  team_notification_emails: '',
+  currency: '£',
+  order_prefix: '#GB',
+  invoice_prefix: 'INV-2026-',
+  portal_url: '',
+  frontend_url: '',
+  uk_formfill_pro_url: '',
+  smtp_host: '',
+  smtp_port: '587',
+  smtp_user: '',
+  smtp_pass: '',
+  smtp_from: '',
+  companies_house_api_key: '',
+  getaddress_api_key: '',
+  google_drive_root_folder: 'Brixen-CRM',
+  google_service_account_json: '',
+  wordpress_url: '',
+  wordpress_webhook_secret: '',
+  compliance_alerts_enabled: false,
+  compliance_alerts_verified_only: false,
+  compliance_alerts_whatsapp_enabled: true,
+  compliance_alerts_test_mode: false,
+  compliance_alerts_send_hour: '11',
+  compliance_alerts_interval_hours: '24',
+  compliance_alerts_timezone: 'Asia/Karachi',
+  compliance_alerts_test_recipient: '',
+  compliance_alerts_website: '',
+  compliance_alerts_whatsapp_url: '',
+}
+
+function asBool(val, fallback = false) {
+  if (val === undefined || val === null || val === '') return fallback
+  if (typeof val === 'boolean') return val
+  const s = String(val).trim().toLowerCase()
+  if (['1', 'true', 'yes', 'on'].includes(s)) return true
+  if (['0', 'false', 'no', 'off'].includes(s)) return false
+  return fallback
+}
+
+function Field({ id, label, hint, children }) {
+  return (
+    <div className="grid gap-1.5">
+      <Label htmlFor={id} className="text-xs">{label}</Label>
+      {children}
+      {hint ? <p className="text-[11px] text-muted-foreground m-0">{hint}</p> : null}
+    </div>
+  )
+}
+
+function Section({ title, description, children }) {
+  return (
+    <div className="rounded-md border bg-card p-4 space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {description ? (
+          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        ) : null}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+export default function Settings() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const tab = SETTINGS_TABS.has(tabParam) ? tabParam : 'general'
+  const isProfileTab = tab === 'profile'
+
+  const setTab = (next) => {
+    const value = SETTINGS_TABS.has(next) ? next : 'general'
+    if (value === 'general') setSearchParams({}, { replace: true })
+    else setSearchParams({ tab: value }, { replace: true })
+  }
+
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [profile, setProfile] = useState({
+    email: '',
+    role: '',
+    full_name: '',
+    phone: '',
+    country: '',
+    address: '',
+    current_password: '',
+    new_password: '',
+    confirm_password: '',
+  })
+  const [flags, setFlags] = useState({
+    smtp_pass_set: false,
+    companies_house_api_key_set: false,
+    google_service_account_json_set: false,
+    wordpress_webhook_secret_set: false,
+    getaddress_configured: false,
+  })
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [testing, setTesting] = useState('')
+  const [loadError, setLoadError] = useState(null)
+
+  const setField = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }))
+  }
+  const setProfileField = (key, value) => {
+    setProfile((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const loadProfile = useCallback(async () => {
+    const res = await apiRequest('/auth/me', { label: 'Profile', silent: true })
+    if (!res.ok) return
+    const user = res.data?.data?.user || res.data?.user || {}
+    syncLocalUser(user)
+    setProfile({
+      email: user.email || '',
+      role: user.role || '',
+      full_name: user.full_name || user.name || '',
+      phone: user.phone || '',
+      country: user.country || '',
+      address: user.address || '',
+      current_password: '',
+      new_password: '',
+      confirm_password: '',
+    })
+  }, [])
+
+  const loadSettings = useCallback(async () => {
+    setIsLoading(true)
+    setLoadError(null)
+    try {
+      const [res] = await Promise.all([
+        apiRequest('/admin/settings', { label: 'System Settings' }),
+        loadProfile(),
+      ])
+      if (!res.ok) {
+        setLoadError(res.reason || 'Failed to load settings')
+        return
+      }
+      const payload = res.data?.data || res.data || {}
+      const brand = payload.brand || {}
+      const smtp = payload.smtp || {}
+      const drive = payload.google_drive || {}
+      const ch = payload.companies_house || {}
+      const webhooks = payload.webhooks || {}
+      const compliance = payload.compliance || {}
+      const flat = payload.flat || {}
+
+      setForm({
+        ...EMPTY_FORM,
+        company_name: brand.company_name || flat.company_name || '',
+        brand_name: brand.brand_name || flat.brand_name || '',
+        support_email: brand.support_email || flat.support_email || '',
+        support_phone: brand.support_phone || flat.support_phone || '',
+        team_notification_emails: flat.team_notification_emails || '',
+        currency: brand.currency || flat.currency || '£',
+        order_prefix: brand.order_prefix || flat.order_prefix || '#GB',
+        invoice_prefix: brand.invoice_prefix || flat.invoice_prefix || 'INV-2026-',
+        portal_url: brand.portal_url || flat.portal_url || '',
+        frontend_url: brand.frontend_url || flat.frontend_url || '',
+        uk_formfill_pro_url: flat.uk_formfill_pro_url || '',
+        smtp_host: smtp.smtp_host || '',
+        smtp_port: smtp.smtp_port || '587',
+        smtp_user: smtp.smtp_user || '',
+        smtp_pass: '',
+        smtp_from: smtp.smtp_from || '',
+        companies_house_api_key: '',
+        getaddress_api_key: '',
+        google_drive_root_folder: drive.google_drive_root_folder || 'Brixen-CRM',
+        google_service_account_json: '',
+        wordpress_url: webhooks.wordpress_url || '',
+        wordpress_webhook_secret: '',
+        compliance_alerts_enabled: asBool(compliance.compliance_alerts_enabled, false),
+        compliance_alerts_verified_only: asBool(flat.compliance_alerts_verified_only, false),
+        compliance_alerts_whatsapp_enabled: asBool(flat.compliance_alerts_whatsapp_enabled, true),
+        compliance_alerts_test_mode: asBool(flat.compliance_alerts_test_mode, false),
+        compliance_alerts_send_hour: String(
+          compliance.compliance_alerts_send_hour || compliance.compliance_send_hour || '11'
+        ),
+        compliance_alerts_interval_hours: String(flat.compliance_alerts_interval_hours || '24'),
+        compliance_alerts_timezone: flat.compliance_alerts_timezone || 'Asia/Karachi',
+        compliance_alerts_test_recipient:
+          compliance.compliance_alerts_test_recipient ||
+          compliance.compliance_test_recipient ||
+          '',
+        compliance_alerts_website: flat.compliance_alerts_website || '',
+        compliance_alerts_whatsapp_url: flat.compliance_alerts_whatsapp_url || '',
+      })
+
+      setFlags({
+        smtp_pass_set: !!smtp.smtp_pass_set,
+        companies_house_api_key_set: !!ch.companies_house_api_key_set,
+        google_service_account_json_set: !!drive.google_service_account_json_set,
+        wordpress_webhook_secret_set: !!webhooks.wordpress_webhook_secret_set,
+        getaddress_configured: !!flat.getaddress_api_key,
+      })
+    } catch (err) {
+      setLoadError(err?.message || 'Unexpected error')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [loadProfile])
+
+  useEffect(() => {
+    loadSettings()
+  }, [loadSettings])
+
+  const handleSaveProfile = async () => {
+    const changingPassword = !!(
+      profile.current_password ||
+      profile.new_password ||
+      profile.confirm_password
+    )
+    if (changingPassword) {
+      if (!profile.current_password) {
+        toast.error('Enter your current password to change it.')
+        return
+      }
+      if (profile.new_password.length < MIN_PASSWORD) {
+        toast.error(`New password must be at least ${MIN_PASSWORD} characters.`)
+        return
+      }
+      if (profile.new_password !== profile.confirm_password) {
+        toast.error('New passwords do not match.')
+        return
+      }
+    }
+    if (!profile.full_name.trim()) {
+      toast.error('Full name is required.')
+      return
+    }
+
+    setIsSaving(true)
+    const toastId = toastProcessing(
+      changingPassword ? 'Updating profile & password…' : 'Saving profile…',
+    )
+    try {
+      const payload = {
+        full_name: profile.full_name.trim(),
+        phone: profile.phone.trim(),
+        country: profile.country.trim(),
+        address: profile.address.trim(),
+      }
+      if (changingPassword) {
+        payload.current_password = profile.current_password
+        payload.new_password = profile.new_password
+        payload.confirm_password = profile.confirm_password
+      }
+      const res = await apiRequest('/auth/profile', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        label: 'Save profile',
+        silent: true,
+      })
+      if (!res.ok) {
+        toastFail(toastId, res.reason || 'Failed to save profile')
+        return
+      }
+      const user = res.data?.data?.user || res.data?.user
+      if (user) syncLocalUser(user)
+      toastDone(
+        toastId,
+        res.data?.message ||
+          (changingPassword
+            ? 'Profile and password updated.'
+            : 'Profile updated.'),
+      )
+      await loadProfile()
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleSave = async (e) => {
+    e?.preventDefault?.()
+    if (isProfileTab) {
+      await handleSaveProfile()
+      return
+    }
+    setIsSaving(true)
+    try {
+      const payload = {
+        company_name: form.company_name.trim(),
+        brand_name: (form.brand_name || form.company_name).trim(),
+        support_email: form.support_email.trim(),
+        support_phone: form.support_phone.trim(),
+        team_notification_emails: form.team_notification_emails.trim(),
+        currency: form.currency.trim() || '£',
+        order_prefix: form.order_prefix.trim(),
+        invoice_prefix: form.invoice_prefix.trim(),
+        portal_url: form.portal_url.trim(),
+        frontend_url: form.frontend_url.trim(),
+        uk_formfill_pro_url: form.uk_formfill_pro_url.trim().replace(/\/$/, ''),
+        smtp_host: form.smtp_host.trim(),
+        smtp_port: form.smtp_port.trim(),
+        smtp_user: form.smtp_user.trim(),
+        smtp_from: form.smtp_from.trim(),
+        google_drive_root_folder: form.google_drive_root_folder.trim(),
+        wordpress_url: form.wordpress_url.trim(),
+        compliance_alerts_enabled: form.compliance_alerts_enabled ? '1' : '0',
+        compliance_alerts_verified_only: form.compliance_alerts_verified_only ? '1' : '0',
+        compliance_alerts_whatsapp_enabled: form.compliance_alerts_whatsapp_enabled ? '1' : '0',
+        compliance_alerts_test_mode: form.compliance_alerts_test_mode ? '1' : '0',
+        compliance_alerts_send_hour: form.compliance_alerts_send_hour.trim() || '11',
+        compliance_alerts_interval_hours: form.compliance_alerts_interval_hours.trim() || '24',
+        compliance_alerts_timezone: form.compliance_alerts_timezone.trim() || 'Asia/Karachi',
+        compliance_alerts_test_recipient: form.compliance_alerts_test_recipient.trim(),
+        compliance_alerts_website: form.compliance_alerts_website.trim(),
+        compliance_alerts_whatsapp_url: form.compliance_alerts_whatsapp_url.trim(),
+      }
+
+      // Secrets: only send when user typed a new value (blank = keep current)
+      if (form.smtp_pass.trim()) payload.smtp_pass = form.smtp_pass.trim()
+      if (form.companies_house_api_key.trim()) {
+        payload.companies_house_api_key = form.companies_house_api_key.trim()
+      }
+      if (form.getaddress_api_key.trim()) {
+        payload.getaddress_api_key = form.getaddress_api_key.trim()
+      }
+      if (form.google_service_account_json.trim()) {
+        payload.google_service_account_json = form.google_service_account_json.trim()
+      }
+      if (form.wordpress_webhook_secret.trim()) {
+        payload.wordpress_webhook_secret = form.wordpress_webhook_secret.trim()
+      }
+
+      const toastId = toastProcessing('Saving system settings…')
+      const res = await apiRequest('/admin/settings', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        label: 'Save settings',
+        silent: true,
+      })
+      if (!res.ok) {
+        toastFail(toastId, res.reason || 'Failed to save settings')
+        return
+      }
+      toastDone(toastId, res.data?.message || 'System settings saved.')
+      await loadSettings()
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const runTest = async (kind) => {
+    setTesting(kind)
+    const labels = {
+      smtp: 'Testing SMTP…',
+      ch: 'Testing Companies House…',
+      drive: 'Testing Google Drive…',
+    }
+    const toastId = toastProcessing(labels[kind] || 'Testing connection…')
+    try {
+      let path = ''
+      let body = {}
+      if (kind === 'smtp') {
+        path = '/admin/settings/test-smtp'
+        body = {
+          test_email: form.support_email || form.smtp_from || undefined,
+          smtp_config: {
+            smtp_host: form.smtp_host,
+            smtp_port: form.smtp_port,
+            smtp_user: form.smtp_user,
+            smtp_from: form.smtp_from,
+            ...(form.smtp_pass.trim() ? { smtp_pass: form.smtp_pass.trim() } : {}),
+          },
+        }
+      } else if (kind === 'ch') {
+        path = '/admin/settings/test-companies-house'
+        body = form.companies_house_api_key.trim()
+          ? { companies_house_api_key: form.companies_house_api_key.trim() }
+          : {}
+      } else if (kind === 'drive') {
+        path = '/admin/settings/test-google-drive'
+        body = form.google_service_account_json.trim()
+          ? { google_service_account_json: form.google_service_account_json.trim() }
+          : {}
+      }
+      const res = await apiRequest(path, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        label: 'Connection test',
+        silent: true,
+      })
+      if (res.ok) {
+        toastDone(
+          toastId,
+          res.data?.message || res.data?.data?.message || 'Connection OK',
+        )
+      } else {
+        toastFail(toastId, res.reason || 'Connection test failed')
+      }
+    } finally {
+      setTesting('')
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4 w-full pb-10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">System Settings</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Branding, email, integrations, compliance, and your profile
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={loadSettings} disabled={isLoading || isSaving}>
+            <IconRefresh className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+          <Button onClick={handleSave} disabled={isLoading || isSaving}>
+            {isSaving ? (
+              <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <IconDeviceFloppy className="mr-2 h-4 w-4" />
+            )}
+            {isProfileTab ? 'Save Profile' : 'Save Settings'}
+          </Button>
+        </div>
+      </div>
+
+      {loadError && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-2 text-sm text-destructive">
+          {loadError}
+        </div>
+      )}
+
+      <Tabs value={tab} onValueChange={setTab} className="w-full">
+        <TabsList >
+          {[
+            ['general', 'General'],
+            ['email', 'Email (SMTP)'],
+            ['integrations', 'Integrations'],
+            ['compliance', 'Compliance'],
+            ['profile', 'Profile & Password'],
+          ].map(([value, label]) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+            >
+              {label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        <form onSubmit={handleSave} className="mt-4 space-y-4">
+          <TabsContent value="general" className="mt-0 space-y-4">
+            <Section title="Brand & contact" description="Shown across admin CRM and client-facing emails.">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field id="company_name" label="Company name">
+                  <Input
+                    id="company_name"
+                    value={form.company_name}
+                    onChange={(e) => setField('company_name', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="brand_name" label="Brand name">
+                  <Input
+                    id="brand_name"
+                    value={form.brand_name}
+                    onChange={(e) => setField('brand_name', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="support_email" label="Support email">
+                  <Input
+                    id="support_email"
+                    type="email"
+                    value={form.support_email}
+                    onChange={(e) => setField('support_email', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="support_phone" label="Support phone">
+                  <Input
+                    id="support_phone"
+                    value={form.support_phone}
+                    onChange={(e) => setField('support_phone', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field
+                  id="team_notification_emails"
+                  label="Team notification emails"
+                  hint="Comma-separated. Alerts for new orders and support tickets."
+                >
+                  <Input
+                    id="team_notification_emails"
+                    value={form.team_notification_emails}
+                    onChange={(e) => setField('team_notification_emails', e.target.value)}
+                    placeholder="orders@brixenconsultants.com, support@…"
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="currency" label="Currency symbol">
+                  <Input
+                    id="currency"
+                    value={form.currency}
+                    onChange={(e) => setField('currency', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="order_prefix" label="Order prefix">
+                  <Input
+                    id="order_prefix"
+                    value={form.order_prefix}
+                    onChange={(e) => setField('order_prefix', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="invoice_prefix" label="Invoice prefix">
+                  <Input
+                    id="invoice_prefix"
+                    value={form.invoice_prefix}
+                    onChange={(e) => setField('invoice_prefix', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="frontend_url" label="Admin URL">
+                  <Input
+                    id="frontend_url"
+                    value={form.frontend_url}
+                    onChange={(e) => setField('frontend_url', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="portal_url" label="Portal URL">
+                  <Input
+                    id="portal_url"
+                    value={form.portal_url}
+                    onChange={(e) => setField('portal_url', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field
+                  id="uk_formfill_pro_url"
+                  label="UK FormFill Pro URL"
+                  hint="Quick Tasks → AD01 opens this wizard."
+                >
+                  <Input
+                    id="uk_formfill_pro_url"
+                    value={form.uk_formfill_pro_url}
+                    onChange={(e) => setField('uk_formfill_pro_url', e.target.value)}
+                    placeholder="https://portal.brixenconsultants.com/formfill"
+                    disabled={isLoading}
+                  />
+                </Field>
+              </div>
+            </Section>
+          </TabsContent>
+
+          <TabsContent value="email" className="mt-0 space-y-4">
+            <Section
+              title="Customer email (SMTP)"
+              description={
+                flags.smtp_pass_set
+                  ? 'SMTP password is configured. Leave blank to keep the current password.'
+                  : 'Add Hostinger (or other) SMTP so clients receive document and order emails.'
+              }
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field id="smtp_host" label="SMTP host">
+                  <Input
+                    id="smtp_host"
+                    value={form.smtp_host}
+                    onChange={(e) => setField('smtp_host', e.target.value)}
+                    placeholder="smtp.hostinger.com"
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="smtp_port" label="SMTP port">
+                  <Input
+                    id="smtp_port"
+                    value={form.smtp_port}
+                    onChange={(e) => setField('smtp_port', e.target.value)}
+                    placeholder="587"
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="smtp_user" label="SMTP username">
+                  <Input
+                    id="smtp_user"
+                    value={form.smtp_user}
+                    onChange={(e) => setField('smtp_user', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="smtp_pass" label="SMTP password">
+                  <Input
+                    id="smtp_pass"
+                    type="password"
+                    value={form.smtp_pass}
+                    onChange={(e) => setField('smtp_pass', e.target.value)}
+                    placeholder={flags.smtp_pass_set ? '•••••••• (unchanged)' : 'SMTP password'}
+                    autoComplete="new-password"
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="smtp_from" label="Send from address">
+                  <Input
+                    id="smtp_from"
+                    value={form.smtp_from}
+                    onChange={(e) => setField('smtp_from', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  disabled={!!testing || isLoading}
+                  onClick={() => runTest('smtp')}
+                >
+                  {testing === 'smtp' ? (
+                    <IconLoader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <IconMail className="mr-1.5 h-3.5 w-3.5" />
+                  )}
+                  Send test email
+                </Button>
+              </div>
+            </Section>
+          </TabsContent>
+
+          <TabsContent value="integrations" className="mt-0 space-y-4">
+            <Section
+              title="Companies House"
+              description={
+                flags.companies_house_api_key_set
+                  ? 'API key is connected. Paste a new key only to replace it.'
+                  : 'Create a free key at developer.company-information.service.gov.uk'
+              }
+            >
+              <Field id="companies_house_api_key" label="REST API key">
+                <Input
+                  id="companies_house_api_key"
+                  type="password"
+                  value={form.companies_house_api_key}
+                  onChange={(e) => setField('companies_house_api_key', e.target.value)}
+                  placeholder={flags.companies_house_api_key_set ? '•••••••• (unchanged)' : 'Paste API key'}
+                  autoComplete="off"
+                  disabled={isLoading}
+                />
+              </Field>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                disabled={!!testing || isLoading}
+                onClick={() => runTest('ch')}
+              >
+                {testing === 'ch' ? (
+                  <IconLoader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <IconBuilding className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                Test Companies House
+              </Button>
+            </Section>
+
+            <Section
+              title="getAddress.io (optional)"
+              description={
+                flags.getaddress_configured
+                  ? 'Connected for full UK street lists. Paste a new key only to replace it.'
+                  : 'Optional. Without it, postcode lookup still works via postcodes.io.'
+              }
+            >
+              <Field id="getaddress_api_key" label="API key">
+                <Input
+                  id="getaddress_api_key"
+                  type="password"
+                  value={form.getaddress_api_key}
+                  onChange={(e) => setField('getaddress_api_key', e.target.value)}
+                  placeholder={flags.getaddress_configured ? '•••••••• (unchanged)' : 'Paste getAddress.io key'}
+                  autoComplete="off"
+                  disabled={isLoading}
+                />
+              </Field>
+            </Section>
+
+            <Section
+              title="Google Drive"
+              description={
+                flags.google_service_account_json_set
+                  ? 'Service account is configured. Paste new JSON only to replace it.'
+                  : 'Paste the service-account JSON for Drive storage.'
+              }
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field id="google_drive_root_folder" label="Root folder name">
+                  <Input
+                    id="google_drive_root_folder"
+                    value={form.google_drive_root_folder}
+                    onChange={(e) => setField('google_drive_root_folder', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+              </div>
+              <Field id="google_service_account_json" label="Service account JSON">
+                <textarea
+                  id="google_service_account_json"
+                  className="flex min-h-[110px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-xs shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:opacity-50"
+                  value={form.google_service_account_json}
+                  onChange={(e) => setField('google_service_account_json', e.target.value)}
+                  placeholder='{"type":"service_account", ...}'
+                  disabled={isLoading}
+                />
+              </Field>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                disabled={!!testing || isLoading}
+                onClick={() => runTest('drive')}
+              >
+                {testing === 'drive' ? (
+                  <IconLoader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <IconCloud className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                Test Google Drive
+              </Button>
+            </Section>
+
+            <Section title="WordPress / website" description="Website webhook + public site URL.">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field id="wordpress_url" label="WordPress URL">
+                  <Input
+                    id="wordpress_url"
+                    value={form.wordpress_url}
+                    onChange={(e) => setField('wordpress_url', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field
+                  id="wordpress_webhook_secret"
+                  label="Webhook secret"
+                  hint={
+                    flags.wordpress_webhook_secret_set
+                      ? 'Secret is set. Leave blank to keep it.'
+                      : 'Shared secret for order / user webhooks.'
+                  }
+                >
+                  <Input
+                    id="wordpress_webhook_secret"
+                    type="password"
+                    value={form.wordpress_webhook_secret}
+                    onChange={(e) => setField('wordpress_webhook_secret', e.target.value)}
+                    placeholder={flags.wordpress_webhook_secret_set ? '•••••••• (unchanged)' : 'Webhook secret'}
+                    autoComplete="off"
+                    disabled={isLoading}
+                  />
+                </Field>
+              </div>
+            </Section>
+          </TabsContent>
+
+          <TabsContent value="compliance" className="mt-0 space-y-4">
+            <Section
+              title="Compliance alerts"
+              description="Automated filing reminders. Default OFF until enabled."
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[
+                  ['compliance_alerts_enabled', 'Enable automated compliance notifications'],
+                  ['compliance_alerts_verified_only', 'Send only to staff-verified emails'],
+                  ['compliance_alerts_whatsapp_enabled', 'Include WhatsApp contact option'],
+                  ['compliance_alerts_test_mode', 'Test mode (redirect all to test recipient)'],
+                ].map(([key, label]) => (
+                  <label key={key} className="inline-flex items-center gap-2 text-xs cursor-pointer">
+                    <Checkbox
+                      checked={!!form[key]}
+                      onCheckedChange={(v) => setField(key, !!v)}
+                      disabled={isLoading}
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <Field id="compliance_alerts_send_hour" label="Send hour">
+                  <Input
+                    id="compliance_alerts_send_hour"
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={form.compliance_alerts_send_hour}
+                    onChange={(e) => setField('compliance_alerts_send_hour', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="compliance_alerts_interval_hours" label="Interval hours">
+                  <Input
+                    id="compliance_alerts_interval_hours"
+                    type="number"
+                    min={1}
+                    value={form.compliance_alerts_interval_hours}
+                    onChange={(e) => setField('compliance_alerts_interval_hours', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="compliance_alerts_timezone" label="Timezone">
+                  <Input
+                    id="compliance_alerts_timezone"
+                    value={form.compliance_alerts_timezone}
+                    onChange={(e) => setField('compliance_alerts_timezone', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="compliance_alerts_test_recipient" label="Test recipient">
+                  <Input
+                    id="compliance_alerts_test_recipient"
+                    type="email"
+                    value={form.compliance_alerts_test_recipient}
+                    onChange={(e) => setField('compliance_alerts_test_recipient', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="compliance_alerts_website" label="Website">
+                  <Input
+                    id="compliance_alerts_website"
+                    value={form.compliance_alerts_website}
+                    onChange={(e) => setField('compliance_alerts_website', e.target.value)}
+                    placeholder="https://brixenconsultants.com"
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="compliance_alerts_whatsapp_url" label="WhatsApp link">
+                  <Input
+                    id="compliance_alerts_whatsapp_url"
+                    value={form.compliance_alerts_whatsapp_url}
+                    onChange={(e) => setField('compliance_alerts_whatsapp_url', e.target.value)}
+                    placeholder="https://wa.me/447360515317"
+                    disabled={isLoading}
+                  />
+                </Field>
+              </div>
+            </Section>
+          </TabsContent>
+
+          <TabsContent value="profile" className="mt-0 space-y-4">
+            <Section title="Account" description="Your staff login details. Email cannot be changed here.">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-xs text-muted-foreground">Signed-in role</span>
+                {profile.role ? (
+                  <Badge className="badge-sky text-[11px]">{profile.role}</Badge>
+                ) : null}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field id="prof_email" label="Email">
+                  <Input
+                    id="prof_email"
+                    type="email"
+                    value={profile.email}
+                    readOnly
+                    disabled
+                    className="bg-muted/40"
+                  />
+                </Field>
+                <Field id="prof_role" label="Role">
+                  <Input
+                    id="prof_role"
+                    value={profile.role}
+                    readOnly
+                    disabled
+                    className="bg-muted/40"
+                  />
+                </Field>
+                <Field id="prof_full_name" label="Full name">
+                  <Input
+                    id="prof_full_name"
+                    value={profile.full_name}
+                    onChange={(e) => setProfileField('full_name', e.target.value)}
+                    disabled={isLoading}
+                    required
+                  />
+                </Field>
+                <Field id="prof_phone" label="Phone number">
+                  <Input
+                    id="prof_phone"
+                    value={profile.phone}
+                    onChange={(e) => setProfileField('phone', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="prof_country" label="Country">
+                  <Input
+                    id="prof_country"
+                    value={profile.country}
+                    onChange={(e) => setProfileField('country', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="prof_address" label="Billing address">
+                  <Input
+                    id="prof_address"
+                    value={profile.address}
+                    onChange={(e) => setProfileField('address', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+              </div>
+            </Section>
+
+            <Section
+              title="Change password"
+              description={`Leave blank to keep your current password. New password must be at least ${MIN_PASSWORD} characters.`}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field id="prof_current_password" label="Current password">
+                  <Input
+                    id="prof_current_password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={profile.current_password}
+                    onChange={(e) => setProfileField('current_password', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <div className="hidden md:block" />
+                <Field id="prof_new_password" label="New password">
+                  <Input
+                    id="prof_new_password"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={MIN_PASSWORD}
+                    value={profile.new_password}
+                    onChange={(e) => setProfileField('new_password', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="prof_confirm_password" label="Confirm new password">
+                  <Input
+                    id="prof_confirm_password"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={MIN_PASSWORD}
+                    value={profile.confirm_password}
+                    onChange={(e) => setProfileField('confirm_password', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+              </div>
+            </Section>
+          </TabsContent>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="submit" disabled={isLoading || isSaving}>
+              {isSaving ? (
+                <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <IconDeviceFloppy className="mr-2 h-4 w-4" />
+              )}
+              {isProfileTab ? 'Save Profile' : 'Save Settings'}
+            </Button>
+          </div>
+        </form>
+      </Tabs>
+    </div>
+  )
+}

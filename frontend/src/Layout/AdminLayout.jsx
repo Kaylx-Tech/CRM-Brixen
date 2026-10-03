@@ -4,7 +4,7 @@ import { SiteHeader } from "./Header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Outlet } from "react-router-dom"
-import MorphPanel from "@/components/ai-input"
+import AiInput from "@/components/ai-input"
 import { authHeaders } from "@/lib/api"
 
 const AdminLayout = () => {
@@ -34,26 +34,22 @@ const AdminLayout = () => {
       if (!reply) {
         const p = prompt.toLowerCase()
         if (p.includes("company") || p.includes("companies")) {
-          reply = "You can view and manage all registered entities in **Company Registered** (`/admin/companies`). Here you can check confirmation statement due dates, verify registered offices, and track director identity statuses."
+          reply = "You can view and manage all registered entities in **Company Registered** (`/admin/companies`)."
         } else if (p.includes("account") || p.includes("filing") || p.includes("tax") || p.includes("hmrc")) {
-          reply = "The **Accountancy** module (`/admin/accountancy`) manages Companies House annual accounts, micro-entity balance sheets, cash book ledgers, and HMRC CT600 returns."
+          reply = "The **Accountancy** module (`/admin/accountancy`) manages Companies House annual accounts and HMRC returns."
         } else if (p.includes("customer") || p.includes("client") || p.includes("b2b")) {
-          reply = "All B2B accounts and website signups are in **Customers & Signups** (`/admin/customers`). You can create new customers, reset passwords, or view CRM profiles."
+          reply = "All B2B accounts and website signups are in **Customers & Signups** (`/admin/customers`)."
         } else {
-          reply = `I've noted your request: **"${prompt}"**. I can assist with company filings, CRM customer details, order processing, and accountancy balance sheets.`
+          reply = `I've noted your request: **"${prompt}"**. I can assist with company filings, CRM customers, orders, and accountancy.`
         }
       }
 
       setAiMessages((prev) => [...prev, { role: 'assistant', content: reply }])
-    } catch (err) {
+    } catch {
       setAiMessages((prev) => [...prev, { role: 'assistant', content: "I encountered an issue processing your request. Please try again." }])
     } finally {
       setAiLoading(false)
     }
-  }
-
-  const handleClearAi = () => {
-    setAiMessages([])
   }
 
   return (
@@ -67,16 +63,11 @@ const AdminLayout = () => {
           </main>
         </ScrollArea>
 
-        {/* Floating AI Assistant Button at Bottom Right */}
-        {/* <div className="fixed bottom-6 right-6 z-50">
-          <MorphPanel
-            messages={aiMessages}
-            loading={aiLoading}
-            onSend={handleSendAi}
-            onClear={handleClearAi}
-            schoolName="Brixen CRM"
-          />
-        </div> */}
+        <AiInput
+          messages={aiMessages}
+          loading={aiLoading}
+          onSubmit={handleSendAi}
+        />
       </SidebarInset>
     </SidebarProvider>
   )

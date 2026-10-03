@@ -28,6 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { toast } from "sonner"
+import { toastUndoableDelete, toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { apiRequest } from "@/lib/api"
 import { IconFileCheck, IconLoader2, IconTrash, IconUpload } from "@tabler/icons-react"
 
@@ -247,6 +248,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
     if (!companyId) return
     setSavingChecks(true)
     setError("")
+    const toastId = toastProcessing("Saving checks…")
     try {
       const res = await apiRequest(`/admin/companies/${companyId}`, {
         method: "PUT",
@@ -255,6 +257,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
           psc_verified: psc,
         }),
         label: "Save checks",
+        silent: true,
       })
       if (!res.ok) {
         const res2 = await apiRequest(`/companies/${companyId}`, {
@@ -264,13 +267,16 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
             psc_verified: psc,
           }),
           label: "Save checks",
+          silent: true,
         })
         if (!res2.ok) {
-          setError(res2.reason || res.reason || "Could not save verification.")
+          const msg = res2.reason || res.reason || "Could not save verification."
+          setError(msg)
+          toastFail(toastId, msg)
           return
         }
       }
-      toast.success("Checks saved")
+      toastDone(toastId, "Checks saved")
       await fetchBooks()
     } finally {
       setSavingChecks(false)
@@ -287,6 +293,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
     }
     setUploading(true)
     setUploadStatus("Uploading…")
+    const toastId = toastProcessing("Uploading bank statement…")
     try {
       const b64 = await new Promise((resolve, reject) => {
         const reader = new FileReader()
@@ -320,18 +327,21 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
           method: "POST",
           body: JSON.stringify(payload),
           label: "Upload statement",
+          silent: true,
         })
       }
       if (!res.ok) {
         setUploadStatus(res.reason || "Upload failed")
+        toastFail(toastId, res.reason || "Upload failed")
         return
       }
       setUploadStatus("Uploaded")
-      toast.success("Bank statement uploaded")
+      toastDone(toastId, "Bank statement uploaded")
       if (fileInput) fileInput.value = ""
       await fetchBooks()
     } catch (err) {
       setUploadStatus(err?.message || "Upload failed")
+      toastFail(toastId, err?.message || "Upload failed")
     } finally {
       setUploading(false)
     }
@@ -344,6 +354,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
       return
     }
     setSavingEntry(true)
+    const toastId = toastProcessing("Saving cash book line…")
     try {
       const res = await apiRequest(`/admin/accountancy/${companyId}/books`, {
         method: "POST",
@@ -356,12 +367,13 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
           period_end: periodEnd || undefined,
         }),
         label: "Cash book entry",
+        silent: true,
       })
       if (!res.ok) {
-        toast.error(res.reason || "Failed to add line")
+        toastFail(toastId, res.reason || "Failed to add line")
         return
       }
-      toast.success("Cash book line entry recorded.")
+      toastDone(toastId, "Cash book line entry recorded.")
       setEntryDesc("")
       setEntryAmount("")
       await fetchBooks()
@@ -370,15 +382,27 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
     }
   }
 
-  const handleDeleteEntry = async (id) => {
-    const res = await apiRequest(`/admin/accountancy/${companyId}/books/${id}`, {
-      method: "DELETE",
-      label: "Remove entry",
+  const handleDeleteEntry = (id) => {
+    const snapshot = workspace
+    setWorkspace((prev) =>
+      prev
+        ? { ...prev, entries: (prev.entries || []).filter((e) => e.id !== id) }
+        : prev,
+    )
+
+    toastUndoableDelete({
+      message: "Entry removed from cash book",
+      description: "Undo available for a few seconds",
+      onUndo: () => setWorkspace(snapshot),
+      onCommit: async () => {
+        const res = await apiRequest(`/admin/accountancy/${companyId}/books/${id}`, {
+          method: "DELETE",
+          label: "Remove entry",
+          silent: true,
+        })
+        if (!res.ok) throw new Error(res.reason || "Failed to remove entry")
+      },
     })
-    if (res.ok) {
-      toast.success("Entry removed from cash book.")
-      await fetchBooks()
-    }
   }
 
   const categoryOptions = workspace?.book_categories?.length

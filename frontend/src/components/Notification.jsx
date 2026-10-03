@@ -23,6 +23,12 @@ import { ScrollArea } from "./ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
+import {
+  toastUndoableDelete,
+  toastProcessing,
+  toastDone,
+  toastFail,
+} from "@/lib/toastActions"
 import { authHeaders } from "@/lib/api"
 
 // ==========================================
@@ -125,6 +131,7 @@ export default function Notifications() {
 
   // Mark all notifications as read
   const handleMarkAllAsRead = async () => {
+    const toastId = toastProcessing("Marking all as read…")
     try {
       const res = await fetch(`${apiUrl}/client/notifications/read`, {
         method: "POST",
@@ -135,10 +142,12 @@ export default function Notifications() {
       if (res.ok) {
         setNotifications((prev) => prev.map((n) => ({ ...n, is_read: 1 })))
         setUnreadCount(0)
-        toast.success("All notifications marked as read")
+        toastDone(toastId, "All notifications marked as read")
+      } else {
+        toastFail(toastId, "Failed to mark notifications as read")
       }
     } catch {
-      toast.error("Failed to mark notifications as read")
+      toastFail(toastId, "Failed to mark notifications as read")
     }
   }
 
@@ -171,34 +180,36 @@ export default function Notifications() {
     }
   }
 
-  // Clear all notifications
-  const handleClearAll = async () => {
-    try {
-      const res = await fetch(`${apiUrl}/client/notifications/clear`, {
-        method: "POST",
-        headers: { ...authHeaders(), "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({}),
-      })
-      if (res.ok) {
-        setNotifications([])
-        setUnreadCount(0)
-        toast.success("Notifications cleared")
-      } else {
+  // Clear all notifications (optimistic + Undo)
+  const handleClearAll = () => {
+    const snapshot = notifications
+    const prevUnread = unreadCount
+    setNotifications([])
+    setUnreadCount(0)
+
+    toastUndoableDelete({
+      message: "Notifications cleared",
+      description: "Undo available for a few seconds",
+      onUndo: () => {
+        setNotifications(snapshot)
+        setUnreadCount(prevUnread)
+      },
+      onCommit: async () => {
+        const res = await fetch(`${apiUrl}/client/notifications/clear`, {
+          method: "POST",
+          headers: { ...authHeaders(), "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({}),
+        })
+        if (res.ok) return
         const delRes = await fetch(`${apiUrl}/client/notifications`, {
           method: "DELETE",
           headers: { ...authHeaders() },
           credentials: "include",
         })
-        if (delRes.ok) {
-          setNotifications([])
-          setUnreadCount(0)
-          toast.success("Notifications cleared")
-        }
-      }
-    } catch {
-      toast.error("Failed to clear notifications")
-    }
+        if (!delRes.ok) throw new Error("Failed to clear notifications")
+      },
+    })
   }
 
   return (
@@ -362,6 +373,21 @@ export default function Notifications() {
             </ul>
           </ScrollArea>
         )}
+
+        <div className="border-t border-border/60 px-3 py-2 bg-muted/30">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full h-8 text-xs justify-center cursor-pointer"
+            onClick={() => {
+              setIsOpen(false)
+              navigate("/admin/notifications")
+            }}
+          >
+            View all notifications
+            <IconArrowRight className="ml-1.5 h-3.5 w-3.5" />
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   )

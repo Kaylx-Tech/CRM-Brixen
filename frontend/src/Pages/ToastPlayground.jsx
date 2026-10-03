@@ -96,8 +96,8 @@ export default function ToastPlayground() {
                 onClick={() => {
                   const id = toast.loading('Uploading company documents...')
                   setTimeout(() => {
-                    toast.dismiss(id)
-                    toast.success('Documents uploaded & verified!')
+                    // Same id → morph loading into success (no second toast)
+                    toast.success('Documents uploaded & verified!', { id })
                   }, 2000)
                 }}
               >
@@ -108,18 +108,29 @@ export default function ToastPlayground() {
               <Button
                 variant="outline"
                 className="gap-2 text-xs h-9 justify-start"
-                onClick={() =>
-                  toast('Document deleted from vault', {
-                    description: 'Invoice_GB2026.pdf',
+                onClick={() => {
+                  const id = 'playground-undo-demo'
+                  toast.success('Document deleted from vault', {
+                    id,
+                    description: 'Invoice_GB2026.pdf · Undo available',
+                    duration: 5000,
                     action: {
                       label: 'Undo',
-                      onClick: () => toast.success('File restored!'),
+                      onClick: () => {
+                        toast.info('Delete cancelled', {
+                          id,
+                          description: 'File restored',
+                          action: undefined,
+                          duration: 2500,
+                        })
+                        return false
+                      },
                     },
                   })
-                }
+                }}
               >
                 <IconTrash className="w-4 h-4" />
-                With Action Button
+                Delete + Undo
               </Button>
             </div>
 

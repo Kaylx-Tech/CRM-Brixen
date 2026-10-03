@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
+import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { apiRequest } from "@/lib/api"
 import ToastSave from "@/components/ToastSave"
 import { IconLoader2, IconPlus, IconTrash } from "@tabler/icons-react"
@@ -303,6 +304,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
     }
 
     setSubmitting(true)
+    const toastId = toastProcessing("Creating order…")
     try {
       let res = await apiRequest("/admin/orders", {
         method: "POST",
@@ -315,15 +317,17 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
           method: "POST",
           body: JSON.stringify(payload),
           label: "Create manual order",
+          silent: true,
         })
       }
       if (!res.ok) {
         setError(res.reason || "Could not create order.")
+        toastFail(toastId, res.reason || "Could not create order.")
         return
       }
       const data = res.data?.data || res.data || {}
       const num = data.order_number || data.order?.order_number
-      toast.success(res.data?.message || `Order ${num || ""} created successfully.`)
+      toastDone(toastId, res.data?.message || `Order ${num || ""} created successfully.`)
       onClose?.()
       onCreated?.(data)
     } finally {

@@ -127,6 +127,32 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
 
         return success_response(start_response, message=f"Successfully removed {len(cids)} customer account(s)")
 
+    # ── 6b. GET /api/admin/staff (List staff / team members) ─────────────────
+    if path == '/api/admin/staff' and method == 'GET':
+        rows = query_db("""
+            SELECT u.id, u.full_name, u.email, u.phone, u.role, u.status, u.created_at,
+                   (SELECT COUNT(*) FROM tasks t
+                    WHERE t.assigned_staff_id = u.id
+                      AND t.status IN ('Open', 'In Progress')) as open_tasks,
+                   (SELECT COUNT(*) FROM tasks t
+                    WHERE t.assigned_staff_id = u.id) as total_tasks
+            FROM users u
+            WHERE u.role IN ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
+            ORDER BY
+              CASE u.role
+                WHEN 'SUPER_ADMIN' THEN 0
+                WHEN 'ADMIN' THEN 1
+                WHEN 'MANAGER' THEN 2
+                ELSE 3
+              END,
+              u.full_name COLLATE NOCASE;
+        """)
+        staff = [dict(r) for r in rows]
+        return success_response(start_response, data={
+            "staff": staff,
+            "total": len(staff),
+        })
+
     # ── 7. POST /api/admin/staff OR /api/admin/customers (Create Customer) ───
     if path in ('/api/admin/staff', '/api/admin/customers', '/api/clients') and method == 'POST':
         email = (body.get('email') or '').strip().lower()

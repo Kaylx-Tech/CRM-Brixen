@@ -50,6 +50,7 @@ import {
 } from '@tabler/icons-react'
 import { apiRequest } from '@/lib/api'
 import { toast } from 'sonner'
+import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import ToastSave from '@/components/ToastSave'
 
 const PAYMENT_MODES = [
@@ -250,6 +251,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
   const handleSaveDetails = async () => {
     if (!orderId) return
     setIsSavingDetails(true)
+    const toastId = toastProcessing('Saving order details…')
     try {
       const res = await apiRequest(`/orders/${orderId}`, {
         method: 'PUT',
@@ -257,14 +259,15 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
           checkout_form: formFields,
         }),
         label: 'Save order details',
+        silent: true,
       })
       if (res.ok) {
-        toast.success('Order details updated')
+        toastDone(toastId, 'Order details updated')
         setIsEditingDetails(false)
         fetchOrderDetails()
         if (onOrderUpdated) onOrderUpdated()
       } else {
-        toast.error(res.reason || 'Failed to update order details')
+        toastFail(toastId, res.reason || 'Failed to update order details')
       }
     } finally {
       setIsSavingDetails(false)
@@ -275,6 +278,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
   const handleSaveCredentials = async () => {
     if (!orderId) return
     setIsSavingCreds(true)
+    const toastId = toastProcessing('Saving credentials…')
     try {
       const res = await apiRequest(`/orders/${orderId}`, {
         method: 'PUT',
@@ -283,14 +287,15 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
           access_email_password: accessPassword.trim(),
         }),
         label: 'Save credentials',
+        silent: true,
       })
       if (res.ok) {
-        toast.success('Service credentials saved')
+        toastDone(toastId, 'Service credentials saved')
         setIsEditingCreds(false)
         fetchOrderDetails()
         if (onOrderUpdated) onOrderUpdated()
       } else {
-        toast.error(res.reason || 'Failed to save credentials')
+        toastFail(toastId, res.reason || 'Failed to save credentials')
       }
     } finally {
       setIsSavingCreds(false)
@@ -301,18 +306,20 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
   const handleUpdateMeta = async (fieldsToUpdate) => {
     if (!orderId) return
     setIsSavingMeta(true)
+    const toastId = toastProcessing('Updating order…')
     try {
       const res = await apiRequest(`/orders/${orderId}`, {
         method: 'PUT',
         body: JSON.stringify(fieldsToUpdate),
         label: 'Update order',
+        silent: true,
       })
       if (res.ok) {
-        toast.success('Order updated')
+        toastDone(toastId, 'Order updated')
         fetchOrderDetails()
         if (onOrderUpdated) onOrderUpdated()
       } else {
-        toast.error(res.reason || 'Failed to update')
+        toastFail(toastId, res.reason || 'Failed to update')
       }
     } finally {
       setIsSavingMeta(false)
@@ -322,6 +329,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
   // Add Product to existing order
   const handleAddProduct = async (service) => {
     if (!orderId || !service) return
+    const toastId = toastProcessing('Adding product…')
     try {
       const currentProducts = order?.products_summary ? order.products_summary.split(', ') : []
       if (!currentProducts.includes(service.name)) {
@@ -338,18 +346,19 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
           price: newTotal,
         }),
         label: 'Add product',
+        silent: true,
       })
       if (res.ok) {
-        toast.success(`Added "${service.name}" to order`)
+        toastDone(toastId, `Added "${service.name}" to order`)
         setShowProductPicker(false)
         setProductSearch('')
         fetchOrderDetails()
         if (onOrderUpdated) onOrderUpdated()
       } else {
-        toast.error(res.reason || 'Failed to add product')
+        toastFail(toastId, res.reason || 'Failed to add product')
       }
     } catch (e) {
-      toast.error('Error adding product')
+      toastFail(toastId, 'Error adding product')
     }
   }
 

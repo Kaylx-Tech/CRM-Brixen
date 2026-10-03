@@ -40,6 +40,7 @@ import {
   IconFileText
 } from "@tabler/icons-react"
 import { toast } from "sonner"
+import { toastUndoableDelete, toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 
 const columnHelper = createColumnHelper()
@@ -742,46 +743,52 @@ const Accountancy = () => {
     }))
   }, [hmrcData, filings])
 
-  const confirmSingleDelete = async () => {
+  const confirmSingleDelete = () => {
     if (!recordToDelete) return
-    setIsDeleting(true)
-    try {
-      const res = await apiRequest(`/admin/accountancy/${recordToDelete.id}`, {
-        method: 'DELETE',
-        label: 'Reset filing',
-      })
-      if (res.ok) {
-        toast.success(`Filing record for "${recordToDelete.company_name}" reset.`)
-        loadAccountancyData()
-      }
-    } catch (err) {
-      toast.error('Failed to reset filing', { description: err?.message })
-    } finally {
-      setIsDeleting(false)
-      setRecordToDelete(null)
-    }
+    const victim = recordToDelete
+    const snapshot = filings
+    setRecordToDelete(null)
+    setIsDeleting(false)
+    setFilings((prev) => prev.filter((f) => f.id !== victim.id))
+
+    toastUndoableDelete({
+      message: `Filing reset for "${victim.company_name}"`,
+      description: 'Undo available for a few seconds',
+      onUndo: () => setFilings(snapshot),
+      onCommit: async () => {
+        const res = await apiRequest(`/admin/accountancy/${victim.id}`, {
+          method: 'DELETE',
+          label: 'Reset filing',
+          silent: true,
+        })
+        if (!res.ok) throw new Error(res.reason || 'Failed to reset filing')
+      },
+    })
   }
 
-  const confirmBulkDelete = async () => {
+  const confirmBulkDelete = () => {
     if (!bulkDeleteRows || bulkDeleteRows.length === 0) return
-    setIsDeleting(true)
-    const ids = bulkDeleteRows.map(r => r.original.id)
-    try {
-      const res = await apiRequest('/admin/accountancy/bulk-delete', {
-        method: 'POST',
-        label: 'Bulk reset filings',
-        body: JSON.stringify({ ids }),
-      })
-      if (res.ok) {
-        toast.success(`Reset ${ids.length} selected filing records.`)
-        loadAccountancyData()
-      }
-    } catch (err) {
-      toast.error('Bulk reset failed', { description: err?.message })
-    } finally {
-      setIsDeleting(false)
-      setBulkDeleteRows(null)
-    }
+    const ids = bulkDeleteRows.map((r) => r.original.id)
+    const idSet = new Set(ids)
+    const snapshot = filings
+    setBulkDeleteRows(null)
+    setIsDeleting(false)
+    setFilings((prev) => prev.filter((f) => !idSet.has(f.id)))
+
+    toastUndoableDelete({
+      message: `${ids.length} filing record(s) reset`,
+      description: 'Undo available for a few seconds',
+      onUndo: () => setFilings(snapshot),
+      onCommit: async () => {
+        const res = await apiRequest('/admin/accountancy/bulk-delete', {
+          method: 'POST',
+          label: 'Bulk reset filings',
+          body: JSON.stringify({ ids }),
+          silent: true,
+        })
+        if (!res.ok) throw new Error(res.reason || 'Bulk reset failed')
+      },
+    })
   }
 
   // Compute stats data for SectionCards
@@ -840,13 +847,6 @@ const Accountancy = () => {
         </div>
       </div>
 
-      {loadError ? (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          <p className="font-medium">Could not load accountancy data</p>
-          <p className="mt-1 text-destructive/90 whitespace-pre-wrap">{loadError}</p>
-          <p className="mt-1 text-muted-foreground text-xs">API: {getApiBase()}</p>
-        </div>
-      ) : null}
 
       {/* ── Tabs Navigation ────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

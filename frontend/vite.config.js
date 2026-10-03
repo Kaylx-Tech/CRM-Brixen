@@ -8,6 +8,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL('./src', import.meta.url)),
+      // Route all `sonner` imports to the app toast system (loading / action / Undo)
+      sonner: fileURLToPath(new URL('./src/components/ui/toast.jsx', import.meta.url)),
     },
   },
   server: {

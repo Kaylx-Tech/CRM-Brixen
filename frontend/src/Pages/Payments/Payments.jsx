@@ -24,6 +24,7 @@ import { DataTable } from "../../Layout/DataTable"
 import { SectionCards } from "../../Layout/StatsCard"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { toast } from "sonner"
+import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 
 const invoiceCol = createColumnHelper()
@@ -136,6 +137,7 @@ export default function Payments() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(false)
   const [ordersError, setOrdersError] = useState(null)
   const [selectedMonth, setSelectedMonth] = useState('all')
+  const [revenueFilter, setRevenueFilter] = useState('all')
   const [costInputs, setCostInputs] = useState({})
   const [isSavingCost, setIsSavingCost] = useState(false)
 
@@ -270,18 +272,38 @@ export default function Payments() {
     })
     const net = sell - cost
     return [
-      { title: 'Orders', value: String(orders.length), footerSubText: 'In selected period' },
-      { title: 'Sell total', value: `£${sell.toFixed(2)}`, footerSubText: 'Gross revenue' },
-      { title: 'Total cost', value: `£${cost.toFixed(2)}`, footerSubText: 'Fulfillment costs' },
+      {
+        title: 'Orders',
+        value: String(orders.length),
+        footerSubText: 'Click to show all',
+        onClick: () => setRevenueFilter('all'),
+        active: revenueFilter === 'all',
+      },
+      {
+        title: 'Sell total',
+        value: `£${sell.toFixed(2)}`,
+        footerSubText: 'Click to filter revenue',
+        onClick: () => setRevenueFilter((prev) => (prev === 'sell' ? 'all' : 'sell')),
+        active: revenueFilter === 'sell',
+      },
+      {
+        title: 'Total cost',
+        value: `£${cost.toFixed(2)}`,
+        footerSubText: 'Click to filter cost',
+        onClick: () => setRevenueFilter((prev) => (prev === 'cost' ? 'all' : 'cost')),
+        active: revenueFilter === 'cost',
+      },
       {
         title: 'Net profit',
         value: `£${net.toFixed(2)}`,
         trendValue: sell > 0 ? `${((net / sell) * 100).toFixed(1)}%` : '0%',
         trendDirection: net >= 0 ? 'up' : 'down',
-        footerSubText: 'Sell − Cost',
+        footerSubText: 'Click profitable orders',
+        onClick: () => setRevenueFilter((prev) => (prev === 'profit' ? 'all' : 'profit')),
+        active: revenueFilter === 'profit',
       },
     ]
-  }, [orders])
+  }, [orders, revenueFilter])
 
   const invoiceStatCards = useMemo(() => [
     {
@@ -346,9 +368,18 @@ export default function Payments() {
     }
   }), [orders])
 
+  const filteredCostRows = useMemo(() => {
+    return costRows.filter((r) => {
+      if (revenueFilter === 'sell') return r.sell > 0
+      if (revenueFilter === 'cost') return r.cost > 0
+      if (revenueFilter === 'profit') return r.profit > 0
+      return true
+    })
+  }, [costRows, revenueFilter])
+
   const profitByCustomer = useMemo(() => {
     const map = new Map()
-    costRows.forEach((o) => {
+    filteredCostRows.forEach((o) => {
       const key = String(o.user_id || o.client_email || o.owner_form_email || o.id)
       if (!map.has(key)) {
         map.set(key, {
@@ -375,25 +406,32 @@ export default function Payments() {
         profitLabel: `£${r.profit.toFixed(2)}`,
         marginLabel: `${r.sell > 0 ? ((r.profit / r.sell) * 100).toFixed(1) : '0.0'}%`,
       }))
-  }, [costRows])
+  }, [filteredCostRows])
 
   const handleSendInvoice = async (invoice) => {
     if (!invoice?.id || invoice.status === 'Cancelled') return
     setSendingId(invoice.id)
+    const toastId = toastProcessing('Sending invoice email…')
     try {
       // Same as app.js: PUT with send_payment_details
       const res = await apiRequest(`/invoices/${invoice.id}`, {
         method: 'PUT',
         body: JSON.stringify({ send_payment_details: true }),
         label: 'Send invoice email',
+        silent: true,
       })
       if (res.ok) {
         const data = res.data?.data || res.data || {}
         const to = data.email_to || data.invoice?.owner_form_email || data.invoice?.client_email
         const paid = invoiceMoneyBits(data.invoice || invoice).status === 'Paid'
-        toast.success(paid ? `Thank you emailed${to ? ` to ${to}` : ''}` : `Invoice emailed${to ? ` to ${to}` : ''}`)
+        toastDone(
+          toastId,
+          paid ? `Thank you emailed${to ? ` to ${to}` : ''}` : `Invoice emailed${to ? ` to ${to}` : ''}`,
+        )
         fetchInvoices()
         if (editInvoice?.id === invoice.id) setEditInvoice(null)
+      } else {
+        toastFail(toastId, res.reason || 'Failed to send invoice email')
       }
     } finally {
       setSendingId(null)
@@ -417,6 +455,7 @@ export default function Payments() {
   const handleSaveInvoice = async () => {
     if (!editInvoice?.id) return
     setIsSavingInvoice(true)
+    const toastId = toastProcessing('Saving invoice…')
     try {
       const payload = {
         status: editForm.status,
@@ -433,17 +472,21 @@ export default function Payments() {
         method: 'PUT',
         body: JSON.stringify(payload),
         label: 'Save invoice',
+        silent: true,
       })
       if (res.ok) {
         const saved = res.data?.data?.invoice || {}
         const paid = invoiceMoneyBits(saved).status === 'Paid' || invoiceMoneyBits(saved).due <= 0.004
-        toast.success(
+        toastDone(
+          toastId,
           paid
             ? 'Invoice saved. Use Send thank you to email the complete-payment notice.'
-            : 'Invoice saved. Use Send to email the company owner.'
+            : 'Invoice saved. Use Send to email the company owner.',
         )
         setEditInvoice(null)
         fetchInvoices()
+      } else {
+        toastFail(toastId, res.reason || 'Failed to save invoice')
       }
     } finally {
       setIsSavingInvoice(false)
@@ -458,15 +501,19 @@ export default function Payments() {
       : null
     if (currentCost != null && Math.abs(currentCost - costVal) < 0.001) return
     setIsSavingCost(true)
+    const toastId = toastProcessing('Saving order cost…')
     try {
       const res = await apiRequest(`/orders/${orderId}`, {
         method: 'PUT',
         body: JSON.stringify({ cost_price: costVal }),
         label: 'Order cost',
+        silent: true,
       })
       if (res.ok) {
-        toast.success(`Order cost saved: £${costVal.toFixed(2)}`)
+        toastDone(toastId, `Order cost saved: £${costVal.toFixed(2)}`)
         fetchOrders()
+      } else {
+        toastFail(toastId, res.reason || 'Failed to save order cost')
       }
     } finally {
       setIsSavingCost(false)
@@ -705,11 +752,6 @@ export default function Payments() {
         <>
           <SectionCards stats={invoiceStatCards} isLoading={isLoadingInvoices} compact />
 
-          {invoicesError && (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {invoicesError}
-            </div>
-          )}
 
           <DataTable
             columns={invoiceColumns}
@@ -750,15 +792,10 @@ export default function Payments() {
             Set <strong>Order cost</strong> per customer/order. Profit = Sell price − Cost.
           </p>
 
-          {ordersError && (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {ordersError}
-            </div>
-          )}
 
           <DataTable
             columns={costColumns}
-            data={costRows}
+            data={filteredCostRows}
             isLoading={isLoadingOrders}
           />
 

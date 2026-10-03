@@ -10,6 +10,26 @@ from services.email_service import send_email
 from config import FRONTEND_URL, COOKIE_SECURE, SESSION_COOKIE_MAX_AGE
 
 MIN_PASSWORD_LEN = 8
+STAFF_MIN_PASSWORD_LEN = 10
+
+
+def _public_user(user_row):
+    """Safe user payload for /me and /profile (matches legacy public_me_user fields)."""
+    if not user_row:
+        return None
+    return {
+        "id": user_row.get('id'),
+        "email": user_row.get('email'),
+        "full_name": user_row.get('full_name') or user_row.get('name'),
+        "name": user_row.get('full_name') or user_row.get('name'),
+        "role": user_row.get('role'),
+        "phone": user_row.get('phone') or '',
+        "country": user_row.get('country') or '',
+        "address": user_row.get('address') or '',
+        "department": user_row.get('department') or '',
+        "status": user_row.get('status') or '',
+        "avatar_url": user_row.get('avatar_url') or '',
+    }
 
 
 def _session_cookie(token, *, clear=False):
@@ -96,15 +116,9 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
     if path == '/api/auth/me' and method == 'GET':
         if not user:
             return error_response(start_response, "Unauthorized", status_code=401)
-            
-        return success_response(start_response, data={
-            "user": {
-                "id": user['id'],
-                "email": user['email'],
-                "name": user.get('name') or user.get('full_name'),
-                "role": user['role']
-            }
-        })
+
+        fresh = query_db("SELECT * FROM users WHERE id = ? LIMIT 1;", (user['id'],), one=True) or user
+        return success_response(start_response, data={"user": _public_user(fresh)})
 
     # ── POST /api/auth/logout ─────────────────────────────────────────────
     if path == '/api/auth/logout' and method == 'POST':
@@ -117,6 +131,67 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
             
         cookie_clear = _session_cookie('', clear=True)
         return success_response(start_response, message="Logged out successfully.", headers=[('Set-Cookie', cookie_clear)])
+
+    # ── POST /api/auth/profile ────────────────────────────────────────────
+    # Legacy app.js saveProfile() — update contact details + optional password.
+    if path == '/api/auth/profile' and method == 'POST':
+        if not user:
+            return error_response(start_response, "Not authenticated", status_code=401)
+
+        body = body if isinstance(body, dict) else {}
+        current = query_db("SELECT * FROM users WHERE id = ? LIMIT 1;", (user['id'],), one=True)
+        if not current:
+            return error_response(start_response, "User not found", status_code=404)
+
+        full_name = (body.get('full_name') if 'full_name' in body else current.get('full_name')) or current.get('full_name')
+        phone = body.get('phone') if 'phone' in body else current.get('phone')
+        country = body.get('country') if 'country' in body else current.get('country')
+        address = body.get('address') if 'address' in body else current.get('address')
+
+        new_password = body.get('new_password') or ''
+        if not isinstance(new_password, str):
+            new_password = ''
+        new_password = new_password.strip()
+
+        if new_password:
+            current_password = body.get('current_password') or ''
+            if not verify_password(current_password, current.get('password_hash')):
+                return error_response(start_response, "Current password is incorrect.", status_code=400)
+            if len(new_password) < STAFF_MIN_PASSWORD_LEN:
+                return error_response(
+                    start_response,
+                    f"Password must be at least {STAFF_MIN_PASSWORD_LEN} characters.",
+                    status_code=400,
+                )
+            if 'confirm_password' in body and (body.get('confirm_password') or '') != new_password:
+                return error_response(start_response, "New passwords do not match.", status_code=400)
+            execute_db(
+                "UPDATE users SET password_hash = ? WHERE id = ?;",
+                (hash_password(new_password), user['id']),
+            )
+
+        execute_db("""
+            UPDATE users SET full_name = ?, phone = ?, country = ?, address = ? WHERE id = ?;
+        """, (full_name, phone, country, address, user['id']))
+
+        updated = query_db("SELECT * FROM users WHERE id = ? LIMIT 1;", (user['id'],), one=True)
+        try:
+            from services.audit_service import log_activity
+            log_activity(
+                user_id=user['id'],
+                action='PROFILE_UPDATE',
+                target_type='users',
+                target_id=str(user['id']),
+                details='Updated profile settings.' + (' Password changed.' if new_password else ''),
+            )
+        except Exception:
+            pass
+
+        return success_response(
+            start_response,
+            data={"user": _public_user(updated)},
+            message="Password updated." if new_password else "Profile updated successfully",
+        )
 
     # ── POST /api/auth/forgot-password ────────────────────────────────────
     if path == '/api/auth/forgot-password' and method == 'POST':

@@ -16,6 +16,7 @@ import {
   IconHistory,
   IconSettings,
   IconUserCircle,
+  IconBell,
   IconSearchOff,
 } from "@tabler/icons-react"
 
@@ -59,9 +60,10 @@ const commandGroups = [
   {
     heading: "System & Account",
     items: [
+      { title: "Notifications", url: "/admin/notifications", icon: IconBell },
       { title: "Audit Logs", url: "/admin/logs", icon: IconHistory },
       { title: "System Settings", url: "/admin/settings", icon: IconSettings },
-      { title: "Profile & Password", url: "/admin/profile", icon: IconUserCircle },
+      { title: "Profile & Password", url: "/admin/settings?tab=profile", icon: IconUserCircle },
     ],
   },
 ]

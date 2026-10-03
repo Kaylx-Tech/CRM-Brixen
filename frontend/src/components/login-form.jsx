@@ -15,6 +15,8 @@ import { Link, useNavigate } from "react-router-dom"
 import { useState } from "react"
 import { Alert, AlertDescription } from "./ui/alert"
 import { IconAlertCircle } from "@tabler/icons-react"
+import { toast } from "sonner"
+import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 
 export function LoginForm({
   className,
@@ -30,6 +32,7 @@ export function LoginForm({
     e.preventDefault()
     setError("")
     setIsLoading(true)
+    const toastId = toastProcessing("Signing in…")
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -58,16 +61,23 @@ export function LoginForm({
       if (isSuccess && token) {
         localStorage.setItem("token", token)
         localStorage.setItem("user", JSON.stringify(userObj || { email }))
+        toastDone(toastId, "Logged in successfully")
         navigate("/admin/dashboard")
       } else if (isSuccess && !token) {
         // Logged in but no token in response — should not happen
-        setError("Login succeeded but no session token received. Contact support.")
+        const msg = "Login succeeded but no session token received. Contact support."
+        setError(msg)
+        toastFail(toastId, msg)
       } else {
-        setError(data.message || data.error || "Invalid email or password.")
+        const msg = data.message || data.error || "Invalid email or password."
+        setError(msg)
+        toastFail(toastId, msg)
       }
 
     } catch (err) {
-      setError("Failed to connect to server. Please check your connection.")
+      const msg = "Failed to connect to server. Please check your connection."
+      setError(msg)
+      toastFail(toastId, msg)
     } finally {
       setIsLoading(false)
     }

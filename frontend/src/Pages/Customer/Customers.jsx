@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
+import { toastUndoableDelete } from "@/lib/toastActions"
 
 const columnHelper = createColumnHelper()
 
@@ -95,77 +96,79 @@ const Customers = () => {
     loadCustomers()
   }, [])
 
-  // Handler: Single Customer Delete
-  const confirmSingleDelete = async () => {
+  // Handler: Single Customer Delete (optimistic + Undo)
+  const confirmSingleDelete = () => {
     if (!customerToDelete?.id) return
-    setIsDeleting(true)
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const token = localStorage.getItem("token")
-      const res = await fetch(`${apiUrl}/admin/customers/delete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          customer_id: customerToDelete.id,
-          force_delete_genuine: true,
-        }),
-      })
+    const victim = customerToDelete
+    const snapshot = customers
+    setCustomerToDelete(null)
+    setIsDeleting(false)
+    setCustomers((prev) => prev.filter((c) => c.id !== victim.id))
 
-      const data = await res.json().catch(() => ({}))
-      if (res.ok && (data.status === 'success' || data.success === true)) {
-        toast.success(data.message || `Customer "${customerToDelete.name}" deleted successfully.`)
-        setCustomerToDelete(null)
-        loadCustomers()
-      } else {
-        toast.error(data.message || data.error || 'Failed to delete customer.')
-      }
-    } catch (err) {
-      toast.error('Network error while deleting customer: ' + err.message)
-    } finally {
-      setIsDeleting(false)
-    }
+    toastUndoableDelete({
+      message: `Customer "${victim.name}" deleted`,
+      description: victim.email || 'Undo available for a few seconds',
+      onUndo: () => setCustomers(snapshot),
+      onCommit: async () => {
+        const apiUrl = import.meta.env.VITE_API_URL || '/api'
+        const token = localStorage.getItem('token')
+        const res = await fetch(`${apiUrl}/admin/customers/delete`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            customer_id: victim.id,
+            force_delete_genuine: true,
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!(res.ok && (data.status === 'success' || data.success === true))) {
+          throw new Error(data.message || data.error || 'Failed to delete customer.')
+        }
+      },
+    })
   }
 
-  // Handler: Bulk Customer Delete
-  const confirmBulkDelete = async () => {
+  // Handler: Bulk Customer Delete (optimistic + Undo)
+  const confirmBulkDelete = () => {
     if (!bulkDeleteRows || bulkDeleteRows.length === 0) return
-    const customerIds = bulkDeleteRows.map((r) => r.original.id).filter(Boolean)
+    const rows = bulkDeleteRows
+    const customerIds = rows.map((r) => r.original.id).filter(Boolean)
     if (customerIds.length === 0) return
+    const idSet = new Set(customerIds)
+    const snapshot = customers
+    setBulkDeleteRows(null)
+    setIsDeleting(false)
+    setCustomers((prev) => prev.filter((c) => !idSet.has(c.id)))
 
-    setIsDeleting(true)
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const token = localStorage.getItem("token")
-      const res = await fetch(`${apiUrl}/admin/customers/bulk-delete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          customer_ids: customerIds,
-          force_delete_genuine: true,
-        }),
-      })
-
-      const data = await res.json().catch(() => ({}))
-      if (res.ok && (data.status === 'success' || data.success === true)) {
-        toast.success(data.message || `Successfully removed ${customerIds.length} customer account(s).`)
-        setBulkDeleteRows(null)
-        loadCustomers()
-      } else {
-        toast.error(data.message || data.error || 'Failed to bulk delete customers.')
-      }
-    } catch (err) {
-      toast.error('Network error during bulk delete: ' + err.message)
-    } finally {
-      setIsDeleting(false)
-    }
+    toastUndoableDelete({
+      message: `${customerIds.length} customer(s) deleted`,
+      description: 'Undo available for a few seconds',
+      onUndo: () => setCustomers(snapshot),
+      onCommit: async () => {
+        const apiUrl = import.meta.env.VITE_API_URL || '/api'
+        const token = localStorage.getItem('token')
+        const res = await fetch(`${apiUrl}/admin/customers/bulk-delete`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            customer_ids: customerIds,
+            force_delete_genuine: true,
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!(res.ok && (data.status === 'success' || data.success === true))) {
+          throw new Error(data.message || data.error || 'Failed to bulk delete customers.')
+        }
+      },
+    })
   }
 
   const columns = useMemo(() => [
@@ -382,13 +385,6 @@ const Customers = () => {
         </TabsList>
       </Tabs>
 
-      {loadError ? (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          <p className="font-medium">Could not load customers</p>
-          <p className="mt-1 text-destructive/90 whitespace-pre-wrap">{loadError}</p>
-          <p className="mt-1 text-muted-foreground text-xs">API: {getApiBase()}</p>
-        </div>
-      ) : null}
 
       <DataTable
         columns={columns}

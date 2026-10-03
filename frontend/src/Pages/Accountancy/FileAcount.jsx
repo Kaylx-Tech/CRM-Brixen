@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { toast } from 'sonner'
+import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { format } from 'date-fns'
@@ -152,6 +153,7 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
     }
 
     setIsSubmitting(true)
+    const toastId = toastProcessing('Filing accounts…')
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
       const token = localStorage.getItem('token')
@@ -176,19 +178,19 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
 
       const data = await res.json().catch(() => ({}))
       if (res.ok && (data.success || data.status === 'success')) {
-        toast.success(
+        toastDone(
+          toastId,
           data.message ||
-            `Accounts for ${currentCompany?.company_name || 'company'} filed successfully!`
+            `Accounts for ${currentCompany?.company_name || 'company'} filed successfully!`,
         )
         if (onFileSubmitted) onFileSubmitted()
         onClose()
       } else {
-        // Failed: surface the error and keep the dialog open so the user can retry
-        toast.error(data.message || data.error || 'Failed to file accounts.')
+        toastFail(toastId, data.message || data.error || 'Failed to file accounts.')
       }
     } catch (err) {
       console.error('Filing submission error:', err)
-      toast.error('Network error: could not file accounts. Please try again.')
+      toastFail(toastId, 'Network error: could not file accounts. Please try again.')
     } finally {
       setIsSubmitting(false)
     }

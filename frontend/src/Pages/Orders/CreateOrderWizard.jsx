@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
+import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { apiRequest } from "@/lib/api"
 import ToastSave from "@/components/ToastSave"
 import {
@@ -345,6 +346,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
     }
     setSaving(true)
     setError("")
+    const toastId = toastProcessing("Saving draft…")
     try {
       const res = await apiRequest("/orders/draft", {
         method: "POST",
@@ -357,19 +359,21 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
           method: "POST",
           body: JSON.stringify(buildPayload(step)),
           label: "Save draft",
+          silent: true,
         })
         if (!res2.ok) {
           setError(res2.reason || "Could not save draft.")
+          toastFail(toastId, res2.reason || "Could not save draft.")
           return
         }
         const data = res2.data?.data || res2.data || {}
         setDraftOrderId(data.order_id || data.id)
-        toast.success(`Draft saved as ${data.order_number || "draft"}`)
+        toastDone(toastId, `Draft saved as ${data.order_number || "draft"}`)
         return
       }
       const data = res.data?.data || res.data || {}
       setDraftOrderId(data.order_id || data.id)
-      toast.success(`Draft saved as ${data.order_number || "draft"}`)
+      toastDone(toastId, `Draft saved as ${data.order_number || "draft"}`)
     } finally {
       setSaving(false)
     }
@@ -383,6 +387,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
     }
     setSaving(true)
     setError("")
+    const toastId = toastProcessing("Submitting order…")
     try {
       const res = await apiRequest("/admin/orders", {
         method: "POST",
@@ -396,15 +401,17 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
           method: "POST",
           body: JSON.stringify(buildPayload(5)),
           label: "Create order",
+          silent: true,
         })
       }
       if (!final.ok) {
         setError(final.reason || "Could not submit order.")
+        toastFail(toastId, final.reason || "Could not submit order.")
         return
       }
       const data = final.data?.data || final.data || {}
       const num = data.order_number || data.order?.order_number || "created"
-      toast.success(`Order ${num} submitted successfully`)
+      toastDone(toastId, `Order ${num} submitted successfully`)
       onClose?.()
       onCreated?.(data)
     } finally {

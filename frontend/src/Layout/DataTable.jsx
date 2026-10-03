@@ -138,14 +138,14 @@ export const DataTable = ({
                 }}
                 disabled={isLoading}
               >
-                <SelectTrigger className="w-35 h-8 text-xs">
+                <SelectTrigger className={cn("h-8 text-xs", config.triggerClassName || "w-35")}>
                   <SelectValue placeholder={config.placeholder} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className={cn("min-w-[var(--radix-select-trigger-width)]", config.contentClassName)}>
                   <SelectGroup>
                     <SelectItem value="all">{config.allLabel || "All"}</SelectItem>
                     {config.options.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
+                      <SelectItem key={opt.value} value={opt.value} className="text-xs">
                         {opt.label}
                       </SelectItem>
                     ))}

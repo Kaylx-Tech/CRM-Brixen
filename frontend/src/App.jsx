@@ -13,7 +13,10 @@ import Tasks from './Pages/Tasks/Tasks'
 import Services from './Pages/Services/Services'
 import Payments from './Pages/Payments/Payments'
 import Documents from './Pages/Documents/Documents'
-import ComingSoon from './Pages/ComingSoon'
+import Intake from './Pages/Intake/Intake'
+import AuditLogs from './Pages/AuditLogs/AuditLogs'
+import Settings from './Pages/Settings/Settings'
+import NotificationsPage from './Pages/Notifications/Notifications'
 import ToastPlayground from './Pages/ToastPlayground'
 import { TooltipProvider } from './components/ui/tooltip'
 import { ThemeProvider } from './hooks/theme-provider'
@@ -54,10 +57,11 @@ const App = () => {
                 <Route path="services" element={<Services />} />
                 <Route path="payments" element={<Payments />} />
                 <Route path="documents" element={<Documents />} />
-                <Route path="intake" element={<ComingSoon />} />
-                <Route path="logs" element={<ComingSoon />} />
-                <Route path="settings" element={<ComingSoon />} />
-                <Route path="profile" element={<ComingSoon />} />
+                <Route path="intake" element={<Intake />} />
+                <Route path="logs" element={<AuditLogs />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="notifications" element={<NotificationsPage />} />
+                <Route path="profile" element={<Navigate to="/admin/settings?tab=profile" replace />} />
                 <Route path="toast-test" element={<ToastPlayground />} />
               </Route>
             </Route>
@@ -69,7 +73,7 @@ const App = () => {
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </BrowserRouter>
-        <Toaster position="bottom-center" />
+        <Toaster position="top-center" />
       </TooltipProvider>
     </ThemeProvider>
   )

@@ -8,7 +8,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -16,16 +15,26 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "@/components/ui/sidebar"
-import { IconDotsVertical, IconUserCircle, IconCreditCard, IconNotification, IconLogout } from "@tabler/icons-react"
-import { Link, useNavigate } from "react-router-dom"
+import { toast } from "sonner"
+import {
+  IconDotsVertical,
+  IconUserCircle,
+  IconCreditCard,
+  IconNotification,
+  IconLogout,
+  IconHistory,
+  IconSettings,
+} from "@tabler/icons-react"
+import { useNavigate } from "react-router-dom"
+
+const itemClass =
+  "text-slate-200 hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white cursor-pointer rounded-lg px-2.5 py-2 text-xs font-medium flex items-center gap-2 transition-colors"
 
 export function NavUser({
   user: defaultUser
 }) {
   const navigate = useNavigate()
-  const { isMobile } = useSidebar()
 
   let storedUser = {}
   try {
@@ -40,6 +49,8 @@ export function NavUser({
 
   const handleLogout = () => {
     localStorage.removeItem('user')
+    localStorage.removeItem('token')
+    toast.success('Logged out successfully')
     navigate('/login')
   }
 
@@ -49,9 +60,9 @@ export function NavUser({
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <SidebarMenuButton 
-                size="lg" 
-                className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent aria-expanded:bg-sidebar-accent transition-colors" 
+              <SidebarMenuButton
+                size="lg"
+                className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent aria-expanded:bg-sidebar-accent transition-colors"
               />
             }
           >
@@ -76,31 +87,45 @@ export function NavUser({
             sideOffset={8}
           >
             <DropdownMenuGroup className="space-y-0.5">
-              <DropdownMenuItem 
-                onClick={() => navigate('/admin/profile')}
-                className="text-slate-200 hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white cursor-pointer rounded-lg px-2.5 py-2 text-xs font-medium flex items-center gap-2 transition-colors"
+              <DropdownMenuItem
+                onClick={() => navigate('/admin/settings?tab=profile')}
+                className={itemClass}
               >
-                <IconUserCircle className="size-4 text-slate-400" />
+                <IconUserCircle className="size-4" />
                 <span>Account</span>
               </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => navigate('/admin/payments')}
-                className="text-slate-200 hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white cursor-pointer rounded-lg px-2.5 py-2 text-xs font-medium flex items-center gap-2 transition-colors"
+              <DropdownMenuItem
+                onClick={() => navigate('/admin/notifications')}
+                className={itemClass}
               >
-                <IconCreditCard className="size-4 text-slate-400" />
-                <span>Billing</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => navigate('/admin/tasks')}
-                className="text-slate-200 hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white cursor-pointer rounded-lg px-2.5 py-2 text-xs font-medium flex items-center gap-2 transition-colors"
-              >
-                <IconNotification className="size-4 text-slate-400" />
+                <IconNotification className="size-4" />
                 <span>Notifications</span>
               </DropdownMenuItem>
             </DropdownMenuGroup>
+
             <DropdownMenuSeparator className="bg-white/10 my-1" />
-            <DropdownMenuItem 
-              onClick={handleLogout} 
+
+            <DropdownMenuGroup className="space-y-0.5">
+              <DropdownMenuItem
+                onClick={() => navigate('/admin/logs')}
+                className={itemClass}
+              >
+                <IconHistory className="size-4" />
+                <span>System Logs</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => navigate('/admin/settings')}
+                className={itemClass}
+              >
+                <IconSettings className="size-4" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+
+            <DropdownMenuSeparator className="bg-white/10 my-1" />
+
+            <DropdownMenuItem
+              onClick={handleLogout}
               className="text-red-400 hover:text-red-300 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-300 cursor-pointer rounded-lg px-2.5 py-2 text-xs font-medium flex items-center gap-2 transition-colors"
             >
               <IconLogout className="size-4" />

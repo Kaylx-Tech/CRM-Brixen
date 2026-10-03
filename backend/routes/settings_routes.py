@@ -68,12 +68,12 @@ def handle_settings_routes(environ, start_response, path, method, user, body, qu
         except Exception as e:
             return error_response(start_response, f"Failed to save settings: {e}", status_code=500)
 
-    # ── 4. POST /api/admin/settings/test-smtp ────────────────────────────────
-    if path == '/api/admin/settings/test-smtp' and method == 'POST':
+    # ── 4. POST /api/admin/settings/test-smtp | test-email (legacy app.js) ──
+    if path in ('/api/admin/settings/test-smtp', '/api/admin/settings/test-email') and method == 'POST':
         test_email = None
         custom_cfg = None
         if isinstance(body, dict):
-            test_email = body.get('test_email') or user.get('email')
+            test_email = body.get('test_email') or body.get('email') or user.get('email')
             custom_cfg = body.get('smtp_config')
 
         result = test_smtp_connection(test_email=test_email, custom_cfg=custom_cfg)

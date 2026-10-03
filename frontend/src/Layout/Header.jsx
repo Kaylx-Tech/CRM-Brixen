@@ -25,9 +25,10 @@ const ROUTE_LABELS = {
   payments: 'Payments',
   documents: 'Documents',
   intake: 'Intake',
-  logs: 'Activity Logs',
+  logs: 'Audit Logs',
   settings: 'Settings',
-  profile: 'Profile',
+  notifications: 'Notifications',
+  profile: 'Profile & Password',
 }
 
 export function SiteHeader() {

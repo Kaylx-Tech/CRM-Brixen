@@ -18,6 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { IconUpload, IconCheck, IconAlertCircle, IconLoader2, IconBuilding, IconInfoCircle } from '@tabler/icons-react'
 import { toast } from 'sonner'
+import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import ToastSave from '@/components/ToastSave'
 
 export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
@@ -108,6 +109,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
     }
 
     setIsSubmitting(true)
+    const toastId = toastProcessing('Importing from WebFiling…')
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
       const token = localStorage.getItem('token')
@@ -136,15 +138,19 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
 
       if (res.ok && (json.status === 'success' || json.success)) {
         setImportResults(data)
-        toast.success(json.message || `Successfully processed WebFiling import.`)
+        toastDone(toastId, json.message || 'Successfully processed WebFiling import.')
         if (onImportSuccess) {
           onImportSuccess()
         }
       } else {
-        setErrorMsg(json.message || json.error || 'Failed to import companies from WebFiling.')
+        const msg = json.message || json.error || 'Failed to import companies from WebFiling.'
+        setErrorMsg(msg)
+        toastFail(toastId, msg)
       }
     } catch (err) {
-      setErrorMsg('Network error during WebFiling import: ' + err.message)
+      const msg = 'Network error during WebFiling import: ' + err.message
+      setErrorMsg(msg)
+      toastFail(toastId, msg)
     } finally {
       setIsSubmitting(false)
     }

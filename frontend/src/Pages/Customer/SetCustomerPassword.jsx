@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
+import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import { IconAlertCircle, IconEye, IconEyeOff } from '@tabler/icons-react'
 import ToastSave from '@/components/ToastSave'
 
@@ -52,6 +53,7 @@ const SetCustomerPassword = ({ customer, isOpen, onClose, onPasswordSet }) => {
     }
 
     setIsLoading(true)
+    const toastId = toastProcessing('Updating password…')
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
       const token = localStorage.getItem("token")
@@ -71,14 +73,21 @@ const SetCustomerPassword = ({ customer, isOpen, onClose, onPasswordSet }) => {
 
       const data = await res.json().catch(() => ({}))
       if (res.ok && (data.status === 'success' || data.success === true)) {
-        toast.success(data.message || `Password for ${customer?.name || 'customer'} updated successfully!`)
+        toastDone(
+          toastId,
+          data.message || `Password for ${customer?.name || 'customer'} updated successfully!`,
+        )
         if (onPasswordSet) onPasswordSet()
         handleClose()
       } else {
-        setError(data.message || data.error || 'Failed to update customer password.')
+        const msg = data.message || data.error || 'Failed to update customer password.'
+        setError(msg)
+        toastFail(toastId, msg)
       }
     } catch (err) {
-      setError('Connection error: ' + err.message)
+      const msg = 'Connection error: ' + err.message
+      setError(msg)
+      toastFail(toastId, msg)
     } finally {
       setIsLoading(false)
     }

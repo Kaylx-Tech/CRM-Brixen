@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select"
 import { IconLoader2, IconUpload } from "@tabler/icons-react"
 import { toast } from "sonner"
+import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { apiRequest } from "@/lib/api"
 import ToastSave from "@/components/ToastSave"
 
@@ -225,6 +226,7 @@ export default function UploadDocumentModal({
     }
 
     setUploading(true)
+    const toastId = toastProcessing('Uploading document…')
     try {
       const b64 = await fileToBase64(file)
       const payload = {
@@ -247,20 +249,23 @@ export default function UploadDocumentModal({
         silent: true,
       })
       if (!res.ok) {
-        setFormError(res.reason || res.data?.message || res.data?.error || 'Upload failed.')
+        const msg = res.reason || res.data?.message || res.data?.error || 'Upload failed.'
+        setFormError(msg)
+        toastFail(toastId, msg)
         return
       }
 
-      const lines = ['✓ Document uploaded successfully']
-      if (res.data?.notification_created) lines.push('✓ Client notification created')
+      const lines = ['Document uploaded successfully']
+      if (res.data?.notification_created) lines.push('Client notified')
       if (res.data?.email_sent || res.data?.email_status === 'queued' || res.data?.email_status) {
-        lines.push('✓ Email notification queued')
+        lines.push('Email queued')
       }
-      toast.success(lines.join('\n'))
+      toastDone(toastId, lines[0], { description: lines.slice(1).join(' · ') || undefined })
       onOpenChange?.(false)
       onUploaded?.(res.data)
     } catch (err) {
       setFormError(err.message || 'Upload failed.')
+      toastFail(toastId, err.message || 'Upload failed.')
     } finally {
       setUploading(false)
     }

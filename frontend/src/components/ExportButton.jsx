@@ -3,8 +3,21 @@ import { Button } from '@/components/ui/button';
 import { IconDownload } from '@tabler/icons-react';
 import { exportToExcel, exportToCSV, exportToPDF } from '@/utils/exportUtils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions';
 
 const ExportButton = ({ data, columns, fileName }) => {
+    const runExport = (type, fn) => {
+        const id = toastProcessing(`Preparing ${type} export…`);
+        try {
+            fn(data, columns, fileName);
+            toastDone(id, `${type} export downloaded`);
+        } catch (err) {
+            toastFail(id, `${type} export failed`, {
+                description: err?.message || 'Please try again.',
+            });
+        }
+    };
+
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -14,13 +27,13 @@ const ExportButton = ({ data, columns, fileName }) => {
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => exportToCSV(data, columns, fileName)}>
+                <DropdownMenuItem onClick={() => runExport('CSV', exportToCSV)}>
                     Export CSV
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => exportToExcel(data, columns, fileName)}>
+                <DropdownMenuItem onClick={() => runExport('Excel', exportToExcel)}>
                     Export Excel
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => exportToPDF(data, columns, fileName)}>
+                <DropdownMenuItem onClick={() => runExport('PDF', exportToPDF)}>
                     Export PDF
                 </DropdownMenuItem>
             </DropdownMenuContent>

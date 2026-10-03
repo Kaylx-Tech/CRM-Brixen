@@ -18,7 +18,10 @@ def handle_notification_routes(environ, start_response, path, method, user, body
 
     # ── GET notifications (List notifications for current user) ───────────
     if (path in ('/api/notifications', '/api/client/notifications')) and method == 'GET':
-        limit = min(int((query.get('limit') or ['20'])[0]), 50)
+        try:
+            limit = min(int((query.get('limit') or ['50'])[0]), 200)
+        except (TypeError, ValueError):
+            limit = 50
         
         rows = query_db("""
             SELECT id, title, message, type, link, is_read, created_at

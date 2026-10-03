@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { IconBuildingPlus, IconAlertCircle, IconLoader2, IconSearch, IconCheck, IconBuilding } from '@tabler/icons-react'
 import { toast } from 'sonner'
+import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import ToastSave from '@/components/ToastSave'
 
 const AddCompany = ({ isOpen, onClose }) => {
@@ -139,6 +140,7 @@ const AddCompany = ({ isOpen, onClose }) => {
     setShowDropdown(false)
     setIsAutoFilling(true)
     setErrorMsg('')
+    const toastId = toastProcessing('Loading company details…')
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
       const token = localStorage.getItem('token')
@@ -160,7 +162,7 @@ const AddCompany = ({ isOpen, onClose }) => {
         if (d.status) setStatus(d.status)
         setIsAutoFilled(true)
         setSearchQuery(`${d.company_name || comp.company_name} (${d.company_number || comp.company_number})`)
-        toast.success(`Loaded official details for ${d.company_name || 'company'}!`)
+        toastDone(toastId, `Loaded official details for ${d.company_name || 'company'}!`)
       } else {
         // Fallback to basic search result
         setCompanyName(comp.company_name || '')
@@ -168,10 +170,10 @@ const AddCompany = ({ isOpen, onClose }) => {
         if (comp.incorporation_date) setIncorporationDate(comp.incorporation_date)
         if (comp.status) setStatus(comp.status)
         setIsAutoFilled(true)
-        toast.success(`Loaded details for ${comp.company_name}`)
+        toastDone(toastId, `Loaded details for ${comp.company_name}`)
       }
     } catch (err) {
-      toast.error('Failed to fetch full company details: ' + err.message)
+      toastFail(toastId, 'Failed to fetch full company details: ' + err.message)
     } finally {
       setIsAutoFilling(false)
     }
@@ -192,6 +194,7 @@ const AddCompany = ({ isOpen, onClose }) => {
     }
 
     setIsSubmitting(true)
+    const toastId = toastProcessing('Creating company…')
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
       const token = localStorage.getItem('token')
@@ -224,11 +227,13 @@ const AddCompany = ({ isOpen, onClose }) => {
         throw new Error(data.message || 'Failed to create company')
       }
 
-      toast.success(data.message || 'Company created successfully!')
+      toastDone(toastId, data.message || 'Company created successfully!')
       handleReset()
       onClose()
     } catch (err) {
-      setErrorMsg(err.message || 'An error occurred while creating company')
+      const msg = err.message || 'An error occurred while creating company'
+      setErrorMsg(msg)
+      toastFail(toastId, msg)
     } finally {
       setIsSubmitting(false)
     }

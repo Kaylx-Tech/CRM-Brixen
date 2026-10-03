@@ -26,6 +26,7 @@ import AddCompany from './AddCompany'
 import ImportWebfilingModal from './ImportWebfilingModal'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
+import { toastUndoableDelete } from '@/lib/toastActions'
 import { Card, CardContent } from '@/components/ui/card'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
 import { apiRequest, getApiBase, toastApiEmpty } from '@/lib/api'
@@ -142,53 +143,57 @@ const Companies = () => {
     setSelectedIds([])
   }
 
-  // Delete Handlers
-  const handleConfirmDelete = async () => {
-    const idsToDelete = singleDeleteId ? [singleDeleteId] : selectedIds
+  // Delete Handlers (optimistic + Undo)
+  const handleConfirmDelete = () => {
+    const idsToDelete = singleDeleteId ? [singleDeleteId] : [...selectedIds]
     if (!idsToDelete.length) return
+    const idSet = new Set(idsToDelete)
+    const snapshot = companies
+    const removedCount = idsToDelete.length
 
-    setIsDeleting(true)
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const token = localStorage.getItem('token')
+    setDeleteConfirmOpen(false)
+    setSingleDeleteId(null)
+    setIsDeleting(false)
+    setSelectedIds((prev) => prev.filter((id) => !idSet.has(id)))
+    setCompanies((prev) => prev.filter((c) => !idSet.has(c.id)))
 
-      let res
-      if (idsToDelete.length === 1 && singleDeleteId) {
-        res = await fetch(`${apiUrl}/admin/companies/${singleDeleteId}`, {
-          method: 'DELETE',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        })
-      } else {
-        res = await fetch(`${apiUrl}/admin/companies/bulk-delete`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ company_ids: idsToDelete }),
-        })
-      }
-
-      const data = await res.json().catch(() => ({}))
-      if (res.ok && data.success !== false) {
-        toast.success(data.message || `Deleted ${idsToDelete.length} company records`)
-        setSelectedIds((prev) => prev.filter((id) => !idsToDelete.includes(id)))
-        setDeleteConfirmOpen(false)
-        setSingleDeleteId(null)
-        fetchCompanies()
-      } else {
-        throw new Error(data.message || 'Failed to delete companies')
-      }
-    } catch (err) {
-      toast.error(err.message || 'Error deleting companies')
-    } finally {
-      setIsDeleting(false)
-    }
+    toastUndoableDelete({
+      message:
+        removedCount === 1
+          ? 'Company deleted'
+          : `${removedCount} companies deleted`,
+      description: 'Undo available for a few seconds',
+      onUndo: () => setCompanies(snapshot),
+      onCommit: async () => {
+        const apiUrl = import.meta.env.VITE_API_URL || '/api'
+        const token = localStorage.getItem('token')
+        let res
+        if (idsToDelete.length === 1) {
+          res = await fetch(`${apiUrl}/admin/companies/${idsToDelete[0]}`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+          })
+        } else {
+          res = await fetch(`${apiUrl}/admin/companies/bulk-delete`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ company_ids: idsToDelete }),
+          })
+        }
+        const data = await res.json().catch(() => ({}))
+        if (!(res.ok && data.success !== false)) {
+          throw new Error(data.message || 'Failed to delete companies')
+        }
+      },
+    })
   }
 
   const isAllVisibleSelected =
@@ -223,13 +228,6 @@ const Companies = () => {
         </div>
       </div>
 
-      {loadError ? (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          <p className="font-medium">Could not load companies</p>
-          <p className="mt-1 text-destructive/90 whitespace-pre-wrap">{loadError}</p>
-          <p className="mt-1 text-muted-foreground text-xs">API: {getApiBase()}</p>
-        </div>
-      ) : null}
 
       {/* Stats/Tabs & Search */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

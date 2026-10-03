@@ -23,6 +23,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { IconPlus, IconDotsVertical, IconLoader2 } from "@tabler/icons-react"
 import { toast } from "sonner"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
+import { toastUndoableDelete, toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 
 const columnHelper = createColumnHelper()
 
@@ -110,6 +111,7 @@ const Services = () => {
     }
 
     setIsEditing(true)
+    const toastId = toastProcessing('Updating service…')
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
       const token = localStorage.getItem('token')
@@ -121,81 +123,84 @@ const Services = () => {
         },
         body: JSON.stringify(editForm)
       })
-      const data = await res.json()
+      const json = await res.json()
       if (res.ok) {
-        toast.success(data.message || "Service updated successfully")
+        toastDone(toastId, json.message || "Service updated successfully")
         setEditService(null)
         fetchServices()
       } else {
-        toast.error(data.message || data.error || "Failed to update service")
+        toastFail(toastId, json.message || json.error || "Failed to update service")
       }
     } catch (error) {
-      toast.error("Network error: " + error.message)
+      toastFail(toastId, "Network error: " + error.message)
     } finally {
       setIsEditing(false)
     }
   }
 
-  // ── Confirm Delete ──
-  const confirmDelete = async () => {
+  // ── Confirm Delete (optimistic + Undo) ──
+  const confirmDelete = () => {
     if (!serviceToDelete?.id) return
-    setIsDeleting(true)
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${apiUrl}/catalog/services/${serviceToDelete.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-      })
-      const data = await res.json()
-      if (res.ok) {
-        toast.success(data.message || "Service deleted successfully")
-        setServiceToDelete(null)
-        fetchServices()
-      } else {
-        toast.error(data.message || data.error || "Failed to delete service")
-      }
-    } catch (error) {
-      toast.error("Network error: " + error.message)
-    } finally {
-      setIsDeleting(false)
-    }
+    const victim = serviceToDelete
+    const snapshot = data
+    setServiceToDelete(null)
+    setIsDeleting(false)
+    setData((prev) => prev.filter((s) => s.id !== victim.id))
+
+    toastUndoableDelete({
+      message: `Service "${victim.name || 'service'}" deleted`,
+      description: 'Undo available for a few seconds',
+      onUndo: () => setData(snapshot),
+      onCommit: async () => {
+        const apiUrl = import.meta.env.VITE_API_URL || '/api'
+        const token = localStorage.getItem('token')
+        const res = await fetch(`${apiUrl}/catalog/services/${victim.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          throw new Error(json.message || json.error || 'Failed to delete service')
+        }
+      },
+    })
   }
 
-  // ── Confirm Bulk Delete ──
-  const confirmBulkDelete = async () => {
+  // ── Confirm Bulk Delete (optimistic + Undo) ──
+  const confirmBulkDelete = () => {
     if (!bulkDeleteRows || bulkDeleteRows.length === 0) return
-    const serviceIds = bulkDeleteRows.map(r => r.original.id).filter(Boolean)
+    const serviceIds = bulkDeleteRows.map((r) => r.original.id).filter(Boolean)
     if (serviceIds.length === 0) return
+    const idSet = new Set(serviceIds)
+    const snapshot = data
+    setBulkDeleteRows(null)
+    setIsDeleting(false)
+    setData((prev) => prev.filter((s) => !idSet.has(s.id)))
 
-    setIsDeleting(true)
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${apiUrl}/catalog/services/bulk-delete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ service_ids: serviceIds })
-      })
-      const data = await res.json()
-      if (res.ok) {
-        toast.success(data.message || `Successfully deleted ${serviceIds.length} service(s).`)
-        setBulkDeleteRows(null)
-        fetchServices()
-      } else {
-        toast.error(data.message || data.error || 'Failed to bulk delete services.')
-      }
-    } catch (error) {
-      toast.error('Network error: ' + error.message)
-    } finally {
-      setIsDeleting(false)
-    }
+    toastUndoableDelete({
+      message: `${serviceIds.length} service(s) deleted`,
+      description: 'Undo available for a few seconds',
+      onUndo: () => setData(snapshot),
+      onCommit: async () => {
+        const apiUrl = import.meta.env.VITE_API_URL || '/api'
+        const token = localStorage.getItem('token')
+        const res = await fetch(`${apiUrl}/catalog/services/bulk-delete`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ service_ids: serviceIds }),
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          throw new Error(json.message || json.error || 'Failed to bulk delete services.')
+        }
+      },
+    })
   }
 
   const columns = useMemo(() => [
@@ -349,13 +354,6 @@ const Services = () => {
         />
       </div>
 
-      {loadError ? (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          <p className="font-medium">Could not load services</p>
-          <p className="mt-1 text-destructive/90 whitespace-pre-wrap">{loadError}</p>
-          <p className="mt-1 text-muted-foreground text-xs">API: {getApiBase()}</p>
-        </div>
-      ) : null}
 
       <DataTable
         columns={columns}

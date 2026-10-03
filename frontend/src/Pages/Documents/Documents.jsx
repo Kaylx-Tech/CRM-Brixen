@@ -30,6 +30,13 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { OverflowTooltip } from "@/components/OverflowTooltip"
 import { toast } from "sonner"
 import { apiRequest, getApiBase, toastApiEmpty, authHeaders } from "@/lib/api"
+import {
+  toastUndoableDelete,
+  toastProcessing,
+  toastDone,
+  toastFail,
+  toastWithAction,
+} from "@/lib/toastActions"
 
 const col = createColumnHelper()
 
@@ -105,6 +112,7 @@ async function downloadDocument(docId, filename) {
   a.download = filename || `document-${docId}`
   a.click()
   URL.revokeObjectURL(href)
+  toast.success('Download started')
 }
 
 async function openDocumentPreview(docId) {
@@ -193,14 +201,19 @@ export default function Documents() {
 
   const approveOne = async (docId) => {
     setActingId(docId)
+    const toastId = toastProcessing('Approving document…')
     try {
       const res = await apiRequest(`/admin/documents/${docId}/approve`, {
         method: 'POST',
         body: JSON.stringify({}),
         label: 'Approve document',
+        silent: true,
       })
-      if (!res.ok) return
-      toast.success('Document approved and posted')
+      if (!res.ok) {
+        toastFail(toastId, res.reason || 'Approve failed')
+        return
+      }
+      toastDone(toastId, 'Document approved and posted')
       setTriageDoc(null)
       await loadDocuments()
     } finally {
@@ -211,14 +224,24 @@ export default function Documents() {
   const rejectOne = async (docId) => {
     const reason = window.prompt('Rejection reason', 'Rejected by staff') || 'Rejected by staff'
     setActingId(docId)
+    const toastId = toastProcessing('Moving to quarantine…')
     try {
       const res = await apiRequest(`/admin/documents/${docId}/reject`, {
         method: 'POST',
         body: JSON.stringify({ reason }),
         label: 'Reject document',
+        silent: true,
       })
-      if (!res.ok) return
-      toast.success('Document moved to Quarantine')
+      if (!res.ok) {
+        toastFail(toastId, res.reason || 'Reject failed')
+        return
+      }
+      toastWithAction('Document moved to Quarantine', {
+        id: toastId,
+        type: 'success',
+        actionLabel: 'Refresh',
+        onAction: () => loadDocuments(),
+      })
       setTriageDoc(null)
       await loadDocuments()
     } finally {
@@ -233,14 +256,19 @@ export default function Documents() {
     if (String(reassignForm.company_id || '').trim()) payload.company_id = Number(reassignForm.company_id)
     if (String(reassignForm.category || '').trim()) payload.category = String(reassignForm.category).trim()
     setActingId(triageDoc.id)
+    const toastId = toastProcessing('Reassigning document…')
     try {
       const res = await apiRequest(`/admin/documents/${triageDoc.id}/reassign`, {
         method: 'POST',
         body: JSON.stringify(payload),
         label: 'Reassign document',
+        silent: true,
       })
-      if (!res.ok) return
-      toast.success('Document reassigned')
+      if (!res.ok) {
+        toastFail(toastId, res.reason || 'Reassign failed')
+        return
+      }
+      toastDone(toastId, 'Document reassigned')
       setReassignOpen(false)
       setTriageDoc(null)
       await loadDocuments()
@@ -249,21 +277,27 @@ export default function Documents() {
     }
   }
 
-  const deleteOne = async (doc) => {
+  const deleteOne = (doc) => {
     if (!window.confirm(`Delete "${doc.name || 'document'}"?`)) return
-    setActingId(doc.id)
-    try {
-      const res = await apiRequest(`/admin/documents/${doc.id}`, {
-        method: 'DELETE',
-        label: 'Delete document',
-      })
-      if (!res.ok) return
-      toast.success('Document deleted')
-      setTriageDoc(null)
-      await loadDocuments()
-    } finally {
-      setActingId(null)
-    }
+    const victim = doc
+    const snapshot = documents
+    setTriageDoc(null)
+    setActingId(null)
+    setDocuments((prev) => prev.filter((d) => d.id !== victim.id))
+
+    toastUndoableDelete({
+      message: 'Document deleted',
+      description: victim.name || 'Undo available for a few seconds',
+      onUndo: () => setDocuments(snapshot),
+      onCommit: async () => {
+        const res = await apiRequest(`/admin/documents/${victim.id}`, {
+          method: 'DELETE',
+          label: 'Delete document',
+          silent: true,
+        })
+        if (!res.ok) throw new Error(res.reason || 'Failed to delete document')
+      },
+    })
   }
 
   const bulkApprove = async (override = false) => {
@@ -272,6 +306,7 @@ export default function Documents() {
       return
     }
     setJobStatus(override ? 'Bulk approve + override…' : 'Bulk approve…')
+    const toastId = toastProcessing(override ? 'Bulk approving…' : 'Bulk approving…')
     const res = await apiRequest('/admin/documents/bulk-approve', {
       method: 'POST',
       body: JSON.stringify({
@@ -279,14 +314,16 @@ export default function Documents() {
         override_review_required: override,
       }),
       label: 'Bulk approve',
+      silent: true,
     })
     if (!res.ok) {
       setJobStatus('')
+      toastFail(toastId, res.reason || 'Bulk approve failed')
       return
     }
     const msg = res.data?.message || 'Bulk approve finished'
     setJobStatus(msg)
-    toast.success(msg)
+    toastDone(toastId, msg)
     await loadDocuments()
   }
 
@@ -296,13 +333,18 @@ export default function Documents() {
       return
     }
     const reason = window.prompt('Quarantine reason', 'Bulk quarantined by staff') || 'Bulk quarantined by staff'
+    const toastId = toastProcessing('Moving to quarantine…')
     const res = await apiRequest('/admin/documents/bulk-quarantine', {
       method: 'POST',
       body: JSON.stringify({ document_ids: selectedIds, reason }),
       label: 'Bulk quarantine',
+      silent: true,
     })
-    if (!res.ok) return
-    toast.success(res.data?.message || 'Moved to Quarantine')
+    if (!res.ok) {
+      toastFail(toastId, res.reason || 'Bulk quarantine failed')
+      return
+    }
+    toastDone(toastId, res.data?.message || 'Moved to Quarantine')
     await loadDocuments()
   }
 
@@ -396,7 +438,6 @@ export default function Documents() {
                   }}
                 >
                   <IconEye className="mr-1 h-3.5 w-3.5" />
-                  View
                 </Button>
               </TooltipTrigger>
               <TooltipContent>View</TooltipContent>
@@ -416,7 +457,6 @@ export default function Documents() {
                   }}
                 >
                   <IconDownload className="mr-1 h-3.5 w-3.5" />
-                  Download
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Download</TooltipContent>
@@ -433,7 +473,6 @@ export default function Documents() {
                   onClick={() => setTriageDoc(d)}
                 >
                   <IconClipboardCheck className="mr-1 h-3.5 w-3.5" />
-                  Review
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Review document</TooltipContent>
@@ -450,11 +489,10 @@ export default function Documents() {
                     onClick={() => approveOne(d.id)}
                   >
                     {busy ? (
-                      <IconLoader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                      <IconLoader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
-                      <IconCheck className="mr-1 h-3.5 w-3.5" />
+                      <IconCheck className="h-3.5 w-3.5" />
                     )}
-                    Approve
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Approve &amp; post</TooltipContent>
@@ -530,11 +568,6 @@ export default function Documents() {
         </div>
       )}
 
-      {loadError && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {loadError}
-        </div>
-      )}
 
       <DataTable columns={columns} data={documents} isLoading={isLoading} />
 
