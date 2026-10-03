@@ -11,21 +11,22 @@ const BLINK_KEYFRAMES = `
 }
 `
 
-// Same multi palette, rotated order — cycles dynamically
+// Soft light multi palette — cycles dynamically
 const MULTI_GRADIENTS = [
-  "radial-gradient(circle at 32% 28%, #fb923c 0%, #f472b6 32%, #a78bfa 62%, #38bdf8 100%)",
-  "radial-gradient(circle at 40% 30%, #f472b6 0%, #a78bfa 32%, #38bdf8 62%, #fb923c 100%)",
-  "radial-gradient(circle at 28% 40%, #a78bfa 0%, #38bdf8 32%, #fb923c 62%, #f472b6 100%)",
-  "radial-gradient(circle at 36% 32%, #38bdf8 0%, #fb923c 32%, #f472b6 62%, #a78bfa 100%)",
+  "radial-gradient(circle at 32% 28%, #fdba74 0%, #f9a8d4 32%, #c4b5fd 62%, #7dd3fc 100%)",
+  "radial-gradient(circle at 40% 30%, #f9a8d4 0%, #c4b5fd 32%, #7dd3fc 62%, #fdba74 100%)",
+  "radial-gradient(circle at 28% 40%, #c4b5fd 0%, #7dd3fc 32%, #fdba74 62%, #f9a8d4 100%)",
+  "radial-gradient(circle at 36% 32%, #7dd3fc 0%, #fdba74 32%, #f9a8d4 62%, #c4b5fd 100%)",
 ]
 
 const PURE_WHITE_IRIS = "#ffffff"
 
 const PRESETS = {
-  // Soft multi — peach / pink / lavender / sky (no white fill, no outer glow)
+  // Soft multi — light peach / pink / lavender / sky + soft glow
   multi: {
     gradient: MULTI_GRADIENTS[0],
-    boxShadow: "none",
+    boxShadow:
+      "0 0 6px 1px rgba(253,186,116,.28), 0 0 12px 3px rgba(196,181,253,.2), 0 0 16px 4px rgba(125,211,252,.16)",
     iris: PURE_WHITE_IRIS,
     shine:
       "radial-gradient(ellipse at 30% 24%, rgba(255,255,255,.28) 0%, rgba(255,255,255,.06) 45%, transparent 70%)",
