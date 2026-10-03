@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useId, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 
 const BLINK_KEYFRAMES = `
@@ -167,18 +167,31 @@ const SHAPE_RADIUS = {
   squircle: "rounded-[40%]",
 }
 
-function Eye({ blinking, delayMs = 0, irisGradient, sizeClass }) {
+function Eye({ blinking, delayMs = 0, irisGradient, sizeClass, lookX = 0, lookY = 0 }) {
   return (
     <div
-      className={["rounded-full", sizeClass].filter(Boolean).join(" ")}
       style={{
-        background: irisGradient,
-        ...(blinking
-          ? { animation: `av-blink 3.6s ease-in-out ${delayMs}ms infinite` }
-          : {}),
+        transform: `translate(${lookX}px, ${lookY}px)`,
+        transition: "transform 0.12s ease-out",
       }}
-    />
+    >
+      <div
+        className={["rounded-full", sizeClass].filter(Boolean).join(" ")}
+        style={{
+          background: irisGradient,
+          ...(blinking
+            ? { animation: `av-blink 3.6s ease-in-out ${delayMs}ms infinite` }
+            : {}),
+        }}
+      />
+    </div>
   )
+}
+
+const EYE_LOOK_RANGE = {
+  sm: 2.2,
+  md: 3,
+  lg: 4,
 }
 
 function AiOrb({
@@ -187,14 +200,17 @@ function AiOrb({
   size = "md",
   shape = "circle",
   className = "",
+  trackCursor = true,
 }) {
   const uid = useId()
+  const orbRef = useRef(null)
   const noiseId = `av-n${uid.replace(/\W/g, "")}`
   const grainId = `grain-${uid.replace(/\W/g, "")}`
   const isMulti = color === "multi"
   const preset = PRESETS[color] ?? PRESETS.multi
   const dims = SIZE[size] ?? SIZE.md
   const [multiIndex, setMultiIndex] = useState(0)
+  const [look, setLook] = useState({ x: 0, y: 0 })
 
   useEffect(() => {
     if (!isMulti) return
@@ -203,6 +219,32 @@ function AiOrb({
     }, 2200)
     return () => window.clearInterval(id)
   }, [isMulti])
+
+  useEffect(() => {
+    if (!trackCursor) return
+
+    const range = EYE_LOOK_RANGE[size] ?? EYE_LOOK_RANGE.md
+
+    const onMove = (e) => {
+      const el = orbRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const cx = rect.left + rect.width / 2
+      const cy = rect.top + rect.height / 2
+      const dx = e.clientX - cx
+      const dy = e.clientY - cy
+      const dist = Math.hypot(dx, dy) || 1
+      // Normalize — farther cursor still caps at range
+      const strength = Math.min(1, dist / 120)
+      setLook({
+        x: (dx / dist) * range * strength,
+        y: (dy / dist) * range * strength,
+      })
+    }
+
+    window.addEventListener("mousemove", onMove, { passive: true })
+    return () => window.removeEventListener("mousemove", onMove)
+  }, [trackCursor, size])
 
   const activeGradient = isMulti
     ? MULTI_GRADIENTS[multiIndex]
@@ -213,6 +255,7 @@ function AiOrb({
     <>
       <style>{BLINK_KEYFRAMES}</style>
       <motion.div
+        ref={orbRef}
         aria-label="AI Avatar"
         role="img"
         whileTap={{ scaleX: 1.15, scaleY: 1.3 }}
@@ -313,12 +356,16 @@ function AiOrb({
             delayMs={0}
             irisGradient={eyeColor}
             sizeClass={dims.eye}
+            lookX={look.x}
+            lookY={look.y}
           />
           <Eye
             blinking={blinking}
             delayMs={60}
             irisGradient={eyeColor}
             sizeClass={dims.eye}
+            lookX={look.x}
+            lookY={look.y}
           />
         </div>
       </motion.div>
