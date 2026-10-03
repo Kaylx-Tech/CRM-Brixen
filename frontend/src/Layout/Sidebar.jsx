@@ -35,33 +35,18 @@ const data = {
     email: "admin@example.com",
     avatar: "",
   },
-  navGroups: [
-    {
-      label: "Navigation",
-      items: [
-        { title: "Overview", url: "/admin/dashboard", icon: <IconDashboard /> },
-        { title: "Customers / Signups", url: "/admin/customers", icon: <IconUsers /> },
-        { title: "Company Registered", url: "/admin/companies", icon: <IconBuilding /> },
-        { title: "Orders Manager", url: "/admin/orders", icon: <IconShoppingCart /> },
-      ],
-    },
-    {
-      label: "Services & Operations",
-      items: [
-        { title: "Tasks & Team", url: "/admin/tasks", icon: <IconListCheck /> },
-        { title: "Services Catalog", url: "/admin/services", icon: <IconApps /> },
-        { title: "Smart Intake", url: "/admin/intake", icon: <IconBrain /> },
-      ],
-    },
-    {
-      label: "Finance & Documents",
-      items: [
-        { title: "Accountancy", url: "/admin/accountancy", icon: <IconCalculator /> },
-        { title: "Payment/Invoices", url: "/admin/payments", icon: <IconFileInvoice /> },
-        { title: "Documents Review", url: "/admin/documents", icon: <IconFileCheck /> },
-      ],
-    }
-  ]
+  navMain: [
+    { title: "Overview", url: "/admin/dashboard", icon: <IconDashboard /> },
+    { title: "Customers / Signups", url: "/admin/customers", icon: <IconUsers /> },
+    { title: "Company Registered", url: "/admin/companies", icon: <IconBuilding /> },
+    { title: "Orders Manager", url: "/admin/orders", icon: <IconShoppingCart /> },
+    { title: "Tasks & Team", url: "/admin/tasks", icon: <IconListCheck /> },
+    { title: "Services Catalog", url: "/admin/services", icon: <IconApps /> },
+    { title: "Smart Intake", url: "/admin/intake", icon: <IconBrain /> },
+    { title: "Accountancy", url: "/admin/accountancy", icon: <IconCalculator /> },
+    { title: "Payment/Invoices", url: "/admin/payments", icon: <IconFileInvoice /> },
+    { title: "Documents Review", url: "/admin/documents", icon: <IconFileCheck /> },
+  ],
 }
 
 export function AppSidebar({
@@ -91,7 +76,7 @@ export function AppSidebar({
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain groups={data.navGroups} />
+        <NavMain items={data.navMain} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />
