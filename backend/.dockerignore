@@ -17,13 +17,14 @@ __pycache__/
 .venv/
 venv/
 
-# ── Local DBs / backups (mount volume in Coolify instead) ─
+# ── Local DBs / backups (bundled database/hypetex.db is included) ─
 *.sqlite
 *.sqlite3
 *.db
 *.db-shm
 *.db-wal
 *.db.bak
+!database/hypetex.db
 backup-DB/
 hypetex.db.bak
 ledger.db
