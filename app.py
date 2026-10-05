@@ -20905,6 +20905,20 @@ def application(environ, start_response):
         log_activity(user, 'CUSTOMER_STATUS_CHANGE', 'users', str(cid), f"Updated status to {new_status}")
         return json_response(start_response, {'status': 'success', 'message': f'Customer status updated to {new_status}'})
 
+    if path in ('/api/admin/customers/type', '/api/admin/customers/client-type') and method == 'POST':
+        if not user or not check_permission(user, 'clients.edit'):
+            return json_response(start_response, {'status': 'error', 'message': 'Insufficient permissions'}, "403 Forbidden")
+        data = parse_body(environ)
+        cid = data.get('customer_id') or data.get('id')
+        new_type = str(data.get('type') or data.get('client_type') or '').strip()
+        if not cid or not new_type:
+            return json_response(start_response, {'status': 'error', 'message': 'Customer ID and type are required'}, "400 Bad Request")
+        is_b2b = 1 if new_type.upper() == 'B2B' else 0
+        client_type = 'B2B' if is_b2b else ('Business' if new_type.lower() == 'business' else 'Normal')
+        execute_db("UPDATE users SET client_type = ?, is_b2b = ? WHERE id = ?;", (client_type, is_b2b, cid))
+        log_activity(user, 'CUSTOMER_TYPE_CHANGE', 'users', str(cid), f"Updated customer type to {client_type}")
+        return json_response(start_response, {'status': 'success', 'message': f'Customer type updated to {client_type}', 'type': client_type, 'is_b2b': is_b2b})
+
     if path == '/api/admin/customers/phone' and method == 'POST':
         if not user or not check_permission(user, 'clients.edit'):
             return json_response(start_response, {'status': 'error', 'message': 'Insufficient permissions'}, "403 Forbidden")

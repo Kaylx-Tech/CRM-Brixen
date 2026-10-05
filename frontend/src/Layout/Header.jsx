@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { ModeToggle } from '@/components/ThemeTogge'
 import Notification from '@/components/Notification'
+import { PrivacyToggle } from '@/components/PrivacyToggle'
 
 const ROUTE_LABELS = {
   admin: 'Admin',
@@ -92,8 +93,9 @@ export function SiteHeader() {
         </div>
 
         <div className="flex items-center gap-2">
+          <PrivacyToggle />
           <Notification />
-          {/* <ModeToggle /> */}
+          <ModeToggle />
         </div>
       </div>
     </header>

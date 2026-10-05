@@ -44,7 +44,7 @@ export function ChartBarMultiple({
   const displayData = data && data.length > 0 ? data : []
 
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col chart-revenue-privacy relative">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="space-y-1">
           <CardTitle>Sales Revenue</CardTitle>
@@ -183,7 +183,7 @@ export function ChartAreaSalesTrend({ data = [], isLoading = false }) {
   const displayData = data && data.length > 0 ? data : []
 
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col chart-revenue-privacy relative">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Sales Trend</CardTitle>

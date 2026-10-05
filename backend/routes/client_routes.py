@@ -72,6 +72,19 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         execute_db("UPDATE users SET status = ? WHERE id = ?;", (new_status, cid))
         return success_response(start_response, message=f"Customer status updated to {new_status}")
 
+    # ── 2.1 POST /api/admin/customers/type (Update Customer Type) ─────────────
+    if path in ('/api/admin/customers/type', '/api/admin/customers/client-type') and method == 'POST':
+        cid = body.get('customer_id') or body.get('id')
+        new_type = str(body.get('type') or body.get('client_type') or '').strip()
+        if not cid or not new_type:
+            return error_response(start_response, "Customer ID and type are required", status_code=400)
+
+        is_b2b = 1 if new_type.upper() == 'B2B' else 0
+        client_type = 'B2B' if is_b2b else ('Business' if new_type.lower() == 'business' else 'Normal')
+
+        execute_db("UPDATE users SET client_type = ?, is_b2b = ? WHERE id = ?;", (client_type, is_b2b, cid))
+        return success_response(start_response, message=f"Customer type updated to {client_type}", data={"type": client_type, "is_b2b": is_b2b})
+
     # ── 3. POST /api/admin/customers/phone (Update Phone) ─────────────────────
     if path == '/api/admin/customers/phone' and method == 'POST':
         cid = body.get('customer_id') or body.get('id')

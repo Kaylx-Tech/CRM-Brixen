@@ -80,7 +80,7 @@ html.is-non-apple,
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(52.111% 0.24724 264.369); /* #2563EB */
+  --primary: #1A69F8;
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
@@ -98,49 +98,49 @@ html.is-non-apple,
   --chart-4: oklch(0.488 0.243 264.4);
   --chart-5: oklch(0.38 0.18 264.4);
   --radius: 0.85rem;
-  --sidebar: oklch(0.205 0 0);
+  --sidebar: #0B1220;
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.685 0.169 237.323);
+  --sidebar-primary: #1A69F8;
   --sidebar-primary-foreground: oklch(0.293 0.066 243.157);
-  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent: #151f33;
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
   --sidebar-ring: oklch(0.556 0 0);
 
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  --background: #090A0F;
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --card: oklch(0.17 0.01 260);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
+  --popover: oklch(0.17 0.01 260);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.443 0.11 240.79);
-  --primary-foreground: oklch(0.977 0.013 236.62);
+  --primary: #F59E0B;
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
+  --muted: oklch(0.22 0.01 260);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
+  --accent: oklch(0.22 0.01 260);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: var(--chart-5);
+  --ring: #F59E0B;
   --chart-1: oklch(0.828 0.111 230.318);
   --chart-2: oklch(0.685 0.169 237.323);
   --chart-3: oklch(0.588 0.158 241.966);
   --chart-4: oklch(0.5 0.134 242.749);
-  --chart-5: oklch(0.443 0.11 240.79);
-  --sidebar: oklch(0.205 0 0);
+  --chart-5: #F59E0B;
+  --sidebar: #0B1220;
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.685 0.169 237.323);
-  --sidebar-primary-foreground: oklch(0.293 0.066 243.157);
-  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-primary: #F59E0B;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #151f33;
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #F59E0B;
 }
 
 @layer base {
@@ -204,67 +204,95 @@ html.is-non-apple,
 
 /* ─── Status & Tag Badge Color Utilities — Light Top→Bottom Gradients ─── */
 .badge-green {
-  background: linear-gradient(to bottom, #f0fdf4 0%, #dcfce7 100%);
+  background: linear-gradient(to top, #f0fdf4 0%, #dcfce7 100%);
   color: #16a34a;
   border: 0;
   box-shadow: none;
 }
 .dark .badge-green {
-  background: linear-gradient(to bottom, #052e16 0%, #14532d 100%);
+  background: linear-gradient(to top, #052e16 0%, #14532d 100%);
   color: #86efac;
 }
 
 .badge-sky {
-  background: linear-gradient(to bottom, #f0f9ff 0%, #e0f2fe 100%);
+  background: linear-gradient(to top, #f0f9ff 0%, #e0f2fe 100%);
   color: #0284c7;
   border: 0;
   box-shadow: none;
 }
 .dark .badge-sky {
-  background: linear-gradient(to bottom, #082f49 0%, #0c4a6e 100%);
+  background: linear-gradient(to top, #082f49 0%, #0c4a6e 100%);
   color: #7dd3fc;
 }
 
 .badge-blue {
-  background: linear-gradient(to bottom, #eff6ff 0%, #dbeafe 100%);
+  background: linear-gradient(to top, #eff6ff 0%, #dbeafe 100%);
   color: #2563eb;
   border: 0;
   box-shadow: none;
 }
 .dark .badge-blue {
-  background: linear-gradient(to bottom, #172554 0%, #1e3a8a 100%);
+  background: linear-gradient(to top, #172554 0%, #1e3a8a 100%);
   color: #93c5fd;
 }
 
 .badge-purple {
-  background: linear-gradient(to bottom, #faf5ff 0%, #f3e8ff 100%);
+  background: linear-gradient(to top, #faf5ff 0%, #f3e8ff 100%);
   color: #9333ea;
   border: 0;
   box-shadow: none;
 }
 .dark .badge-purple {
-  background: linear-gradient(to bottom, #2e1065 0%, #3b0764 100%);
+  background: linear-gradient(to top, #2e1065 0%, #3b0764 100%);
   color: #d8b4fe;
 }
 
 .badge-amber {
-  background: linear-gradient(to bottom, #fffbeb 0%, #fef3c7 100%);
+  background: linear-gradient(to top, #fffbeb 0%, #fef3c7 100%);
   color: #d97706;
   border: 0;
   box-shadow: none;
 }
 .dark .badge-amber {
-  background: linear-gradient(to bottom, #27150a 0%, #451a03 100%);
+  background: linear-gradient(to top, #27150a 0%, #451a03 100%);
   color: #fcd34d;
 }
 
 .badge-red {
-  background: linear-gradient(to bottom, #fff1f2 0%, #ffe4e6 100%);
+  background: linear-gradient(to top, #fff1f2 0%, #ffe4e6 100%);
   color: #dc2626;
   border: 0;
   box-shadow: none;
 }
 .dark .badge-red {
-  background: linear-gradient(to bottom, #1c0606 0%, #450a0a 100%);
+  background: linear-gradient(to top, #1c0606 0%, #450a0a 100%);
   color: #fca5a5;
 }
+
+/* Privacy Mode Financials Masking */
+html.privacy-mode .privacy-currency-mask,
+html.privacy-mode [data-privacy-mask] {
+  -webkit-text-security: disc !important;
+  letter-spacing: 2px !important;
+  user-select: none !important;
+}
+
+@supports not (-webkit-text-security: disc) {
+  html.privacy-mode .privacy-currency-mask,
+  html.privacy-mode [data-privacy-mask] {
+    filter: blur(5px) !important;
+    user-select: none !important;
+  }
+}
+
+/* Privacy Mode Financial Charts Blur */
+html.privacy-mode .chart-revenue-privacy .recharts-responsive-container,
+html.privacy-mode .chart-revenue-privacy .recharts-wrapper,
+html.privacy-mode .chart-revenue-privacy svg.recharts-surface,
+html.privacy-mode [data-chart-privacy] {
+  filter: blur(10px) !important;
+  opacity: 0.45 !important;
+  pointer-events: none !important;
+  transition: filter 0.3s ease, opacity 0.3s ease;
+  user-select: none !important;
+}

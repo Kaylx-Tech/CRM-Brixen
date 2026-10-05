@@ -20,14 +20,16 @@ import NotificationsPage from './Pages/Notifications/Notifications'
 import ToastPlayground from './Pages/ToastPlayground'
 import { TooltipProvider } from './components/ui/tooltip'
 import { ThemeProvider } from './hooks/theme-provider'
+import { PrivacyProvider } from './context/PrivacyContext'
 import { Toaster } from './components/ui/sonner'
 
 const App = () => {
   return (
     <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
-      <TooltipProvider>
-        <BrowserRouter>
-          <Routes>
+      <PrivacyProvider>
+        <TooltipProvider>
+          <BrowserRouter>
+            <Routes>
             <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
             
             {/* Public Login Route */}
@@ -74,7 +76,8 @@ const App = () => {
           </Routes>
         </BrowserRouter>
         <Toaster position="top-center" />
-      </TooltipProvider>
+        </TooltipProvider>
+      </PrivacyProvider>
     </ThemeProvider>
   )
 }

@@ -69,6 +69,7 @@ export function StatCard({
         <CardTitle
           className={cn(
             "font-semibold tabular-nums",
+            typeof value === "string" && /[£$€]/.test(value) && "privacy-currency-mask",
             compact
               ? "text-xl @[250px]/card:text-2xl"
               : "text-2xl @[250px]/card:text-3xl"

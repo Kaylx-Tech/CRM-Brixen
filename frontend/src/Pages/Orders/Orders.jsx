@@ -99,7 +99,7 @@ function statusTone(order, pct) {
 
 function productTone(name) {
   const n = String(name || '').toLowerCase()
-  if (/tide|bank/.test(n)) return 'badge-green'
+  if (/tide|bank|taptap|tap tap|physical bank|revolut|wise|monzo/.test(n)) return 'badge-green'
   if (/kyc|identity/.test(n)) return 'badge-green'
   if (/registered office|address/.test(n)) return 'badge-purple'
   if (/confirmation|ad01|form/.test(n)) return 'badge-sky'
@@ -110,24 +110,62 @@ function TruncatedTooltip({ text, className }) {
   return <OverflowTooltip text={text} className={className} />
 }
 
+function shortenProductName(name) {
+  if (!name) return '—'
+  const raw = String(name).trim()
+  const lower = raw.toLowerCase()
+
+  if (/kyc\s*verification|identity\s*verification/i.test(lower)) return 'KYC'
+  if (/taptap(\s*business)?(\s*bank)?|tap\s*tap/i.test(lower)) return 'TapTap'
+  if (/personal\s*physical\s*banks?/i.test(lower)) return 'Physical Banks'
+  if (/physical\s*banks?/i.test(lower)) return 'Physical Banks'
+  if (/tide(\s*business)?(\s*bank)?/i.test(lower)) return 'Tide'
+  if (/revolut(\s*business)?(\s*bank)?/i.test(lower)) return 'Revolut'
+  if (/wise(\s*business)?(\s*bank)?/i.test(lower)) return 'Wise'
+  if (/monzo(\s*business)?(\s*bank)?/i.test(lower)) return 'Monzo'
+  if (/company\s*formation(\s*package)?/i.test(lower)) return 'Formation'
+  if (/confirmation\s*statement(\s*service)?/i.test(lower)) return 'Confirmation'
+  if (/registered\s*office(\s*address)?/i.test(lower)) return 'Reg Office'
+  if (/director('s)?\s*service\s*address/i.test(lower)) return 'Service Address'
+  if (/ad01(\s*form)?/i.test(lower)) return 'AD01'
+  if (/all\s*inclusive/i.test(lower)) return 'All Inclusive'
+  if (/annual\s*accounts/i.test(lower)) return 'Accounts'
+  if (/corporation\s*tax(\s*return)?/i.test(lower)) return 'Corp Tax'
+  if (/vat\s*registration/i.test(lower)) return 'VAT'
+  if (/paye\s*registration/i.test(lower)) return 'PAYE'
+  if (/dormant(\s*company)?\s*accounts/i.test(lower)) return 'Dormant Acc'
+  if (/company\s*dissolution|strike\s*off/i.test(lower)) return 'Dissolution'
+  if (/certificate\s*of\s*good\s*standing/i.test(lower)) return 'Good Standing'
+  if (/certificate\s*of\s*incorporation/i.test(lower)) return 'Certificate'
+  if (/name\s*change/i.test(lower)) return 'Name Change'
+  if (/mail\s*forwarding/i.test(lower)) return 'Mail Forwarding'
+
+  // Generic cleanups: remove redundant words like "Service", "Package", "Form", "Verification"
+  let cleaned = raw
+    .replace(/\b(Package|Service|Services|Form|Verification|Processing|Standard)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return cleaned || raw
+}
+
 function ProductPills({ summary }) {
   const parts = String(summary || '').split(',').map((p) => p.trim()).filter(Boolean)
   if (!parts.length) return <span className="text-muted-foreground text-xs">—</span>
   return (
     <div className="flex flex-wrap gap-1 max-w-[220px]">
       {parts.map((name, idx) => {
-        const { short, full, truncated } = truncateWords(name, 3)
+        const shortName = shortenProductName(name)
         const pill = (
           <Badge key={`${name}-${idx}`} className={`${productTone(name)} text-[10px] font-medium`}>
             <span className="w-1 h-1 rounded-full bg-current mr-1 opacity-60" />
-            {short}
+            {shortName}
           </Badge>
         )
-        if (!truncated) return pill
         return (
           <Tooltip key={`${name}-${idx}`}>
             <TooltipTrigger className="inline-flex">{pill}</TooltipTrigger>
-            <TooltipContent className="max-w-xs break-words">{full}</TooltipContent>
+            <TooltipContent className="max-w-xs break-words">{name}</TooltipContent>
           </Tooltip>
         )
       })}

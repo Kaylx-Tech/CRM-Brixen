@@ -18,6 +18,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { toast } from "sonner"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 import { toastUndoableDelete } from "@/lib/toastActions"
@@ -31,10 +39,39 @@ const Customers = () => {
   const [customerToDelete, setCustomerToDelete] = useState(null)
   const [bulkDeleteRows, setBulkDeleteRows] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [updatingTypeId, setUpdatingTypeId] = useState(null)
   const [activeTypeTab, setActiveTypeTab] = useState('All')
   const [customers, setCustomers] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
+
+  const handleUpdateCustomerType = async (customerId, newType) => {
+    setUpdatingTypeId(customerId)
+    const toastId = toast.loading('Updating customer type…')
+    try {
+      const res = await apiRequest('/admin/customers/type', {
+        method: 'POST',
+        body: JSON.stringify({
+          customer_id: customerId,
+          type: newType,
+        }),
+        label: 'Update customer type',
+        silent: true,
+      })
+      if (res.ok) {
+        setCustomers((prev) =>
+          prev.map((c) => (c.id === customerId ? { ...c, type: newType } : c))
+        )
+        toast.success(`Customer type updated to ${newType}`, { id: toastId })
+      } else {
+        toast.error(res.reason || 'Failed to update customer type', { id: toastId })
+      }
+    } catch (err) {
+      toast.error(err?.message || 'Error updating customer type', { id: toastId })
+    } finally {
+      setUpdatingTypeId(null)
+    }
+  }
 
   const loadCustomers = async () => {
     setIsLoading(true)
@@ -237,14 +274,26 @@ const Customers = () => {
     columnHelper.accessor("type", {
       header: "Type",
       cell: ({ row }) => {
-        const type = row.getValue("type")
-        if (type === 'B2B') {
-          return <Badge className="badge-purple">B2B</Badge>
-        }
-        if (type === 'Business') {
-          return <Badge className="badge-amber">Business</Badge>
-        }
-        return <Badge className="badge-blue">{type || 'Individual'}</Badge>
+        const customer = row.original
+        const type = customer.type || 'Individual'
+        return (
+          <Select
+            value={type}
+            onValueChange={(val) => handleUpdateCustomerType(customer.id, val)}
+            disabled={updatingTypeId === customer.id}
+          >
+            <SelectTrigger className="h-7 w-[105px] text-xs font-medium">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent className="overflow-hidden p-0">
+              <SelectGroup className="p-1">
+                <SelectItem value="Individual">Individual</SelectItem>
+                <SelectItem value="Business">Business</SelectItem>
+                <SelectItem value="B2B">B2B</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        )
       }
     }),
     columnHelper.accessor("signedUp", {
