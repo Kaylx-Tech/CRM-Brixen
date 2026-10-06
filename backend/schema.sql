@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS users (
     two_factor_enabled INTEGER DEFAULT 0,
     b2b_id TEXT UNIQUE,
     client_type TEXT DEFAULT 'Normal',
+    type_change_count INTEGER NOT NULL DEFAULT 0,
+    type_locked INTEGER NOT NULL DEFAULT 0,
     theme_preference TEXT DEFAULT 'system',
     last_synced_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

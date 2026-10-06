@@ -91,18 +91,25 @@ const formatPortfolioPieData = (breakdown) => {
 // Format Sales Trend Data (Area Chart)
 const formatSalesTrendData = (charts) => {
   if (!charts) return []
+  if (Array.isArray(charts.sales_trend) && charts.sales_trend.length > 0) {
+    return charts.sales_trend.map(t => ({
+      week: t.week,
+      online: t.online || 0,
+      offline: t.offline || 0,
+    }))
+  }
   if (Array.isArray(charts.orders_weekly) && charts.orders_weekly.length > 0) {
     return charts.orders_weekly.map(w => ({
       week: w.label,
-      online: w.cnt,
-      offline: Math.max(0, Math.round(w.cnt * 0.3)),
+      online: w.cnt || 0,
+      offline: 0,
     }))
   }
   if (Array.isArray(charts.orders_daily) && charts.orders_daily.length > 0) {
     return charts.orders_daily.slice(-10).map(d => ({
       week: `Day ${d.label}`,
-      online: d.cnt,
-      offline: Math.max(0, Math.round(d.cnt * 0.25)),
+      online: d.cnt || 0,
+      offline: 0,
     }))
   }
   return []
@@ -128,11 +135,11 @@ const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Compute month options dynamically
+  // Compute month options dynamically (last 14 months + current + all time)
   const getMonthOptions = () => {
     const options = [{ label: "Current Month", value: "Current" }]
     const now = new Date()
-    for (let i = 1; i <= 6; i++) {
+    for (let i = 1; i <= 14; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const year = d.getFullYear()
       const month = String(d.getMonth() + 1).padStart(2, '0')
@@ -149,8 +156,8 @@ const Dashboard = () => {
     setIsLoading(true)
     try {
       let query = ""
-      if (selectedMonth && selectedMonth !== "all" && selectedMonth !== "current") {
-        query = `?month=${selectedMonth}`
+      if (selectedMonth && selectedMonth.toLowerCase() !== "current") {
+        query = `?month=${encodeURIComponent(selectedMonth)}`
       }
       const res = await apiRequest(`/admin/stats${query}`, { label: 'Dashboard stats' })
       if (!res.ok) {
@@ -203,12 +210,6 @@ const Dashboard = () => {
         trendDirection: salesTrend.trendDirection,
       },
       {
-        title: "Sales Revenue",
-        value: formatCurrency(s.total_revenue_raw ?? s.total_revenue, s.total_revenue),
-        trendValue: revTrend.trendValue,
-        trendDirection: revTrend.trendDirection,
-      },
-      {
         title: "Total Customers",
         value: String(s.total_customers ?? 0),
         trendValue: custTrend.trendValue,
@@ -257,12 +258,17 @@ const Dashboard = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Showing statistics for {monthLabel}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-[170px] hidden sm:flex h-9">
-              <IconCalendarWeek className="w-4 h-4 mr-1" />
-              <SelectValue placeholder="Select period" />
+            <SelectTrigger className="w-47.5 hidden sm:flex h-9">
+              <IconCalendarWeek className="w-4 h-4 mr-1.5 shrink-0" />
+              <SelectValue placeholder="Select period">
+                {monthOptions.find(o => o.value === selectedMonth)?.label || "Select period"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>

@@ -344,6 +344,7 @@ const Companies = () => {
               company={company}
               isSelected={selectedIds.includes(company.id)}
               onToggleSelect={handleToggleSelect}
+              onRefresh={fetchCompanies}
               onDelete={(id) => {
                 setSingleDeleteId(id)
                 setDeleteConfirmOpen(true)

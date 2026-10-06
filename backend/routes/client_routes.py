@@ -44,8 +44,10 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         where_clause = f"WHERE {' AND '.join(conditions)}"
 
         sql = f"""
-            SELECT u.id, u.full_name, u.email, u.phone, u.role, u.status, u.created_at,
-                   u.client_type, u.is_b2b, u.b2b_id, u.wordpress_user_id,
+            SELECT u.id, u.full_name, u.email, u.phone, u.country, u.address, u.role, u.status, u.created_at,
+                   u.client_type, u.is_b2b, u.b2b_id, u.wordpress_user_id, u.notification_email,
+                   COALESCE(u.type_change_count, 0) as type_change_count,
+                   COALESCE(u.type_locked, 0) as type_locked,
                    (SELECT COUNT(*) FROM companies WHERE user_id = u.id) as companies_count,
                    (SELECT COUNT(*) FROM orders WHERE user_id = u.id) as orders_count
             FROM users u
@@ -72,18 +74,30 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         execute_db("UPDATE users SET status = ? WHERE id = ?;", (new_status, cid))
         return success_response(start_response, message=f"Customer status updated to {new_status}")
 
-    # ── 2.1 POST /api/admin/customers/type (Update Customer Type) ─────────────
+    # ── 2.1 POST /api/admin/customers/type (Update Customer Type - 1 Time Only) ───
     if path in ('/api/admin/customers/type', '/api/admin/customers/client-type') and method == 'POST':
         cid = body.get('customer_id') or body.get('id')
         new_type = str(body.get('type') or body.get('client_type') or '').strip()
         if not cid or not new_type:
             return error_response(start_response, "Customer ID and type are required", status_code=400)
 
-        is_b2b = 1 if new_type.upper() == 'B2B' else 0
-        client_type = 'B2B' if is_b2b else ('Business' if new_type.lower() == 'business' else 'Normal')
+        row = query_db("SELECT id, client_type, is_b2b, COALESCE(type_locked, 0) as type_locked, COALESCE(type_change_count, 0) as type_change_count FROM users WHERE id = ?;", (cid,), one=True)
+        if not row:
+            return error_response(start_response, "Customer not found", status_code=404)
 
-        execute_db("UPDATE users SET client_type = ?, is_b2b = ? WHERE id = ?;", (client_type, is_b2b, cid))
-        return success_response(start_response, message=f"Customer type updated to {client_type}", data={"type": client_type, "is_b2b": is_b2b})
+        if int(row['type_locked'] or 0) >= 1 or int(row['type_change_count'] or 0) >= 1:
+            return error_response(start_response, "Customer type has already been changed once and is permanently locked.", status_code=400)
+
+        is_b2b = 1 if new_type.upper() == 'B2B' else 0
+        client_type = 'B2B' if is_b2b else ('Business' if new_type.lower() == 'business' else 'Individual')
+        b2b_id = f"B2B-{str(cid).zfill(6)}" if is_b2b else None
+
+        execute_db("""
+            UPDATE users 
+            SET client_type = ?, is_b2b = ?, b2b_id = COALESCE(b2b_id, ?), type_change_count = COALESCE(type_change_count, 0) + 1, type_locked = 1 
+            WHERE id = ?;
+        """, (client_type, is_b2b, b2b_id, cid))
+        return success_response(start_response, message=f"Customer type updated to {client_type} and permanently locked", data={"type": client_type, "is_b2b": is_b2b, "type_locked": 1, "type_change_count": 1})
 
     # ── 3. POST /api/admin/customers/phone (Update Phone) ─────────────────────
     if path == '/api/admin/customers/phone' and method == 'POST':
@@ -209,20 +223,46 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         client_id = int(match_detail.group(1))
 
         row = query_db("""
-            SELECT id, full_name, email, phone, role, status, created_at, client_type, is_b2b
+            SELECT id, full_name, email, phone, country, address, role, status, created_at,
+                   client_type, is_b2b, b2b_id, wordpress_user_id, notification_email,
+                   COALESCE(type_locked, 0) as type_locked,
+                   COALESCE(type_change_count, 0) as type_change_count
             FROM users WHERE id = ? LIMIT 1;
         """, (client_id,), one=True)
         if not row:
             return error_response(start_response, "Customer not found", status_code=404)
 
-        companies = query_db("SELECT id, name as company_name, company_number, status FROM companies WHERE user_id = ?;", (client_id,))
-        orders = query_db("SELECT id, order_number, service_name, status, total as amount, created_at FROM orders WHERE user_id = ? ORDER BY created_at DESC;", (client_id,))
-        invoices = query_db("SELECT id, invoice_number, amount, status, due_date FROM invoices WHERE user_id = ? ORDER BY created_at DESC;", (client_id,))
+        companies = query_db("""
+            SELECT id, name, name as company_name, company_number, status, inc_date,
+                   director, reg_office, package, account_status, created_at
+            FROM companies 
+            WHERE user_id = ? 
+            ORDER BY id DESC;
+        """, (client_id,))
+        
+        orders = query_db("""
+            SELECT o.id, o.order_number, o.service_name, o.products_summary, o.status,
+                   o.total as amount, o.total, o.payment_mode, o.payment_status, o.created_at,
+                   c.name as company_name
+            FROM orders o
+            LEFT JOIN companies c ON o.company_id = c.id
+            WHERE o.user_id = ?
+            ORDER BY o.created_at DESC;
+        """, (client_id,))
+        
+        invoices = query_db("""
+            SELECT id, invoice_number, amount, total, status, due_date, paid_at, created_at
+            FROM invoices 
+            WHERE user_id = ? 
+            ORDER BY created_at DESC;
+        """, (client_id,))
 
         data = dict(row)
-        data['companies'] = [dict(c) for c in companies]
-        data['orders'] = [dict(o) for o in orders]
-        data['invoices'] = [dict(i) for i in invoices]
+        data['companies'] = [dict(c) for c in (companies or [])]
+        data['orders'] = [dict(o) for o in (orders or [])]
+        data['invoices'] = [dict(i) for i in (invoices or [])]
+        data['companies_count'] = len(data['companies'])
+        data['orders_count'] = len(data['orders'])
 
         return success_response(start_response, data=data)
 

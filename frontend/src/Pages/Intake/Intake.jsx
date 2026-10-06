@@ -794,7 +794,7 @@ export default function Intake() {
                           </Select>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground font-mono">
+                      <TableCell className="text-xs text-muted-foreground">
                         {formatBytes(item.size)}
                       </TableCell>
                       <TableCell>{statusBadge(item)}</TableCell>

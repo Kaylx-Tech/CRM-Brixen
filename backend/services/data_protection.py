@@ -186,6 +186,10 @@ def actor_is_super_admin(actor):
     return role in {'SUPER_ADMIN', 'SUPERADMIN'}
 
 
+def can_force_delete_genuine(user):
+    return actor_is_super_admin(user)
+
+
 def refuse_manual_delete_company(company, *, force=False, actor=None):
     if not protection_enabled():
         return None
@@ -194,6 +198,15 @@ def refuse_manual_delete_company(company, *, force=False, actor=None):
     if force and actor_is_super_admin(actor):
         return None
     return LOCKED_MESSAGE
+
+
+def refuse_company_purge(company_or_id, *, force=False, actor=None):
+    from db import query_db
+    if isinstance(company_or_id, (int, str)) and str(company_or_id).isdigit():
+        company = query_db("SELECT * FROM companies WHERE id = ? LIMIT 1;", (int(company_or_id),), one=True)
+    else:
+        company = company_or_id
+    return refuse_manual_delete_company(company, force=force, actor=actor)
 
 
 def refuse_manual_delete_order(order, *, force=False, actor=None):

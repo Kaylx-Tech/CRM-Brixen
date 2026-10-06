@@ -4,10 +4,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { IconDotsVertical, IconTrash } from '@tabler/icons-react'
+import { IconDotsVertical, IconTrash, IconShieldCheck } from '@tabler/icons-react'
 import ViewCompany from './ViewCompany'
 
-const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete }) => {
+const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh }) => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
 
   const name = company?.name || "Unnamed Company";
@@ -78,13 +78,21 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete }) => {
               <span>{countryFlag}</span>
               <span>{countryName}</span>
             </div>
-            <Badge className={
-              status === 'Active' ? 'badge-green' :
-              status === 'Dissolved' ? 'badge-red' :
-              status === 'Inactive' ? 'badge-amber' : 'badge-blue'
-            }>
-              {status}
-            </Badge>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {Boolean(company.is_genuine || company.data_locked) && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                  <IconShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                  Genuine
+                </span>
+              )}
+              <Badge className={
+                status === 'Active' ? 'badge-green' :
+                status === 'Dissolved' ? 'badge-red' :
+                status === 'Inactive' ? 'badge-amber' : 'badge-blue'
+              }>
+                {status}
+              </Badge>
+            </div>
           </div>
 
           <div className="text-[11px] text-muted-foreground border-t pt-2">
@@ -103,6 +111,7 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete }) => {
         isOpen={isViewModalOpen}
         onClose={() => setIsViewModalOpen(false)}
         company={company}
+        onUpdate={onRefresh}
       />
     </>
   )

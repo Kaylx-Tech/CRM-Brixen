@@ -5,6 +5,12 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  define: {
+    'import.meta.env.VITE_ROOT': JSON.stringify(process.cwd()),
+  },
+  optimizeDeps: {
+    include: ['@react-trace/kit', 'react-is'],
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL('./src', import.meta.url)),

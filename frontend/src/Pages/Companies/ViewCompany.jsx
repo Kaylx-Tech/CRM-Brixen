@@ -20,7 +20,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
-import { IconBuilding, IconCheck, IconFileText, IconShoppingBag, IconAlertCircle } from '@tabler/icons-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectGroup,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { IconBuilding, IconCheck, IconFileText, IconShoppingBag, IconAlertCircle, IconShieldCheck, IconLoader2, IconDeviceFloppy, IconShieldCheckFilled, IconClock, IconAlertTriangle } from '@tabler/icons-react'
 import { apiRequest } from '@/lib/api'
 import { toast } from 'sonner'
 
@@ -31,10 +39,22 @@ const getInitials = (name) => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
-const ViewCompany = ({ company, isOpen, onClose }) => {
+const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
   const [activeTab, setActiveTab] = useState('overview')
   const [detail, setDetail] = useState(null)
   const [isLoadingDetail, setIsLoadingDetail] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+
+  const [formData, setFormData] = useState({
+    identity_verified: 'Not started',
+    account_status: 'Good Standing',
+    psc_verified: 'Not started',
+    status: 'Active',
+    utr_number: '',
+    authentication_code: '',
+    accounts_next_due: '',
+    confirmation_next_due: '',
+  })
 
   // Fetch full details if company has ID
   useEffect(() => {
@@ -62,6 +82,45 @@ const ViewCompany = ({ company, isOpen, onClose }) => {
     }
   }, [isOpen, company?.id])
 
+  // Sync formData when detail or company changes
+  useEffect(() => {
+    const src = detail || company?.raw || company || {}
+    setFormData({
+      identity_verified: src.identity_verified || 'Not started',
+      account_status: src.account_status || src.standing || 'Good Standing',
+      psc_verified: src.psc_verified || 'Not started',
+      status: src.status || 'Active',
+      utr_number: src.utr_number || '',
+      authentication_code: src.authentication_code || src.auth_code || '',
+      accounts_next_due: src.accounts_next_due ? String(src.accounts_next_due).slice(0, 10) : '',
+      confirmation_next_due: (src.confirmation_next_due || src.confirmation_statement_next_due) ? String(src.confirmation_next_due || src.confirmation_statement_next_due).slice(0, 10) : '',
+    })
+  }, [detail, company])
+
+  const handleSaveCompliance = async () => {
+    if (!company?.id) return
+    setIsSaving(true)
+    try {
+      const res = await apiRequest(`/admin/companies/${company.id}`, {
+        method: 'PUT',
+        body: formData,
+        label: 'Update Company Compliance',
+      })
+      if (res.ok) {
+        toast.success('Company compliance & status updated successfully')
+        const updatedData = res.data || {}
+        setDetail((prev) => ({ ...(prev || {}), ...formData, ...updatedData }))
+        if (onUpdate) onUpdate({ ...(company || {}), ...formData, ...updatedData })
+      } else {
+        toast.error(res.reason || 'Failed to update compliance status')
+      }
+    } catch (err) {
+      toast.error(err?.message || 'Error updating compliance status')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   if (!company) return null
 
   const raw = company.raw || {}
@@ -83,6 +142,7 @@ const ViewCompany = ({ company, isOpen, onClose }) => {
   const clientName = d.client_name || raw.client_name || '—'
   const clientEmail = d.client_email || raw.client_email || raw.email || ''
   const clientPhone = d.client_phone || raw.client_phone || raw.phone || ''
+  const isGenuine = Boolean(d.is_genuine || d.data_locked || raw.is_genuine || raw.data_locked || company.is_genuine || company.data_locked)
   const accountsDue = d.accounts_next_due || raw.accounts_next_due || company.deadlineText || 'No upcoming deadlines'
   const confirmationDue = d.confirmation_statement_next_due || d.confirmation_next_due || raw.confirmation_statement_next_due || raw.confirmation_next_due || '—'
   const authCode = d.auth_code || raw.auth_code || ''
@@ -106,6 +166,12 @@ const ViewCompany = ({ company, isOpen, onClose }) => {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <DialogTitle className="text-xl font-bold truncate max-w-[500px]" title={name}>{name}</DialogTitle>
+                {isGenuine && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                    <IconShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    Genuine Record
+                  </span>
+                )}
                 <Badge className={
                   status === 'Active' ? 'badge-green' :
                   status === 'Dissolved' ? 'badge-red' :
@@ -178,6 +244,18 @@ const ViewCompany = ({ company, isOpen, onClose }) => {
                       <span className="font-medium text-foreground">{clientName}</span>
                     </div>
                   )}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Record Security</span>
+                    <span className="font-medium text-foreground flex items-center gap-1.5">
+                      {isGenuine ? (
+                        <>
+                          <IconShieldCheck className="w-4 h-4 text-emerald-600" /> Genuine Protected Record
+                        </>
+                      ) : (
+                        'Standard Record'
+                      )}
+                    </span>
+                  </div>
                 </div>
 
                 <Separator />
@@ -230,43 +308,126 @@ const ViewCompany = ({ company, isOpen, onClose }) => {
                 </div>
               </TabsContent>
 
-              {/* Compliance Tab */}
+              {/* Compliance Tab (matching app.js / legacy compliance layout 1:1) */}
               <TabsContent value="compliance" className="m-0 space-y-6 outline-none">
-                <p className="text-xs text-muted-foreground">
-                  Filing deadlines and official reference codes for this company.
+                <p className="text-sm text-muted-foreground">
+                  Stored on this company card for filings and HMRC / Companies House work.
                 </p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5 p-3 rounded-lg border bg-muted/10">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Next Accounts Due</span>
-                    <p className="text-sm font-medium text-foreground">{accountsDue}</p>
-                  </div>
-                  
-                  <div className="space-y-1.5 p-3 rounded-lg border bg-muted/10">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Confirmation Statement Due</span>
-                    <p className="text-sm font-medium text-foreground">{confirmationDue}</p>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    handleSaveCompliance()
+                  }}
+                  className="space-y-4"
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="portfolio-compliance-utr" className="text-sm font-medium text-foreground">
+                        UTR number
+                      </Label>
+                      <Input
+                        id="portfolio-compliance-utr"
+                        placeholder="e.g. 1234567890"
+                        maxLength={15}
+                        value={formData.utr_number}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, utr_number: e.target.value }))}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="portfolio-compliance-auth" className="text-sm font-medium text-foreground">
+                        Authentication code
+                      </Label>
+                      <Input
+                        id="portfolio-compliance-auth"
+                        placeholder="Companies House auth code"
+                        maxLength={12}
+                        value={formData.authentication_code}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, authentication_code: e.target.value }))}
+                      />
+                    </div>
                   </div>
 
-                  <div className="space-y-1.5 p-3 rounded-lg border bg-muted/10">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">UTR Number</span>
-                    <p className="text-sm font-medium text-foreground">{utrNumber || 'Not recorded'}</p>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="portfolio-compliance-activation" className="text-sm font-medium text-foreground">
+                      Personal 11 digits code
+                    </Label>
+                    <Input
+                      id="portfolio-compliance-activation"
+                      placeholder="11-digit personal code"
+                      maxLength={40}
+                      value={formData.activation_code}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, activation_code: e.target.value }))}
+                    />
                   </div>
 
-                  <div className="space-y-1.5 p-3 rounded-lg border bg-muted/10">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Companies House Auth Code</span>
-                    <p className="text-sm font-medium text-foreground">{authCode || 'Not recorded'}</p>
-                  </div>
-                </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium text-foreground">
+                        Identity verification
+                      </Label>
+                      <Select
+                        value={formData.identity_verified}
+                        onValueChange={(val) => setFormData((prev) => ({ ...prev, identity_verified: val }))}
+                      >
+                        <SelectTrigger className="w-full h-10 text-sm">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectGroup>
+                          <SelectContent className="overflow-hidden p-0">
+                            {['Not started', 'In progress', 'Verified', 'Failed'].map((st) => (
+                              <SelectItem key={st} value={st}>
+                                {st}
+                              </SelectItem>
+                          ))}
+                        </SelectContent>
+                        </SelectGroup>
+                      </Select>
+                    </div>
 
-                <div className="flex flex-wrap gap-4 pt-2">
-                  <div className="space-y-1">
-                    <span className="text-xs text-muted-foreground block font-medium">Identity Verification</span>
-                    <Badge variant="outline" className="badge-green">Verified</Badge>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium text-foreground">
+                        PSC verification
+                      </Label>
+                      <Select
+                        value={formData.psc_verified}
+                        onValueChange={(val) => setFormData((prev) => ({ ...prev, psc_verified: val }))}
+                      >
+                        <SelectTrigger className="w-full h-10 text-sm">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectGroup>
+                        <SelectContent className="overflow-hidden p-0">
+                          {['Not started', 'In progress', 'Verified', 'Update required'].map((st) => (
+                            <SelectItem key={st} value={st}>
+                              {st}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                        </SelectGroup>
+                      </Select>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <span className="text-xs text-muted-foreground block font-medium">Standing</span>
-                    <Badge variant="outline" className="badge-blue">Good Standing</Badge>
+
+                  <div className="pt-1">
+                    <Button
+                      type="submit"
+                      disabled={isSaving}
+                      className="h-9 px-4 rounded-md font-medium text-sm gap-2"
+                    >
+                      {isSaving && <IconLoader2 className="w-4 h-4 animate-spin" />}
+                      {isSaving ? 'Saving…' : 'Save codes'}
+                    </Button>
                   </div>
+                </form>
+
+                {/* Standing Box matching screenshot */}
+                <div className="p-4 rounded-xl border bg-muted/10 space-y-1 mt-4">
+                  <span className="text-xs text-muted-foreground block font-medium">Standing</span>
+                  <span className="text-sm font-bold text-foreground">
+                    {detail?.account_status || raw.account_status || company.account_status || 'Good Standing'}
+                  </span>
                 </div>
               </TabsContent>
 

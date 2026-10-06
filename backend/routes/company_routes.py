@@ -1,8 +1,225 @@
-"""Company Management Routes (/api/companies)
+"""Company Management Routes (/api/companies, /api/admin/companies)
+Matches original app.py build_companies_payload and Companies House live sync with 100% precision.
 """
 import re
+import os
+import time
+import datetime
+import threading
 from db import query_db, execute_db, unusable_password_hash
 from utils.response import json_response, success_response, error_response
+from services.companies_house_service import (
+    fetch_company_profile,
+    fetch_company_officers,
+    search_companies_house,
+    get_ch_api_key,
+)
+from services.data_protection import (
+    looks_like_official_company_number,
+    is_pending_placeholder_number,
+    can_force_delete_genuine,
+    refuse_company_purge,
+)
+
+_CH_LIST_SYNC_LAST = 0.0
+_CH_LIST_SYNC_LOCK = threading.Lock()
+
+def is_pending_company_number(company_number):
+    num = str(company_number or '').strip().upper()
+    return not num or num.startswith('REG-') or num.startswith('PENDING')
+
+def company_list_order_sql():
+    return (
+        "datetime(c.created_at) DESC, "
+        "CASE "
+        "WHEN c.inc_date IS NOT NULL AND length(trim(c.inc_date)) >= 10 THEN date(c.inc_date) "
+        "ELSE date('1970-01-01') END DESC, "
+        "c.id DESC"
+    )
+
+def company_country_label(row):
+    return 'United Kingdom'
+
+def registered_address_from_company_row(row):
+    if is_pending_company_number((row or {}).get('company_number')):
+        return None
+    reg_office = str((row or {}).get('reg_office') or '').strip()
+    if reg_office and reg_office.lower() not in ('united kingdom', 'uk', 'none', 'n/a'):
+        return reg_office
+    return None
+
+def format_deadline_text(row):
+    acc_due = row.get('accounts_next_due')
+    acc_overdue = int(row.get('accounts_overdue') or 0)
+    conf_due = row.get('confirmation_next_due')
+    conf_overdue = int(row.get('confirmation_overdue') or 0)
+
+    if acc_overdue:
+        return f"Accounts OVERDUE: {acc_due}" if acc_due else "Accounts Overdue"
+    if conf_overdue:
+        return f"Confirmation Statement OVERDUE: {conf_due}" if conf_due else "Confirmation Overdue"
+    if acc_due:
+        return f"Accounts due: {acc_due}"
+    if conf_due:
+        return f"Confirmation due: {conf_due}"
+    return "No upcoming deadlines"
+
+def public_client_company(row, for_staff=True):
+    if not row:
+        return None
+    src = dict(row)
+    number = str(src.get('company_number') or '').strip()
+    is_reg = not is_pending_company_number(number)
+    is_gen = looks_like_official_company_number(number)
+
+    inc_date = src.get('inc_date') or src.get('incorporation_date')
+    if inc_date and len(str(inc_date)) >= 10:
+        inc_date_str = str(inc_date)[:10]
+    else:
+        inc_date_str = None
+
+    reg_addr = registered_address_from_company_row(src) or src.get('reg_office') or 'United Kingdom'
+    deadline_str = format_deadline_text(src)
+
+    return {
+        'id': src.get('id'),
+        'name': src.get('name') or src.get('company_name') or 'Unnamed Company',
+        'company_name': src.get('name') or src.get('company_name') or 'Unnamed Company',
+        'company_number': number or '#00000000',
+        'number': number or '#00000000',
+        'status': src.get('status') or 'Active',
+        'inc_date': inc_date_str,
+        'incorporation_date': inc_date_str,
+        'incDate': inc_date_str,
+        'director': src.get('director') or 'Director',
+        'director_name': src.get('director') or 'Director',
+        'reg_office': reg_addr,
+        'registered_office_address': reg_addr,
+        'registered_address': reg_addr,
+        'address': reg_addr,
+        'is_registered': is_reg,
+        'is_genuine': is_gen,
+        'data_locked': int(src.get('data_locked') or (1 if is_gen else 0)),
+        'package': src.get('package') or 'Standard Corporate',
+        'account_status': src.get('account_status') or 'Good Standing',
+        'country': company_country_label(src),
+        'countryFlag': '🇬🇧',
+        'countryName': 'UK',
+        'created_at': src.get('created_at'),
+        'user_id': src.get('user_id'),
+        'client_name': src.get('client_name') or '',
+        'client_email': src.get('client_email') or '',
+        'utr_number': str(src.get('utr_number') or '').strip(),
+        'authentication_code': str(src.get('authentication_code') or '').strip(),
+        'activation_code': str(src.get('activation_code') or '').strip(),
+        'identity_verified': str(src.get('identity_verified') or 'Not started').strip() or 'Not started',
+        'psc_verified': str(src.get('psc_verified') or 'Not started').strip() or 'Not started',
+        'sic_codes': str(src.get('sic_codes') or '').strip(),
+        'registered_email': str(src.get('registered_email') or '').strip(),
+        'whatsapp_number': str(src.get('whatsapp_number') or '').strip(),
+        'accounts_next_due': src.get('accounts_next_due'),
+        'accounts_overdue': int(src.get('accounts_overdue') or 0),
+        'confirmation_next_due': src.get('confirmation_next_due'),
+        'confirmation_overdue': int(src.get('confirmation_overdue') or 0),
+        'deadlineText': deadline_str,
+        'raw': src,
+    }
+
+def pending_registration_orders(user_id=None, for_client=False):
+    sql = """
+        SELECT o.id, o.order_number, o.service_name, o.products_summary, o.status, o.created_at, o.user_id,
+               u.full_name as client_name, u.email as client_email
+        FROM orders o
+        JOIN users u ON u.id = o.user_id
+        WHERE o.company_id IS NULL
+          AND COALESCE(o.portfolio_hidden, 0) = 0
+          AND (o.service_name LIKE '%formation%' OR o.service_name LIKE '%incorporation%' OR o.products_summary LIKE '%formation%' OR o.products_summary LIKE '%incorporation%')
+    """
+    params = []
+    if user_id:
+        sql += " AND o.user_id = ?"
+        params.append(user_id)
+    sql += " ORDER BY o.created_at DESC;"
+    
+    rows = query_db(sql, params) or []
+    pending = []
+    for r in rows:
+        pending.append({
+            'order_id': r['id'],
+            'order_number': r.get('order_number') or f"#{r['id']}",
+            'service_name': r.get('products_summary') or r.get('service_name') or 'Company Formation',
+            'status': r.get('status') or 'Pending',
+            'created_at': r.get('created_at'),
+            'client_name': r.get('client_name') or '',
+            'client_email': r.get('client_email') or '',
+            'user_id': r.get('user_id'),
+        })
+    return pending
+
+def schedule_portfolio_ch_sync(user_id=None):
+    """Run non-blocking Companies House background refresh."""
+    global _CH_LIST_SYNC_LAST
+    now = time.time()
+    with _CH_LIST_SYNC_LOCK:
+        if (now - _CH_LIST_SYNC_LAST) < 45:
+            return False
+        _CH_LIST_SYNC_LAST = now
+
+    def _job():
+        try:
+            api_key = get_ch_api_key()
+            if not api_key:
+                return
+
+            # Refresh up to 5 companies needing update
+            sql = """
+                SELECT id, company_number, name, inc_date, status
+                FROM companies
+                WHERE length(trim(company_number)) >= 6
+                  AND company_number NOT LIKE 'REG-%'
+                  AND (ch_checked_at IS NULL OR datetime(ch_checked_at) < datetime('now', '-24 hours'))
+                ORDER BY ch_checked_at ASC LIMIT 5;
+            """
+            due_comps = query_db(sql) or []
+            for comp in due_comps:
+                num = comp['company_number']
+                profile = fetch_company_profile(num)
+                if profile.get('success') and profile.get('data'):
+                    d = profile['data']
+                    status = (d.get('company_status') or 'active').capitalize()
+                    inc_date = d.get('date_of_creation')
+                    
+                    accounts_data = d.get('accounts', {})
+                    acc_next_due = accounts_data.get('next_due')
+                    acc_overdue = 1 if accounts_data.get('overdue') else 0
+                    
+                    conf_data = d.get('confirmation_statement', {})
+                    conf_next_due = conf_data.get('next_due')
+                    conf_overdue = 1 if conf_data.get('overdue') else 0
+
+                    execute_db("""
+                        UPDATE companies
+                        SET status = ?, inc_date = COALESCE(?, inc_date),
+                            accounts_next_due = ?, accounts_overdue = ?,
+                            confirmation_next_due = ?, confirmation_overdue = ?,
+                            ch_checked_at = datetime('now')
+                        WHERE id = ?;
+                    """, (status, inc_date, acc_next_due, acc_overdue, conf_next_due, conf_overdue, comp['id']))
+        except Exception as exc:
+            print(f"[CH sync error] {exc}")
+
+    t = threading.Thread(target=_job, daemon=True)
+    t.start()
+    return True
+
+COMPANY_STAFF_SELECT = (
+    "c.id, c.name, c.company_number, c.status, c.inc_date, c.director, c.reg_office, c.package, c.account_status, "
+    "c.created_at, c.user_id, c.utr_number, c.authentication_code, c.activation_code, "
+    "c.identity_verified, c.psc_verified, c.sic_codes, c.registered_email, c.whatsapp_number, "
+    "c.accounts_next_due, c.accounts_overdue, c.confirmation_next_due, c.confirmation_overdue, "
+    "c.b2b_id, c.client_type, c.data_locked, "
+    "u.full_name as client_name, u.email as client_email"
+)
 
 def handle_company_routes(environ, start_response, path, method, user, body, query):
     valid_prefixes = ('/api/companies', '/api/admin/companies', '/api/companies-house')
@@ -18,12 +235,9 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
 
     # ── GET /api/companies/lookup-ch (Companies House Search & Auto-fill) ─
     if path in ('/api/companies/lookup-ch', '/api/admin/companies/lookup-ch', '/api/admin/companies/search', '/api/companies-house/search', '/api/admin/companies/ch-live', '/api/companies-house/company') and method == 'GET':
-        from services.companies_house_service import fetch_company_profile, fetch_company_officers, search_companies_house
-        
         comp_number = (query.get('number') or [''])[0].strip()
         search_query = (query.get('query') or query.get('q') or [''])[0].strip()
 
-        # If specific company number requested or 8 alphanumeric digits
         if comp_number or (len(search_query) >= 6 and search_query.replace(' ', '').isalnum() and any(c.isdigit() for c in search_query)):
             target_num = comp_number or search_query.replace(' ', '')
             ch_res = fetch_company_profile(target_num)
@@ -63,7 +277,6 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
                     "sic_codes": d.get('sic_codes', [])
                 })
 
-        # Otherwise search query by name / text
         if search_query:
             search_res = search_companies_house(search_query)
             if search_res.get('success'):
@@ -81,12 +294,14 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
 
         return success_response(start_response, data={"results": []})
 
-    # ── GET /api/companies OR /api/admin/companies (List) ──────────────────
+    # ── GET /api/companies OR /api/admin/companies (List matching app.py) ──
     if (path in ('/api/companies', '/api/admin/companies')) and method == 'GET':
+        schedule_portfolio_ch_sync(user_id=None if is_staff else user_id)
+        
         search = (query.get('search') or [''])[0].strip()
         status_filter = (query.get('status') or [''])[0].strip()
         client_id_filter = (query.get('client_id') or query.get('user_id') or [''])[0].strip()
-        limit = min(int((query.get('limit') or ['50'])[0]), 500)
+        limit = min(int((query.get('limit') or ['500'])[0]), 1000)
         offset = max(int((query.get('offset') or ['0'])[0]), 0)
 
         params = []
@@ -100,36 +315,41 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
             params.append(client_id_filter)
 
         if search:
-            conditions.append("(c.name LIKE ? OR c.company_number LIKE ?)")
-            params.extend([f"%{search}%", f"%{search}%"])
+            conditions.append("(c.name LIKE ? OR c.company_number LIKE ? OR c.director LIKE ?)")
+            params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
 
-        if status_filter:
+        if status_filter and status_filter.lower() != 'all':
             conditions.append("c.status = ?")
             params.append(status_filter)
 
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
-        count_row = query_db(f"SELECT COUNT(*) as total FROM companies c {where_clause};", params, one=True)
-        total_count = count_row['total'] if count_row else 0
-
-        params.extend([limit, offset])
-        rows = query_db(f"""
-            SELECT c.id, c.name as company_name, c.company_number, c.status,
-                   c.inc_date as incorporation_date, c.accounts_next_due, c.confirmation_next_due as confirmation_statement_next_due,
-                   c.director, c.reg_office, c.user_id, u.full_name as client_name, u.email as client_email,
-                   c.created_at
+        sql = f"""
+            SELECT {COMPANY_STAFF_SELECT}
             FROM companies c
             LEFT JOIN users u ON c.user_id = u.id
             {where_clause}
-            ORDER BY c.created_at DESC
+            ORDER BY {company_list_order_sql()}
             LIMIT ? OFFSET ?;
-        """, params)
+        """
+        rows = query_db(sql, params + [limit, offset]) or []
+        formatted_companies = [public_client_company(r, for_staff=is_staff) for r in rows]
 
-        return success_response(start_response, data={
-            "companies": [dict(r) for r in rows],
-            "total": total_count,
-            "limit": limit,
-            "offset": offset
+        pending_regs = pending_registration_orders(user_id=None if is_staff else user_id, for_client=not is_staff)
+        clients = query_db("SELECT id, full_name, email FROM users WHERE role = 'CLIENT' AND status = 'Active' ORDER BY full_name COLLATE NOCASE;") or []
+
+        return json_response(start_response, {
+            'status': 'success',
+            'success': True,
+            'companies': formatted_companies,
+            'data': {
+                'companies': formatted_companies,
+                'total': len(formatted_companies),
+            },
+            'pending_registrations': pending_regs,
+            'clients': [{'id': row['id'], 'full_name': row.get('full_name') or '', 'email': row.get('email') or ''} for row in clients],
+            'companies_house_configured': bool(get_ch_api_key()),
+            'total_uk': len(formatted_companies)
         })
 
     # ── GET /api/companies/<id> (Detail) ──────────────────────────────────
@@ -137,8 +357,8 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
     if match_detail and method == 'GET':
         comp_id = int(match_detail.group(1))
         
-        row = query_db("""
-            SELECT c.*, c.name as company_name, u.full_name as client_name, u.email as client_email, u.phone as client_phone
+        row = query_db(f"""
+            SELECT {COMPANY_STAFF_SELECT}
             FROM companies c
             LEFT JOIN users u ON c.user_id = u.id
             WHERE c.id = ?
@@ -152,11 +372,64 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
             return error_response(start_response, "Access denied", status_code=403)
 
         directors = query_db("SELECT * FROM company_directors WHERE company_id = ? ORDER BY id ASC;", (comp_id,))
+        orders = query_db("SELECT id, order_number, service_name, status, total as amount, created_at FROM orders WHERE company_id = ? ORDER BY created_at DESC;", (comp_id,))
 
-        data = dict(row)
-        data['directors'] = [dict(d) for d in directors]
+        data = public_client_company(row, for_staff=is_staff)
+        data['directors'] = [dict(d) for d in (directors or [])]
+        data['orders'] = [dict(o) for o in (orders or [])]
 
         return success_response(start_response, data=data)
+
+    # ── PUT / PATCH /api/companies/<id> (Update Company & Compliance Statuses) ─
+    match_update = re.match(r'^/api/(?:admin/)?companies/(\d+)$', path)
+    if match_update and method in ('PUT', 'PATCH'):
+        comp_id = int(match_update.group(1))
+        
+        comp = query_db("SELECT * FROM companies WHERE id = ? LIMIT 1;", (comp_id,), one=True)
+        if not comp:
+            return error_response(start_response, "Company not found", status_code=404)
+
+        if not is_staff and comp['user_id'] != user_id:
+            return error_response(start_response, "Access denied", status_code=403)
+
+        updatable_fields = [
+            'name', 'director', 'reg_office', 'status', 'account_status',
+            'identity_verified', 'psc_verified', 'utr_number', 'authentication_code',
+            'activation_code', 'sic_codes', 'registered_email', 'whatsapp_number',
+            'accounts_next_due', 'confirmation_next_due'
+        ]
+        
+        alias_map = {
+            'company_name': 'name',
+            'standing': 'account_status',
+            'auth_code': 'authentication_code',
+            'accounts_due': 'accounts_next_due',
+            'confirmation_due': 'confirmation_next_due',
+            'address': 'reg_office',
+            'registered_office_address': 'reg_office',
+        }
+
+        updates = {}
+        for key, val in body.items():
+            db_key = alias_map.get(key, key)
+            if db_key in updatable_fields:
+                updates[db_key] = val
+
+        if updates:
+            set_clauses = [f"{k} = ?" for k in updates.keys()]
+            values = list(updates.values()) + [comp_id]
+            execute_db(f"UPDATE companies SET {', '.join(set_clauses)} WHERE id = ?;", tuple(values))
+
+        updated_row = query_db(f"""
+            SELECT {COMPANY_STAFF_SELECT}
+            FROM companies c
+            LEFT JOIN users u ON c.user_id = u.id
+            WHERE c.id = ?
+            LIMIT 1;
+        """, (comp_id,), one=True)
+
+        updated_data = public_client_company(updated_row, for_staff=is_staff)
+        return success_response(start_response, data=updated_data, message="Company details and compliance status updated successfully.")
 
     # ── POST /api/companies (Create) ──────────────────────────────────────
     if (path in ('/api/companies', '/api/admin/companies')) and method == 'POST':
@@ -167,7 +440,6 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
         inc_date = body.get('inc_date') or body.get('incorporation_date')
         status = body.get('status') or 'Active'
         
-        # Resolve client ID if new client was provided
         client_mode = body.get('client_mode') or 'existing'
         client_id = None
         if client_mode == 'new':
@@ -180,7 +452,7 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
                 else:
                     client_id = execute_db("""
                         INSERT INTO users (full_name, email, password_hash, role, client_type, is_b2b, status, created_at)
-                        VALUES (?, ?, ?, 'CLIENT', 'Individual', 0, 'Active', datetime('now'));
+                        VALUES (?, ?, ?, 'CLIENT', 'Individual', 0, 'Active', datetime('now', 'localtime'));
                     """, (new_name, new_email, unusable_password_hash()))
         if not client_id:
             client_id = body.get('user_id') or body.get('client_id') or user_id
@@ -194,247 +466,58 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
             import secrets
             comp_number = f"GB{secrets.randbelow(90000000) + 10000000}"
 
+        is_gen = 1 if looks_like_official_company_number(comp_number) else 0
+
         comp_id = execute_db("""
             INSERT INTO companies (
                 user_id, name, company_number, inc_date, director,
-                reg_office, status, created_at
-            ) VALUES (?, ?, ?, coalesce(?, date('now')), ?, ?, ?, datetime('now'));
-        """, (client_id, name, comp_number, inc_date, director, reg_office, status))
+                reg_office, status, data_locked, created_at
+            ) VALUES (?, ?, ?, coalesce(?, date('now')), ?, ?, ?, ?, datetime('now', 'localtime'));
+        """, (client_id, name, comp_number, inc_date, director, reg_office, status, is_gen))
 
         return success_response(start_response, data={"id": comp_id, "company_name": name, "company_number": comp_number}, message="Company created successfully.", status_code=201)
 
-    # ── POST /api/admin/companies/import-webfiling ─────────────────────────
-    if (path in ('/api/admin/companies/import-webfiling', '/api/companies/import-webfiling')) and method == 'POST':
-        import datetime
-        from services.companies_house_service import fetch_company_profile, fetch_company_officers
+    # ── DELETE /api/admin/companies/<id> (Delete with genuine protection) ─
+    match_del = re.match(r'^/api/(?:admin/)?companies/(\d+)$', path)
+    if match_del and method == 'DELETE':
+        if not is_staff:
+            return error_response(start_response, "Access denied", status_code=403)
+        comp_id = int(match_del.group(1))
 
-        raw_numbers = body.get('company_numbers') or body.get('numbers') or ''
-        tokens = re.split(r'[\s,;\n\r\t]+', str(raw_numbers).strip())
-        numbers = []
-        seen = set()
-        for t in tokens:
-            clean = re.sub(r'[^A-Za-z0-9]', '', t).upper()
-            if len(clean) >= 5:
-                if clean.isdigit() and len(clean) < 8:
-                    clean = clean.zfill(8)
-                if clean not in seen:
-                    seen.add(clean)
-                    numbers.append(clean)
+        comp = query_db("SELECT id, name, company_number FROM companies WHERE id = ? LIMIT 1;", (comp_id,), one=True)
+        if not comp:
+            return error_response(start_response, "Company not found", status_code=404)
 
-        if not numbers:
-            return error_response(start_response, "Paste at least one Companies House number", status_code=400)
-        if len(numbers) > 100:
-            return error_response(start_response, "Import up to 100 company numbers at a time", status_code=400)
+        force = can_force_delete_genuine(user)
+        refusal = refuse_company_purge(comp_id, force=force, actor=user)
+        if refusal:
+            return error_response(start_response, refusal, status_code=403)
 
-        # Client resolution
-        client_mode = body.get('client_mode') or 'existing'
-        target_client_id = None
-        if client_mode == 'new':
-            new_name = (body.get('new_client_full_name') or body.get('client_name') or '').strip()
-            new_email = (body.get('new_client_email') or body.get('client_email') or '').strip().lower()
-            if not new_name or not new_email:
-                return error_response(start_response, "New client name and email are required", status_code=400)
-            existing_user = query_db("SELECT id FROM users WHERE lower(email) = ? LIMIT 1;", (new_email,), one=True)
-            if existing_user:
-                target_client_id = existing_user['id']
-            else:
-                target_client_id = execute_db("""
-                    INSERT INTO users (full_name, email, password_hash, role, client_type, is_b2b, status, created_at)
-                    VALUES (?, ?, ?, 'CLIENT', 'Individual', 0, 'Active', datetime('now'));
-                """, (new_name, new_email, unusable_password_hash()))
-        else:
-            cid = body.get('client_id')
-            if cid:
-                try:
-                    target_client_id = int(cid)
-                except (ValueError, TypeError):
-                    target_client_id = None
-            if not target_client_id:
-                target_client_id = user_id
-
-        update_existing = bool(body.get('update_existing'))
-        results = []
-        imported = updated = skipped = failed = 0
-
-        for number in numbers:
-            existing = query_db("SELECT id, name, user_id FROM companies WHERE company_number = ? LIMIT 1;", (number,), one=True)
-            
-            # Fetch from Companies House
-            ch_res = fetch_company_profile(number)
-            ch_data = ch_res.get('data') if isinstance(ch_res, dict) and ch_res.get('success') else None
-
-            if ch_data:
-                comp_name = ch_data.get('company_name') or f"Company {number}"
-                inc_date = ch_data.get('date_of_creation') or str(datetime.date.today())
-                ch_status = ch_data.get('company_status') or 'Active'
-                status = 'Active' if ch_status.lower() in ('active', 'open') else ch_status.capitalize()
-                
-                # Format address
-                addr = ch_data.get('registered_office_address', {})
-                addr_parts = [addr.get('address_line_1'), addr.get('address_line_2'), addr.get('locality'), addr.get('postal_code'), addr.get('country')]
-                reg_office = ', '.join(p for p in addr_parts if p) or 'United Kingdom'
-
-                # Fetch officers
-                officers_res = fetch_company_officers(number)
-                officers = officers_res.get('officers', []) if isinstance(officers_res, dict) else []
-                director = 'Director'
-                if officers:
-                    for off in officers:
-                        if 'director' in off.get('officer_role', '').lower():
-                            director = off.get('name') or 'Director'
-                            break
-                    if director == 'Director' and officers[0].get('name'):
-                        director = officers[0].get('name')
-            else:
-                comp_name = f"UK Company {number}"
-                inc_date = str(datetime.date.today())
-                status = 'Active'
-                reg_office = 'United Kingdom'
-                director = 'Director'
-
-            if existing:
-                if update_existing:
-                    execute_db("""
-                        UPDATE companies
-                        SET name = ?, status = ?, inc_date = ?, director = ?, reg_office = ?
-                        WHERE id = ?;
-                    """, (comp_name, status, inc_date, director, reg_office, existing['id']))
-                    results.append({
-                        'company_number': number,
-                        'name': comp_name,
-                        'status': 'updated',
-                        'company_id': existing['id']
-                    })
-                    updated += 1
-                else:
-                    results.append({
-                        'company_number': number,
-                        'name': existing.get('name') or comp_name,
-                        'status': 'skipped',
-                        'message': 'Already in portal',
-                        'company_id': existing['id']
-                    })
-                    skipped += 1
-                continue
-
-            # Insert new company
-            comp_id = execute_db("""
-                INSERT INTO companies (
-                    user_id, name, company_number, status, inc_date, director,
-                    reg_office, package, account_status, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'WebFiling Import', 'Good Standing', datetime('now'));
-            """, (target_client_id, comp_name, number, status, inc_date, director, reg_office))
-
-            results.append({
-                'company_number': number,
-                'name': comp_name,
-                'status': 'imported',
-                'company_id': comp_id
-            })
-            imported += 1
-
-        summary = {
-            "status": "success",
-            "imported": imported,
-            "updated": updated,
-            "skipped": skipped,
-            "failed": failed,
-            "results": results
-        }
-        return success_response(start_response, data=summary, message=f"WebFiling import: {imported} added, {updated} updated, {skipped} skipped.")
+        execute_db("DELETE FROM companies WHERE id = ?;", (comp_id,))
+        return success_response(start_response, message=f"Company '{comp['name']}' deleted successfully.")
 
     # ── POST /api/admin/companies/bulk-delete ──────────────────────────────
     if path in ('/api/admin/companies/bulk-delete', '/api/companies/bulk-delete') and method == 'POST':
+        if not is_staff:
+            return error_response(start_response, "Access denied", status_code=403)
         ids = body.get('company_ids') or body.get('ids') or []
-        if isinstance(ids, str):
-            try:
-                ids = [int(i.strip()) for i in ids.split(',') if i.strip()]
-            except ValueError:
-                ids = []
+        if not ids:
+            return error_response(start_response, "No company IDs provided", status_code=400)
 
-        if not isinstance(ids, list) or not ids:
-            return error_response(start_response, "Select at least one company to delete", status_code=400)
+        force = can_force_delete_genuine(user)
+        deleted = 0
+        blocked = 0
+        for cid in ids:
+            refusal = refuse_company_purge(cid, force=force, actor=user)
+            if refusal:
+                blocked += 1
+                continue
+            execute_db("DELETE FROM companies WHERE id = ?;", (cid,))
+            deleted += 1
 
-        cleaned_ids = []
-        for i in ids:
-            try:
-                cleaned_ids.append(int(i))
-            except (ValueError, TypeError):
-                pass
+        if deleted == 0 and blocked > 0:
+            return error_response(start_response, "Selected companies are genuine locked records. Super Admin force delete required.", status_code=403)
 
-        if not cleaned_ids:
-            return error_response(start_response, "Invalid company IDs provided", status_code=400)
-
-        placeholders = ', '.join(['?'] * len(cleaned_ids))
-        if is_staff:
-            count = execute_db(f"DELETE FROM companies WHERE id IN ({placeholders});", cleaned_ids)
-            try:
-                execute_db(f"DELETE FROM company_directors WHERE company_id IN ({placeholders});", cleaned_ids)
-            except Exception:
-                pass
-        else:
-            params = cleaned_ids + [user_id]
-            count = execute_db(f"DELETE FROM companies WHERE id IN ({placeholders}) AND user_id = ?;", params)
-
-        return success_response(start_response, data={"deleted_count": count}, message=f"Successfully deleted {count} {'company' if count == 1 else 'companies'}.")
-
-    # ── DELETE /api/companies/<id> OR /api/admin/companies/<id> ───────────
-    match_del = re.match(r'^/api/(?:admin/)?companies/(\d+)$', path)
-    if match_del and method == 'DELETE':
-        comp_id = int(match_del.group(1))
-        row = query_db("SELECT id, user_id FROM companies WHERE id = ? LIMIT 1;", (comp_id,), one=True)
-        if not row:
-            return error_response(start_response, "Company not found", status_code=404)
-
-        if not is_staff and row['user_id'] != user_id:
-            return error_response(start_response, "Access denied", status_code=403)
-
-        execute_db("DELETE FROM companies WHERE id = ?;", (comp_id,))
-        try:
-            execute_db("DELETE FROM company_directors WHERE company_id = ?;", (comp_id,))
-        except Exception:
-            pass
-
-        return success_response(start_response, message="Company deleted successfully.")
-
-    # ── PUT / PATCH /api/companies/<id> (Update) ──────────────────────────
-    match_update = re.match(r'^/api/(?:admin/)?companies/(\d+)$', path)
-    if match_update and method in ('PUT', 'PATCH'):
-        comp_id = int(match_update.group(1))
-        
-        row = query_db("SELECT * FROM companies WHERE id = ? LIMIT 1;", (comp_id,), one=True)
-        if not row:
-            return error_response(start_response, "Company not found", status_code=404)
-
-        if not is_staff and row['user_id'] != user_id:
-            return error_response(start_response, "Access denied", status_code=403)
-
-        allowed_fields = [
-            'name', 'company_number', 'status', 'authentication_code', 'activation_code',
-            'utr_number', 'accounts_next_due', 'confirmation_next_due', 'sic_codes',
-            'director', 'reg_office', 'identity_verified', 'psc_verified',
-        ]
-        
-        updates = []
-        params = []
-        for field in allowed_fields:
-            val = body.get(field)
-            if field == 'name' and 'company_name' in body:
-                val = body.get('company_name')
-            if val is not None:
-                updates.append(f"{field} = ?")
-                params.append(val)
-
-        if updates:
-            # Stamp verification timestamps when staff update IDV / PSC
-            if 'identity_verified' in body:
-                updates.append("identity_verified_at = datetime('now')")
-            if 'psc_verified' in body:
-                updates.append("psc_verified_at = datetime('now')")
-            params.append(comp_id)
-            execute_db(f"UPDATE companies SET {', '.join(updates)} WHERE id = ?;", params)
-
-        return success_response(start_response, message="Company updated successfully.")
+        return success_response(start_response, message=f"Deleted {deleted} companies" + (f" ({blocked} genuine locked skipped)" if blocked else ""))
 
     return None
-

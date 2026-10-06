@@ -189,7 +189,6 @@ export default function Orders() {
   const [paymentFilter, setPaymentFilter] = useState('all')
   const [datePreset, setDatePreset] = useState('all')
   const [b2bClientId, setB2bClientId] = useState('all')
-  const [priceDrafts, setPriceDrafts] = useState({})
   const [savingId, setSavingId] = useState(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [quickCrmOpen, setQuickCrmOpen] = useState(false)
@@ -249,9 +248,6 @@ export default function Orders() {
     if (data.facets) setFacets(data.facets)
     if (data.pagination) setPagination(data.pagination)
     else setPagination((p) => ({ ...p, page, total: data.total || list.length }))
-    const drafts = {}
-    list.forEach((o) => { drafts[o.id] = Number(o.total || 0).toFixed(2) })
-    setPriceDrafts(drafts)
     if (list.length === 0) toastApiEmpty('Orders', getApiBase())
   }
 
@@ -402,26 +398,11 @@ export default function Orders() {
       header: 'Price',
       cell: ({ row }) => {
         const o = row.original
-        const val = priceDrafts[o.id] !== undefined ? priceDrafts[o.id] : Number(o.total || 0).toFixed(2)
+        const totalNum = Number(o.total || 0)
         return (
-          <div className="inline-flex items-center gap-0.5">
-            <span className="text-[10px] text-muted-foreground">£</span>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              disabled={savingId === o.id}
-              className="h-6 w-16 px-1 text-[11px] font-semibold text-center"
-              value={val}
-              onChange={(e) => setPriceDrafts((p) => ({ ...p, [o.id]: e.target.value }))}
-              onBlur={() => {
-                const n = parseFloat(val)
-                if (!Number.isFinite(n) || Math.abs(n - Number(o.total || 0)) < 0.001) return
-                updateOrder(o.id, { total: n, price: n })
-              }}
-              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
-            />
-          </div>
+          <span className="text-xs font-semibold tabular-nums">
+            £{totalNum.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
         )
       },
     }),
@@ -499,7 +480,7 @@ export default function Orders() {
         )
       },
     }),
-  ], [priceDrafts, savingId, handleOpenOrder])
+  ], [savingId, handleOpenOrder])
 
   const tableFilterConfig = useMemo(() => [
     {
@@ -624,7 +605,7 @@ export default function Orders() {
       )}
 
       <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-        Click <strong>Open order</strong> on any row for details. Edit price or payment inline — same as the live CRM.
+        Click <strong>Open order</strong> on any row to view complete details.
       </div>
 
 

@@ -5,11 +5,12 @@ import AddCustomer from "./AddCustomer"
 import ViewCustomer from "./ViewCustomer"
 import SetCustomerPassword from "./SetCustomerPassword"
 import DeleteConfirmation from "../../components/DeleteConfirmation"
+import CustomerTypeConfirmDialog from "../../components/CustomerTypeConfirmDialog"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { createColumnHelper } from "@tanstack/react-table"
 import { DataTable } from "../../Layout/DataTable"
-import { IconDotsVertical, IconArrowsSort, IconUserPlus, IconKey, IconTrash, IconEye, IconAlertTriangle } from "@tabler/icons-react"
+import { IconDotsVertical, IconArrowsSort, IconUserPlus, IconKey, IconTrash, IconEye, IconAlertTriangle, IconLock } from "@tabler/icons-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,6 +41,7 @@ const Customers = () => {
   const [bulkDeleteRows, setBulkDeleteRows] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [updatingTypeId, setUpdatingTypeId] = useState(null)
+  const [typeChangeTarget, setTypeChangeTarget] = useState(null)
   const [activeTypeTab, setActiveTypeTab] = useState('All')
   const [customers, setCustomers] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -60,9 +62,23 @@ const Customers = () => {
       })
       if (res.ok) {
         setCustomers((prev) =>
-          prev.map((c) => (c.id === customerId ? { ...c, type: newType } : c))
+          prev.map((c) =>
+            c.id === customerId
+              ? {
+                  ...c,
+                  type: newType,
+                  raw: {
+                    ...c.raw,
+                    client_type: newType,
+                    is_b2b: newType === 'B2B' ? 1 : 0,
+                    type_locked: 1,
+                    type_change_count: (c.raw?.type_change_count || 0) + 1,
+                  },
+                }
+              : c
+          )
         )
-        toast.success(`Customer type updated to ${newType}`, { id: toastId })
+        toast.success(`Customer type updated to ${newType} and permanently locked`, { id: toastId })
       } else {
         toast.error(res.reason || 'Failed to update customer type', { id: toastId })
       }
@@ -276,10 +292,34 @@ const Customers = () => {
       cell: ({ row }) => {
         const customer = row.original
         const type = customer.type || 'Individual'
+        const isLocked = Number(customer.raw?.type_locked ?? customer.raw?.type_change_count ?? 0) >= 1
+
+        if (isLocked) {
+          return (
+            <div className="flex items-center gap-1.5" title="Type is locked (1-time change used)">
+              <Badge
+                variant={type === 'B2B' ? 'default' : type === 'Business' ? 'outline' : 'secondary'}
+                className="text-[11px] h-6 font-medium"
+              >
+                {type}
+              </Badge>
+              <IconLock className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+            </div>
+          )
+        }
+
         return (
           <Select
             value={type}
-            onValueChange={(val) => handleUpdateCustomerType(customer.id, val)}
+            onValueChange={(val) => {
+              if (val !== type) {
+                setTypeChangeTarget({
+                  customerId: customer.id,
+                  customerName: customer.name,
+                  newType: val,
+                })
+              }
+            }}
             disabled={updatingTypeId === customer.id}
           >
             <SelectTrigger className="h-7 w-[105px] text-xs font-medium">
@@ -456,6 +496,7 @@ const Customers = () => {
           customer={viewCustomer} 
           isOpen={!!viewCustomer} 
           onClose={() => setViewCustomer(null)} 
+          onCustomerUpdated={() => loadCustomers()}
         />
       )}
 
@@ -490,6 +531,22 @@ const Customers = () => {
         confirmText={`Delete (${bulkDeleteRows?.length || 0})`}
         isLoading={isDeleting}
       />
+
+      {/* Customer Type 1-Time Change & Lock Confirmation Dialog */}
+      {typeChangeTarget && (
+        <CustomerTypeConfirmDialog
+          isOpen={!!typeChangeTarget}
+          onClose={() => setTypeChangeTarget(null)}
+          onConfirm={async () => {
+            const target = typeChangeTarget
+            await handleUpdateCustomerType(target.customerId, target.newType)
+            setTypeChangeTarget(null)
+          }}
+          customerName={typeChangeTarget.customerName}
+          newType={typeChangeTarget.newType}
+          isLoading={updatingTypeId === typeChangeTarget.customerId}
+        />
+      )}
     </div>
   )
 }

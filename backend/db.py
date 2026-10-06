@@ -360,6 +360,10 @@ def ensure_schema():
         conn.execute("ALTER TABLE users ADD COLUMN b2b_id TEXT")
     if 'client_type' not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN client_type TEXT DEFAULT 'Normal'")
+    if 'type_change_count' not in user_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN type_change_count INTEGER NOT NULL DEFAULT 0")
+    if 'type_locked' not in user_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN type_locked INTEGER NOT NULL DEFAULT 0")
 
     # Safe Audit: Normalize client types for non-B2B accounts if unset
     conn.execute("""
