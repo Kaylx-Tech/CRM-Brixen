@@ -26,7 +26,9 @@ import mimetypes
 import os
 import re
 import sys
+import tempfile
 import time
+import urllib.request
 
 APP_DIR = '/app' if os.path.isdir('/app/services') else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, APP_DIR)
@@ -67,6 +69,33 @@ def local_path_for(file_path):
         if os.path.isfile(cand):
             return cand
     return None
+
+
+MAX_WEBSITE_BYTES = 25 * 1024 * 1024
+
+
+def website_source_url(doc):
+    """Checkout uploads keep their original website URL in review_notes ('Checkout source: <url>')."""
+    m = re.search(r'Checkout source:\s*(https?://\S+)', str(doc.get('review_notes') or ''))
+    if not m:
+        return None
+    url = m.group(1)
+    host = re.sub(r'^https?://([^/]+).*$', r'\1', url).lower()
+    return url if host == 'brixenconsultants.com' or host.endswith('.brixenconsultants.com') else None
+
+
+def download_website_file(url):
+    """Download to a temp file. Returns (path, content_type) or raises."""
+    req = urllib.request.Request(url, headers={'User-Agent': 'BrixenCRM/1.0'})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        data = resp.read(MAX_WEBSITE_BYTES + 1)
+        if len(data) > MAX_WEBSITE_BYTES:
+            raise ValueError('file larger than 25 MB')
+        ctype = (resp.headers.get('Content-Type') or '').split(';')[0].strip().lower()
+    fd, tmp = tempfile.mkstemp(prefix='drive_sync_')
+    with os.fdopen(fd, 'wb') as fh:
+        fh.write(data)
+    return tmp, ctype
 
 
 def list_children(svc, parent_id):
@@ -149,7 +178,7 @@ def main():
     print(f"  Drive has {files} files in {folders} folders.\n", flush=True)
 
     docs = query_db(
-        """SELECT d.id, d.user_id, d.order_id, d.name, d.file_path, d.file_size, d.file_type, u.full_name AS customer
+        """SELECT d.id, d.user_id, d.order_id, d.name, d.file_path, d.file_size, d.file_type, d.review_notes, u.full_name AS customer
            FROM documents d LEFT JOIN users u ON u.id = d.user_id
            WHERE COALESCE(d.drive_file_id, '') = '' ORDER BY d.id;""") or []
     if args.limit:
@@ -182,6 +211,7 @@ def main():
         write_progress(i, label)
 
     for i, doc in enumerate(docs, 1):
+        tmp_download = None
         try:
             base = os.path.basename(doc['file_path'] or '')
             names = []
@@ -222,9 +252,21 @@ def main():
                 continue
 
             local = local_path_for(doc['file_path'])
+            tmp_download, site_ctype = None, ''
             if not local:
-                record(i, doc, 'MISSING', note='not on Drive, no local file')
-                continue
+                url = website_source_url(doc)
+                if not url:
+                    record(i, doc, 'MISSING', note='not on Drive, no local file, no website source')
+                    continue
+                if not args.apply:
+                    record(i, doc, 'WEBSITE_PENDING', note=url)
+                    continue
+                try:
+                    tmp_download, site_ctype = download_website_file(url)
+                except Exception as exc:  # noqa: BLE001
+                    record(i, doc, 'ERROR', note=f'website download failed: {str(exc)[:120]}')
+                    continue
+                local = tmp_download
             size = os.path.getsize(local)
             if not args.apply:
                 record(i, doc, 'UPLOAD_PENDING', note=local, size=size)
@@ -238,7 +280,7 @@ def main():
             fname = sanitize_filename(base or doc['name'])
             print(f"   uploading {fname} -> Brixen-CRM/Customers/{customer}/{order or ''} ...", flush=True)
             # documents.file_type holds labels like 'PDF Document', not a MIME type -> derive it from the file name
-            mime = mimetypes.guess_type(local)[0] or mimetypes.guess_type(fname)[0] or 'application/octet-stream'
+            mime = mimetypes.guess_type(fname)[0] or mimetypes.guess_type(local)[0] or site_ctype or 'application/octet-stream'
             media = MediaFileUpload(local, mimetype=mime, resumable=True)
             up = svc.files().create(
                 body={'name': fname, 'parents': [folder_id]}, media_body=media,
@@ -259,6 +301,12 @@ def main():
             break
         except Exception as exc:  # noqa: BLE001 - one bad file must not stop the whole run
             record(i, doc, 'ERROR', note=str(exc)[:160])
+        finally:
+            if tmp_download and os.path.isfile(tmp_download):  # only our own temp download, never a real file
+                try:
+                    os.remove(tmp_download)
+                except OSError:
+                    pass
 
     report = os.path.join(OUT_DIR, 'drive_sync_report.csv')
     with open(report, 'w', newline='', encoding='utf-8') as fh:
