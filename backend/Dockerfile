@@ -27,6 +27,9 @@ COPY services/ services/
 COPY utils/ utils/
 COPY database/ database/
 
+# Maintenance scripts (e.g. scripts/drive_sync.py) — run via the Coolify terminal
+COPY scripts/ scripts/
+
 # Static assets (optional; create empty dir if repo has none)
 COPY static/ static/
 

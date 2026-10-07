@@ -19,8 +19,9 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from "sonner"
-import { IconBuildingSkyscraper, IconShoppingBag, IconReceipt, IconFileText, IconHelp, IconHistory } from '@tabler/icons-react'
+import { apiRequest } from '@/lib/api'
 
 const getInitials = (name) => {
   if (!name) return "CU"
@@ -29,70 +30,102 @@ const getInitials = (name) => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
-const ViewCustomer = ({ customer, isOpen, onClose }) => {
+const fmtDate = (v) => {
+  if (!v) return '—'
+  const d = new Date(String(v).replace(' ', 'T'))
+  return Number.isNaN(d.getTime())
+    ? String(v).slice(0, 10)
+    : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+const money = (v) => (v === undefined || v === null || v === '' ? null : `£${Number(v).toFixed(2)}`)
+
+const Empty = ({ children }) => (
+  <div className="py-12 text-center text-muted-foreground text-sm">{children}</div>
+)
+
+const Row = ({ title, meta, right }) => (
+  <div className="border rounded-xl p-3.5 bg-card shadow-xs flex items-start justify-between gap-3">
+    <div className="min-w-0">
+      <p className="font-semibold text-sm truncate">{title}</p>
+      {meta && <p className="text-xs text-muted-foreground mt-0.5">{meta}</p>}
+    </div>
+    {right}
+  </div>
+)
+
+const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
   const [activeTab, setActiveTab] = useState("overview")
   const [notificationEmail, setNotificationEmail] = useState("")
   const [isSaving, setIsSaving] = useState(false)
+  const [detail, setDetail] = useState(null)
+  const [detailLoading, setDetailLoading] = useState(false)
 
   const raw = customer?.raw || {}
   const name = customer?.name || raw.full_name || "Customer"
   const email = customer?.email || raw.email || ""
   const phone = raw.phone || customer?.phone || "N/A"
   const address = raw.address || customer?.address || "N/A"
-  const city = raw.city || customer?.city || raw.registered_city || raw.country || customer?.country || "N/A"
+  const country = raw.country || customer?.country || "United Kingdom"
   const status = customer?.status || raw.status || "Active"
   const type = customer?.type || (raw.is_b2b ? "B2B" : raw.client_type || "Individual")
   const b2bId = raw.b2b_id || (type === "B2B" ? `B2B-${String(customer?.id || 1).padStart(6, '0')}` : null)
   const wpId = raw.wordpress_user_id || customer?.wordpress_user_id
-  const signedUp = customer?.signedUp || (raw.created_at ? new Date(raw.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : "Recent")
-  const companiesCount = customer?.companies ?? raw.companies_count ?? 0
-  const ordersCount = customer?.orders ?? raw.orders_count ?? 0
+  const signedUp = customer?.signedUp || fmtDate(raw.created_at)
+  const companies = detail?.companies || []
+  const orders = detail?.orders || []
+  const invoices = detail?.invoices || []
+  const documents = detail?.documents || []
+  const tickets = detail?.support_tickets || []
+  const logs = detail?.activity_logs || []
+  const companiesCount = detail ? companies.length : (customer?.companies ?? raw.companies_count ?? 0)
+  const ordersCount = detail ? orders.length : (customer?.orders ?? raw.orders_count ?? 0)
 
   useEffect(() => {
-    if (raw.notification_email) {
-      setNotificationEmail(raw.notification_email)
-    } else {
-      setNotificationEmail("")
-    }
+    setNotificationEmail(raw.notification_email || "")
   }, [raw])
+
+  // Load the full profile (companies, orders, invoices, documents, tickets, activity)
+  useEffect(() => {
+    if (!isOpen || !customer?.id) return
+    let cancelled = false
+    setDetailLoading(true)
+    apiRequest(`/admin/customers/${customer.id}`, { label: 'Customer profile', silent: true })
+      .then((res) => {
+        if (cancelled) return
+        if (res.ok) setDetail(res.data?.data || res.data)
+        else toast.error(res.reason || 'Could not load customer profile')
+      })
+      .finally(() => !cancelled && setDetailLoading(false))
+    return () => { cancelled = true }
+  }, [isOpen, customer?.id])
 
   const handleSaveNotificationEmail = async () => {
     if (!customer?.id) return
     setIsSaving(true)
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const token = localStorage.getItem("token")
-      const res = await fetch(`${apiUrl}/admin/customers/notification-email`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {})
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          user_id: customer.id,
-          notification_email: notificationEmail.trim()
-        })
-      })
-      const data = await res.json()
-      if (res.ok && (data.status === "success" || data.success === true)) {
-        toast.success("Notification email updated successfully")
-      } else {
-        toast.error(data.message || data.error || "Failed to update notification email")
-      }
-    } catch (err) {
-      toast.error("Network error while saving notification email")
-    } finally {
-      setIsSaving(false)
+    const res = await apiRequest('/admin/customers/notification-email', {
+      method: 'POST',
+      label: 'Notification email',
+      silent: true,
+      body: JSON.stringify({ customer_id: customer.id, notification_email: notificationEmail.trim() }),
+    })
+    setIsSaving(false)
+    if (res.ok) {
+      toast.success(res.data?.message || "Notification email updated successfully")
+      onCustomerUpdated?.()
+    } else {
+      toast.error(res.reason || "Failed to update notification email")
     }
   }
 
   if (!customer) return null
 
+  const loading = detailLoading && !detail
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[780px] p-0 overflow-hidden">
-        
+      <DialogContent className="sm:max-w-[820px] p-0 overflow-hidden">
+
         {/* Header Section */}
         <div className="p-6 border-b bg-muted/20">
           <DialogHeader className="flex-row items-center gap-4 space-y-0 text-left">
@@ -110,7 +143,7 @@ const ViewCustomer = ({ customer, isOpen, onClose }) => {
                 </Badge>
               </div>
               <DialogDescription className="text-sm mt-1 truncate">
-                {wpId ? `WordPress User #${wpId} · ` : `Client ID #${customer.id || ''} · `}
+                {wpId ? `WP User ID: ${wpId} · ` : `Client ID #${customer.id || ''} · `}
                 {email}
               </DialogDescription>
             </div>
@@ -122,20 +155,18 @@ const ViewCustomer = ({ customer, isOpen, onClose }) => {
           <div className="px-6 py-2">
             <TabsList className="flex w-full justify-start overflow-x-auto h-auto py-1">
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="companies">
-                Companies ({companiesCount})
-              </TabsTrigger>
-              <TabsTrigger value="orders">
-                Orders ({ordersCount})
-              </TabsTrigger>
-              <TabsTrigger value="invoices">Invoices</TabsTrigger>
+              <TabsTrigger value="companies">Companies ({companiesCount})</TabsTrigger>
+              <TabsTrigger value="orders">Orders ({ordersCount})</TabsTrigger>
+              <TabsTrigger value="invoices">Invoices{detail ? ` (${invoices.length})` : ''}</TabsTrigger>
+              <TabsTrigger value="documents">Documents{detail ? ` (${documents.length})` : ''}</TabsTrigger>
+              <TabsTrigger value="support">Support{detail ? ` (${tickets.length})` : ''}</TabsTrigger>
               <TabsTrigger value="activity">Activity</TabsTrigger>
             </TabsList>
           </div>
 
           <ScrollArea className="h-[50vh] min-h-[340px] w-full">
             <div className="p-6">
-            
+
               {/* Overview Tab */}
               <TabsContent value="overview" className="m-0 space-y-6 outline-none">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-sm">
@@ -158,8 +189,8 @@ const ViewCustomer = ({ customer, isOpen, onClose }) => {
                     <span className="font-medium">{phone}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">City</span>
-                    <span className="font-medium">{city}</span>
+                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Country</span>
+                    <span className="font-medium">{country}</span>
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Registration Date</span>
@@ -168,6 +199,10 @@ const ViewCustomer = ({ customer, isOpen, onClose }) => {
                   <div className="flex flex-col gap-1">
                     <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Source</span>
                     <span className="font-medium">{customer.source || "CRM"}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Access</span>
+                    <span className="font-medium">{customer.access || '—'}</span>
                   </div>
                   <div className="flex flex-col gap-1 sm:col-span-2">
                     <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Address</span>
@@ -180,8 +215,8 @@ const ViewCustomer = ({ customer, isOpen, onClose }) => {
                 <div className="space-y-3">
                   <Label className="font-semibold text-sm">Notification Email Dispatch</Label>
                   <div className="flex items-center gap-3">
-                    <Input 
-                      placeholder="Leave blank to use primary login email" 
+                    <Input
+                      placeholder="Leave blank to use primary login email"
                       className="max-w-md h-9"
                       value={notificationEmail}
                       onChange={(e) => setNotificationEmail(e.target.value)}
@@ -197,68 +232,97 @@ const ViewCustomer = ({ customer, isOpen, onClose }) => {
               </TabsContent>
 
               {/* Companies Tab */}
-              <TabsContent value="companies" className="m-0 space-y-3 outline-none">
-                {companiesCount > 0 ? (
-                  <div className="border rounded-xl p-4 bg-card shadow-xs flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
-                        <IconBuildingSkyscraper className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-sm">Registered Companies Portfolio</p>
-                        <p className="text-xs text-muted-foreground">
-                          {companiesCount} {companiesCount === 1 ? 'company' : 'companies'} assigned to this client.
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant="outline">{companiesCount} Active</Badge>
-                  </div>
-                ) : (
-                  <div className="py-12 text-center text-muted-foreground text-sm">
-                    No companies currently associated with this client.
-                  </div>
-                )}
+              <TabsContent value="companies" className="m-0 space-y-2 outline-none">
+                {loading ? <Skeleton className="h-16 w-full" /> : companies.length === 0 ? (
+                  <Empty>No registered companies for this client.</Empty>
+                ) : companies.map((c) => (
+                  <Row
+                    key={c.id}
+                    title={`${c.name || c.company_name} ${c.company_number ? `(#${c.company_number})` : ''}`}
+                    meta={`${c.package ? `${c.package} · ` : ''}Office: ${c.reg_office || '—'} · Status: ${c.status || '—'}`}
+                    right={<Badge variant="outline">{c.status || '—'}</Badge>}
+                  />
+                ))}
               </TabsContent>
 
               {/* Orders Tab */}
-              <TabsContent value="orders" className="m-0 space-y-3 outline-none">
-                {ordersCount > 0 ? (
-                  <div className="border rounded-xl p-4 bg-card shadow-xs flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
-                        <IconShoppingBag className="w-5 h-5" />
+              <TabsContent value="orders" className="m-0 space-y-2 outline-none">
+                {loading ? <Skeleton className="h-16 w-full" /> : orders.length === 0 ? (
+                  <Empty>No order history available.</Empty>
+                ) : orders.map((o) => (
+                  <Row
+                    key={o.id}
+                    title={`${o.order_number} — ${o.products_summary || o.service_name || ''}`}
+                    meta={`${fmtDate(o.created_at)}${o.company_name ? ` · ${o.company_name}` : ''}${o.payment_status ? ` · Payment: ${o.payment_status}` : ''}`}
+                    right={(
+                      <div className="flex items-center gap-2 shrink-0">
+                        {money(o.total) && <span className="text-sm font-medium">{money(o.total)}</span>}
+                        <Badge variant="secondary">{o.status}</Badge>
                       </div>
-                      <div>
-                        <p className="font-semibold text-sm">Recorded Client Orders</p>
-                        <p className="text-xs text-muted-foreground">
-                          {ordersCount} {ordersCount === 1 ? 'order' : 'orders'} placed.
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant="secondary">{ordersCount} Total</Badge>
-                  </div>
-                ) : (
-                  <div className="py-12 text-center text-muted-foreground text-sm">
-                    No orders recorded for this customer yet.
-                  </div>
-                )}
+                    )}
+                  />
+                ))}
               </TabsContent>
 
               {/* Invoices Tab */}
-              <TabsContent value="invoices" className="m-0 py-12 text-center text-muted-foreground text-sm outline-none">
-                <IconReceipt className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                No pending or past invoices found.
+              <TabsContent value="invoices" className="m-0 space-y-2 outline-none">
+                {loading ? <Skeleton className="h-16 w-full" /> : invoices.length === 0 ? (
+                  <Empty>No invoices available.</Empty>
+                ) : invoices.map((i) => (
+                  <Row
+                    key={i.id}
+                    title={i.invoice_number}
+                    meta={`${fmtDate(i.created_at)}${i.due_date ? ` · Due ${fmtDate(i.due_date)}` : ''}${i.paid_at ? ` · Paid ${fmtDate(i.paid_at)}` : ''}`}
+                    right={(
+                      <div className="flex items-center gap-2 shrink-0">
+                        {money(i.total) && <span className="text-sm font-medium">{money(i.total)}</span>}
+                        <Badge variant="outline">{i.status}</Badge>
+                      </div>
+                    )}
+                  />
+                ))}
+              </TabsContent>
+
+              {/* Documents Tab */}
+              <TabsContent value="documents" className="m-0 space-y-2 outline-none">
+                {loading ? <Skeleton className="h-16 w-full" /> : documents.length === 0 ? (
+                  <Empty>No documents uploaded.</Empty>
+                ) : documents.map((d) => (
+                  <Row
+                    key={d.id}
+                    title={d.name}
+                    meta={`${d.category || '—'} · ${d.order_number || 'No order'} · ${fmtDate(d.created_at)}${d.uploaded_by ? ` · ${d.uploaded_by}` : ''}`}
+                    right={<Badge variant="outline">{d.status || '—'}</Badge>}
+                  />
+                ))}
+              </TabsContent>
+
+              {/* Support Tab */}
+              <TabsContent value="support" className="m-0 space-y-2 outline-none">
+                {loading ? <Skeleton className="h-16 w-full" /> : tickets.length === 0 ? (
+                  <Empty>No support tickets filed.</Empty>
+                ) : tickets.map((t) => (
+                  <Row
+                    key={t.id}
+                    title={`Ticket #${t.ticket_number}: ${t.subject || ''}`}
+                    meta={`${fmtDate(t.created_at)}${t.priority ? ` · ${t.priority}` : ''}`}
+                    right={<Badge variant="outline">{t.status}</Badge>}
+                  />
+                ))}
               </TabsContent>
 
               {/* Activity Tab */}
-              <TabsContent value="activity" className="m-0 space-y-3 outline-none">
-                <div className="border rounded-xl p-3.5 bg-muted/20 text-sm flex items-start gap-3">
-                  <IconHistory className="w-4 h-4 text-muted-foreground mt-0.5" />
-                  <div>
-                    <p className="font-medium text-xs text-muted-foreground">Account Created</p>
-                    <p className="text-sm font-semibold">{signedUp}</p>
-                  </div>
-                </div>
+              <TabsContent value="activity" className="m-0 space-y-2 outline-none">
+                {loading ? <Skeleton className="h-16 w-full" /> : logs.length === 0 ? (
+                  <Empty>No audit trail recorded.</Empty>
+                ) : logs.map((l, idx) => (
+                  <Row
+                    key={idx}
+                    title={l.action}
+                    meta={`${fmtDate(l.created_at)}${l.details ? ` · ${l.details}` : ''}`}
+                  />
+                ))}
+                <Row title="Account created" meta={signedUp} />
               </TabsContent>
 
             </div>

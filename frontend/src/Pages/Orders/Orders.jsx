@@ -181,14 +181,15 @@ export default function Orders() {
   const [facets, setFacets] = useState({ products: [], companies: [], customers: [] })
   const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0, total_pages: 1 })
 
-  const [clientType, setClientType] = useState('All')
+  // Deep link from Customers: /admin/orders?b2b=<customerId> opens the B2B view for that client
+  const [clientType, setClientType] = useState(() => (new URLSearchParams(window.location.search).get('b2b') ? 'B2B' : 'All'))
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [productFilter, setProductFilter] = useState('all')
   const [companyFilter, setCompanyFilter] = useState('all')
   const [paymentFilter, setPaymentFilter] = useState('all')
   const [datePreset, setDatePreset] = useState('all')
-  const [b2bClientId, setB2bClientId] = useState('all')
+  const [b2bClientId, setB2bClientId] = useState(() => new URLSearchParams(window.location.search).get('b2b') || 'all')
   const [savingId, setSavingId] = useState(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [quickCrmOpen, setQuickCrmOpen] = useState(false)

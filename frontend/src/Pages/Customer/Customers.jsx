@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
+import { useNavigate } from "react-router-dom"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 import { toastUndoableDelete } from "@/lib/toastActions"
 
@@ -42,7 +43,9 @@ const Customers = () => {
   const [isDeleting, setIsDeleting] = useState(false)
   const [updatingTypeId, setUpdatingTypeId] = useState(null)
   const [typeChangeTarget, setTypeChangeTarget] = useState(null)
+  const navigate = useNavigate()
   const [activeTypeTab, setActiveTypeTab] = useState('All')
+  const [ageFilter, setAgeFilter] = useState('all')
   const [customers, setCustomers] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
@@ -109,12 +112,22 @@ const Customers = () => {
           } else if (String(c.client_type || '').toLowerCase() === 'business') {
             type = 'Business'
           }
+          const created = c.created_at ? new Date(String(c.created_at).replace(' ', 'T')) : null
+          const validDate = created && !Number.isNaN(created.getTime())
+          const ageDays = validDate ? (Date.now() - created.getTime()) / 86400000 : null
           return {
             id: c.id,
             name: c.full_name || 'Customer',
             email: c.email || '',
             type: type,
-            signedUp: c.created_at ? new Date(c.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent',
+            signedUp: validDate
+              ? created.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+              : 'Recent',
+            ageDays,
+            isNew: ageDays !== null && ageDays <= 7,
+            access: type === 'B2B'
+              ? (c.portal_login_ready === false ? 'Needs portal password' : 'Portal login')
+              : 'Website account',
             source: c.wordpress_user_id ? 'Website signup' : 'CRM',
             companies: c.companies_count ?? 0,
             orders: c.orders_count ?? 0,
@@ -269,6 +282,7 @@ const Customers = () => {
             onClick={() => setViewCustomer(customer)}
           >
             {customer.name}
+            {customer.isNew && <Badge className="badge-sky ml-2 text-[10px] h-4 px-1.5">New</Badge>}
           </button>
         )
       },
@@ -379,6 +393,17 @@ const Customers = () => {
         return <Badge className="badge-red">{status || 'Inactive'}</Badge>
       }
     }),
+    columnHelper.accessor("access", {
+      header: "Access",
+      cell: ({ row }) => {
+        const access = row.getValue("access")
+        return (
+          <Badge className={access === 'Needs portal password' ? 'badge-amber' : 'badge-green'}>
+            {access}
+          </Badge>
+        )
+      },
+    }),
     columnHelper.display({
       id: "actions",
       cell: ({ row }) => {
@@ -394,8 +419,13 @@ const Customers = () => {
             <DropdownMenuContent>
               <DropdownMenuGroup>
                 <DropdownMenuItem onClick={() => setViewCustomer(customer)}>
-                  View Customer
+                  {customer.type === 'B2B' ? 'Open B2B' : 'View Customer'}
                 </DropdownMenuItem>
+                {customer.type === 'B2B' && (
+                  <DropdownMenuItem onClick={() => navigate(`/admin/orders?b2b=${customer.id}`)}>
+                    Orders
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => setPasswordCustomer(customer)}>
                   Set Password
                 </DropdownMenuItem>
@@ -412,23 +442,25 @@ const Customers = () => {
         )
       },
     }),
-  ], [])
+  ], [navigate])
 
   const filteredCustomers = useMemo(() => {
-    if (activeTypeTab === 'All') return customers
-    return customers.filter((c) => (c.type || '').toLowerCase() === activeTypeTab.toLowerCase())
-  }, [customers, activeTypeTab])
+    return customers.filter((c) => {
+      if (activeTypeTab !== 'All' && (c.type || '').toLowerCase() !== activeTypeTab.toLowerCase()) return false
+      if (ageFilter !== 'all') {
+        if (c.ageDays === null || c.ageDays === undefined || c.ageDays > Number(ageFilter)) return false
+      }
+      return true
+    })
+  }, [customers, activeTypeTab, ageFilter])
 
   const customerFilterConfig = [
     {
       columnKey: "source",
       placeholder: "Sources",
       options: [
-        { label: "Organic", value: "Organic" },
-        { label: "Referral", value: "Referral" },
-        { label: "Social", value: "Social" },
-        { label: "CRM", value: "CRM" },
         { label: "Website signup", value: "Website signup" },
+        { label: "Created in CRM", value: "CRM" },
       ]
     },
     {
@@ -436,7 +468,17 @@ const Customers = () => {
       placeholder: "Status",
       options: [
         { label: "Active", value: "Active" },
-        { label: "Inactive", value: "Inactive" },
+        { label: "Pending", value: "Pending" },
+        { label: "Suspended", value: "Suspended" },
+      ]
+    },
+    {
+      columnKey: "access",
+      placeholder: "Access",
+      options: [
+        { label: "Website account", value: "Website account" },
+        { label: "Portal login", value: "Portal login" },
+        { label: "Needs portal password", value: "Needs portal password" },
       ]
     }
   ];
@@ -474,6 +516,23 @@ const Customers = () => {
         </TabsList>
       </Tabs>
 
+      <div className="flex items-center gap-3 -mt-2">
+        <Select value={ageFilter} onValueChange={setAgeFilter}>
+          <SelectTrigger className="h-8 w-[170px] text-xs">
+            <SelectValue placeholder="All dates" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value="all">All dates</SelectItem>
+              <SelectItem value="7">New — last 7 days</SelectItem>
+              <SelectItem value="30">Last 30 days</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        <span className="text-xs text-muted-foreground">
+          {filteredCustomers.length} of {customers.length} accounts
+        </span>
+      </div>
 
       <DataTable
         columns={columns}

@@ -89,6 +89,23 @@ export function toastApiEmpty(label, apiBase) {
   })
 }
 
+let sessionExpiredHandled = false
+
+/** Session is gone on the server (expired / revoked / DB restored): clear local state and go to login. */
+function handleSessionExpired() {
+  if (sessionExpiredHandled || typeof window === "undefined") return
+  if (window.location.pathname.startsWith("/login")) return
+  sessionExpiredHandled = true
+  try {
+    localStorage.removeItem("user")
+    localStorage.removeItem("token")
+  } catch {
+    /* storage blocked — still redirect */
+  }
+  toast.error("Session expired", { description: "Please log in again.", duration: 4000 })
+  setTimeout(() => window.location.assign("/login"), 800)
+}
+
 /**
  * fetch wrapper with auth + structured result + optional toast on failure.
  *
@@ -139,6 +156,9 @@ export async function apiRequest(path, options = {}) {
   }
 
   if (!res.ok) {
+    if (res.status === 401 && !url.includes("/auth/")) {
+      handleSessionExpired()
+    }
     const info = {
       ok: false,
       status: res.status,
