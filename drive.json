@@ -1,0 +1,13 @@
+{
+    "type": "service_account",
+    "project_id": "brixen-crm-509912",
+    "private_key_id": "ae1ed50c3299272a68850695c4f4ca3c7f4c4e9f",
+    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDB/iC7vZ1ZmHRY\n0ElaFCQGF3NtJ6l8HPjsfimOINJc56Z5YEM4Uvby4R4SQblbITuHPJOWLU7iL76a\nmg0UtHSB2lF7Oq2mAEaeYOHQsczQKOw/QuhBr41EFiDfBSYoXywQNrHnRFsEbLSK\nYAawbTQyZTGMVc8H0ABjOBXLOSWjaRmegJse9Q+yaU/7jdPCpGkHAJ8uthipOzDR\nR8CSJnyOSDgc5PJ/1I7tCD/1WnaiUpzvo5bLvwagWpqxj/sjn4SeWjrn9aeJzWec\n2uiUBcp/eZ9+hmhPeW5ujhsKjQKWar65lHBoogkTUy8gz80rwNFQdFr2XYJfhGz6\nYgGx01tFAgMBAAECggEATHrxkcKsHc4OlJMtUA+fsi0dqxuXZKCRfL8yh9+lv83u\nIm0So0qGJHQfJGh3+JcN/n+h2fOr5V2YYiA45wBL7IPTWudj3Y2/SaJ9dIccbbas\niTZKFddttLmapQJFLGZ1G0FM+xXGYmSu+tzn1jd/fBzMH30W/YgCFxvd77xse9L7\nvoxc55Fwg+PbjWCytl2J3MElpZ5Q329BY1wfjg2+rAiahmol5qmhBLmskqoKuzlL\nwtzeAWRuFssdjUlFFSDiWhYHY+dxdmhx72FPX177wJn6wpKBs0CitAkG//DAAS26\n8e3eMWsBs46X3P2yAiTLeXOMePWGkjYR+JhaKYtmMwKBgQD0EToiI721179F7vgT\noPxZ65xeetRR0KZKZZjm7UuPMRAbgKHVdlwMVXTLctN/vbgKa3I7fmbK8urjTazK\nYzQ+KJoxyk4toNMFlKCbhKJboH8ydh8dJ0HlD2XRpoFAo68qwGpZ1aUjx192PYjX\nD2y3Peb7jp9Aena+wm7KsBOUMwKBgQDLeilaa6eWwX+7ectWZE4+tmDvPF240ZNK\nsbfY+THafxPLCXjldF0fVZspIDfVp1jJrE8w8UjNLOghe18SjEDanuePJeY9gcbD\nbieY1da450EOmTFL+1rTHahgw6gLEgzCNnUn0PxW855cJbheh07ZcdAwRb5e/Mqz\nOvvSi32apwKBgQCZhOiDJuYipoWKsKjcd+ujh/9AspQwrkSbEVLfFq3rcNoH4p5p\nDd0SaQJhImYEuMo1y6X75CM2TxwORAKG/2WSH6n13aHVM47ouLdZe1FAvzCjBgfG\nJ7ZcJZZPDCPLC+qXwpZi0W7hlXvnfQdA91PT4x0SaIClZyKgFN7poV1/XwKBgQCy\nKTGiOVbRGnYkCf1vlH4qTPhNIPcTB3XHVhqawX7USKZlBdM0XZHYCNXFya75xQBp\n/RSNzwaml+ZcwrA5BlMW2UH5Rf715fbKUV4cZUgQOHPvO1U9qUUaSwKOT2KI5vIC\n7znfdg4seD01g9WN9z2kCRJ34elRNFirXD74WCjPSwKBgGm9gZebaUOgYo/Oo0QW\nbfHOP5VQm8qEHRANw+u4tz06uGl3DmVdLnJRiQc2M9zxeEnXNzrcJWtqLXqzXMeU\n4ZFXsoleEvvgRywIBRwZFWnHAraTuji+dxrLw99QyepcuxPPeUTqZZf4effdMQCT\nlxuDU5DIC6wTXmOg/NXttd9Q\n-----END PRIVATE KEY-----\n",
+    "client_email": "drive-308@brixen-crm-509912.iam.gserviceaccount.com",
+    "client_id": "117482473263707140306",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/drive-308%40brixen-crm-509912.iam.gserviceaccount.com",
+    "universe_domain": "googleapis.com"
+}

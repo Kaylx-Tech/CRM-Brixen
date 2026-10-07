@@ -23,11 +23,26 @@ SCOPES = ['https://www.googleapis.com/auth/drive']
 _drive_service_instance = None
 _folder_cache = {}
 
+def load_dynamic_env():
+    env_file = BASE_DIR / '.env'
+    if env_file.exists():
+        try:
+            with open(env_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        k, v = line.split('=', 1)
+                        os.environ[k.strip()] = v.strip().strip("'").strip('"')
+        except Exception:
+            pass
+
 def get_drive_service():
     """Initialize and return authorized Google Drive v3 API service from .env or file."""
     global _drive_service_instance
     if _drive_service_instance is not None:
         return _drive_service_instance
+
+    load_dynamic_env()
 
     try:
         from google.oauth2 import service_account  # type: ignore
@@ -178,9 +193,9 @@ def get_or_create_folder(folder_name, parent_id=None):
         logger.error(f"Failed to get or create folder '{folder_name}': {e}")
         return None
 
-def get_customer_folder_id(customer_name):
+def get_customer_folder_id(customer_name, order_name=None):
     """Resolve and build the full hierarchy:
-    Brixen-CRM -> customer -> <Customer Name>
+    Brixen-CRM -> Customers -> <Customer Name> [-> <Order Name>]
     """
     clean_name = str(customer_name or 'General Client').strip()
     
@@ -194,32 +209,42 @@ def get_customer_folder_id(customer_name):
         logger.error("Root Google Drive folder could not be found or created.")
         return None
 
-    # 2. Subfolder: customer
-    customer_base_id = get_or_create_folder('customer', parent_id=root_id)
+    # 2. Subfolder: Customers
+    customer_base_id = get_or_create_folder('Customers', parent_id=root_id)
     if not customer_base_id:
         customer_base_id = root_id
 
     # 3. Client Folder: <Customer Name>
     client_folder_id = get_or_create_folder(clean_name, parent_id=customer_base_id)
-    return client_folder_id or customer_base_id or root_id
+    if not client_folder_id:
+        return customer_base_id or root_id
 
-def upload_file_to_google_drive(customer_name, filename, file_bytes, mime_type='application/octet-stream'):
+    # 4. Optional Order Folder: <Order Name>
+    if order_name:
+        clean_order = str(order_name).strip()
+        order_folder_id = get_or_create_folder(clean_order, parent_id=client_folder_id)
+        if order_folder_id:
+            return order_folder_id
+
+    return client_folder_id
+
+def upload_file_to_google_drive(customer_name, filename, file_bytes, mime_type='application/octet-stream', order_name=None):
     """Upload a file to Google Drive under:
-    Brixen-CRM/customer/<Customer Name>/<filename>
+    Brixen-CRM/Customers/<Customer Name>/[<Order Name>/]<filename>
     """
     service = get_drive_service()
     if not service:
         return {
             "success": False,
             "status": "pending_credentials",
-            "message": "Google Drive Service Account key not found in .env (GOOGLE_SERVICE_ACCOUNT_JSON)",
-            "folder_path": f"Brixen-CRM/customer/{customer_name}/{filename}"
+            "message": "Google Drive credentials not found or invalid in .env",
+            "folder_path": f"Brixen-CRM/Customers/{customer_name}/{order_name + '/' if order_name else ''}{filename}"
         }
 
     try:
         from googleapiclient.http import MediaIoBaseUpload  # type: ignore
 
-        folder_id = get_customer_folder_id(customer_name)
+        folder_id = get_customer_folder_id(customer_name, order_name=order_name)
         if not folder_id:
             return {"success": False, "error": "Could not create or access customer folder on Google Drive."}
 
@@ -243,6 +268,7 @@ def upload_file_to_google_drive(customer_name, filename, file_bytes, mime_type='
         file_id = uploaded_file.get('id')
         web_view_link = uploaded_file.get('webViewLink')
         web_content_link = uploaded_file.get('webContentLink')
+        folder_path = f"Brixen-CRM/Customers/{customer_name}/{order_name + '/' if order_name else ''}{filename}"
 
         return {
             "success": True,
@@ -250,7 +276,7 @@ def upload_file_to_google_drive(customer_name, filename, file_bytes, mime_type='
             "filename": filename,
             "webViewLink": web_view_link,
             "webContentLink": web_content_link,
-            "folder_path": f"Brixen-CRM/customer/{customer_name}/{filename}"
+            "folder_path": folder_path
         }
     except Exception as e:
         logger.error(f"Google Drive upload failed for {filename}: {e}")

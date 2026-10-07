@@ -30,18 +30,25 @@ def is_allowed_file(filename):
     ext = Path(filename).suffix.lower()
     return ext in ALLOWED_EXTENSIONS
 
-def save_client_file(client_id, customer_name, filename, file_bytes, order_id=None, mime_type=None):
+def save_client_file(client_id, customer_name, filename, file_bytes, order_id=None, mime_type=None, order_name=None):
     """Upload directly to Google Drive 5TB storage with zero local disk storage.
-    Path on Drive: Brixen-CRM/customer/<customer_name>/<filename>
+    Path on Drive: Brixen-CRM/Customers/<customer_name>/[<order_name>/]<filename>
     """
     clean_name = sanitize_filename(filename)
     mime_type = mime_type or 'application/octet-stream'
+    
+    order_folder = order_name or (f"Order #{order_id}" if order_id else None)
 
     # Stream direct to Google Drive
-    drive_res = upload_file_to_google_drive(customer_name, clean_name, file_bytes, mime_type)
+    drive_res = upload_file_to_google_drive(
+        customer_name=customer_name,
+        filename=clean_name,
+        file_bytes=file_bytes,
+        mime_type=mime_type,
+        order_name=order_folder
+    )
     
     if not drive_res.get('success'):
-        # In case credentials not yet placed in .env
         return {
             "success": False,
             "title": clean_name,

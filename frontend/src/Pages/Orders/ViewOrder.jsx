@@ -47,8 +47,11 @@ import {
   IconKey,
   IconDownload,
   IconSearch,
+  IconUpload,
+  IconExternalLink,
+  IconLoader2,
 } from '@tabler/icons-react'
-import { apiRequest } from '@/lib/api'
+import { apiRequest, getApiBase, authHeaders } from '@/lib/api'
 import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import ToastSave from '@/components/ToastSave'
@@ -133,6 +136,71 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
 
   // Toast confirmation for unsaved changes
   const [showUnsavedToast, setShowUnsavedToast] = useState(false)
+
+  // Document upload & download states
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false)
+  const [previewDoc, setPreviewDoc] = useState(null)
+  const fileInputRef = React.useRef(null)
+
+  const handleDownloadDoc = (doc) => {
+    if (doc.drive_web_link) {
+      window.open(doc.drive_web_link, '_blank')
+      return
+    }
+    const base = getApiBase()
+    const url = `${base}/documents/${doc.id}/download`
+    const a = document.createElement('a')
+    a.href = url
+    a.download = doc.name || `document_${doc.id}`
+    a.target = '_blank'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    toast.success('Download initiated')
+  }
+
+  const handleViewDoc = (doc) => {
+    setPreviewDoc(doc)
+  }
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsUploadingDoc(true)
+    const tId = toastProcessing(`Uploading ${file.name} to Google Drive...`)
+    try {
+      const reader = new FileReader()
+      reader.onload = async () => {
+        const raw = String(reader.result || '')
+        const base64Data = raw.includes(',') ? raw.split(',', 1)[1] : raw
+        const res = await apiRequest('/admin/documents/upload', {
+          method: 'POST',
+          body: {
+            order_id: order?.id,
+            client_id: order?.user_id,
+            company_id: order?.company_id,
+            name: file.name,
+            file_name: file.name,
+            file_content_base64: base64Data,
+            mime_type: file.type || 'application/pdf',
+            category: 'Order Documents',
+          },
+        })
+        if (res.ok) {
+          toastDone(tId, `${file.name} uploaded to Google Drive!`)
+          fetchOrderDetails()
+        } else {
+          toastFail(tId, res.reason || 'Upload failed')
+        }
+        setIsUploadingDoc(false)
+      }
+      reader.readAsDataURL(file)
+    } catch (err) {
+      toastFail(tId, err?.message || 'Upload error')
+      setIsUploadingDoc(false)
+    }
+    e.target.value = ''
+  }
 
   const copyToClipboard = (text, key) => {
     if (!text) return
@@ -923,11 +991,42 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
 
                     {/* ── TAB 4: DOCUMENTS ─────────────────────────────────────── */}
                     <TabsContent value="documents" className="m-0 space-y-4 outline-none">
-                      <div>
-                        <h4 className="text-sm font-bold text-foreground">Order Documents</h4>
-                        <p className="text-xs text-muted-foreground">
-                          Identity, proof of address, and generated filings.
-                        </p>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-bold text-foreground">Order Documents</h4>
+                          <p className="text-xs text-muted-foreground">
+                            Identity, proof of address, and generated filings.
+                          </p>
+                        </div>
+                        <div>
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileUpload}
+                            className="hidden"
+                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.zip,.txt"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="text-xs h-8 gap-1.5"
+                            disabled={isUploadingDoc}
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            {isUploadingDoc ? (
+                              <>
+                                <IconLoader2 className="w-3.5 h-3.5 animate-spin" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <IconUpload className="w-3.5 h-3.5" />
+                                Upload Document
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </div>
 
                       {order?.documents && order.documents.length > 0 ? (
@@ -935,7 +1034,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                           {order.documents.map((doc) => (
                             <div
                               key={doc.id}
-                              className="flex items-center justify-between p-3 rounded-lg border bg-background hover:bg-muted/20 transition-colors"
+                              className="flex items-center justify-between p-3 rounded-lg border bg-background hover:bg-muted/20 transition-colors gap-3"
                             >
                               <div className="flex items-center gap-3 min-w-0">
                                 <IconFileText className="w-4 h-4 text-primary shrink-0" />
@@ -944,23 +1043,49 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                     {doc.name || doc.file_name || 'Document'}
                                   </span>
                                   <span className="text-[10px] text-muted-foreground">
-                                    {doc.status || 'Uploaded'} · {doc.file_type || 'File'}
+                                    {doc.status || 'Approved'} · {doc.file_type || 'PDF Document'}
+                                    {doc.file_size ? ` · ${doc.file_size}` : ''}
                                   </span>
                                 </div>
                               </div>
-                              {doc.file_url && (
+                              <div className="flex items-center gap-1.5 shrink-0">
                                 <Button
+                                  type="button"
                                   variant="outline"
                                   size="sm"
-                                  className="h-7 text-xs gap-1.5"
-                                  asChild
+                                  className="h-7 text-xs px-2.5 gap-1"
+                                  onClick={() => handleViewDoc(doc)}
+                                  title="View document preview"
                                 >
-                                  <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
-                                    <IconDownload className="w-3.5 h-3.5" />
-                                    Download
-                                  </a>
+                                  <IconEye className="w-3.5 h-3.5" />
+                                  View
                                 </Button>
-                              )}
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs px-2.5 gap-1"
+                                  onClick={() => handleDownloadDoc(doc)}
+                                  title="Download document"
+                                >
+                                  <IconDownload className="w-3.5 h-3.5" />
+                                  Download
+                                </Button>
+                                {doc.drive_web_link && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                    asChild
+                                    title="Open directly in Google Drive"
+                                  >
+                                    <a href={doc.drive_web_link} target="_blank" rel="noopener noreferrer">
+                                      <IconExternalLink className="w-3.5 h-3.5" />
+                                    </a>
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -975,6 +1100,90 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
               </div>
             </ScrollArea>
           </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* In-Page Document Preview Dialog */}
+      <Dialog open={!!previewDoc} onOpenChange={(open) => !open && setPreviewDoc(null)}>
+        <DialogContent className="sm:max-w-4xl lg:max-w-5xl w-[94vw] max-h-[92vh] flex flex-col p-0 overflow-hidden border bg-background shadow-2xl z-[60]">
+          <DialogHeader className="p-4 border-b bg-muted/20 flex flex-row items-center justify-between space-y-0">
+            <div className="flex items-center gap-2.5 min-w-0 pr-4">
+              <IconFileText className="w-5 h-5 text-primary shrink-0" />
+              <div className="flex flex-col min-w-0">
+                <DialogTitle className="text-base font-bold truncate">
+                  {previewDoc?.name || previewDoc?.file_name || 'Document Preview'}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  {previewDoc?.category || 'Order Document'} {previewDoc?.file_size ? `· ${previewDoc?.file_size}` : ''}
+                </DialogDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1.5"
+                onClick={() => previewDoc && handleDownloadDoc(previewDoc)}
+              >
+                <IconDownload className="w-3.5 h-3.5" />
+                Download
+              </Button>
+              {previewDoc?.drive_web_link && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs gap-1.5"
+                  asChild
+                >
+                  <a href={previewDoc.drive_web_link} target="_blank" rel="noopener noreferrer">
+                    <IconExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </Button>
+              )}
+            </div>
+          </DialogHeader>
+          <div className="p-4 bg-muted/10 flex items-center justify-center min-h-[500px] max-h-[80vh] overflow-auto">
+            {previewDoc && (
+              (() => {
+                const fname = (previewDoc.name || previewDoc.file_name || '').toLowerCase()
+                const isImage = fname.endsWith('.jpg') || fname.endsWith('.jpeg') || fname.endsWith('.png') || fname.endsWith('.webp') || fname.endsWith('.svg') || (previewDoc.file_type || '').toLowerCase().includes('image')
+                
+                const driveEmbedUrl = previewDoc.drive_file_id
+                  ? `https://drive.google.com/file/d/${previewDoc.drive_file_id}/preview`
+                  : (previewDoc.drive_web_link ? previewDoc.drive_web_link.replace(/\/view(\?.*)?$/, '/preview') : `${getApiBase()}/documents/${previewDoc.id}/view`)
+                
+                const streamUrl = `${getApiBase()}/documents/${previewDoc.id}/view`
+
+                if (isImage) {
+                  return (
+                    <div className="flex flex-col items-center justify-center w-full h-full p-2">
+                      <img
+                        src={streamUrl}
+                        alt={previewDoc.name}
+                        className="max-h-[75vh] max-w-full object-contain rounded-md border shadow-sm bg-background"
+                        onError={(e) => {
+                          if (previewDoc.drive_web_link && e.currentTarget.src !== previewDoc.drive_web_link) {
+                            e.currentTarget.src = previewDoc.drive_web_link
+                          }
+                        }}
+                      />
+                    </div>
+                  )
+                }
+
+                return (
+                  <iframe
+                    src={driveEmbedUrl}
+                    className="w-full h-[75vh] rounded-md border bg-background shadow-inner"
+                    title={previewDoc.name}
+                    allow="autoplay"
+                  />
+                )
+              })()
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 

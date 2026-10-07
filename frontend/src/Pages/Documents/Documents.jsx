@@ -22,6 +22,8 @@ import {
   IconCheck,
   IconLoader2,
   IconClipboardCheck,
+  IconExternalLink,
+  IconFileText,
 } from "@tabler/icons-react"
 import { createColumnHelper } from "@tanstack/react-table"
 import { DataTable } from "../../Layout/DataTable"
@@ -143,6 +145,7 @@ export default function Documents() {
   const [uploadOpen, setUploadOpen] = useState(false)
   const [actingId, setActingId] = useState(null)
   const [selected, setSelected] = useState(() => new Set())
+  const [previewDoc, setPreviewDoc] = useState(null)
 
   const loadDocuments = useCallback(async () => {
     setIsLoading(true)
@@ -432,10 +435,7 @@ export default function Documents() {
                   size="sm"
                   className="h-7 shrink-0 px-2.5 text-xs"
                   disabled={busy}
-                  onClick={async () => {
-                    try { await openDocumentPreview(d.id) }
-                    catch { toast.error('Preview failed') }
-                  }}
+                  onClick={() => setPreviewDoc(d)}
                 >
                   <IconEye className="mr-1 h-3.5 w-3.5" />
                 </Button>
@@ -772,6 +772,91 @@ export default function Documents() {
           else setStage('POSTED_DOCUMENTS')
         }}
       />
+
+      {/* In-Page Document Preview Dialog */}
+      <Dialog open={!!previewDoc}  onOpenChange={(open) => !open && setPreviewDoc(null)}>
+        <DialogContent className="sm:max-w-4xl lg:max-w-5xl w-[94vw] max-h-[92vh] flex flex-col p-0 overflow-hidden border bg-background shadow-2xl z-[60]">
+          <DialogHeader className="p-4 border-b bg-muted/20 flex flex-row items-center justify-between space-y-0">
+            <div className="flex items-center gap-2.5 min-w-0 pr-4">
+              <IconFileText className="w-5 h-5 text-primary shrink-0" />
+              <div className="flex flex-col min-w-0">
+                <DialogTitle className="text-base font-bold truncate">
+                  {previewDoc?.name || previewDoc?.file_name || 'Document Preview'}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  {previewDoc?.category || 'Document'} {previewDoc?.file_size ? `· ${previewDoc?.file_size}` : ''}
+                </DialogDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1.5"
+                onClick={() => previewDoc && downloadDocument(previewDoc.id, previewDoc.name)}
+              >
+                <IconDownload className="w-3.5 h-3.5" />
+                Download
+              </Button>
+              {previewDoc?.drive_web_link && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs gap-1.5"
+                  asChild
+                >
+                  <a href={previewDoc.drive_web_link} target="_blank" rel="noopener noreferrer">
+                    <IconExternalLink className="w-3.5 h-3.5" />
+                    Open in Drive
+                  </a>
+                </Button>
+              )}
+            </div>
+          </DialogHeader>
+          <div className="p-4 bg-muted/10 flex items-center justify-center min-h-[500px] max-h-[80vh] overflow-auto">
+            {previewDoc && (
+              (() => {
+                const fname = (previewDoc.name || previewDoc.file_name || '').toLowerCase()
+                const isImage = fname.endsWith('.jpg') || fname.endsWith('.jpeg') || fname.endsWith('.png') || fname.endsWith('.webp') || fname.endsWith('.svg') || (previewDoc.file_type || '').toLowerCase().includes('image')
+                
+                const driveEmbedUrl = previewDoc.drive_file_id
+                  ? `https://drive.google.com/file/d/${previewDoc.drive_file_id}/preview`
+                  : (previewDoc.drive_web_link ? previewDoc.drive_web_link.replace(/\/view(\?.*)?$/, '/preview') : `${getApiBase()}/documents/${previewDoc.id}/view`)
+                
+                const streamUrl = `${getApiBase()}/documents/${previewDoc.id}/view`
+
+                if (isImage) {
+                  return (
+                    <div className="flex flex-col items-center justify-center w-full h-full p-2">
+                      <img
+                        src={streamUrl}
+                        alt={previewDoc.name}
+                        className="max-h-[75vh] max-w-full object-contain rounded-md border shadow-sm bg-background"
+                        onError={(e) => {
+                          if (previewDoc.drive_web_link && e.currentTarget.src !== previewDoc.drive_web_link) {
+                            e.currentTarget.src = previewDoc.drive_web_link
+                          }
+                        }}
+                      />
+                    </div>
+                  )
+                }
+
+                return (
+                  <iframe
+                    src={driveEmbedUrl}
+                    className="w-full h-[75vh] rounded-md border bg-background shadow-inner"
+                    title={previewDoc.name}
+                    allow="autoplay"
+                  />
+                )
+              })()
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

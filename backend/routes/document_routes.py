@@ -548,11 +548,12 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
     if match_download and method == 'GET':
         doc_id = int(match_download.group(1))
 
-        doc = query_db("SELECT * FROM documents WHERE id = ? LIMIT 1;", (doc_id,), one=True)
-        if not doc:
+        doc_row = query_db("SELECT * FROM documents WHERE id = ? LIMIT 1;", (doc_id,), one=True)
+        if not doc_row:
             return error_response(start_response, "Document not found", status_code=404)
+        doc = dict(doc_row)
 
-        if not is_staff and doc['user_id'] != user_id:
+        if not is_staff and doc.get('user_id') != user_id:
             return error_response(start_response, "Access denied", status_code=403)
 
         drive_file_id = doc.get('drive_file_id')
@@ -561,21 +562,50 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
             if content_bytes:
                 start_response('200 OK', [
                     ('Content-Type', meta.get('mimeType', 'application/octet-stream')),
+                    ('Content-Disposition', f'attachment; filename="{doc.get("name") or "document"}.pdf"'),
+                    ('Content-Length', str(len(content_bytes)))
+                ])
+                return [content_bytes]
+
+        # Local disk fallback
+        file_path = doc.get('file_path') or ''
+        import os
+        from config import BASE_DIR
+        possible_paths = [
+            file_path,
+            os.path.join(str(BASE_DIR), file_path.lstrip('/')),
+            os.path.join(str(BASE_DIR), 'storage', file_path.lstrip('/')),
+            os.path.join('/var/www/brixen-crm', file_path.lstrip('/')),
+            os.path.join('/var/www/brixen-crm/storage', file_path.lstrip('/')),
+        ]
+        for p in possible_paths:
+            if p and os.path.isfile(p):
+                with open(p, 'rb') as f:
+                    content_bytes = f.read()
+                mime = doc.get('file_type') or 'application/octet-stream'
+                start_response('200 OK', [
+                    ('Content-Type', mime),
                     ('Content-Disposition', f'attachment; filename="{doc.get("name") or "document"}"'),
                     ('Content-Length', str(len(content_bytes)))
                 ])
                 return [content_bytes]
 
-        return success_response(start_response, data=dict(doc))
+        if doc.get('drive_web_link'):
+            start_response('302 Found', [('Location', doc['drive_web_link'])])
+            return [b'']
+
+        return error_response(start_response, "File content unavailable", status_code=404)
 
     # ── GET /api/documents/<id>/view ───────────────────────────────────────
     match_view = re.match(r'^/api/(?:admin/)?documents/(\d+)/view$', path)
     if match_view and method == 'GET':
         doc_id = int(match_view.group(1))
-        doc = query_db("SELECT * FROM documents WHERE id = ? LIMIT 1;", (doc_id,), one=True)
-        if not doc:
+        doc_row = query_db("SELECT * FROM documents WHERE id = ? LIMIT 1;", (doc_id,), one=True)
+        if not doc_row:
             return error_response(start_response, "Document not found", status_code=404)
-        if not is_staff and doc['user_id'] != user_id:
+        doc = dict(doc_row)
+
+        if not is_staff and doc.get('user_id') != user_id:
             return error_response(start_response, "Access denied", status_code=403)
 
         drive_file_id = doc.get('drive_file_id')
@@ -583,11 +613,42 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
             content_bytes, meta = get_file_download_stream(drive_file_id)
             if content_bytes:
                 start_response('200 OK', [
-                    ('Content-Type', meta.get('mimeType', 'application/octet-stream')),
+                    ('Content-Type', meta.get('mimeType', 'application/pdf')),
                     ('Content-Disposition', f'inline; filename="{doc.get("name") or "document"}"'),
                     ('Content-Length', str(len(content_bytes)))
                 ])
                 return [content_bytes]
+
+        # Local disk fallback
+        file_path = doc.get('file_path') or ''
+        import os
+        from config import BASE_DIR
+        possible_paths = [
+            file_path,
+            os.path.join(str(BASE_DIR), file_path.lstrip('/')),
+            os.path.join(str(BASE_DIR), 'storage', file_path.lstrip('/')),
+            os.path.join('/var/www/brixen-crm', file_path.lstrip('/')),
+            os.path.join('/var/www/brixen-crm/storage', file_path.lstrip('/')),
+        ]
+        for p in possible_paths:
+            if p and os.path.isfile(p):
+                with open(p, 'rb') as f:
+                    content_bytes = f.read()
+                mime = 'application/pdf'
+                if p.lower().endswith(('.jpg', '.jpeg')):
+                    mime = 'image/jpeg'
+                elif p.lower().endswith('.png'):
+                    mime = 'image/png'
+                start_response('200 OK', [
+                    ('Content-Type', mime),
+                    ('Content-Disposition', f'inline; filename="{doc.get("name") or "document"}"'),
+                    ('Content-Length', str(len(content_bytes)))
+                ])
+                return [content_bytes]
+
+        if doc.get('drive_web_link'):
+            start_response('302 Found', [('Location', doc['drive_web_link'])])
+            return [b'']
 
         return error_response(start_response, "File content unavailable", status_code=404)
 

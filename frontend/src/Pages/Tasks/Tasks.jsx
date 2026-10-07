@@ -571,9 +571,6 @@ const Tasks = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Tasks & Team</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Assign work, track progress, and manage your internal team.
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button

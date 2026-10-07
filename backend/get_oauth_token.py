@@ -99,7 +99,7 @@ def main():
     auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(auth_url_params)
     
     print("=" * 65)
-    print("🚀 Brixen CRM - Google Drive OAuth Token Generator")
+    print(">>> Brixen CRM - Google Drive OAuth Token Generator")
     print("=" * 65)
     print("\nOpening your browser for Google Authorization...")
     print(f"\nIf browser doesn't open automatically, please open this link:\n\n{auth_url}\n")
@@ -133,7 +133,7 @@ def main():
             if refresh_token:
                 save_refresh_token_to_env(refresh_token)
                 print(f"Refresh Token: {refresh_token[:10]}... (hidden for security)")
-                print("\n🎉 Google Drive is now permanently connected via OAuth 2.0!")
+                print("\n[SUCCESS] Google Drive is now permanently connected via OAuth 2.0!")
             else:
                 print(f"Response: {resp_body}")
                 print("Warning: No refresh_token returned. Try revoking app permissions and trying again with prompt=consent.")

@@ -604,11 +604,6 @@ export default function Orders() {
         </div>
       )}
 
-      <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-        Click <strong>Open order</strong> on any row to view complete details.
-      </div>
-
-
       <DataTable
         columns={columns}
         data={orders}

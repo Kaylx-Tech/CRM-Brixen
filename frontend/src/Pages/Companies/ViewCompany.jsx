@@ -414,7 +414,6 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                     <Button
                       type="submit"
                       disabled={isSaving}
-                      className="h-9 px-4 rounded-md font-medium text-sm gap-2"
                     >
                       {isSaving && <IconLoader2 className="w-4 h-4 animate-spin" />}
                       {isSaving ? 'Saving…' : 'Save codes'}
