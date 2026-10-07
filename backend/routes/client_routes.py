@@ -399,7 +399,7 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
 
         documents = query_db("""
             SELECT d.id, d.name, d.category, d.status, d.file_type, d.created_at, d.uploaded_by,
-                   o.order_number
+                   d.drive_file_id, d.drive_web_link, o.order_number
             FROM documents d
             LEFT JOIN orders o ON o.id = d.order_id
             WHERE d.user_id = ?

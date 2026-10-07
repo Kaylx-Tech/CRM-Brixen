@@ -31,7 +31,9 @@ import UploadDocumentModal from "./UploadDocumentModal"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { OverflowTooltip } from "@/components/OverflowTooltip"
 import { toast } from "sonner"
-import { apiRequest, getApiBase, toastApiEmpty, authHeaders } from "@/lib/api"
+import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
+import { downloadDocument, openDocument } from "@/lib/documents"
+import DocumentPreview from "@/components/DocumentPreview"
 import {
   toastUndoableDelete,
   toastProcessing,
@@ -96,40 +98,6 @@ function TwoLineCell({ title, subtitle }) {
       ) : null}
     </div>
   )
-}
-
-async function downloadDocument(docId, filename) {
-  const base = getApiBase()
-  const headers = authHeaders()
-  delete headers['Content-Type']
-  const res = await fetch(`${base}/documents/${docId}/download`, {
-    credentials: 'include',
-    headers,
-  })
-  if (!res.ok) throw new Error('Download failed')
-  const blob = await res.blob()
-  const href = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = href
-  a.download = filename || `document-${docId}`
-  a.click()
-  URL.revokeObjectURL(href)
-  toast.success('Download started')
-}
-
-async function openDocumentPreview(docId) {
-  const base = getApiBase()
-  const headers = authHeaders()
-  delete headers['Content-Type']
-  const res = await fetch(`${base}/documents/${docId}/view`, {
-    credentials: 'include',
-    headers,
-  })
-  if (!res.ok) throw new Error('Preview failed')
-  const blob = await res.blob()
-  const href = URL.createObjectURL(blob)
-  window.open(href, '_blank', 'noopener,noreferrer')
-  setTimeout(() => URL.revokeObjectURL(href), 60_000)
 }
 
 export default function Documents() {
@@ -694,7 +662,7 @@ export default function Documents() {
                 <Button
                   variant="outline"
                   onClick={async () => {
-                    try { await openDocumentPreview(triageDoc.id) }
+                    try { await openDocument(triageDoc.id) }
                     catch { toast.error('Preview failed') }
                   }}
                 >
@@ -816,44 +784,7 @@ export default function Documents() {
             </div>
           </DialogHeader>
           <div className="p-4 bg-muted/10 flex items-center justify-center min-h-[500px] max-h-[80vh] overflow-auto">
-            {previewDoc && (
-              (() => {
-                const fname = (previewDoc.name || previewDoc.file_name || '').toLowerCase()
-                const isImage = fname.endsWith('.jpg') || fname.endsWith('.jpeg') || fname.endsWith('.png') || fname.endsWith('.webp') || fname.endsWith('.svg') || (previewDoc.file_type || '').toLowerCase().includes('image')
-                
-                const driveEmbedUrl = previewDoc.drive_file_id
-                  ? `https://drive.google.com/file/d/${previewDoc.drive_file_id}/preview`
-                  : (previewDoc.drive_web_link ? previewDoc.drive_web_link.replace(/\/view(\?.*)?$/, '/preview') : `${getApiBase()}/documents/${previewDoc.id}/view`)
-                
-                const streamUrl = `${getApiBase()}/documents/${previewDoc.id}/view`
-
-                if (isImage) {
-                  return (
-                    <div className="flex flex-col items-center justify-center w-full h-full p-2">
-                      <img
-                        src={streamUrl}
-                        alt={previewDoc.name}
-                        className="max-h-[75vh] max-w-full object-contain rounded-md border shadow-sm bg-background"
-                        onError={(e) => {
-                          if (previewDoc.drive_web_link && e.currentTarget.src !== previewDoc.drive_web_link) {
-                            e.currentTarget.src = previewDoc.drive_web_link
-                          }
-                        }}
-                      />
-                    </div>
-                  )
-                }
-
-                return (
-                  <iframe
-                    src={driveEmbedUrl}
-                    className="w-full h-[75vh] rounded-md border bg-background shadow-inner"
-                    title={previewDoc.name}
-                    allow="autoplay"
-                  />
-                )
-              })()
-            )}
+            {previewDoc && <DocumentPreview doc={previewDoc} className="w-full" />}
           </div>
         </DialogContent>
       </Dialog>

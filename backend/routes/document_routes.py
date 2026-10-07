@@ -2,8 +2,12 @@
 List/upload/download + admin lifecycle (approve / reject / bulk) — app.py parity.
 """
 import base64
+import collections
+import os
 import re
+import threading
 import uuid
+from config import BASE_DIR, STORAGE_DIR
 from db import query_db, execute_db
 from utils.response import json_response, success_response, error_response
 from services.storage_service import save_client_file, get_file_download_stream
@@ -19,6 +23,109 @@ from services.document_lifecycle import (
     bulk_quarantine,
     delete_document,
 )
+
+_MIME_BY_EXT = {
+    '.pdf': 'application/pdf',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.xls': 'application/vnd.ms-excel',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.csv': 'text/csv',
+    '.txt': 'text/plain',
+}
+
+
+def _download_filename(doc, mime_type=None):
+    """Header-safe filename that keeps (or infers) the real file extension."""
+    name = os.path.basename(str(doc.get('name') or 'document').strip()) or 'document'
+    name = re.sub(r'[\r\n"\\/]+', '_', name)
+    if not os.path.splitext(name)[1]:
+        ext = next((e for e, m in _MIME_BY_EXT.items() if m == mime_type), '')
+        name += ext
+    return name
+
+
+def _local_document_path(file_path):
+    """Resolve a stored file_path to a real file, only inside known storage roots."""
+    file_path = str(file_path or '')
+    if not file_path:
+        return None
+    roots = [os.path.realpath(str(BASE_DIR)), os.path.realpath(STORAGE_DIR)]
+    candidates = [file_path] if os.path.isabs(file_path) else []
+    rel = file_path.lstrip('/\\')
+    candidates += [os.path.join(r, rel) for r in roots]
+    for cand in candidates:
+        real = os.path.realpath(cand)
+        if os.path.isfile(real) and any(real == r or real.startswith(r + os.sep) for r in roots):
+            return real
+    return None
+
+
+# Small in-memory LRU for Drive files (speeds up repeated views; a Drive round trip costs 1-3 s).
+_DRIVE_CACHE = collections.OrderedDict()   # drive_file_id -> (bytes, meta)
+_DRIVE_CACHE_BYTES = 0
+_DRIVE_CACHE_MAX_BYTES = 64 * 1024 * 1024
+_DRIVE_CACHE_MAX_FILE = 12 * 1024 * 1024
+_DRIVE_CACHE_LOCK = threading.Lock()
+
+
+def _drive_bytes_cached(drive_file_id):
+    global _DRIVE_CACHE_BYTES
+    with _DRIVE_CACHE_LOCK:
+        hit = _DRIVE_CACHE.get(drive_file_id)
+        if hit:
+            _DRIVE_CACHE.move_to_end(drive_file_id)
+            return hit
+    content_bytes, meta = get_file_download_stream(drive_file_id)
+    if content_bytes and len(content_bytes) <= _DRIVE_CACHE_MAX_FILE:
+        with _DRIVE_CACHE_LOCK:
+            if drive_file_id not in _DRIVE_CACHE:
+                _DRIVE_CACHE[drive_file_id] = (content_bytes, meta)
+                _DRIVE_CACHE_BYTES += len(content_bytes)
+            while _DRIVE_CACHE_BYTES > _DRIVE_CACHE_MAX_BYTES and _DRIVE_CACHE:
+                _, (old, _m) = _DRIVE_CACHE.popitem(last=False)
+                _DRIVE_CACHE_BYTES -= len(old)
+    return content_bytes, meta
+
+
+def _serve_document(start_response, doc, inline):
+    """Stream a document from Drive, then local disk, then redirect to its Drive link."""
+    disposition = 'inline' if inline else 'attachment'
+
+    def _respond(content_bytes, mime):
+        filename = _download_filename(doc, mime)
+        start_response('200 OK', [
+            ('Content-Type', mime),
+            ('Content-Disposition', f'{disposition}; filename="{filename}"'),
+            ('Content-Length', str(len(content_bytes))),
+            ('Cache-Control', 'private, max-age=600'),
+            ('X-Content-Type-Options', 'nosniff'),
+        ])
+        return [content_bytes]
+
+    drive_file_id = doc.get('drive_file_id')
+    if drive_file_id:
+        content_bytes, meta = _drive_bytes_cached(drive_file_id)
+        if content_bytes:
+            return _respond(content_bytes, (meta or {}).get('mimeType') or 'application/octet-stream')
+
+    local = _local_document_path(doc.get('file_path'))
+    if local:
+        with open(local, 'rb') as f:
+            content_bytes = f.read()
+        ext = os.path.splitext(local)[1].lower()
+        mime = _MIME_BY_EXT.get(ext) or doc.get('file_type') or 'application/octet-stream'
+        return _respond(content_bytes, mime)
+
+    link = doc.get('drive_web_link')
+    if isinstance(link, str) and link.startswith('https://'):
+        start_response('302 Found', [('Location', link)])
+        return [b'']
+
+    return error_response(start_response, "File content unavailable", status_code=404)
 
 
 def handle_document_routes(environ, start_response, path, method, user, body, query):
@@ -543,10 +650,11 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
             },
         }, status_code=201)
 
-    # ── GET /api/documents/<id>/download ───────────────────────────────────
-    match_download = re.match(r'^/api/(?:admin/)?documents/(\d+)/download$', path)
-    if match_download and method == 'GET':
-        doc_id = int(match_download.group(1))
+    # ── GET /api/documents/<id>/download | /view ───────────────────────────
+    match_file = re.match(r'^/api/(?:admin/)?documents/(\d+)/(download|view)$', path)
+    if match_file and method == 'GET':
+        doc_id = int(match_file.group(1))
+        inline = match_file.group(2) == 'view'
 
         doc_row = query_db("SELECT * FROM documents WHERE id = ? LIMIT 1;", (doc_id,), one=True)
         if not doc_row:
@@ -556,100 +664,7 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
         if not is_staff and doc.get('user_id') != user_id:
             return error_response(start_response, "Access denied", status_code=403)
 
-        drive_file_id = doc.get('drive_file_id')
-        if drive_file_id:
-            content_bytes, meta = get_file_download_stream(drive_file_id)
-            if content_bytes:
-                start_response('200 OK', [
-                    ('Content-Type', meta.get('mimeType', 'application/octet-stream')),
-                    ('Content-Disposition', f'attachment; filename="{doc.get("name") or "document"}.pdf"'),
-                    ('Content-Length', str(len(content_bytes)))
-                ])
-                return [content_bytes]
+        return _serve_document(start_response, doc, inline=inline)
 
-        # Local disk fallback
-        file_path = doc.get('file_path') or ''
-        import os
-        from config import BASE_DIR
-        possible_paths = [
-            file_path,
-            os.path.join(str(BASE_DIR), file_path.lstrip('/')),
-            os.path.join(str(BASE_DIR), 'storage', file_path.lstrip('/')),
-            os.path.join('/var/www/brixen-crm', file_path.lstrip('/')),
-            os.path.join('/var/www/brixen-crm/storage', file_path.lstrip('/')),
-        ]
-        for p in possible_paths:
-            if p and os.path.isfile(p):
-                with open(p, 'rb') as f:
-                    content_bytes = f.read()
-                mime = doc.get('file_type') or 'application/octet-stream'
-                start_response('200 OK', [
-                    ('Content-Type', mime),
-                    ('Content-Disposition', f'attachment; filename="{doc.get("name") or "document"}"'),
-                    ('Content-Length', str(len(content_bytes)))
-                ])
-                return [content_bytes]
-
-        if doc.get('drive_web_link'):
-            start_response('302 Found', [('Location', doc['drive_web_link'])])
-            return [b'']
-
-        return error_response(start_response, "File content unavailable", status_code=404)
-
-    # ── GET /api/documents/<id>/view ───────────────────────────────────────
-    match_view = re.match(r'^/api/(?:admin/)?documents/(\d+)/view$', path)
-    if match_view and method == 'GET':
-        doc_id = int(match_view.group(1))
-        doc_row = query_db("SELECT * FROM documents WHERE id = ? LIMIT 1;", (doc_id,), one=True)
-        if not doc_row:
-            return error_response(start_response, "Document not found", status_code=404)
-        doc = dict(doc_row)
-
-        if not is_staff and doc.get('user_id') != user_id:
-            return error_response(start_response, "Access denied", status_code=403)
-
-        drive_file_id = doc.get('drive_file_id')
-        if drive_file_id:
-            content_bytes, meta = get_file_download_stream(drive_file_id)
-            if content_bytes:
-                start_response('200 OK', [
-                    ('Content-Type', meta.get('mimeType', 'application/pdf')),
-                    ('Content-Disposition', f'inline; filename="{doc.get("name") or "document"}"'),
-                    ('Content-Length', str(len(content_bytes)))
-                ])
-                return [content_bytes]
-
-        # Local disk fallback
-        file_path = doc.get('file_path') or ''
-        import os
-        from config import BASE_DIR
-        possible_paths = [
-            file_path,
-            os.path.join(str(BASE_DIR), file_path.lstrip('/')),
-            os.path.join(str(BASE_DIR), 'storage', file_path.lstrip('/')),
-            os.path.join('/var/www/brixen-crm', file_path.lstrip('/')),
-            os.path.join('/var/www/brixen-crm/storage', file_path.lstrip('/')),
-        ]
-        for p in possible_paths:
-            if p and os.path.isfile(p):
-                with open(p, 'rb') as f:
-                    content_bytes = f.read()
-                mime = 'application/pdf'
-                if p.lower().endswith(('.jpg', '.jpeg')):
-                    mime = 'image/jpeg'
-                elif p.lower().endswith('.png'):
-                    mime = 'image/png'
-                start_response('200 OK', [
-                    ('Content-Type', mime),
-                    ('Content-Disposition', f'inline; filename="{doc.get("name") or "document"}"'),
-                    ('Content-Length', str(len(content_bytes)))
-                ])
-                return [content_bytes]
-
-        if doc.get('drive_web_link'):
-            start_response('302 Found', [('Location', doc['drive_web_link'])])
-            return [b'']
-
-        return error_response(start_response, "File content unavailable", status_code=404)
 
     return None

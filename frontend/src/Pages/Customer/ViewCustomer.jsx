@@ -22,6 +22,8 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from "sonner"
 import { apiRequest } from '@/lib/api'
+import { downloadDocument } from '@/lib/documents'
+import DocumentPreview from '@/components/DocumentPreview'
 
 const getInitials = (name) => {
   if (!name) return "CU"
@@ -60,6 +62,7 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
   const [isSaving, setIsSaving] = useState(false)
   const [detail, setDetail] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [previewDoc, setPreviewDoc] = useState(null)
 
   const raw = customer?.raw || {}
   const name = customer?.name || raw.full_name || "Customer"
@@ -292,7 +295,22 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
                     key={d.id}
                     title={d.name}
                     meta={`${d.category || '—'} · ${d.order_number || 'No order'} · ${fmtDate(d.created_at)}${d.uploaded_by ? ` · ${d.uploaded_by}` : ''}`}
-                    right={<Badge variant="outline">{d.status || '—'}</Badge>}
+                    right={(
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Badge variant="outline">{d.status || '—'}</Badge>
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setPreviewDoc(d)}>
+                          View
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs"
+                          onClick={() => downloadDocument(d.id, d.name).catch((e) => toast.error(e.message || 'Download failed'))}
+                        >
+                          Download
+                        </Button>
+                      </div>
+                    )}
                   />
                 ))}
               </TabsContent>
@@ -337,6 +355,19 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
         </div>
 
       </DialogContent>
+
+      {/* Document viewer (streamed through the API) */}
+      <Dialog open={!!previewDoc} onOpenChange={(open) => !open && setPreviewDoc(null)}>
+        <DialogContent className="sm:max-w-[900px] p-0 overflow-hidden">
+          <DialogHeader className="p-4 border-b">
+            <DialogTitle className="text-base truncate pr-6">{previewDoc?.name}</DialogTitle>
+            <DialogDescription className="text-xs">{previewDoc?.category || 'Document'}</DialogDescription>
+          </DialogHeader>
+          <div className="p-4 max-h-[80vh] overflow-auto">
+            {previewDoc && <DocumentPreview doc={previewDoc} />}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 }
