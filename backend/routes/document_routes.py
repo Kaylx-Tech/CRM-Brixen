@@ -3,10 +3,14 @@ List/upload/download + admin lifecycle (approve / reject / bulk) — app.py pari
 """
 import base64
 import collections
+import mimetypes
 import os
+import os as _os
 import re
 import threading
 import uuid
+from services.permissions import check_permission
+from services.audit_service import log_activity
 from config import BASE_DIR, STORAGE_DIR
 from db import query_db, execute_db
 from utils.response import json_response, success_response, error_response
@@ -140,6 +144,80 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
     user_id = user.get('id')
     user_name = user.get('name') or user.get('full_name') or 'Client'
     is_staff = user_role in ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
+
+    # ── POST /api/admin/documents/relink ───────────────────────────────────
+    # Re-attach an original file to an existing document row that lost its file:
+    # matches by file name (+ size), uploads to Drive and links it. Never creates a duplicate row.
+    if path == '/api/admin/documents/relink' and method == 'POST':
+        if not is_staff or not check_permission(user, 'documents.upload'):
+            return error_response(start_response, "Access denied", status_code=403)
+        data = body or {}
+        filename = _os.path.basename(str(data.get('filename') or '').strip())
+        file_base64 = data.get('file_base64') or ''
+        if not filename or not file_base64:
+            return error_response(start_response, "filename and file_base64 are required", status_code=400)
+        try:
+            file_bytes = base64.b64decode(file_base64)
+        except Exception:
+            return error_response(start_response, "Invalid base64 file data", status_code=400)
+        if not file_bytes or len(file_bytes) > 25 * 1024 * 1024:
+            return error_response(start_response, "File is empty or larger than 25 MB", status_code=400)
+
+        clean = re.sub(r'[^a-zA-Z0-9_.-]', '_', filename)
+        rows = query_db(
+            """
+            SELECT d.id, d.name, d.file_path, d.file_size, d.user_id, d.order_id, u.full_name AS customer
+            FROM documents d LEFT JOIN users u ON u.id = d.user_id
+            WHERE COALESCE(d.drive_file_id, '') = ''
+              AND (lower(d.name) IN (lower(?), lower(?))
+                   OR lower(d.file_path) LIKE '%/' || lower(?) OR lower(d.file_path) LIKE '%/' || lower(?));
+            """,
+            (filename, clean, filename, clean)) or []
+        if data.get('document_id'):
+            rows = [r for r in rows if str(r['id']) == str(data.get('document_id'))]
+        if not rows:
+            return success_response(start_response, data={"result": "NOT_FOUND", "filename": filename})
+
+        def _size_ok(r):
+            try:
+                return int(str(r.get('file_size')).strip()) == len(file_bytes)
+            except (TypeError, ValueError):
+                return False
+        def _size_known(r):
+            try:
+                int(str(r.get('file_size')).strip())
+                return True
+            except (TypeError, ValueError):
+                return False
+        sized = [r for r in rows if _size_ok(r)]
+        targets = sized
+        if not targets and len(rows) == 1:
+            if _size_known(rows[0]) and not data.get('force'):
+                return success_response(start_response, data={
+                    "result": "SIZE_MISMATCH", "filename": filename, "document_id": rows[0]['id'],
+                    "customer": rows[0]['customer'], "expected_size": rows[0]['file_size'], "got_size": len(file_bytes)})
+            targets = rows
+        if not targets:
+            return success_response(start_response, data={
+                "result": "AMBIGUOUS", "filename": filename,
+                "candidates": [{"id": r['id'], "customer": r['customer']} for r in rows[:8]]})
+
+        mime = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+        linked = []
+        for r in targets:
+            res = save_client_file(
+                client_id=r['user_id'], customer_name=r['customer'] or 'General Client', filename=filename,
+                file_bytes=file_bytes, order_id=r['order_id'], mime_type=mime)
+            if not res.get('success'):
+                return error_response(start_response, res.get('error') or 'Drive upload failed', status_code=502)
+            execute_db(
+                "UPDATE documents SET drive_file_id = ?, drive_web_link = ?, file_path = ?, file_size = ? "
+                "WHERE id = ? AND COALESCE(drive_file_id, '') = '';",
+                (res.get('drive_file_id'), res.get('drive_web_link'), res.get('file_path'),
+                 str(len(file_bytes)), r['id']))
+            log_activity(user_id, 'DOCUMENT_RELINKED', 'documents', r['id'], f"Re-attached {filename} to Drive")
+            linked.append({"id": r['id'], "customer": r['customer']})
+        return success_response(start_response, data={"result": "LINKED", "filename": filename, "linked": linked})
 
     # ── POST /api/admin/documents/intake/process ───────────────────────────
     if path == '/api/admin/documents/intake/process' and method == 'POST':

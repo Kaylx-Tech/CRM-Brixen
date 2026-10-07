@@ -28,6 +28,7 @@ import {
 import { createColumnHelper } from "@tanstack/react-table"
 import { DataTable } from "../../Layout/DataTable"
 import UploadDocumentModal from "./UploadDocumentModal"
+import RelinkFilesDialog from "./RelinkFilesDialog"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { OverflowTooltip } from "@/components/OverflowTooltip"
 import { toast } from "sonner"
@@ -111,6 +112,7 @@ export default function Documents() {
   const [reassignOpen, setReassignOpen] = useState(false)
   const [reassignForm, setReassignForm] = useState({ client_id: '', company_id: '', category: '' })
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [relinkOpen, setRelinkOpen] = useState(false)
   const [actingId, setActingId] = useState(null)
   const [selected, setSelected] = useState(() => new Set())
   const [previewDoc, setPreviewDoc] = useState(null)
@@ -488,6 +490,10 @@ export default function Documents() {
             <IconRefresh className="mr-2 h-4 w-4" />
             Refresh
           </Button>
+          <Button variant="outline" onClick={() => setRelinkOpen(true)}>
+            <IconUpload className="mr-2 h-4 w-4" />
+            Re-attach files
+          </Button>
           <Button onClick={() => setUploadOpen(true)}>
             <IconUpload className="mr-2 h-4 w-4" />
             Upload Document
@@ -731,6 +737,8 @@ export default function Documents() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <RelinkFilesDialog open={relinkOpen} onOpenChange={setRelinkOpen} onDone={loadDocuments} />
 
       <UploadDocumentModal
         open={uploadOpen}
