@@ -34,6 +34,9 @@ const formatCurrency = (val, displayVal) => {
 
 // Parse Trend Object from Backend MoM calculation
 const getTrend = (trendObj, defaultVal = "+0%") => {
+  if (trendObj === null) {
+    return { trendValue: "", trendDirection: "up" } // no previous period (All Time) → hide badge
+  }
   if (trendObj && typeof trendObj === 'object') {
     return {
       trendValue: trendObj.text || defaultVal,
@@ -202,12 +205,25 @@ const Dashboard = () => {
     const turnoverTrend = getTrend(s.turnover_trend, "+0%")
     const profitTrend = getTrend(s.profit_trend, "+0%")
 
+    // Money cards exist only when the backend allows this user to see revenue
+    const showMoney = s.total_revenue !== undefined
+
     return [
       {
-        title: "Total Sales",
+        title: "Number of Sales",
         value: String(s.total_orders ?? s.month_orders ?? 0),
         trendValue: salesTrend.trendValue,
         trendDirection: salesTrend.trendDirection,
+      },
+      ...(showMoney ? [{
+        title: "Sales Revenue",
+        value: formatCurrency(s.total_revenue_raw, s.total_revenue),
+        trendValue: revTrend.trendValue,
+        trendDirection: revTrend.trendDirection,
+      }] : []),
+      {
+        title: "Total Products",
+        value: String(s.total_products ?? 0),
       },
       {
         title: "Total Customers",
@@ -215,20 +231,38 @@ const Dashboard = () => {
         trendValue: custTrend.trendValue,
         trendDirection: custTrend.trendDirection,
       },
-      {
-        title: "Total Turnover",
-        value: formatCurrency(s.total_turnover, s.total_turnover_display),
-        trendValue: turnoverTrend.trendValue,
-        trendDirection: turnoverTrend.trendDirection,
-      },
-      {
-        title: "Net Profit",
-        value: formatCurrency(s.net_profit, s.net_profit_display),
-        trendValue: profitTrend.trendValue,
-        trendDirection: profitTrend.trendDirection,
-      },
+      ...(showMoney ? [
+        {
+          title: "Total Turnover",
+          value: formatCurrency(s.total_turnover, s.total_turnover_display),
+          trendValue: turnoverTrend.trendValue,
+          trendDirection: turnoverTrend.trendDirection,
+        },
+        {
+          title: "Net Profit",
+          value: formatCurrency(s.net_profit, s.net_profit_display),
+          trendValue: profitTrend.trendValue,
+          trendDirection: profitTrend.trendDirection,
+        },
+      ] : []),
     ]
   }, [dashboardData])
+
+  // Secondary KPI row (work queue)
+  const extraStats = useMemo(() => {
+    const s = dashboardData?.stats
+    if (!s) return []
+    return [
+      { title: "Today's Orders", value: String(s.today_orders ?? 0), footerSubText: `${s.today_customers ?? 0} new customers today`, onClick: () => navigate('/admin/orders') },
+      { title: "Open Tickets", value: String(s.open_tickets ?? 0) },
+      { title: "Documents Pending", value: String(s.pending_documents ?? 0), footerSubText: `of ${s.total_documents ?? 0} documents`, onClick: () => navigate('/admin/documents') },
+      ...(s.pending_payments !== undefined
+        ? [{ title: "Pending Payments", value: formatCurrency(null, s.pending_payments), onClick: () => navigate('/admin/payments') }]
+        : []),
+    ]
+  }, [dashboardData, navigate])
+
+  const topPerformers = dashboardData?.top_performers || []
 
   // 2. Memoized Bar Chart Data
   const barChartData = useMemo(() => {
@@ -295,6 +329,7 @@ const Dashboard = () => {
 
       {/* Top 5 KPI Metric Cards via Skeleton/Props */}
       <SectionCards stats={formattedStats} isLoading={isLoading} />
+      <SectionCards stats={extraStats} isLoading={isLoading} compact />
 
       {/* Charts Grid - All Fed Through Props with Skeleton Loaders */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -320,6 +355,34 @@ const Dashboard = () => {
           isLoading={isLoading}
         />
       </div>
+
+      {/* Top Performers (staff incentive grades) */}
+      {!isLoading && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Top Performer</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {topPerformers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No staff performance data for this month yet</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {topPerformers.map((p) => (
+                  <div key={p.id} className="flex items-center gap-3 p-3.5 rounded-xl border bg-muted/20">
+                    <Badge className="h-8 w-10 justify-center text-sm">{p.grade}</Badge>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate">{p.full_name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {p.completed_count}/{p.assigned_count} tasks · SLA {p.sla_rate}%
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent Activity Feed */}
       {isLoading ? (
