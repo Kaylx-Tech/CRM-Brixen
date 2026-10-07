@@ -22,6 +22,7 @@ import argparse
 import csv
 import hashlib
 import json
+import mimetypes
 import os
 import re
 import sys
@@ -236,7 +237,9 @@ def main():
                 continue
             fname = sanitize_filename(base or doc['name'])
             print(f"   uploading {fname} -> Brixen-CRM/Customers/{customer}/{order or ''} ...", flush=True)
-            media = MediaFileUpload(local, mimetype=doc['file_type'] or 'application/octet-stream', resumable=True)
+            # documents.file_type holds labels like 'PDF Document', not a MIME type -> derive it from the file name
+            mime = mimetypes.guess_type(local)[0] or mimetypes.guess_type(fname)[0] or 'application/octet-stream'
+            media = MediaFileUpload(local, mimetype=mime, resumable=True)
             up = svc.files().create(
                 body={'name': fname, 'parents': [folder_id]}, media_body=media,
                 fields='id,name,size,md5Checksum,webViewLink', supportsAllDrives=True).execute()
