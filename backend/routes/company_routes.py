@@ -127,13 +127,13 @@ def public_client_company(row, for_staff=True):
 
 def pending_registration_orders(user_id=None, for_client=False):
     sql = """
-        SELECT o.id, o.order_number, o.service_name, o.products_summary, o.status, o.created_at, o.user_id,
+        SELECT o.id, o.order_number, o.service_name, COALESCE((SELECT GROUP_CONCAT(li.product_name, ', ') FROM order_line_items li WHERE li.order_id = o.id), o.service_name) AS products_summary, o.status, o.created_at, o.user_id,
                u.full_name as client_name, u.email as client_email
         FROM orders o
         JOIN users u ON u.id = o.user_id
         WHERE o.company_id IS NULL
           AND COALESCE(o.portfolio_hidden, 0) = 0
-          AND (o.service_name LIKE '%formation%' OR o.service_name LIKE '%incorporation%' OR o.products_summary LIKE '%formation%' OR o.products_summary LIKE '%incorporation%')
+          AND (o.service_name LIKE '%formation%' OR o.service_name LIKE '%incorporation%' OR EXISTS (SELECT 1 FROM order_line_items li WHERE li.order_id = o.id AND (li.product_name LIKE '%formation%' OR li.product_name LIKE '%incorporation%')))
     """
     params = []
     if user_id:

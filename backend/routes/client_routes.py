@@ -241,8 +241,12 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         """, (client_id,))
         
         orders = query_db("""
-            SELECT o.id, o.order_number, o.service_name, o.products_summary, o.status,
-                   o.total as amount, o.total, o.payment_mode, o.payment_status, o.created_at,
+            SELECT o.id, o.order_number, o.service_name,
+                   COALESCE((SELECT GROUP_CONCAT(li.product_name, ', ') FROM order_line_items li WHERE li.order_id = o.id), o.service_name) AS products_summary,
+                   o.status,
+                   o.total as amount, o.total, o.payment_mode,
+                   (SELECT inv.status FROM invoices inv WHERE inv.order_id = o.id ORDER BY inv.id DESC LIMIT 1) AS payment_status,
+                   o.created_at,
                    c.name as company_name
             FROM orders o
             LEFT JOIN companies c ON o.company_id = c.id
