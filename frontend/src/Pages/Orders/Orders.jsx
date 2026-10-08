@@ -25,6 +25,7 @@ import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 import CreateOrderWizard from "./CreateOrderWizard"
 import QuickCrmOrder from "./QuickCrmOrder"
 import ViewOrder from "./ViewOrder"
+import DeleteConfirmation from "@/components/DeleteConfirmation"
 
 const columnHelper = createColumnHelper()
 
@@ -191,6 +192,7 @@ export default function Orders() {
   const [datePreset, setDatePreset] = useState('all')
   const [b2bClientId, setB2bClientId] = useState(() => new URLSearchParams(window.location.search).get('b2b') || 'all')
   const [savingId, setSavingId] = useState(null)
+  const [cancelTarget, setCancelTarget] = useState(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [quickCrmOpen, setQuickCrmOpen] = useState(false)
   const [selectedOrderId, setSelectedOrderId] = useState(null)
@@ -286,7 +288,7 @@ export default function Orders() {
   }
 
   const handleDelete = (order) => {
-    if (!window.confirm(`Cancel order ${order.order_number || order.id}?`)) return
+    setCancelTarget(null)
     const victim = order
     const snapshot = orders
     setOrders((prev) => prev.filter((o) => o.id !== victim.id))
@@ -473,7 +475,7 @@ export default function Orders() {
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
-                onClick={() => handleDelete(o)}
+                onClick={() => setCancelTarget(o)}
               >
                 <IconTrash className="w-4 h-4 mr-2" />
                 Delete / Cancel
@@ -663,6 +665,15 @@ export default function Orders() {
           setSelectedOrderId(null)
         }}
         onOrderUpdated={() => fetchOrders(pagination.page || 1)}
+      />
+      <DeleteConfirmation
+        isOpen={Boolean(cancelTarget)}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={() => cancelTarget && handleDelete(cancelTarget)}
+        title="Cancel order"
+        description={`Cancel order ${cancelTarget?.order_number || cancelTarget?.id || ''}? You can undo for a few seconds.`}
+        confirmText="Cancel order"
+        cancelText="Keep order"
       />
     </div>
   )

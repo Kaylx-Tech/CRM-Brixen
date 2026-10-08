@@ -35,6 +35,8 @@ import { toast } from "sonner"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 import { downloadDocument, openDocument } from "@/lib/documents"
 import DocumentPreview from "@/components/DocumentPreview"
+import DeleteConfirmation from "@/components/DeleteConfirmation"
+import PromptDialog from "@/components/PromptDialog"
 import {
   toastUndoableDelete,
   toastProcessing,
@@ -114,6 +116,9 @@ export default function Documents() {
   const [uploadOpen, setUploadOpen] = useState(false)
   const [relinkOpen, setRelinkOpen] = useState(false)
   const [actingId, setActingId] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [rejectTargetId, setRejectTargetId] = useState(null)
+  const [quarantineOpen, setQuarantineOpen] = useState(false)
   const [selected, setSelected] = useState(() => new Set())
   const [previewDoc, setPreviewDoc] = useState(null)
 
@@ -194,8 +199,8 @@ export default function Documents() {
     }
   }
 
-  const rejectOne = async (docId) => {
-    const reason = window.prompt('Rejection reason', 'Rejected by staff') || 'Rejected by staff'
+  const rejectOne = async (docId, reason = 'Rejected by staff') => {
+    setRejectTargetId(null)
     setActingId(docId)
     const toastId = toastProcessing('Moving to quarantine…')
     try {
@@ -251,7 +256,7 @@ export default function Documents() {
   }
 
   const deleteOne = (doc) => {
-    if (!window.confirm(`Delete "${doc.name || 'document'}"?`)) return
+    setDeleteTarget(null)
     const victim = doc
     const snapshot = documents
     setTriageDoc(null)
@@ -300,12 +305,12 @@ export default function Documents() {
     await loadDocuments()
   }
 
-  const bulkQuarantine = async () => {
+  const bulkQuarantine = async (reason = 'Bulk quarantined by staff') => {
+    setQuarantineOpen(false)
     if (!selectedIds.length) {
       toast.message('Select documents first')
       return
     }
-    const reason = window.prompt('Quarantine reason', 'Bulk quarantined by staff') || 'Bulk quarantined by staff'
     const toastId = toastProcessing('Moving to quarantine…')
     const res = await apiRequest('/admin/documents/bulk-quarantine', {
       method: 'POST',
@@ -528,7 +533,7 @@ export default function Documents() {
         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => bulkApprove(true)}>
           Bulk Approve + Override
         </Button>
-        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={bulkQuarantine}>
+        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => (selectedIds.length ? setQuarantineOpen(true) : toast.message('Select documents first'))}>
           Bulk Quarantine
         </Button>
         {selectedIds.length > 0 && (
@@ -643,7 +648,7 @@ export default function Documents() {
                 <Button
                   variant="outline"
                   disabled={actingId === triageDoc.id}
-                  onClick={() => rejectOne(triageDoc.id)}
+                  onClick={() => setRejectTargetId(triageDoc.id)}
                 >
                   Reject / Quarantine
                 </Button>
@@ -685,7 +690,7 @@ export default function Documents() {
                   <IconDownload className="mr-1 h-4 w-4" />
                   Download
                 </Button>
-                <Button variant="destructive" onClick={() => deleteOne(triageDoc)}>
+                <Button variant="destructive" onClick={() => setDeleteTarget(triageDoc)}>
                   <IconTrash className="mr-1 h-4 w-4" />
                   Delete
                 </Button>
@@ -739,6 +744,36 @@ export default function Documents() {
       </Dialog>
 
       <RelinkFilesDialog open={relinkOpen} onOpenChange={setRelinkOpen} onDone={loadDocuments} />
+
+      <DeleteConfirmation
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && deleteOne(deleteTarget)}
+        title="Delete document"
+        description={`Delete "${deleteTarget?.name || 'this document'}"? You can undo for a few seconds.`}
+      />
+
+      <PromptDialog
+        isOpen={rejectTargetId !== null}
+        onClose={() => setRejectTargetId(null)}
+        onSubmit={(reason) => rejectOne(rejectTargetId, reason)}
+        title="Reject document"
+        description="The document will be moved to Quarantine."
+        label="Rejection reason"
+        defaultValue="Rejected by staff"
+        confirmText="Reject"
+      />
+
+      <PromptDialog
+        isOpen={quarantineOpen}
+        onClose={() => setQuarantineOpen(false)}
+        onSubmit={(reason) => bulkQuarantine(reason)}
+        title="Quarantine selected documents"
+        description={`${selectedIds.length} document(s) will be moved to Quarantine.`}
+        label="Quarantine reason"
+        defaultValue="Bulk quarantined by staff"
+        confirmText="Quarantine"
+      />
 
       <UploadDocumentModal
         open={uploadOpen}

@@ -55,6 +55,8 @@ import { apiRequest, getApiBase, authHeaders } from '@/lib/api'
 import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import ToastSave from '@/components/ToastSave'
+import DeleteConfirmation from '@/components/DeleteConfirmation'
+import PromptDialog from '@/components/PromptDialog'
 import DocumentPreview from '@/components/DocumentPreview'
 import { downloadDocument } from '@/lib/documents'
 
@@ -124,6 +126,9 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
 
   // Add product catalog picker
   const [showProductPicker, setShowProductPicker] = useState(false)
+  const [removeTarget, setRemoveTarget] = useState(null)
+  const [isRemovingItem, setIsRemovingItem] = useState(false)
+  const [addFieldOpen, setAddFieldOpen] = useState(false)
   const [catalogServices, setCatalogServices] = useState([])
   const [productSearch, setProductSearch] = useState('')
 
@@ -443,12 +448,14 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
   }
 
   const handleRemoveItem = async (item) => {
-    if (!window.confirm(`Remove "${item.product_name}" from this order?`)) return
+    setIsRemovingItem(true)
     const res = await apiRequest(`/orders/${orderId}/line-items/${item.id}`, {
       method: 'DELETE',
       label: 'Remove product',
       silent: true,
     })
+    setIsRemovingItem(false)
+    setRemoveTarget(null)
     if (res.ok) {
       toast.success('Product removed')
       applyLineItemResult(res)
@@ -458,10 +465,10 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
   }
 
   // Add custom field
-  const handleAddField = () => {
-    const label = window.prompt('Enter field name (e.g. SIC Code, VAT Number):')
+  const handleAddField = (label) => {
     if (!label || !label.trim()) return
     setFormFields((prev) => [...prev, { label: label.trim(), value: '' }])
+    setAddFieldOpen(false)
   }
 
   // Delete field in edit mode
@@ -609,7 +616,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                 size="sm"
                                 variant="outline"
                                 className="text-xs h-8 gap-1"
-                                onClick={handleAddField}
+                                onClick={() => setAddFieldOpen(true)}
                               >
                                 <IconPlus className="w-3.5 h-3.5" />
                                 Add Field
@@ -1033,7 +1040,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                   variant="ghost"
                                   className="h-8 w-8 text-muted-foreground hover:text-destructive"
                                   title="Remove product"
-                                  onClick={() => handleRemoveItem(item)}
+                                  onClick={() => setRemoveTarget(item)}
                                 >
                                   <IconTrash className="w-4 h-4" />
                                 </Button>
@@ -1208,6 +1215,27 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
           </div>
         </DialogContent>
       </Dialog>
+
+      <DeleteConfirmation
+        isOpen={Boolean(removeTarget)}
+        onClose={() => setRemoveTarget(null)}
+        onConfirm={() => removeTarget && handleRemoveItem(removeTarget)}
+        title="Remove product"
+        description={`Remove "${removeTarget?.product_name || 'this product'}" from this order? The order total will be recalculated.`}
+        confirmText="Remove"
+        isLoading={isRemovingItem}
+      />
+
+      <PromptDialog
+        isOpen={addFieldOpen}
+        onClose={() => setAddFieldOpen(false)}
+        onSubmit={handleAddField}
+        title="Add field"
+        label="Field name"
+        placeholder="e.g. SIC Code, VAT Number"
+        confirmText="Add field"
+        required
+      />
 
       {/* Floating Unsaved Changes Toast */}
       <ToastSave
