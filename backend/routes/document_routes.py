@@ -224,14 +224,7 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
         if not is_staff:
             return error_response(start_response, "Access denied", status_code=403)
         try:
-            import sys, os
-            root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-            backend = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-            services = os.path.join(backend, 'services')
-            for p in (services, backend, root):
-                if p not in sys.path:
-                    sys.path.insert(0, p)
-            from app import process_smart_intake_files
+            from services.smart_intake import process_smart_intake_files
 
             files_data = []
             batch_identities = []
@@ -291,14 +284,7 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
         if not is_staff:
             return error_response(start_response, "Access denied", status_code=403)
         try:
-            import sys, os
-            root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-            backend = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-            services = os.path.join(backend, 'services')
-            for p in (services, backend, root):
-                if p not in sys.path:
-                    sys.path.insert(0, p)
-            from app import auto_import_companies_house_from_intake, normalize_company_number
+            from services.smart_intake import auto_import_companies_house_from_intake, normalize_company_number
             data = body or {}
             client_id = data.get('client_id')
             company_id = data.get('company_id')
