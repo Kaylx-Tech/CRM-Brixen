@@ -579,7 +579,7 @@ export default function Orders() {
             All Orders
           </TabsTrigger>
           <TabsTrigger value="Customer" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            Customers
+            Individual
           </TabsTrigger>
           <TabsTrigger value="Business" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             Business

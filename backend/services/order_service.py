@@ -95,9 +95,9 @@ def build_admin_order_list(user, query):
     if client_type == 'B2B':
         clauses.append("(u.is_b2b = 1 OR u.client_type = 'B2B')")
     elif client_type == 'Business':
-        clauses.append("o.company_id IS NOT NULL")
-    elif client_type in ('Normal', 'Customer'):
-        clauses.append("(u.is_b2b = 0 OR u.client_type IS NULL OR u.client_type = 'Normal' OR u.client_type = 'Customer')")
+        clauses.append("(u.client_type = 'Business' AND COALESCE(u.is_b2b, 0) = 0)")
+    elif client_type in ('Normal', 'Customer', 'Individual'):
+        clauses.append("(COALESCE(u.is_b2b, 0) = 0 AND (u.client_type IS NULL OR u.client_type IN ('', 'Normal', 'Customer', 'Individual')))")
 
     status_filter = _qs_first(query, 'status')
     status_group = _qs_first(query, 'status_group')
