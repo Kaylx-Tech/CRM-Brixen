@@ -286,10 +286,11 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
   // Fetch catalog services
   useEffect(() => {
     if (showProductPicker && catalogServices.length === 0) {
-      apiRequest('/services?active=1', { label: 'Catalog' }).then((res) => {
+      apiRequest('/catalog/products', { label: 'Catalog' }).then((res) => {
         if (res.ok) {
-          const list = res.data?.services || res.data?.data || res.data || []
-          setCatalogServices(Array.isArray(list) ? list : [])
+          const list = res.data?.data || res.data?.services || res.data || []
+          const active = (Array.isArray(list) ? list : []).filter((s) => !s.status || String(s.status).toLowerCase() === 'active')
+          setCatalogServices(active)
         }
       })
     }
