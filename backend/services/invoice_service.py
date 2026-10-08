@@ -247,6 +247,17 @@ def estimate_order_catalog_cost(order_row):
     """Best-effort catalog cost from services by service_name (first product)."""
     if not order_row:
         return 0.0
+    order_id = order_row.get('id')
+    if order_id:
+        items = query_db("SELECT product_name, quantity FROM order_line_items WHERE order_id = ?;", (order_id,)) or []
+        if len(items) > 1:
+            total_cost = 0.0
+            for it in items:
+                svc = query_db(
+                    "SELECT cost_price FROM services WHERE LOWER(name) = LOWER(?) LIMIT 1;",
+                    (str(it.get('product_name') or '').strip(),), one=True)
+                total_cost += float((svc or {}).get('cost_price') or 0) * int(it.get('quantity') or 1)
+            return round(total_cost, 2)
     service_id = order_row.get('service_id')
     if service_id:
         svc = query_db("SELECT cost_price FROM services WHERE id = ?;", (service_id,), one=True)

@@ -386,39 +386,74 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
     }
   }
 
-  // Add Product to existing order
+  // Products on the order (real rows from order_line_items; legacy orders show one virtual row)
+  const orderItems = useMemo(() => {
+    const items = Array.isArray(order?.line_items) ? order.line_items : []
+    if (items.length > 0) return items
+    if (!order) return []
+    const total = Number(order.total || 0)
+    return [{ id: 0, product_name: order.service_name || 'Standard Package', category_name: '', quantity: 1, unit_price: total, line_total: total }]
+  }, [order])
+
+  const applyLineItemResult = (res) => {
+    const d = res.data?.data || res.data || {}
+    setOrder((prev) => (prev ? { ...prev, line_items: d.line_items || prev.line_items, total: d.total ?? prev.total } : prev))
+    fetchOrderDetails()
+    if (onOrderUpdated) onOrderUpdated()
+  }
+
   const handleAddProduct = async (service) => {
     if (!orderId || !service) return
     const toastId = toastProcessing('Adding product…')
-    try {
-      const currentProducts = order?.products_summary ? order.products_summary.split(', ') : []
-      if (!currentProducts.includes(service.name)) {
-        currentProducts.push(service.name)
-      }
-      const newSummary = currentProducts.join(', ')
-      const newTotal = Number(order?.total || 0) + Number(service.price || 0)
+    const res = await apiRequest(`/orders/${orderId}/line-items`, {
+      method: 'POST',
+      body: { service_id: service.id, product_name: service.name },
+      label: 'Add product',
+      silent: true,
+    })
+    if (res.ok) {
+      toastDone(toastId, `Added "${service.name}" to order`)
+      setShowProductPicker(false)
+      setProductSearch('')
+      applyLineItemResult(res)
+    } else {
+      toastFail(toastId, res.reason || 'Failed to add product')
+    }
+  }
 
-      const res = await apiRequest(`/orders/${orderId}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          service_name: newSummary,
-          total: newTotal,
-          price: newTotal,
-        }),
-        label: 'Add product',
-        silent: true,
-      })
-      if (res.ok) {
-        toastDone(toastId, `Added "${service.name}" to order`)
-        setShowProductPicker(false)
-        setProductSearch('')
-        fetchOrderDetails()
-        if (onOrderUpdated) onOrderUpdated()
-      } else {
-        toastFail(toastId, res.reason || 'Failed to add product')
-      }
-    } catch (e) {
-      toastFail(toastId, 'Error adding product')
+  const handleSaveItemPrice = async (item, value) => {
+    const price = Number(value)
+    if (!Number.isFinite(price) || price < 0) {
+      toast.error('Enter a valid price')
+      return
+    }
+    if (Number(item.unit_price || 0) === price) return
+    const res = await apiRequest(`/orders/${orderId}/line-items/${item.id}`, {
+      method: 'PATCH',
+      body: { unit_price: price },
+      label: 'Update price',
+      silent: true,
+    })
+    if (res.ok) {
+      toast.success('Price updated')
+      applyLineItemResult(res)
+    } else {
+      toast.error(res.reason || 'Could not update price')
+    }
+  }
+
+  const handleRemoveItem = async (item) => {
+    if (!window.confirm(`Remove "${item.product_name}" from this order?`)) return
+    const res = await apiRequest(`/orders/${orderId}/line-items/${item.id}`, {
+      method: 'DELETE',
+      label: 'Remove product',
+      silent: true,
+    })
+    if (res.ok) {
+      toast.success('Product removed')
+      applyLineItemResult(res)
+    } else {
+      toast.error(res.reason || 'Could not remove product')
     }
   }
 
@@ -969,14 +1004,46 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                           <span>Product / Service</span>
                           <span>Price</span>
                         </div>
-                        <div className="p-4 flex items-center justify-between text-sm">
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-foreground">{order?.service_name || 'Standard Package'}</span>
-                            <span className="text-xs text-muted-foreground">{order?.delivery_label || 'Standard Processing'}</span>
+                        {orderItems.map((item) => (
+                          <div key={item.id} className="p-4 flex items-center justify-between gap-3 text-sm border-b last:border-b-0">
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-semibold text-foreground truncate">{item.product_name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {item.category_name || order?.delivery_label || 'Standard Processing'}
+                                {Number(item.quantity || 1) > 1 ? ` · Qty ${item.quantity}` : ''}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-sm text-muted-foreground">£</span>
+                              <Input
+                                key={`${item.id}-${item.unit_price}`}
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                defaultValue={Number(item.unit_price || 0).toFixed(2)}
+                                className="h-8 w-28 text-right font-bold"
+                                aria-label={`Price for ${item.product_name}`}
+                                onBlur={(e) => handleSaveItemPrice(item, e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                              />
+                              {orderItems.length > 1 && (
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  title="Remove product"
+                                  onClick={() => handleRemoveItem(item)}
+                                >
+                                  <IconTrash className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                          <Badge variant="outline" className="text-sm font-bold">
-                            £{Number(order?.total || 0).toFixed(2)}
-                          </Badge>
+                        ))}
+                        <div className="p-3 bg-muted/30 border-t flex items-center justify-between text-sm font-semibold">
+                          <span>Total</span>
+                          <span>£{Number(order?.total || 0).toFixed(2)}</span>
                         </div>
                       </div>
                     </TabsContent>

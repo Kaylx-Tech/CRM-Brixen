@@ -159,6 +159,35 @@ def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False):
     }, None
 
 
+def _recalc_order_from_line_items(order_id):
+    """Keep orders.service_name / price / total in sync with order_line_items."""
+    items = query_db(
+        "SELECT product_name, line_total FROM order_line_items WHERE order_id = ? ORDER BY sort_order ASC, id ASC;",
+        (order_id,)) or []
+    total = round(sum(float(i.get('line_total') or 0) for i in items), 2)
+    names = ', '.join(str(i.get('product_name') or '').strip() for i in items if str(i.get('product_name') or '').strip())
+    execute_db(
+        "UPDATE orders SET service_name = ?, price = ?, total = ?, updated_at = datetime('now') WHERE id = ?;",
+        (names, total, total, order_id))
+    return total
+
+
+def _materialize_base_line_items(order):
+    """Orders created without line items keep the product only in service_name; turn it into editable rows."""
+    oid = order['id']
+    if query_db("SELECT 1 FROM order_line_items WHERE order_id = ? LIMIT 1;", (oid,), one=True):
+        return
+    names = [n.strip() for n in str(order.get('service_name') or '').split(',') if n.strip()]
+    total = float(order.get('total') or order.get('price') or 0)
+    for idx, name in enumerate(names):
+        svc = query_db("SELECT id, category FROM services WHERE LOWER(name) = LOWER(?) LIMIT 1;", (name,), one=True) or {}
+        price = total if idx == 0 else 0.0
+        execute_db(
+            "INSERT INTO order_line_items (order_id, product_name, category_name, quantity, unit_price, line_total, sort_order, fulfillment_status) "
+            "VALUES (?, ?, ?, 1, ?, ?, ?, 'Pending');",
+            (oid, name, svc.get('category'), price, price, idx))
+
+
 def handle_order_routes(environ, start_response, path, method, user, body, query):
     """Route handler for /api/orders endpoints."""
     if not (path.startswith('/api/orders') or path.startswith('/api/admin/orders') or path.startswith('/api/client/orders')):
@@ -314,6 +343,73 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
             data={"id": order_id, "cost_price": cost_price},
             message="Order cost updated successfully."
         )
+
+    # ── Order products: POST/PATCH/DELETE /api/orders/<id>/line-items[/<lid>] ──
+    match_li = re.match(r'^/api/(?:admin/)?orders/(\d+)/line-items(?:/(\d+))?$', path)
+    if match_li and method in ('POST', 'PATCH', 'PUT', 'DELETE'):
+        if not is_staff:
+            return error_response(start_response, "Only staff can change order products", status_code=403)
+        order_id = int(match_li.group(1))
+        li_id = int(match_li.group(2)) if match_li.group(2) else None
+        order = query_db("SELECT * FROM orders WHERE id = ?;", (order_id,), one=True)
+        if not order:
+            return error_response(start_response, "Order not found", status_code=404)
+        body = body or {}
+        _materialize_base_line_items(order)
+        if li_id == 0:  # UI row that was not yet a real line item: use the first (base) product
+            first = query_db("SELECT id FROM order_line_items WHERE order_id = ? ORDER BY sort_order ASC, id ASC LIMIT 1;", (order_id,), one=True)
+            li_id = first['id'] if first else None
+
+        if method == 'POST' and li_id is None:
+            service_id = body.get('service_id')
+            svc = query_db("SELECT id, name, category, price FROM services WHERE id = ?;", (int(service_id),), one=True) if service_id else None
+            name = str(body.get('product_name') or (svc or {}).get('name') or '').strip()
+            if not name:
+                return error_response(start_response, "service_id or product_name is required", status_code=400)
+            try:
+                qty = max(1, int(body.get('quantity') or 1))
+                unit = float(body['unit_price']) if body.get('unit_price') not in (None, '') else float((svc or {}).get('price') or 0)
+            except (TypeError, ValueError):
+                return error_response(start_response, "Invalid price or quantity", status_code=400)
+            nxt = (query_db("SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM order_line_items WHERE order_id = ?;", (order_id,), one=True) or {}).get('n') or 0
+            execute_db(
+                "INSERT INTO order_line_items (order_id, product_name, category_name, quantity, unit_price, line_total, sort_order, fulfillment_status) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending');",
+                (order_id, name, (svc or {}).get('category'), qty, unit, round(unit * qty, 2), nxt))
+            action = f"Added product {name}"
+        else:
+            if li_id is None:
+                return error_response(start_response, "Line item id required", status_code=400)
+            item = query_db("SELECT * FROM order_line_items WHERE id = ? AND order_id = ?;", (li_id, order_id), one=True)
+            if not item:
+                return error_response(start_response, "Product row not found", status_code=404)
+            if method == 'DELETE':
+                count = (query_db("SELECT COUNT(*) AS c FROM order_line_items WHERE order_id = ?;", (order_id,), one=True) or {}).get('c') or 0
+                if count <= 1:
+                    return error_response(start_response, "An order must keep at least one product", status_code=400)
+                execute_db("DELETE FROM order_line_items WHERE id = ?;", (li_id,))
+                action = f"Removed product {item.get('product_name')}"
+            else:
+                try:
+                    qty = max(1, int(body.get('quantity') if body.get('quantity') not in (None, '') else item.get('quantity') or 1))
+                    unit = float(body['unit_price']) if body.get('unit_price') not in (None, '') else float(item.get('unit_price') or 0)
+                except (TypeError, ValueError):
+                    return error_response(start_response, "Invalid price or quantity", status_code=400)
+                if unit < 0:
+                    return error_response(start_response, "Price cannot be negative", status_code=400)
+                execute_db("UPDATE order_line_items SET quantity = ?, unit_price = ?, line_total = ? WHERE id = ?;",
+                           (qty, unit, round(unit * qty, 2), li_id))
+                action = f"Changed price of {item.get('product_name')} to {unit:.2f}"
+
+        total = _recalc_order_from_line_items(order_id)
+        try:
+            from services.audit_service import log_activity, log_order_timeline
+            log_activity((user or {}).get('id'), 'ORDER_PRODUCTS_CHANGED', 'orders', order_id, action)
+            log_order_timeline(order_id, 'Completed', action)
+        except Exception:
+            pass
+        fresh = query_db("SELECT * FROM order_line_items WHERE order_id = ? ORDER BY sort_order ASC, id ASC;", (order_id,)) or []
+        return success_response(start_response, message=action, data={"line_items": [dict(r) for r in fresh], "total": total})
 
     # ── PATCH/PUT /api/orders/<id> (Update Order) ─────────────────────────
     match_update = re.match(r'^/api/(?:admin/)?orders/(\d+)$', path)
