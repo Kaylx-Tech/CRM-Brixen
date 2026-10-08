@@ -55,6 +55,8 @@ import { apiRequest, getApiBase, authHeaders } from '@/lib/api'
 import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import ToastSave from '@/components/ToastSave'
+import DocumentPreview from '@/components/DocumentPreview'
+import { downloadDocument } from '@/lib/documents'
 
 const PAYMENT_MODES = [
   { value: 'PKR(Bank Transfer)', label: 'PKR (Bank Transfer)' },
@@ -143,20 +145,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
   const fileInputRef = React.useRef(null)
 
   const handleDownloadDoc = (doc) => {
-    if (doc.drive_web_link) {
-      window.open(doc.drive_web_link, '_blank')
-      return
-    }
-    const base = getApiBase()
-    const url = `${base}/documents/${doc.id}/download`
-    const a = document.createElement('a')
-    a.href = url
-    a.download = doc.name || `document_${doc.id}`
-    a.target = '_blank'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    toast.success('Download initiated')
+    downloadDocument(doc.id, doc.name).catch((err) => toast.error(err.message || 'File could not be downloaded'))
   }
 
   const handleViewDoc = (doc) => {
@@ -1145,44 +1134,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
             </div>
           </DialogHeader>
           <div className="p-4 bg-muted/10 flex items-center justify-center min-h-[500px] max-h-[80vh] overflow-auto">
-            {previewDoc && (
-              (() => {
-                const fname = (previewDoc.name || previewDoc.file_name || '').toLowerCase()
-                const isImage = fname.endsWith('.jpg') || fname.endsWith('.jpeg') || fname.endsWith('.png') || fname.endsWith('.webp') || fname.endsWith('.svg') || (previewDoc.file_type || '').toLowerCase().includes('image')
-                
-                const driveEmbedUrl = previewDoc.drive_file_id
-                  ? `https://drive.google.com/file/d/${previewDoc.drive_file_id}/preview`
-                  : (previewDoc.drive_web_link ? previewDoc.drive_web_link.replace(/\/view(\?.*)?$/, '/preview') : `${getApiBase()}/documents/${previewDoc.id}/view`)
-                
-                const streamUrl = `${getApiBase()}/documents/${previewDoc.id}/view`
-
-                if (isImage) {
-                  return (
-                    <div className="flex flex-col items-center justify-center w-full h-full p-2">
-                      <img
-                        src={streamUrl}
-                        alt={previewDoc.name}
-                        className="max-h-[75vh] max-w-full object-contain rounded-md border shadow-sm bg-background"
-                        onError={(e) => {
-                          if (previewDoc.drive_web_link && e.currentTarget.src !== previewDoc.drive_web_link) {
-                            e.currentTarget.src = previewDoc.drive_web_link
-                          }
-                        }}
-                      />
-                    </div>
-                  )
-                }
-
-                return (
-                  <iframe
-                    src={driveEmbedUrl}
-                    className="w-full h-[75vh] rounded-md border bg-background shadow-inner"
-                    title={previewDoc.name}
-                    allow="autoplay"
-                  />
-                )
-              })()
-            )}
+            {previewDoc && <DocumentPreview doc={previewDoc} className="w-full" />}
           </div>
         </DialogContent>
       </Dialog>
