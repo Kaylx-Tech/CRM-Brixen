@@ -119,6 +119,18 @@ export async function apiRequest(path, options = {}) {
     ...fetchOpts
   } = options
 
+  // Plain-object bodies are sent as JSON (strings, FormData, Blob etc. pass through untouched)
+  if (
+    fetchOpts.body &&
+    typeof fetchOpts.body === "object" &&
+    !(fetchOpts.body instanceof FormData) &&
+    !(fetchOpts.body instanceof Blob) &&
+    !(fetchOpts.body instanceof URLSearchParams) &&
+    !(fetchOpts.body instanceof ArrayBuffer)
+  ) {
+    fetchOpts.body = JSON.stringify(fetchOpts.body)
+  }
+
   const base = getApiBase()
   const url = path.startsWith("http")
     ? path

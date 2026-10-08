@@ -164,6 +164,8 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
         const base64Data = raw.includes(',') ? raw.slice(raw.indexOf(',') + 1) : raw
         const res = await apiRequest('/admin/documents/upload', {
           method: 'POST',
+          silent: true,
+          label: 'Document upload',
           body: {
             order_id: order?.id,
             client_id: order?.user_id,
