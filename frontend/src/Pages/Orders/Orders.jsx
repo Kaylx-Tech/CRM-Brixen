@@ -217,6 +217,8 @@ export default function Orders() {
         if (b2bClientId !== 'all') qs.set('customer_id', b2bClientId)
       } else if (clientType === 'Customer') {
         qs.set('client_type', 'Customer')
+      } else if (clientType === 'Business') {
+        qs.set('client_type', 'Business')
       }
 
       const res = await apiRequest(`/admin/orders?${qs.toString()}`, { label: 'Orders' })
@@ -566,7 +568,7 @@ export default function Orders() {
       <SectionCards stats={statCards} isLoading={isLoading} compact />
 
       <Tabs
-        value={clientType === 'All' ? 'All' : clientType === 'Customer' ? 'Customer' : 'B2B'}
+        value={['All', 'Customer', 'Business'].includes(clientType) ? clientType : 'B2B'}
         onValueChange={(v) => {
           setClientType(v)
           setB2bClientId('all')
@@ -578,6 +580,9 @@ export default function Orders() {
           </TabsTrigger>
           <TabsTrigger value="Customer" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             Customers
+          </TabsTrigger>
+          <TabsTrigger value="Business" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            Business
           </TabsTrigger>
           <TabsTrigger value="B2B" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             B2B Clients

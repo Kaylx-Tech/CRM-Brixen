@@ -33,7 +33,15 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
               />
             </div>
             <div className="flex flex-col gap-1 overflow-hidden">
-              <h3 className="font-semibold text-base leading-tight truncate" title={name}>{name}</h3>
+              <h3 className="font-semibold text-base leading-tight truncate" title={name}>
+                <button
+                  type="button"
+                  onClick={() => setIsViewModalOpen(true)}
+                  className="max-w-full truncate text-left hover:text-primary hover:underline underline-offset-2 focus-visible:outline-none focus-visible:underline"
+                >
+                  {name}
+                </button>
+              </h3>
               <span className="text-xs text-muted-foreground">{number}</span>
             </div>
           </div>
