@@ -42,7 +42,7 @@ function fileToBase64(file) {
     const reader = new FileReader()
     reader.onload = () => {
       const result = String(reader.result || '')
-      resolve(result.includes(',') ? result.split(',', 1)[1] : result)
+      resolve(result.includes(',') ? result.slice(result.indexOf(',') + 1) : result)
     }
     reader.onerror = () => reject(new Error('Unable to read the selected file.'))
     reader.readAsDataURL(file)

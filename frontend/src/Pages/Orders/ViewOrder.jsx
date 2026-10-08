@@ -161,7 +161,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
       const reader = new FileReader()
       reader.onload = async () => {
         const raw = String(reader.result || '')
-        const base64Data = raw.includes(',') ? raw.split(',', 1)[1] : raw
+        const base64Data = raw.includes(',') ? raw.slice(raw.indexOf(',') + 1) : raw
         const res = await apiRequest('/admin/documents/upload', {
           method: 'POST',
           body: {
