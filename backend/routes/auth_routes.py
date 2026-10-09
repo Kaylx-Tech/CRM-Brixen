@@ -3,6 +3,8 @@
 import uuid
 import hashlib
 import secrets
+import time
+import threading
 import urllib.parse
 from db import query_db, execute_db, verify_password, hash_password
 from utils.response import json_response, success_response, error_response
@@ -11,6 +13,49 @@ from config import FRONTEND_URL, COOKIE_SECURE, SESSION_COOKIE_MAX_AGE
 
 MIN_PASSWORD_LEN = 8
 STAFF_MIN_PASSWORD_LEN = 10
+
+# Login brute-force guard: max failed attempts per (ip, email) inside the window.
+LOGIN_MAX_FAILURES = 5
+LOGIN_WINDOW_SECONDS = 15 * 60
+_login_failures = {}
+_login_lock = threading.Lock()
+
+
+def _client_ip(environ):
+    forwarded = (environ.get('HTTP_X_FORWARDED_FOR') or '').split(',')[0].strip()
+    return forwarded or environ.get('REMOTE_ADDR') or 'unknown'
+
+
+def _login_retry_after(key):
+    """Seconds until another attempt is allowed, or 0 when not locked out."""
+    now = time.time()
+    with _login_lock:
+        attempts = [t for t in _login_failures.get(key, []) if now - t < LOGIN_WINDOW_SECONDS]
+        if attempts:
+            _login_failures[key] = attempts
+        else:
+            _login_failures.pop(key, None)
+        if len(attempts) >= LOGIN_MAX_FAILURES:
+            return int(LOGIN_WINDOW_SECONDS - (now - attempts[0])) + 1
+    return 0
+
+
+def _record_login_failure(key):
+    with _login_lock:
+        _login_failures.setdefault(key, []).append(time.time())
+
+
+def _clear_login_failures(key):
+    with _login_lock:
+        _login_failures.pop(key, None)
+
+
+def _revoke_user_sessions(user_id, except_token=None):
+    execute_db("""
+        UPDATE user_sessions
+        SET revoked_at = datetime('now')
+        WHERE user_id = ? AND revoked_at IS NULL AND session_token != ?;
+    """, (user_id, except_token or ''))
 
 
 def _public_user(user_row):
@@ -76,7 +121,16 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
         
         if not email or not password:
             return error_response(start_response, "Email and password are required.", status_code=400)
-            
+
+        attempt_key = (_client_ip(environ), email)
+        retry_after = _login_retry_after(attempt_key)
+        if retry_after:
+            return error_response(
+                start_response,
+                f"Too many failed login attempts. Try again in {max(1, retry_after // 60)} minute(s).",
+                status_code=429,
+            )
+
         user_row = query_db("""
             SELECT id, email, password_hash, full_name as name, role, status
             FROM users
@@ -85,8 +139,10 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
         """, (email,), one=True)
         
         if not user_row or not verify_password(password, user_row['password_hash']):
+            _record_login_failure(attempt_key)
             return error_response(start_response, "Invalid email or password.", status_code=401)
-            
+
+        _clear_login_failures(attempt_key)
         if user_row.get('status') != 'Active':
             return error_response(start_response, "Account is disabled. Please contact support.", status_code=403)
             
@@ -169,6 +225,8 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
                 "UPDATE users SET password_hash = ? WHERE id = ?;",
                 (hash_password(new_password), user['id']),
             )
+            # Sign out every other device; keep the session that made the change.
+            _revoke_user_sessions(user['id'], except_token=user.get('session_token'))
 
         execute_db("""
             UPDATE users SET full_name = ?, phone = ?, country = ?, address = ? WHERE id = ?;
@@ -259,6 +317,7 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
             SET password_hash = ?, password_reset_token = NULL, password_reset_expires = NULL
             WHERE id = ?;
         """, (hash_password(new_password), found_user['id']))
+        _revoke_user_sessions(found_user['id'])
         return success_response(start_response, message="Password updated. You can now sign in.")
 
     return None

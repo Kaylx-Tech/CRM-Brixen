@@ -4,8 +4,17 @@ import sys
 import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Run against a throw-away database so the real hypetex.db is never touched.
+import tempfile
+_tmp_dir = tempfile.mkdtemp(prefix='brixen-test-')
+os.environ['DATABASE_URL'] = os.path.join(_tmp_dir, 'test.db')
+os.environ['STORAGE_PATH'] = os.path.join(_tmp_dir, 'storage')
+os.environ['DEV_AUTH_BYPASS'] = '0'
+
 from main import app
-from db import query_db, execute_db, hash_password
+from db import query_db, execute_db, hash_password, init_db
+init_db()
 
 print("=" * 60)
 print("[TEST] BRIXEN CRM MODULAR REST API TEST SUITE")

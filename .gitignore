@@ -1,0 +1,18 @@
+# Secrets - never commit credentials
+drive.json
+*service-account*.json
+.env
+.env.*
+!.env.example
+
+# Databases and data exports - never commit customer data or large archives
+hypetex.db*
+export.zip
+
+# Python / editor junk
+__pycache__/
+*.py[cod]
+*.crswap
+
+# Node
+node_modules/

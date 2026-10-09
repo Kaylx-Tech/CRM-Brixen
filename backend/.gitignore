@@ -1,10 +1,9 @@
-# SQLite Database Files (keep hypetex.db in private repo for deploy)
+# SQLite Database Files (never commit customer data; the live DB is mounted at /app/data)
 *.db
 *.db-shm
 *.db-wal
 *.sqlite
 *.sqlite3
-!database/hypetex.db
 
 # Environment & Secrets
 .env
