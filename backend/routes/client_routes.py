@@ -151,8 +151,8 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
 
     # ── 2.1 POST /api/admin/customers/type (one change, then locked) ──────────
     if path in ('/api/admin/customers/type', '/api/admin/customers/client-type') and method == 'POST':
-        if not check_permission(user, 'clients.edit'):
-            return _forbidden(start_response)
+        if user_role not in ('SUPER_ADMIN', 'ADMIN') or not check_permission(user, 'clients.edit'):
+            return error_response(start_response, "Only an admin can change the customer type", status_code=403)
         cid = body.get('customer_id') or body.get('id')
         new_type = str(body.get('type') or body.get('client_type') or '').strip()
         if not cid or not new_type:
@@ -342,10 +342,12 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
             return error_response(start_response, "An account with this email already exists", status_code=400)
 
         hashed = hash_password(password)
+        # Notification emails default to the login email (can be changed later from the customer profile).
+        notification_email = email if role == 'CLIENT' else None
         new_id = execute_db("""
-            INSERT INTO users (full_name, email, password_hash, role, phone, client_type, is_b2b, status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'Active', datetime('now', 'localtime'));
-        """, (full_name, email, hashed, role, phone or None, client_type, is_b2b))
+            INSERT INTO users (full_name, email, password_hash, role, phone, client_type, is_b2b, notification_email, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Active', datetime('now', 'localtime'));
+        """, (full_name, email, hashed, role, phone or None, client_type, is_b2b, notification_email))
 
         if is_b2b and new_id:
             execute_db("UPDATE users SET b2b_id = COALESCE(b2b_id, ?) WHERE id = ?;", (f"B2B-{str(new_id).zfill(6)}", new_id))

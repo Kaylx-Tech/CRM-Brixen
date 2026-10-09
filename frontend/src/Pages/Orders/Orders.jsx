@@ -26,6 +26,7 @@ import CreateOrderWizard from "./CreateOrderWizard"
 import QuickCrmOrder from "./QuickCrmOrder"
 import ViewOrder from "./ViewOrder"
 import DeleteConfirmation from "@/components/DeleteConfirmation"
+import { isAdminRole } from "@/lib/permissions"
 
 const columnHelper = createColumnHelper()
 
@@ -294,16 +295,17 @@ export default function Orders() {
     setOrders((prev) => prev.filter((o) => o.id !== victim.id))
 
     toastUndoableDelete({
-      message: `Order ${victim.order_number || victim.id} cancelled`,
+      message: `Order ${victim.order_number || victim.id} deleted`,
       description: 'Undo available for a few seconds',
       onUndo: () => setOrders(snapshot),
       onCommit: async () => {
         const res = await apiRequest(`/orders/${victim.id}`, {
           method: 'DELETE',
-          label: 'Cancel order',
+          label: 'Delete order',
           silent: true,
         })
-        if (!res.ok) throw new Error(res.reason || 'Failed to cancel order')
+        if (!res.ok) throw new Error(res.reason || 'Failed to delete order')
+        fetchOrders(pagination.page || 1)
       },
     })
   }
@@ -473,13 +475,15 @@ export default function Orders() {
                 <IconFolderOpen className="w-4 h-4 mr-2" />
                 Open order
               </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={() => setCancelTarget(o)}
-              >
-                <IconTrash className="w-4 h-4 mr-2" />
-                Delete / Cancel
-              </DropdownMenuItem>
+              {isAdminRole() && (
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setCancelTarget(o)}
+                >
+                  <IconTrash className="w-4 h-4 mr-2" />
+                  Delete order
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )
@@ -670,9 +674,9 @@ export default function Orders() {
         isOpen={Boolean(cancelTarget)}
         onClose={() => setCancelTarget(null)}
         onConfirm={() => cancelTarget && handleDelete(cancelTarget)}
-        title="Cancel order"
-        description={`Cancel order ${cancelTarget?.order_number || cancelTarget?.id || ''}? You can undo for a few seconds.`}
-        confirmText="Cancel order"
+        title="Delete order"
+        description={`Permanently delete order ${cancelTarget?.order_number || cancelTarget?.id || ''} and its documents? You can undo for a few seconds.`}
+        confirmText="Delete order"
         cancelText="Keep order"
       />
     </div>

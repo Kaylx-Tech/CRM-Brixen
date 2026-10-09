@@ -1,6 +1,7 @@
 """Orders & Service Management Routes (/api/orders)
 """
 import json
+import os
 import re
 import secrets
 from db import query_db, execute_db
@@ -485,21 +486,38 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
     match_delete = re.match(r'^/api/(?:admin/)?orders/(\d+)$', path)
     if match_delete and method == 'DELETE':
         order_id = int(match_delete.group(1))
-        if not is_staff:
-            return error_response(start_response, "Only staff can delete orders", status_code=403)
+        if user_role not in ('SUPER_ADMIN', 'ADMIN'):
+            return error_response(start_response, "Only an admin can delete orders", status_code=403)
 
-        existing = query_db("SELECT id, order_number FROM orders WHERE id = ?;", (order_id,), one=True)
+        existing = query_db("SELECT * FROM orders WHERE id = ?;", (order_id,), one=True)
         if not existing:
             return error_response(start_response, "Order not found", status_code=404)
 
-        execute_db(
-            "UPDATE orders SET status = 'Cancelled', updated_at = datetime('now') WHERE id = ?;",
-            (order_id,),
-        )
+        # Same rules as the old portal: locked "genuine" orders need a super admin override.
+        from services import data_protection, permanent_purge
+        force = user_role == 'SUPER_ADMIN' and bool((body or {}).get('force_delete_genuine'))
+        blocked = data_protection.refuse_manual_delete_order(existing, force=force, actor=user)
+        if blocked:
+            return error_response(start_response, blocked, status_code=403)
+
+        result = permanent_purge.purge_order_from_live(order=existing, actor=user, scrub_backups=True)
+        root = os.path.abspath(permanent_purge.storage_dir())
+        for doc_path in result.get('doc_paths') or []:
+            try:
+                if doc_path and os.path.abspath(doc_path).startswith(root) and os.path.isfile(doc_path):
+                    os.remove(doc_path)
+            except OSError:
+                pass
+        try:
+            from services.audit_service import log_activity
+            log_activity((user or {}).get('id'), 'ORDER_PERMANENTLY_DELETED', 'orders', order_id,
+                         f"Permanently deleted order {existing.get('order_number')}")
+        except Exception:
+            pass
         return success_response(
             start_response,
-            data={"id": order_id, "status": "Cancelled"},
-            message="Order cancelled successfully.",
+            data={"id": order_id, "company_kept": True},
+            message="Order permanently deleted.",
         )
 
     return None

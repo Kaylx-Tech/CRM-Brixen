@@ -5,7 +5,6 @@ import AddCustomer from "./AddCustomer"
 import ViewCustomer from "./ViewCustomer"
 import SetCustomerPassword from "./SetCustomerPassword"
 import DeleteConfirmation from "../../components/DeleteConfirmation"
-import CustomerTypeConfirmDialog from "../../components/CustomerTypeConfirmDialog"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { createColumnHelper } from "@tanstack/react-table"
@@ -41,56 +40,12 @@ const Customers = () => {
   const [customerToDelete, setCustomerToDelete] = useState(null)
   const [bulkDeleteRows, setBulkDeleteRows] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [updatingTypeId, setUpdatingTypeId] = useState(null)
-  const [typeChangeTarget, setTypeChangeTarget] = useState(null)
   const navigate = useNavigate()
   const [activeTypeTab, setActiveTypeTab] = useState('All')
   const [ageFilter, setAgeFilter] = useState('all')
   const [customers, setCustomers] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
-
-  const handleUpdateCustomerType = async (customerId, newType) => {
-    setUpdatingTypeId(customerId)
-    const toastId = toast.loading('Updating customer type…')
-    try {
-      const res = await apiRequest('/admin/customers/type', {
-        method: 'POST',
-        body: JSON.stringify({
-          customer_id: customerId,
-          type: newType,
-        }),
-        label: 'Update customer type',
-        silent: true,
-      })
-      if (res.ok) {
-        setCustomers((prev) =>
-          prev.map((c) =>
-            c.id === customerId
-              ? {
-                  ...c,
-                  type: newType,
-                  raw: {
-                    ...c.raw,
-                    client_type: newType,
-                    is_b2b: newType === 'B2B' ? 1 : 0,
-                    type_locked: 1,
-                    type_change_count: (c.raw?.type_change_count || 0) + 1,
-                  },
-                }
-              : c
-          )
-        )
-        toast.success(`Customer type updated to ${newType} and permanently locked`, { id: toastId })
-      } else {
-        toast.error(res.reason || 'Failed to update customer type', { id: toastId })
-      }
-    } catch (err) {
-      toast.error(err?.message || 'Error updating customer type', { id: toastId })
-    } finally {
-      setUpdatingTypeId(null)
-    }
-  }
 
   const loadCustomers = async () => {
     setIsLoading(true)
@@ -308,45 +263,17 @@ const Customers = () => {
         const type = customer.type || 'Individual'
         const isLocked = Number(customer.raw?.type_locked ?? customer.raw?.type_change_count ?? 0) >= 1
 
-        if (isLocked) {
-          return (
-            <div className="flex items-center gap-1.5" title="Type is locked (1-time change used)">
-              <Badge
-                variant={type === 'B2B' ? 'default' : type === 'Business' ? 'outline' : 'secondary'}
-                className="text-[11px] h-6 font-medium"
-              >
-                {type}
-              </Badge>
-              <IconLock className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
-            </div>
-          )
-        }
-
+        // Read-only here: the type is changed from the customer profile (admin only).
         return (
-          <Select
-            value={type}
-            onValueChange={(val) => {
-              if (val !== type) {
-                setTypeChangeTarget({
-                  customerId: customer.id,
-                  customerName: customer.name,
-                  newType: val,
-                })
-              }
-            }}
-            disabled={updatingTypeId === customer.id}
-          >
-            <SelectTrigger className="h-7 w-[105px] text-xs font-medium">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent className="overflow-hidden p-0">
-              <SelectGroup className="p-1">
-                <SelectItem value="Individual">Individual</SelectItem>
-                <SelectItem value="Business">Business</SelectItem>
-                <SelectItem value="B2B">B2B</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-1.5" title={isLocked ? 'Type is locked (1-time change used)' : undefined}>
+            <Badge
+              variant={type === 'B2B' ? 'default' : type === 'Business' ? 'outline' : 'secondary'}
+              className="text-[11px] h-6 font-medium"
+            >
+              {type}
+            </Badge>
+            {isLocked && <IconLock className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />}
+          </div>
         )
       }
     }),
@@ -590,22 +517,6 @@ const Customers = () => {
         confirmText={`Delete (${bulkDeleteRows?.length || 0})`}
         isLoading={isDeleting}
       />
-
-      {/* Customer Type 1-Time Change & Lock Confirmation Dialog */}
-      {typeChangeTarget && (
-        <CustomerTypeConfirmDialog
-          isOpen={!!typeChangeTarget}
-          onClose={() => setTypeChangeTarget(null)}
-          onConfirm={async () => {
-            const target = typeChangeTarget
-            await handleUpdateCustomerType(target.customerId, target.newType)
-            setTypeChangeTarget(null)
-          }}
-          customerName={typeChangeTarget.customerName}
-          newType={typeChangeTarget.newType}
-          isLoading={updatingTypeId === typeChangeTarget.customerId}
-        />
-      )}
     </div>
   )
 }

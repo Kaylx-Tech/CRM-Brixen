@@ -24,6 +24,10 @@ import { toast } from "sonner"
 import { apiRequest } from '@/lib/api'
 import { downloadDocument } from '@/lib/documents'
 import DocumentPreview from '@/components/DocumentPreview'
+import CustomerTypeConfirmDialog from '@/components/CustomerTypeConfirmDialog'
+import { isAdminRole } from '@/lib/permissions'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { IconLock } from '@tabler/icons-react'
 
 const getInitials = (name) => {
   if (!name) return "CU"
@@ -63,6 +67,9 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
   const [detail, setDetail] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [previewDoc, setPreviewDoc] = useState(null)
+  const [typeOverride, setTypeOverride] = useState(null) // { type, locked } after a successful change
+  const [pendingType, setPendingType] = useState(null)
+  const [isChangingType, setIsChangingType] = useState(false)
 
   const raw = customer?.raw || {}
   const name = customer?.name || raw.full_name || "Customer"
@@ -71,7 +78,9 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
   const address = raw.address || customer?.address || "N/A"
   const country = raw.country || customer?.country || "United Kingdom"
   const status = customer?.status || raw.status || "Active"
-  const type = customer?.type || (raw.is_b2b ? "B2B" : raw.client_type || "Individual")
+  const type = typeOverride?.type || customer?.type || (raw.is_b2b ? "B2B" : raw.client_type || "Individual")
+  const typeLocked = Boolean(typeOverride?.locked) || Number(raw.type_locked ?? raw.type_change_count ?? 0) >= 1
+  const canEditType = isAdminRole() && !typeLocked
   const b2bId = raw.b2b_id || (type === "B2B" ? `B2B-${String(customer?.id || 1).padStart(6, '0')}` : null)
   const wpId = raw.wordpress_user_id || customer?.wordpress_user_id
   const signedUp = customer?.signedUp || fmtDate(raw.created_at)
@@ -85,8 +94,33 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
   const ordersCount = detail ? orders.length : (customer?.orders ?? raw.orders_count ?? 0)
 
   useEffect(() => {
-    setNotificationEmail(raw.notification_email || "")
-  }, [raw])
+    // Notification emails default to the login email until a different one is saved
+    setNotificationEmail(raw.notification_email || email)
+  }, [raw, email])
+
+  useEffect(() => {
+    setTypeOverride(null)
+  }, [customer?.id])
+
+  const handleConfirmTypeChange = async () => {
+    if (!customer?.id || !pendingType) return
+    setIsChangingType(true)
+    const res = await apiRequest('/admin/customers/type', {
+      method: 'POST',
+      label: 'Update customer type',
+      silent: true,
+      body: { customer_id: customer.id, type: pendingType },
+    })
+    setIsChangingType(false)
+    if (res.ok) {
+      setTypeOverride({ type: pendingType, locked: true })
+      toast.success(`Customer type updated to ${pendingType} and permanently locked`)
+      onCustomerUpdated?.()
+    } else {
+      toast.error(res.reason || 'Failed to update customer type')
+    }
+    setPendingType(null)
+  }
 
   // Load the full profile (companies, orders, invoices, documents, tickets, activity)
   useEffect(() => {
@@ -181,7 +215,28 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
                   )}
                   <div className="flex flex-col gap-1">
                     <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Customer Type</span>
-                    <span className="font-medium">{type} Account</span>
+                    {canEditType ? (
+                      <Select value={type} onValueChange={(val) => val !== type && setPendingType(val)}>
+                        <SelectTrigger className="h-8 w-44 text-sm">
+                          <SelectValue placeholder="Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectItem value="Individual">Individual</SelectItem>
+                            <SelectItem value="Business">Business</SelectItem>
+                            <SelectItem value="B2B">B2B</SelectItem>
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <span className="font-medium inline-flex items-center gap-1.5">
+                        {type} Account
+                        {typeLocked && <IconLock className="w-3.5 h-3.5 text-muted-foreground/60" title="Type is locked" />}
+                      </span>
+                    )}
+                    {canEditType && (
+                      <span className="text-[11px] text-muted-foreground">Admin only. Can be changed one time, then it is locked.</span>
+                    )}
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Login Email</span>
@@ -368,6 +423,17 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {pendingType && (
+        <CustomerTypeConfirmDialog
+          isOpen={Boolean(pendingType)}
+          onClose={() => setPendingType(null)}
+          onConfirm={handleConfirmTypeChange}
+          customerName={name}
+          newType={pendingType}
+          isLoading={isChangingType}
+        />
+      )}
     </Dialog>
   )
 }

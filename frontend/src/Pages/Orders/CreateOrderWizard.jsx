@@ -45,6 +45,16 @@ function isB2BCustomer(c) {
   return Number(c?.is_b2b) === 1 || String(c?.client_type || "").toUpperCase() === "B2B"
 }
 
+function isBusinessCustomer(c) {
+  return !isB2BCustomer(c) && String(c?.client_type || "").toLowerCase() === "business"
+}
+
+function customerTypeLabel(c) {
+  if (isB2BCustomer(c)) return "B2B Account"
+  if (isBusinessCustomer(c)) return "Business Customer"
+  return "Normal Customer"
+}
+
 function formatGbp(n) {
   return `£${Number(n || 0).toLocaleString("en-GB", {
     minimumFractionDigits: 2,
@@ -210,7 +220,8 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
       const typeOk =
         customerType === "All" ||
         (customerType === "B2B" && b2b) ||
-        (customerType === "Normal" && !b2b)
+        (customerType === "Business" && isBusinessCustomer(c)) ||
+        (customerType === "Normal" && !b2b && !isBusinessCustomer(c))
       if (!typeOk) return false
       if (!q) return true
       return (
@@ -422,6 +433,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
   const typePills = [
     { key: "All", label: "All Customers" },
     { key: "Normal", label: "Normal Customers" },
+    { key: "Business", label: "Business Customers" },
     { key: "B2B", label: "B2B Accounts" },
   ]
 
@@ -520,8 +532,8 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
                             }`}
                           >
                             <div className="flex items-start justify-between gap-2">
-                              <Badge className={b2b ? "badge-green text-[10px]" : "badge-sky text-[10px]"}>
-                                {b2b ? "B2B Account" : "Normal Customer"}
+                              <Badge className={b2b ? "badge-green text-[10px]" : isBusinessCustomer(c) ? "badge-amber text-[10px]" : "badge-sky text-[10px]"}>
+                                {customerTypeLabel(c)}
                               </Badge>
                               <Checkbox checked={selected} className="pointer-events-none" />
                             </div>

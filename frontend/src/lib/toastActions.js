@@ -96,6 +96,11 @@ export function toastUndoableDelete({
         return false
       },
     },
+    // Sonner calls onAutoClose when the timer runs out and onDismiss only on a manual close,
+    // so both must commit the delete or it would silently never happen.
+    onAutoClose: () => {
+      if (!undone) commit()
+    },
     onDismiss: () => {
       if (!undone) commit()
     },

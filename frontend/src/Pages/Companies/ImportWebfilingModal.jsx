@@ -25,6 +25,8 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
   const [companyNumbers, setCompanyNumbers] = useState('')
   const [clientMode, setClientMode] = useState('existing')
   const [selectedClientId, setSelectedClientId] = useState('')
+  const [clientQuery, setClientQuery] = useState('')
+  const [suggestOpen, setSuggestOpen] = useState(false)
   const [newClientName, setNewClientName] = useState('')
   const [newClientEmail, setNewClientEmail] = useState('')
   const [updateExisting, setUpdateExisting] = useState(false)
@@ -74,9 +76,6 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
         const list = json.customers || json.data?.customers || json.data?.clients || (Array.isArray(json.data) ? json.data : [])
         if (Array.isArray(list)) {
           setClients(list)
-          if (list.length > 0 && !selectedClientId) {
-            setSelectedClientId(String(list[0].id))
-          }
         }
       }
     } catch (err) {
@@ -162,6 +161,25 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
     setErrorMsg('')
     setNewClientName('')
     setNewClientEmail('')
+    setSelectedClientId('')
+    setClientQuery('')
+  }
+
+  const clientLabel = (c) => c.name || c.full_name || c.email || 'Customer'
+  const suggestions = React.useMemo(() => {
+    const q = clientQuery.trim().toLowerCase()
+    if (!q) return []
+    return clients
+      .filter((c) =>
+        String(c.name || c.full_name || '').toLowerCase().includes(q) ||
+        String(c.email || '').toLowerCase().includes(q))
+      .slice(0, 8)
+  }, [clients, clientQuery])
+
+  const pickClient = (c) => {
+    setSelectedClientId(String(c.id))
+    setClientQuery(clientLabel(c))
+    setSuggestOpen(false)
   }
 
   return (
@@ -278,38 +296,47 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                     </Label>
                   </RadioGroup>
 
-                  {clientMode === 'existing' && (
-                    <div className="w-64 sm:w-72">
-                      {(() => {
-                        const selectedClient = clients.find((c) => String(c.id) === String(selectedClientId))
-                        return (
-                          <Select
-                            value={selectedClientId}
-                            onValueChange={setSelectedClientId}
-                            disabled={isSubmitting || isLoadingClients}
-                          >
-                            <SelectTrigger className="w-full h-8 text-xs">
-                              <SelectValue placeholder={isLoadingClients ? "Loading clients..." : "Select client..."}>
-                                {selectedClient ? (selectedClient.name || selectedClient.full_name || 'Customer') : undefined}
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent className="max-h-68 w-(--anchor-width) overflow-hidden p-0">
-                              <ScrollArea className="h-68 w-full p-1">
-                                <SelectGroup>
-                                  {clients.map((c) => (
-                                    <SelectItem key={c.id} value={String(c.id)} className="text-xs py-1.5 cursor-pointer">
-                                      {c.name || c.full_name || 'Customer'}
-                                    </SelectItem>
-                                  ))}
-                                </SelectGroup>
-                              </ScrollArea>
-                            </SelectContent>
-                          </Select>
-                        )
-                      })()}
-                    </div>
-                  )}
                 </div>
+
+                {clientMode === 'existing' && (
+                  <div className="relative max-w-md">
+                    <Input
+                      placeholder={isLoadingClients ? 'Loading clients...' : 'Type the customer name or email...'}
+                      className="h-8 text-xs"
+                      value={clientQuery}
+                      disabled={isSubmitting || isLoadingClients}
+                      autoComplete="off"
+                      onChange={(e) => {
+                        setClientQuery(e.target.value)
+                        setSelectedClientId('')
+                        setSuggestOpen(true)
+                      }}
+                      onFocus={() => setSuggestOpen(true)}
+                    />
+                    {suggestOpen && clientQuery.trim() && !selectedClientId && (
+                      <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-56 overflow-y-auto p-1">
+                        {suggestions.length ? (
+                          suggestions.map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              className="w-full text-left rounded-sm px-2 py-1.5 text-xs hover:bg-accent cursor-pointer"
+                              onClick={() => pickClient(c)}
+                            >
+                              <span className="font-medium">{clientLabel(c)}</span>
+                              {c.email ? <span className="block text-[11px] text-muted-foreground">{c.email}</span> : null}
+                            </button>
+                          ))
+                        ) : (
+                          <p className="px-2 py-1.5 text-xs text-muted-foreground">No customer found</p>
+                        )}
+                      </div>
+                    )}
+                    {selectedClientId && (
+                      <p className="mt-1 text-[11px] text-emerald-600">Selected customer will receive these companies.</p>
+                    )}
+                  </div>
+                )}
 
                 {clientMode === 'new' && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">

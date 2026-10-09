@@ -23,8 +23,6 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [city, setCity] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showUnsavedToast, setShowUnsavedToast] = useState(false)
@@ -34,9 +32,7 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
     fullName.trim() ||
     email.trim() ||
     phone.trim() ||
-    city.trim() ||
-    password ||
-    confirmPassword
+    city.trim()
   )
 
   const handleReset = () => {
@@ -44,8 +40,6 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
     setEmail('')
     setPhone('')
     setCity('')
-    setPassword('')
-    setConfirmPassword('')
     setError('')
     setShowUnsavedToast(false)
   }
@@ -63,16 +57,6 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
     e.preventDefault()
     setError('')
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.')
-      return
-    }
-
-    if (password.length < 10) {
-      setError('Password must be at least 10 characters.')
-      return
-    }
-
     setIsLoading(true)
     const toastId = toastProcessing('Creating customer…')
 
@@ -86,8 +70,7 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
       email: email.trim().toLowerCase(),
       phone: phone.trim() || undefined,
       city: city.trim() || undefined,
-      password: password,
-      confirm_password: confirmPassword,
+      // No password is sent: the server sets the default password and the login email is also the notification email.
       client_type: typeMapped,
       is_b2b: custType === 'b2b' ? 1 : 0,
     }
@@ -253,33 +236,10 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
                 />
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="password">Password <span className="text-destructive">*</span></Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Minimum 10 chars"
-                  required
-                  minLength={10}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="confirmPassword">Confirm Password <span className="text-destructive">*</span></Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="Repeat password"
-                  required
-                  minLength={10}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
+              <p className="md:col-span-2 text-xs text-muted-foreground">
+                The login password is set automatically to the default password, and notification emails go to the
+                email above. Both can be changed later from the customer profile.
+              </p>
             </div>
             
             <DialogFooter>
