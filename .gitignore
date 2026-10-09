@@ -1,4 +1,5 @@
 # Secrets - never commit credentials
+.mcp.json
 drive.json
 *service-account*.json
 .env
