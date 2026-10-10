@@ -3,6 +3,7 @@
 import re
 from db import query_db, execute_db
 from utils.response import success_response, error_response
+from services.notification_service import notify_user
 
 
 VALID_STATUSES = ('Open', 'In Progress', 'Completed', 'Cancelled')
@@ -113,6 +114,14 @@ def handle_task_routes(environ, start_response, path, method, user, body, query)
             title, description, priority, status, due_date, department,
             assigned_to, company_id, order_id, client_id, user_id,
         ))
+
+        notify_user(
+            assigned_to,
+            'New task assigned',
+            f"{title} ({priority} priority){' - due ' + str(due_date) if due_date else ''}",
+            'task_assigned', '/admin/tasks',
+            exclude_user_id=user_id,
+        )
 
         return success_response(
             start_response,

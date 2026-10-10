@@ -22,6 +22,36 @@ def create_notification(user_id, title, message, ntype='info', link=None, compan
         return None
 
 
+NOTIFY_STAFF_ROLES = ('SUPER_ADMIN', 'ADMIN')
+
+
+def notify_user(user_id, title, message, ntype='info', link=None, exclude_user_id=None):
+    """Notify one user (skipped when it is the person who caused the event)."""
+    if not user_id or (exclude_user_id is not None and str(user_id) == str(exclude_user_id)):
+        return None
+    return create_notification(user_id, title, message, ntype, link)
+
+
+def notify_staff(title, message, ntype='info', link=None, exclude_user_id=None, roles=NOTIFY_STAFF_ROLES):
+    """Notify every active admin (the person who caused the event is skipped). Never raises."""
+    try:
+        marks = ','.join('?' for _ in roles)
+        rows = query_db(
+            f"SELECT id FROM users WHERE role IN ({marks}) AND COALESCE(status, 'Active') = 'Active';",
+            tuple(roles),
+        ) or []
+    except Exception as e:
+        print(f"[Notification Service Error] Could not list staff: {e}")
+        return 0
+    sent = 0
+    for row in rows:
+        if exclude_user_id is not None and str(row['id']) == str(exclude_user_id):
+            continue
+        if create_notification(row['id'], title, message, ntype, link):
+            sent += 1
+    return sent
+
+
 def mark_notification_read(notification_id, user_id):
     """Mark a notification as read."""
     execute_db("""
@@ -34,7 +64,7 @@ def mark_notification_read(notification_id, user_id):
 def get_user_unread_count(user_id):
     """Fetch unread notification count for a user."""
     row = query_db(
-        "SELECT COUNT(*) as c FROM notifications WHERE user_id = ? AND is_read = 0;",
+        "SELECT COUNT(*) as c FROM notifications WHERE user_id = ? AND is_read = 0 AND COALESCE(type, '') <> 'password_reset';",
         (user_id,),
         one=True,
     )

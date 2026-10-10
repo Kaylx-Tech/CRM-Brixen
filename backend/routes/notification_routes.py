@@ -27,7 +27,8 @@ def handle_notification_routes(environ, start_response, path, method, user, body
             SELECT id, title, message, type, link, is_read, created_at
             FROM notifications
             WHERE user_id = ?
-            ORDER BY created_at DESC
+              AND COALESCE(type, '') <> 'password_reset'
+            ORDER BY created_at DESC, id DESC
             LIMIT ?;
         """, (user_id, limit))
 

@@ -18,6 +18,7 @@ import {
 } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { apiRequest, getApiBase, toastApiEmpty } from '@/lib/api'
+import { formatRelativeTime, resolveAdminLink } from '@/lib/notifications'
 import {
   toastUndoableDelete,
   toastProcessing,
@@ -46,30 +47,6 @@ function formatWhen(dateStr) {
   }
 }
 
-function formatRelativeTime(dateStr) {
-  if (!dateStr) return 'just now'
-  try {
-    const normalized =
-      dateStr.includes(' ') && !dateStr.includes('T')
-        ? dateStr.replace(' ', 'T') + 'Z'
-        : dateStr
-    const date = new Date(normalized)
-    if (Number.isNaN(date.getTime())) return dateStr
-    const now = new Date()
-    const diffSec = Math.floor((now - date) / 1000)
-    if (diffSec < 45) return 'just now'
-    const diffMin = Math.floor(diffSec / 60)
-    if (diffMin < 60) return `${diffMin}m ago`
-    const diffHours = Math.floor(diffMin / 60)
-    if (diffHours < 24) return `${diffHours}h ago`
-    const diffDays = Math.floor(diffHours / 24)
-    if (diffDays < 7) return `${diffDays}d ago`
-    return date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })
-  } catch {
-    return dateStr
-  }
-}
-
 function getNotificationIcon(type = '') {
   const t = String(type || '').toLowerCase()
   if (t.includes('order') || t.includes('package') || t.includes('task')) {
@@ -88,36 +65,6 @@ function getNotificationIcon(type = '') {
     return <IconCircleCheck className="h-4 w-4 text-emerald-600" />
   }
   return <IconBell className="h-4 w-4 text-primary" />
-}
-
-function resolveAdminLink(link) {
-  if (!link) return null
-  const raw = String(link).trim()
-  if (raw.startsWith('http')) return raw
-  if (raw.startsWith('/admin/')) return raw
-  const cleaned = raw.replace(/^#/, '').replace(/^\//, '')
-  const map = {
-    'admin-tasks': '/admin/tasks',
-    tasks: '/admin/tasks',
-    'admin-orders': '/admin/orders',
-    orders: '/admin/orders',
-    'admin-documents': '/admin/documents',
-    documents: '/admin/documents',
-    'admin-customers': '/admin/customers',
-    customers: '/admin/customers',
-    'admin-companies': '/admin/companies',
-    companies: '/admin/companies',
-    'admin-invoices': '/admin/payments',
-    invoices: '/admin/payments',
-    payments: '/admin/payments',
-    'admin-dashboard': '/admin/dashboard',
-    dashboard: '/admin/dashboard',
-    'admin-settings': '/admin/settings',
-    settings: '/admin/settings',
-  }
-  if (map[cleaned]) return map[cleaned]
-  if (cleaned.startsWith('admin-')) return `/admin/${cleaned.replace(/^admin-/, '')}`
-  return null
 }
 
 export default function NotificationsPage() {

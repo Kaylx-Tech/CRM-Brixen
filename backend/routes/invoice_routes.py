@@ -5,6 +5,7 @@ from db import query_db, execute_db
 from utils.response import json_response, success_response, error_response
 from services.invoice_service import enrich_invoice_row, load_invoice_for_staff, update_admin_invoice
 from services.invoice_mail import send_invoice_email
+from services.notification_service import notify_staff
 
 def handle_invoice_routes(environ, start_response, path, method, user, body, query):
     """Route handler for /api/invoices endpoints."""
@@ -189,6 +190,12 @@ def handle_invoice_routes(environ, start_response, path, method, user, body, que
         updated, error, _mail = update_admin_invoice(inv_id, {'status': 'Paid'}, actor=user)
         if error:
             return error_response(start_response, error, status_code=400)
+        notify_staff(
+            'Payment received',
+            f"Invoice {(updated or {}).get('invoice_number') or inv_id} was marked as paid.",
+            'payment_received', '/admin/payments',
+            exclude_user_id=user_id,
+        )
         return success_response(start_response, data={"invoice": updated}, message="Payment recorded successfully.")
 
     return None

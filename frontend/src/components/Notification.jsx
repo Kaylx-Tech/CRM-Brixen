@@ -11,6 +11,7 @@ import {
   IconPackage,
   IconCreditCard,
   IconArrowRight,
+  IconListCheck,
 } from "@tabler/icons-react"
 import {
   Popover,
@@ -19,8 +20,8 @@ import {
 } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "./ui/button"
-import { ScrollArea } from "./ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
+import { formatRelativeTime, resolveAdminLink } from "@/lib/notifications"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import {
@@ -31,36 +32,12 @@ import {
 } from "@/lib/toastActions"
 import { authHeaders } from "@/lib/api"
 
-// ==========================================
-// Time Helper
-// ==========================================
-function formatRelativeTime(dateStr) {
-  if (!dateStr) return "just now"
-  try {
-    const normalized = dateStr.includes(" ") && !dateStr.includes("T")
-      ? dateStr.replace(" ", "T") + "Z"
-      : dateStr
-    const date = new Date(normalized)
-    if (isNaN(date.getTime())) return dateStr
-    const now = new Date()
-    const diffMs = now - date
-    const diffSec = Math.floor(diffMs / 1000)
-    if (diffSec < 45) return "just now"
-    const diffMin = Math.floor(diffSec / 60)
-    if (diffMin < 60) return `${diffMin}m ago`
-    const diffHours = Math.floor(diffMin / 60)
-    if (diffHours < 24) return `${diffHours}h ago`
-    const diffDays = Math.floor(diffHours / 24)
-    if (diffDays < 7) return `${diffDays}d ago`
-    return date.toLocaleDateString("en-GB", { month: "short", day: "numeric" })
-  } catch {
-    return dateStr
-  }
-}
-
 // Icon mapper by notification type
 function getNotificationIcon(type = "") {
   const t = (type || "").toLowerCase()
+  if (t.includes("task")) {
+    return <IconListCheck className="h-4 w-4 text-violet-500" />
+  }
   if (t.includes("order") || t.includes("package")) {
     return <IconPackage className="h-4 w-4 text-blue-500" />
   }
@@ -112,13 +89,22 @@ export default function Notifications() {
     }
   }, [apiUrl])
 
-  // Initial fetch and 60s periodic polling
+  // Initial fetch, 30s polling (only while the tab is visible) and a refresh when the user comes back to the tab
   useEffect(() => {
     fetchNotifications()
     const interval = setInterval(() => {
-      fetchNotifications()
-    }, 60000)
-    return () => clearInterval(interval)
+      if (document.visibilityState === "visible") fetchNotifications()
+    }, 30000)
+    const onVisible = () => {
+      if (document.visibilityState === "visible") fetchNotifications()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    window.addEventListener("focus", onVisible)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener("visibilitychange", onVisible)
+      window.removeEventListener("focus", onVisible)
+    }
   }, [fetchNotifications])
 
   // Re-fetch when dropdown opens
@@ -170,12 +156,13 @@ export default function Notifications() {
       }
     }
 
-    if (item.link) {
+    const href = resolveAdminLink(item.link)
+    if (href) {
       setIsOpen(false)
-      if (item.link.startsWith("http")) {
-        window.open(item.link, "_blank")
+      if (href.startsWith("http")) {
+        window.open(href, "_blank", "noopener,noreferrer")
       } else {
-        navigate(item.link)
+        navigate(href)
       }
     }
   }
@@ -234,7 +221,7 @@ export default function Notifications() {
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-80 sm:w-96 p-0 shadow-xl rounded-xl border border-border/70 overflow-hidden"
+        className="w-[calc(100vw-2rem)] sm:w-[26rem] p-0 shadow-xl rounded-xl border border-border/70 overflow-hidden"
         align="end"
       >
         {/* Header */}
@@ -323,55 +310,63 @@ export default function Notifications() {
             </Button>
           </div>
         ) : (
-          <ScrollArea className="max-h-[380px]">
+          <div className="max-h-[400px] overflow-y-auto overscroll-contain">
             <ul className="divide-y divide-border/40">
               {notifications.map((item) => {
                 const isUnread = !item.is_read
+                const href = resolveAdminLink(item.link)
                 return (
                   <li
                     key={item.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleNotificationClick(item)}
-                    className={`p-3.5 transition-all cursor-pointer hover:bg-muted/60 relative flex gap-3 items-start group ${
-                      isUnread ? "bg-primary/[0.04]" : ""
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        handleNotificationClick(item)
+                      }
+                    }}
+                    className={`px-4 py-3 transition-colors cursor-pointer hover:bg-muted/60 focus-visible:outline-none focus-visible:bg-muted/60 flex gap-3 items-start group ${
+                      isUnread ? "bg-primary/[0.05]" : ""
                     }`}
                   >
                     {/* Icon */}
-                    <div className="h-8 w-8 rounded-lg bg-muted/80 flex items-center justify-center shrink-0 mt-0.5 border border-border/40">
+                    <div className="h-8 w-8 rounded-lg bg-muted/80 flex items-center justify-center shrink-0 border border-border/40">
                       {getNotificationIcon(item.type)}
                     </div>
 
                     {/* Notification content */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1 mb-0.5">
-                        <span className={`text-xs font-medium truncate ${isUnread ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <span className={`text-[13px] leading-snug ${isUnread ? "font-semibold text-foreground" : "font-medium text-muted-foreground"}`}>
                           {item.title || "Notification"}
                         </span>
-                        <span className="text-[10px] text-muted-foreground/70 shrink-0 font-normal">
-                          {formatRelativeTime(item.created_at)}
+                        {/* The dot slot always takes the same width, so unread and read rows line up */}
+                        <span className="flex items-center gap-1.5 shrink-0 pt-0.5">
+                          <span className="text-[11px] text-muted-foreground/80 whitespace-nowrap">
+                            {formatRelativeTime(item.created_at)}
+                          </span>
+                          <span className={`h-2 w-2 rounded-full ${isUnread ? "bg-primary" : "bg-transparent"}`} />
                         </span>
                       </div>
 
-                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                         {item.message || item.description || ""}
                       </p>
 
-                      {item.link && (
-                        <div className="mt-1.5 flex items-center text-[11px] font-medium text-primary hover:underline gap-0.5">
-                          <span>View details</span>
+                      {href && (
+                        <div className="mt-1.5 flex items-center text-[11px] font-medium text-primary gap-0.5">
+                          <span className="group-hover:underline">View details</span>
                           <IconArrowRight className="h-3 w-3 inline transition-transform group-hover:translate-x-0.5" />
                         </div>
                       )}
                     </div>
-
-                    {/* Unread dot indicator */}
-                    {isUnread && (
-                      <span className="h-2 w-2 rounded-full bg-primary shrink-0 self-center" />
-                    )}
                   </li>
                 )
               })}
             </ul>
-          </ScrollArea>
+          </div>
         )}
 
         <div className="border-t border-border/60 px-3 py-2 bg-muted/30">

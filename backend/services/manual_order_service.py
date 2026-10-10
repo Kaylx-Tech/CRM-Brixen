@@ -201,6 +201,14 @@ def create_manual_crm_order(data, actor=None):
             ) VALUES (?, ?, ?, 1, ?, ?, ?);
         """, (order_id, item['product_name'], item.get('category_name'), unit, unit, idx))
 
+    from services.notification_service import notify_staff
+    notify_staff(
+        'New CRM order',
+        f"Order {order_num} for {(client or {}).get('full_name') or 'a customer'} was created.",
+        'order_update', '/admin/orders',
+        exclude_user_id=(actor or {}).get('id'),
+    )
+
     return {
         'id': order_id,
         'order_id': order_id,

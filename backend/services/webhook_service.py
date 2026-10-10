@@ -4,6 +4,7 @@ Idempotent upsert keyed by woocommerce_order_id / order_number (app.py parity).
 import secrets
 from db import query_db, execute_db, hash_password, unusable_password_hash
 from services.audit_service import log_order_timeline
+from services.notification_service import notify_staff
 
 
 def process_woocommerce_order(payload):
@@ -107,6 +108,11 @@ def process_woocommerce_order(payload):
             ) VALUES (?, ?, ?, ?, 0.00, ?, ?, ?, ?, 'Website Charge', datetime('now'), datetime('now'));
         """, (order_num, user_id, service_name, total, total, status, notes or None, order_id_wc or None))
         log_order_timeline(order_id, 'Pending', 'Order Received from Website', f"Order #{order_num} synced from WooCommerce.")
+        notify_staff(
+            'New website order',
+            f"Order {order_num} from {full_name or email} is in the CRM.",
+            'order_update', '/admin/orders',
+        )
         created = True
 
     # 4. Replace line items when present

@@ -9,6 +9,7 @@ from utils.response import json_response, success_response, error_response
 from services.invoice_service import attach_order_profit_fields
 from services.order_service import build_admin_order_list
 from services.manual_order_service import create_manual_crm_order
+from services.notification_service import notify_staff
 
 
 def _wizard_line_items(body):
@@ -316,6 +317,13 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
             result, err = _upsert_wizard_order(body=payload, user_id=user_id, is_staff=is_staff, as_draft=False)
         if err:
             return error_response(start_response, err, status_code=400)
+        if not is_manual:  # manual CRM orders notify from inside create_manual_crm_order
+            notify_staff(
+                'New order',
+                f"Order {result.get('order_number')} ({result.get('service_name') or 'order'}) was created.",
+                'order_update', '/admin/orders',
+                exclude_user_id=user_id,
+            )
         return success_response(
             start_response,
             data=result,
@@ -479,6 +487,14 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
             return error_response(start_response, "Status is required", status_code=400)
 
         execute_db("UPDATE orders SET status = ? WHERE id = ?;", (new_status, order_id))
+        if str(new_status).strip().lower() == 'completed':
+            done = query_db("SELECT order_number, service_name FROM orders WHERE id = ?;", (order_id,), one=True) or {}
+            notify_staff(
+                'Order completed',
+                f"Order {done.get('order_number') or order_id} ({done.get('service_name') or 'order'}) is completed.",
+                'order_complete', '/admin/orders',
+                exclude_user_id=user_id,
+            )
 
         return success_response(start_response, message=f"Order status updated to {new_status}.")
 
