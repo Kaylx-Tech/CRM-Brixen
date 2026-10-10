@@ -52,7 +52,11 @@ def main():
 
     password = getpass.getpass(f"New password (min {MIN_LENGTH} characters): ")
     if len(password) < MIN_LENGTH:
-        sys.exit(f"Password is too short (minimum {MIN_LENGTH} characters). Nothing was changed.")
+        sys.exit(
+            f"Password is too short: the script received {len(password)} character(s), minimum is {MIN_LENGTH}. "
+            "Nothing was changed. (If you typed more, the terminal dropped characters: type it in a text editor "
+            "first, then paste with Ctrl+Shift+V / right-click.)"
+        )
     if password.lower() == email or password.lower() == (user["full_name"] or "").lower():
         sys.exit("Password must not be the email or the name. Nothing was changed.")
     if getpass.getpass("Repeat new password: ") != password:
