@@ -280,7 +280,7 @@ const AddCompany = ({ isOpen, onClose }) => {
         <DialogContent className="sm:max-w-140 p-0 overflow-hidden">
           <DialogHeader className="p-6 pb-2">
             <DialogTitle className="text-xl">Add Company</DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+            <DialogDescription className="text-sm text-muted-foreground mt-0.5">
               Search UK Companies House to auto-fill official records or enter details manually.
             </DialogDescription>
           </DialogHeader>
@@ -288,7 +288,7 @@ const AddCompany = ({ isOpen, onClose }) => {
         <ScrollArea className="max-h-[75vh]">
           <form onSubmit={handleSubmit} className="p-6 pt-2 space-y-4">
             {errorMsg && (
-              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center gap-2">
+              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-2">
                 <IconAlertCircle className="h-4 w-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
@@ -327,7 +327,7 @@ const AddCompany = ({ isOpen, onClose }) => {
                         <div
                           key={idx}
                           onClick={() => handleSelectCompany(item)}
-                          className="p-2.5 rounded-md hover:bg-accent cursor-pointer flex items-center justify-between gap-2 text-xs transition-colors"
+                          className="p-2.5 rounded-md hover:bg-accent cursor-pointer flex items-center justify-between gap-2 text-sm transition-colors"
                         >
                           <div className="overflow-hidden">
                             <p className="font-semibold truncate text-foreground flex items-center gap-1.5">
@@ -364,7 +364,7 @@ const AddCompany = ({ isOpen, onClose }) => {
                 >
                   <Label
                     htmlFor="add-comp-client-existing"
-                    className="flex items-center gap-1.5 cursor-pointer text-xs font-medium"
+                    className="flex items-center gap-1.5 cursor-pointer text-sm font-medium"
                   >
                     <RadioGroupItem value="existing" id="add-comp-client-existing" />
                     <span>Existing Client</span>
@@ -372,7 +372,7 @@ const AddCompany = ({ isOpen, onClose }) => {
 
                   <Label
                     htmlFor="add-comp-client-new"
-                    className="flex items-center gap-1.5 cursor-pointer text-xs font-medium"
+                    className="flex items-center gap-1.5 cursor-pointer text-sm font-medium"
                   >
                     <RadioGroupItem value="new" id="add-comp-client-new" />
                     <span>New Client</span>
@@ -389,7 +389,7 @@ const AddCompany = ({ isOpen, onClose }) => {
                           onValueChange={setSelectedClientId}
                           disabled={isSubmitting || isLoadingClients}
                         >
-                          <SelectTrigger className="w-full h-8 text-xs">
+                          <SelectTrigger className="w-full h-8 text-sm">
                             <SelectValue placeholder={isLoadingClients ? 'Loading clients...' : 'Select client...'}>
                               {selectedClient ? (selectedClient.name || selectedClient.full_name || 'Customer') : undefined}
                             </SelectValue>
@@ -398,7 +398,7 @@ const AddCompany = ({ isOpen, onClose }) => {
                             <ScrollArea className="h-68 w-full p-1">
                               <SelectGroup>
                                 {clients.map((c) => (
-                                  <SelectItem key={c.id} value={String(c.id)} className="text-xs py-1.5 cursor-pointer">
+                                  <SelectItem key={c.id} value={String(c.id)} className="text-sm py-1.5 cursor-pointer">
                                     {c.name || c.full_name || 'Customer'}
                                   </SelectItem>
                                 ))}
@@ -415,23 +415,23 @@ const AddCompany = ({ isOpen, onClose }) => {
               {clientType === 'new' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div className="space-y-1">
-                    <Label htmlFor="add-new-client-name" className="text-xs font-normal">Full Name</Label>
+                    <Label htmlFor="add-new-client-name" className="text-sm font-normal">Full Name</Label>
                     <Input
                       id="add-new-client-name"
                       placeholder="e.g. John Doe"
-                      className="text-xs"
+                      className="text-sm"
                       value={newClientName}
                       onChange={(e) => setNewClientName(e.target.value)}
                       disabled={isSubmitting}
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="add-new-client-email" className="text-xs font-normal">Email Address</Label>
+                    <Label htmlFor="add-new-client-email" className="text-sm font-normal">Email Address</Label>
                     <Input
                       id="add-new-client-email"
                       type="email"
                       placeholder="e.g. john@example.com"
-                      className="text-xs"
+                      className="text-sm"
                       value={newClientEmail}
                       onChange={(e) => setNewClientEmail(e.target.value)}
                       disabled={isSubmitting}
@@ -454,13 +454,13 @@ const AddCompany = ({ isOpen, onClose }) => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1 sm:col-span-2">
-                  <Label htmlFor="add-comp-name" className="text-xs font-normal">
+                  <Label htmlFor="add-comp-name" className="text-sm font-normal">
                     Company Name <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="add-comp-name"
                     placeholder="e.g. Acme Innovations Ltd"
-                    className="text-xs"
+                    className="text-sm"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     disabled={isSubmitting}
@@ -468,13 +468,13 @@ const AddCompany = ({ isOpen, onClose }) => {
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="add-comp-num" className="text-xs font-normal">
+                  <Label htmlFor="add-comp-num" className="text-sm font-normal">
                     Company Number <span className="text-muted-foreground text-[10px]">(Optional)</span>
                   </Label>
                   <Input
                     id="add-comp-num"
                     placeholder="e.g. 12345678"
-                    className="text-xs"
+                    className="text-sm"
                     value={companyNumber}
                     onChange={(e) => setCompanyNumber(e.target.value)}
                     disabled={isSubmitting}
@@ -482,13 +482,13 @@ const AddCompany = ({ isOpen, onClose }) => {
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="add-comp-date" className="text-xs font-normal">
+                  <Label htmlFor="add-comp-date" className="text-sm font-normal">
                     Incorporation Date
                   </Label>
                   <Input
                     id="add-comp-date"
                     type="date"
-                    className="text-xs"
+                    className="text-sm"
                     value={incorporationDate}
                     onChange={(e) => setIncorporationDate(e.target.value)}
                     disabled={isSubmitting}
@@ -496,13 +496,13 @@ const AddCompany = ({ isOpen, onClose }) => {
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="add-comp-director" className="text-xs font-normal">
+                  <Label htmlFor="add-comp-director" className="text-sm font-normal">
                     Director Name
                   </Label>
                   <Input
                     id="add-comp-director"
                     placeholder="e.g. John Smith"
-                    className="text-xs"
+                    className="text-sm"
                     value={director}
                     onChange={(e) => setDirector(e.target.value)}
                     disabled={isSubmitting}
@@ -510,29 +510,29 @@ const AddCompany = ({ isOpen, onClose }) => {
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-xs font-normal">Status</Label>
+                  <Label className="text-sm font-normal">Status</Label>
                   <Select value={status} onValueChange={setStatus} disabled={isSubmitting}>
-                    <SelectTrigger className="w-full h-8 text-xs">
+                    <SelectTrigger className="w-full h-8 text-sm">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        <SelectItem value="Active" className="text-xs">Active</SelectItem>
-                        <SelectItem value="Inactive" className="text-xs">Inactive</SelectItem>
-                        <SelectItem value="Dissolved" className="text-xs">Dissolved</SelectItem>
+                        <SelectItem value="Active" className="text-sm">Active</SelectItem>
+                        <SelectItem value="Inactive" className="text-sm">Inactive</SelectItem>
+                        <SelectItem value="Dissolved" className="text-sm">Dissolved</SelectItem>
                       </SelectGroup>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-1 sm:col-span-2">
-                  <Label htmlFor="add-comp-office" className="text-xs font-normal">
+                  <Label htmlFor="add-comp-office" className="text-sm font-normal">
                     Registered Office Address
                   </Label>
                   <Input
                     id="add-comp-office"
                     placeholder="Registered address"
-                    className="text-xs"
+                    className="text-sm"
                     value={regOffice}
                     onChange={(e) => setRegOffice(e.target.value)}
                     disabled={isSubmitting}

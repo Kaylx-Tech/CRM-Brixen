@@ -112,7 +112,7 @@ export const DataTable = ({
               <Input
                 placeholder={searchPlaceholder}
                 value={searchDisplay}
-                className="max-w-xs pl-8 text-xs"
+                className="max-w-xs pl-8 text-sm"
                 onChange={(event) => {
                   if (isSearchControlled) onSearchChange(event.target.value)
                   else setGlobalFilter(event.target.value)
@@ -138,14 +138,14 @@ export const DataTable = ({
                 }}
                 disabled={isLoading}
               >
-                <SelectTrigger className={cn("h-8 text-xs", config.triggerClassName || "w-35")}>
+                <SelectTrigger className={cn("h-8 text-sm", config.triggerClassName || "w-35")}>
                   <SelectValue placeholder={config.placeholder} />
                 </SelectTrigger>
                 <SelectContent className={cn("min-w-[var(--radix-select-trigger-width)]", config.contentClassName)}>
                   <SelectGroup>
                     <SelectItem value="all">{config.allLabel || "All"}</SelectItem>
                     {config.options.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                      <SelectItem key={opt.value} value={opt.value} className="text-sm">
                         {opt.label}
                       </SelectItem>
                     ))}
@@ -292,7 +292,7 @@ export const DataTable = ({
           </TableBody>
         </Table>
       </div>
-      <div className={cn("flex items-center justify-between py-3 px-1 text-xs text-muted-foreground", isLoading && "invisible")}>
+      <div className={cn("flex items-center justify-between py-3 px-1 text-sm text-muted-foreground", isLoading && "invisible")}>
         <span>
           {table.getFilteredSelectedRowModel().rows.length > 0
             ? `${table.getFilteredSelectedRowModel().rows.length} of ${table.getFilteredRowModel().rows.length} row(s) selected`

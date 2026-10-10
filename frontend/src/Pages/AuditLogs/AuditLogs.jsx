@@ -126,7 +126,7 @@ const AuditLogs = () => {
           </Button>
         ),
         cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
             {row.getValue('when')}
           </span>
         ),
@@ -137,7 +137,7 @@ const AuditLogs = () => {
           <div className="flex flex-col gap-0.5 min-w-0 max-w-[200px]">
             <OverflowTooltip
               text={row.getValue('user')}
-              className="text-xs font-medium text-foreground"
+              className="text-sm font-medium text-foreground"
             />
             {row.original.email ? (
               <OverflowTooltip
@@ -168,7 +168,7 @@ const AuditLogs = () => {
           const type = row.getValue('entityType')
           const id = row.original.entityId
           if (!type && !id) {
-            return <span className="text-xs text-muted-foreground">—</span>
+            return <span className="text-sm text-muted-foreground">—</span>
           }
           return (
             <div className="flex flex-col gap-0.5 min-w-0">
@@ -187,7 +187,7 @@ const AuditLogs = () => {
         cell: ({ row }) => (
           <OverflowTooltip
             text={row.getValue('details') || '—'}
-            className="text-xs text-muted-foreground max-w-[360px]"
+            className="text-sm text-muted-foreground max-w-[360px]"
           />
         ),
       }),
@@ -225,7 +225,7 @@ const AuditLogs = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Audit Logs</h2>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Staff activity trail · {total} event{total === 1 ? '' : 's'}
           </p>
         </div>

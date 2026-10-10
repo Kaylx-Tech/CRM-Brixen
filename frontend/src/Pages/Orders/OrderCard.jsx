@@ -35,7 +35,7 @@ const OrderCard = ({ order, isSelected, onToggleSelect, onDelete }) => {
             </div>
             <div className="flex flex-col gap-1 overflow-hidden">
               <h3 className="font-semibold text-base leading-tight truncate text-primary">{orderNum}</h3>
-              <span className="text-xs text-muted-foreground">{date}</span>
+              <span className="text-sm text-muted-foreground">{date}</span>
             </div>
           </div>
           
@@ -64,7 +64,7 @@ const OrderCard = ({ order, isSelected, onToggleSelect, onDelete }) => {
           </div>
         </CardHeader>
         
-        <CardContent className="pb-4 space-y-3 flex-1 text-xs">
+        <CardContent className="pb-4 space-y-3 flex-1 text-sm">
           <div>
             <span className="font-semibold text-foreground text-[13px]">{company}</span>
           </div>

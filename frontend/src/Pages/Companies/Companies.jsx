@@ -236,13 +236,13 @@ const Companies = () => {
           <TabsList className="flex-wrap h-auto justify-start">
             <TabsTrigger value="all" className="py-2">
               All
-              <span className="ml-2 bg-muted-foreground/20 px-1.5 py-0.5 rounded-full text-xs min-w-[20px] text-center inline-flex items-center justify-center">
+              <span className="ml-2 bg-muted-foreground/20 px-1.5 py-0.5 rounded-full text-sm min-w-[20px] text-center inline-flex items-center justify-center">
                 {isLoading ? <Skeleton className="h-3 w-4 rounded-xs" /> : companies.length}
               </span>
             </TabsTrigger>
             <TabsTrigger value="uk" className="py-2">
               UK Portfolio
-              <span className="ml-2 bg-muted-foreground/20 px-1.5 py-0.5 rounded-full text-xs min-w-[20px] text-center inline-flex items-center justify-center">
+              <span className="ml-2 bg-muted-foreground/20 px-1.5 py-0.5 rounded-full text-sm min-w-[20px] text-center inline-flex items-center justify-center">
                 {isLoading ? <Skeleton className="h-3 w-4 rounded-xs" /> : companies.length}
               </span>
             </TabsTrigger>
@@ -274,7 +274,7 @@ const Companies = () => {
       {selectedIds.length > 0 && (
         <Card className="animate-in animate-out p-2 fade-in slide-in-from-top-2  duration-200">
           <CardContent className="w-full p-0.5 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3 text-xs">
+          <div className="flex items-center gap-3 text-sm">
             <div className="flex items-center gap-2">
               <Checkbox
                 checked={isAllVisibleSelected}
@@ -292,13 +292,13 @@ const Companies = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleDeselectAll} className="text-xs h-8">
+            <Button variant="ghost" size="sm" onClick={handleDeselectAll} className="text-sm h-8">
               Clear selection
             </Button>
             <Button
               variant="destructive"
               size="sm"
-              className="text-xs h-8"
+              className="text-sm h-8"
               onClick={() => {
                 setSingleDeleteId(null)
                 setDeleteConfirmOpen(true)

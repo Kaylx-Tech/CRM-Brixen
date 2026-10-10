@@ -533,7 +533,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                   <DialogTitle className="text-xl font-bold tracking-tight">
                     {formatOrderNumberDisplay(order?.order_number || orderId)}
                   </DialogTitle>
-                  <Badge className={`${statusBadgeColor(order?.status)} text-xs`}>
+                  <Badge className={`${statusBadgeColor(order?.status)} text-sm`}>
                     {order?.status || 'Processing'}
                   </Badge>
                   <Button
@@ -546,7 +546,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                     {copiedKey === 'order_num' ? <IconCheck className="w-3.5 h-3.5 text-emerald-600" /> : <IconCopy className="w-3.5 h-3.5" />}
                   </Button>
                 </div>
-                <DialogDescription className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+                <DialogDescription className="text-sm text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
                   <span>{formatDateDisplay(order?.created_at)}</span>
                   {order?.company_name && (
                     <>
@@ -593,7 +593,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="text-sm font-bold text-foreground">Formation & Checkout Data</h4>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-sm text-muted-foreground">
                             Fields collected when this order was placed.
                           </p>
                         </div>
@@ -603,7 +603,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               type="button"
                               size="sm"
                               variant="outline"
-                              className="text-xs h-8 gap-1.5"
+                              className="text-sm h-8 gap-1.5"
                               onClick={() => setIsEditingDetails(true)}
                             >
                               <IconPencil className="w-3.5 h-3.5" />
@@ -615,7 +615,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                className="text-xs h-8 gap-1"
+                                className="text-sm h-8 gap-1"
                                 onClick={() => setAddFieldOpen(true)}
                               >
                                 <IconPlus className="w-3.5 h-3.5" />
@@ -624,7 +624,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               <Button
                                 type="button"
                                 size="sm"
-                                className="text-xs h-8 gap-1"
+                                className="text-sm h-8 gap-1"
                                 disabled={isSavingDetails}
                                 onClick={handleSaveDetails}
                               >
@@ -635,7 +635,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                 type="button"
                                 size="sm"
                                 variant="ghost"
-                                className="text-xs h-8"
+                                className="text-sm h-8"
                                 disabled={isSavingDetails}
                                 onClick={() => {
                                   setIsEditingDetails(false)
@@ -652,7 +652,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                       {!isEditingDetails ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
                           {formFields.length === 0 ? (
-                            <p className="text-xs text-muted-foreground col-span-2">
+                            <p className="text-sm text-muted-foreground col-span-2">
                               No checkout form details recorded.
                             </p>
                           ) : (
@@ -663,7 +663,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                   key={`${field.label}-${idx}`}
                                   className={`flex flex-col gap-1 ${wide ? 'md:col-span-2' : ''}`}
                                 >
-                                  <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">
+                                  <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">
                                     {field.label}
                                   </span>
                                   <span className="font-semibold text-foreground text-sm break-words">
@@ -681,7 +681,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                             return (
                               <div key={idx} className="space-y-1.5 p-3 rounded-lg border bg-muted/20">
                                 <div className="flex items-center justify-between">
-                                  <Label className="text-xs font-semibold text-foreground">
+                                  <Label className="text-sm font-semibold text-foreground">
                                     {field.label}
                                   </Label>
                                   <Button
@@ -699,13 +699,13 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                     rows={2}
                                     value={field.value}
                                     onChange={(e) => handleFieldValueChange(idx, e.target.value)}
-                                    className="text-xs bg-background resize-none"
+                                    className="text-sm bg-background resize-none"
                                   />
                                 ) : (
                                   <Input
                                     value={field.value}
                                     onChange={(e) => handleFieldValueChange(idx, e.target.value)}
-                                    className="h-8 text-xs bg-background"
+                                    className="h-8 text-sm bg-background"
                                   />
                                 )}
                               </div>
@@ -718,12 +718,12 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
 
                       {/* Status & Payment Settings */}
                       <div className="space-y-3">
-                        <h4 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
+                        <h4 className="text-sm uppercase tracking-wider font-semibold text-muted-foreground">
                           Order Status & Payment
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-1.5">
-                            <Label className="text-xs font-medium">Order Status</Label>
+                            <Label className="text-sm font-medium">Order Status</Label>
                             <Select
                               value={status}
                               onValueChange={(val) => {
@@ -732,13 +732,13 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               }}
                               disabled={isSavingMeta}
                             >
-                              <SelectTrigger className="h-8 text-xs w-full">
+                              <SelectTrigger className="h-8 text-sm w-full">
                                 <SelectValue placeholder="Status" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectGroup>
                                   {STATUS_OPTIONS.map((st) => (
-                                    <SelectItem key={st} value={st} className="text-xs">
+                                    <SelectItem key={st} value={st} className="text-sm">
                                       {st}
                                     </SelectItem>
                                   ))}
@@ -748,7 +748,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                           </div>
 
                           <div className="space-y-1.5">
-                            <Label className="text-xs font-medium">Payment Mode</Label>
+                            <Label className="text-sm font-medium">Payment Mode</Label>
                             <Select
                               value={paymentMode}
                               onValueChange={(val) => {
@@ -758,14 +758,14 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               }}
                               disabled={isSavingMeta}
                             >
-                              <SelectTrigger className="h-8 text-xs w-full">
+                              <SelectTrigger className="h-8 text-sm w-full">
                                 <SelectValue placeholder="Payment Mode" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectGroup>
-                                  <SelectItem value="none" className="text-xs">None</SelectItem>
+                                  <SelectItem value="none" className="text-sm">None</SelectItem>
                                   {PAYMENT_MODES.map((pm) => (
-                                    <SelectItem key={pm.value} value={pm.value} className="text-xs">
+                                    <SelectItem key={pm.value} value={pm.value} className="text-sm">
                                       {pm.label}
                                     </SelectItem>
                                   ))}
@@ -779,13 +779,13 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                       {/* Internal Notes */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <Label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
+                          <Label className="text-sm uppercase tracking-wider font-semibold text-muted-foreground">
                             Internal Order Notes
                           </Label>
                           {notes !== (order?.notes || '') && (
                             <Button
                               size="sm"
-                              className="h-6 text-xs px-2.5"
+                              className="h-6 text-sm px-2.5"
                               onClick={() => handleUpdateMeta({ notes })}
                               disabled={isSavingMeta}
                             >
@@ -798,7 +798,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                           rows={2}
                           value={notes}
                           onChange={(e) => setNotes(e.target.value)}
-                          className="text-xs resize-none"
+                          className="text-sm resize-none"
                         />
                       </div>
                     </TabsContent>
@@ -808,7 +808,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="text-sm font-bold text-foreground">Service Access Credentials</h4>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-sm text-muted-foreground">
                             Client mailbox and service login credentials.
                           </p>
                         </div>
@@ -818,7 +818,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="text-xs h-8 gap-1.5"
+                              className="text-sm h-8 gap-1.5"
                               onClick={() => setIsEditingCreds(true)}
                             >
                               <IconPencil className="w-3.5 h-3.5" />
@@ -829,7 +829,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               <Button
                                 type="button"
                                 size="sm"
-                                className="text-xs h-8 gap-1"
+                                className="text-sm h-8 gap-1"
                                 disabled={isSavingCreds}
                                 onClick={handleSaveCredentials}
                               >
@@ -840,7 +840,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="text-xs h-8"
+                                className="text-sm h-8"
                                 disabled={isSavingCreds}
                                 onClick={() => {
                                   setIsEditingCreds(false)
@@ -858,7 +858,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                       {!isEditingCreds ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
                           <div className="flex flex-col gap-1">
-                            <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">
+                            <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">
                               Service Account Email
                             </span>
                             <div className="flex items-center gap-2">
@@ -880,7 +880,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                           </div>
 
                           <div className="flex flex-col gap-1">
-                            <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">
+                            <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">
                               Email Password / Access Code
                             </span>
                             <div className="flex items-center gap-2">
@@ -915,23 +915,23 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold">Service Email</Label>
+                            <Label className="text-sm font-semibold">Service Email</Label>
                             <Input
                               type="email"
                               placeholder="e.g. info@clientcompany.co.uk"
                               value={accessEmail}
                               onChange={(e) => setAccessEmail(e.target.value)}
-                              className="h-8 text-xs"
+                              className="h-8 text-sm"
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold">Email Password / Access Code</Label>
+                            <Label className="text-sm font-semibold">Email Password / Access Code</Label>
                             <Input
                               type="text"
                               placeholder="Enter access code"
                               value={accessPassword}
                               onChange={(e) => setAccessPassword(e.target.value)}
-                              className="h-8 text-xs font-mono"
+                              className="h-8 text-sm font-mono"
                             />
                           </div>
                         </div>
@@ -943,7 +943,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="text-sm font-bold text-foreground">Products on this Order</h4>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-sm text-muted-foreground">
                             Purchased service package and add-ons.
                           </p>
                         </div>
@@ -951,7 +951,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                           type="button"
                           size="sm"
                           variant="outline"
-                          className="text-xs h-8 gap-1.5"
+                          className="text-sm h-8 gap-1.5"
                           onClick={() => setShowProductPicker((v) => !v)}
                         >
                           <IconPlus className="w-3.5 h-3.5" />
@@ -962,7 +962,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                       {showProductPicker && (
                         <div className="p-4 rounded-lg border bg-muted/20 space-y-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-foreground">
+                            <span className="text-sm font-semibold text-foreground">
                               Select a catalog service to add:
                             </span>
                             <Button
@@ -980,14 +980,14 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               placeholder="Search catalog..."
                               value={productSearch}
                               onChange={(e) => setProductSearch(e.target.value)}
-                              className="pl-9 h-8 text-xs"
+                              className="pl-9 h-8 text-sm"
                             />
                           </div>
                           <div className="max-h-40 overflow-y-auto space-y-1 rounded border bg-background p-1">
                             {filteredServices.map((svc) => (
                               <div
                                 key={svc.id}
-                                className="flex items-center justify-between p-2 rounded hover:bg-muted text-xs cursor-pointer"
+                                className="flex items-center justify-between p-2 rounded hover:bg-muted text-sm cursor-pointer"
                                 onClick={() => handleAddProduct(svc)}
                               >
                                 <div>
@@ -1007,7 +1007,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                       )}
 
                       <div className="rounded-lg border overflow-hidden">
-                        <div className="p-3 bg-muted/30 border-b flex items-center justify-between text-xs font-semibold text-muted-foreground">
+                        <div className="p-3 bg-muted/30 border-b flex items-center justify-between text-sm font-semibold text-muted-foreground">
                           <span>Product / Service</span>
                           <span>Price</span>
                         </div>
@@ -1015,7 +1015,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                           <div key={item.id} className="p-4 flex items-center justify-between gap-3 text-sm border-b last:border-b-0">
                             <div className="flex flex-col min-w-0">
                               <span className="font-semibold text-foreground truncate">{item.product_name}</span>
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-sm text-muted-foreground">
                                 {item.category_name || order?.delivery_label || 'Standard Processing'}
                                 {Number(item.quantity || 1) > 1 ? ` · Qty ${item.quantity}` : ''}
                               </span>
@@ -1060,7 +1060,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="text-sm font-bold text-foreground">Order Documents</h4>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-sm text-muted-foreground">
                             Identity, proof of address, and generated filings.
                           </p>
                         </div>
@@ -1076,7 +1076,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="text-xs h-8 gap-1.5"
+                            className="text-sm h-8 gap-1.5"
                             disabled={isUploadingDoc}
                             onClick={() => fileInputRef.current?.click()}
                           >
@@ -1105,7 +1105,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               <div className="flex items-center gap-3 min-w-0">
                                 <IconFileText className="w-4 h-4 text-primary shrink-0" />
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-xs font-semibold text-foreground truncate">
+                                  <span className="text-sm font-semibold text-foreground truncate">
                                     {doc.name || doc.file_name || 'Document'}
                                   </span>
                                   <span className="text-[10px] text-muted-foreground">
@@ -1119,7 +1119,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                   type="button"
                                   variant="outline"
                                   size="sm"
-                                  className="h-7 text-xs px-2.5 gap-1"
+                                  className="h-7 text-sm px-2.5 gap-1"
                                   onClick={() => handleViewDoc(doc)}
                                   title="View document preview"
                                 >
@@ -1130,7 +1130,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                   type="button"
                                   variant="outline"
                                   size="sm"
-                                  className="h-7 text-xs px-2.5 gap-1"
+                                  className="h-7 text-sm px-2.5 gap-1"
                                   onClick={() => handleDownloadDoc(doc)}
                                   title="Download document"
                                 >
@@ -1156,7 +1156,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                           ))}
                         </div>
                       ) : (
-                        <div className="p-8 text-center text-xs text-muted-foreground border rounded-lg border-dashed">
+                        <div className="p-8 text-center text-sm text-muted-foreground border rounded-lg border-dashed">
                           No documents attached to this order.
                         </div>
                       )}
@@ -1179,7 +1179,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                 <DialogTitle className="text-base font-bold truncate">
                   {previewDoc?.name || previewDoc?.file_name || 'Document Preview'}
                 </DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground">
+                <DialogDescription className="text-sm text-muted-foreground">
                   {previewDoc?.category || 'Order Document'} {previewDoc?.file_size ? `· ${previewDoc?.file_size}` : ''}
                 </DialogDescription>
               </div>
@@ -1189,7 +1189,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs gap-1.5"
+                className="h-8 text-sm gap-1.5"
                 onClick={() => previewDoc && handleDownloadDoc(previewDoc)}
               >
                 <IconDownload className="w-3.5 h-3.5" />
@@ -1200,7 +1200,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 text-xs gap-1.5"
+                  className="h-8 text-sm gap-1.5"
                   asChild
                 >
                   <a href={previewDoc.drive_web_link} target="_blank" rel="noopener noreferrer">

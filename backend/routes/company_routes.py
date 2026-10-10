@@ -233,6 +233,25 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
     user_id = user.get('id')
     is_staff = user_role in ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
 
+    # ── POST /api/admin/companies/webfiling-preview + import-webfiling ────
+    if path in ('/api/admin/companies/webfiling-preview', '/api/admin/companies/import-webfiling') and method == 'POST':
+        if not is_staff:
+            return error_response(start_response, "Insufficient permissions", status_code=403)
+        from services.webfiling_import import preview_webfiling_numbers, import_webfiling_companies
+        payload = body if isinstance(body, dict) else {}
+        if path.endswith('/webfiling-preview'):
+            data, error = preview_webfiling_numbers(payload.get('company_numbers') or payload.get('numbers') or '')
+            if error:
+                return error_response(start_response, error, status_code=503 if 'API key' in error else 400)
+            return success_response(start_response, data=data)
+        summary, error = import_webfiling_companies(payload, actor=user)
+        if error:
+            return error_response(start_response, error, status_code=503 if 'API key' in error else 400)
+        return success_response(
+            start_response, data=summary,
+            message=(f"Imported {summary['imported']}, updated {summary['updated']}, "
+                     f"skipped {summary['skipped']}, failed {summary['failed']}."))
+
     # ── GET /api/companies/lookup-ch (Companies House Search & Auto-fill) ─
     if path in ('/api/companies/lookup-ch', '/api/admin/companies/lookup-ch', '/api/admin/companies/search', '/api/companies-house/search', '/api/admin/companies/ch-live', '/api/companies-house/company') and method == 'GET':
         comp_number = (query.get('number') or [''])[0].strip()

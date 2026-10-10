@@ -190,7 +190,7 @@ const Accountancy = () => {
             >
               {item.company_name}
             </button>
-            <span className="text-xs text-muted-foreground mt-0.5">{item.company_number}</span>
+            <span className="text-sm text-muted-foreground mt-0.5">{item.company_number}</span>
           </div>
         )
       },
@@ -206,7 +206,7 @@ const Accountancy = () => {
           <IconArrowsSort className="ml-2 h-4 w-4" />
         </Button>
       ),
-      cell: ({ row }) => <span className="text-xs">{row.getValue("owner_name") || "Brixen Client"}</span>,
+      cell: ({ row }) => <span className="text-sm">{row.getValue("owner_name") || "Brixen Client"}</span>,
     }),
     columnHelper.accessor("has_address", {
       header: "Address",
@@ -266,15 +266,15 @@ const Accountancy = () => {
     }),
     columnHelper.accessor("year_end", {
       header: "Year End",
-      cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.getValue("year_end")}</span>,
+      cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.getValue("year_end")}</span>,
     }),
     columnHelper.accessor("due_date", {
       header: "Due",
-      cell: ({ row }) => <span className="text-xs font-semibold text-foreground">{row.getValue("due_date")}</span>,
+      cell: ({ row }) => <span className="text-sm font-semibold text-foreground">{row.getValue("due_date")}</span>,
     }),
     columnHelper.accessor("type", {
       header: "Type",
-      cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.getValue("type")}</span>,
+      cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.getValue("type")}</span>,
     }),
     columnHelper.accessor("status", {
       header: "Status",
@@ -410,7 +410,7 @@ const Accountancy = () => {
             >
               {item.company_name}
             </button>
-            <span className="text-xs text-muted-foreground mt-0.5">
+            <span className="text-sm text-muted-foreground mt-0.5">
               {item.type || "Micro-entity Balance Sheet"} • Period {item.period || "2024-2025"}
             </span>
           </div>
@@ -419,15 +419,15 @@ const Accountancy = () => {
     }),
     columnHelper.accessor("period", {
       header: "Period",
-      cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.getValue("period") || "2024-2025"}</span>,
+      cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.getValue("period") || "2024-2025"}</span>,
     }),
     columnHelper.accessor("turnover", {
       header: "Turnover",
-      cell: ({ row }) => <span className="text-xs font-semibold text-foreground">{row.getValue("turnover") || "£0.00"}</span>,
+      cell: ({ row }) => <span className="text-sm font-semibold text-foreground">{row.getValue("turnover") || "£0.00"}</span>,
     }),
     columnHelper.accessor("net_profit", {
       header: "Net Profit",
-      cell: ({ row }) => <span className="text-xs font-bold text-emerald-600">{row.getValue("net_profit") || "£0.00"}</span>,
+      cell: ({ row }) => <span className="text-sm font-bold text-emerald-600">{row.getValue("net_profit") || "£0.00"}</span>,
     }),
     columnHelper.accessor("status", {
       header: "Status",
@@ -457,7 +457,7 @@ const Accountancy = () => {
             <Button
               variant="outline"
               size="sm"
-              className="h-8 text-xs font-medium"
+              className="h-8 text-sm font-medium"
               onClick={() => {
                 setSelectedRecord(targetComp)
                 setIsBooksModalOpen(true)
@@ -549,7 +549,7 @@ const Accountancy = () => {
             >
               {item.company_name}
             </button>
-            <span className="text-xs text-muted-foreground mt-0.5">
+            <span className="text-sm text-muted-foreground mt-0.5">
               UTR: {item.utr || "9876543210"} • Period: {item.period || "01/06/2024 - 31/05/2025"}
             </span>
           </div>
@@ -558,11 +558,11 @@ const Accountancy = () => {
     }),
     columnHelper.accessor("utr", {
       header: "UTR Number",
-      cell: ({ row }) => <span className="text-xs font-mono text-muted-foreground">{row.getValue("utr") || "N/A"}</span>,
+      cell: ({ row }) => <span className="text-sm font-mono text-muted-foreground">{row.getValue("utr") || "N/A"}</span>,
     }),
     columnHelper.accessor("tax_due", {
       header: "Tax Liability",
-      cell: ({ row }) => <span className="text-xs font-bold text-foreground">{row.getValue("tax_due") || "£0.00"}</span>,
+      cell: ({ row }) => <span className="text-sm font-bold text-foreground">{row.getValue("tax_due") || "£0.00"}</span>,
     }),
     columnHelper.accessor("status", {
       header: "Status",
@@ -606,7 +606,7 @@ const Accountancy = () => {
             <Button
               variant="outline"
               size="sm"
-              className="h-8 text-xs font-medium"
+              className="h-8 text-sm font-medium"
               onClick={() => {
                 setSelectedRecord(targetComp)
                 setIsBooksModalOpen(true)

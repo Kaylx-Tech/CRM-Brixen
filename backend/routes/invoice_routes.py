@@ -61,7 +61,8 @@ def handle_invoice_routes(environ, start_response, path, method, user, body, que
                    i.paid_at, i.created_at, i.order_id, i.payment_method, i.payment_timing,
                    i.deposit_amount, i.amount_paid, i.user_id,
                    u.full_name as client_name, u.email as client_email,
-                   o.order_number, o.service_name, o.owner_name, o.owner_form_email
+                   o.order_number, o.service_name, o.owner_name, o.owner_form_email,
+                   o.status as order_status
             FROM invoices i
             LEFT JOIN users u ON i.user_id = u.id
             LEFT JOIN orders o ON i.order_id = o.id
@@ -77,6 +78,36 @@ def handle_invoice_routes(environ, start_response, path, method, user, body, que
             "limit": limit,
             "offset": offset,
         })
+
+    # ── DELETE /api/invoices/<id> (admin only, and only when the order is cancelled) ──
+    match_delete = re.match(r'^/api/(?:admin/)?invoices/(\d+)$', path)
+    if match_delete and method == 'DELETE':
+        if user_role not in ('SUPER_ADMIN', 'ADMIN'):
+            return error_response(start_response, "Only an admin can delete invoices", status_code=403)
+        inv_id = int(match_delete.group(1))
+        inv = query_db("""
+            SELECT i.id, i.invoice_number, i.order_id, i.total, i.status, o.order_number, o.status AS order_status
+            FROM invoices i LEFT JOIN orders o ON o.id = i.order_id
+            WHERE i.id = ? LIMIT 1;
+        """, (inv_id,), one=True)
+        if not inv:
+            return error_response(start_response, "Invoice not found", status_code=404)
+        if str(inv.get('order_status') or '') != 'Cancelled':
+            return error_response(
+                start_response,
+                "An invoice can only be deleted when its order is cancelled. Cancel the order first.",
+                status_code=400)
+
+        execute_db("DELETE FROM invoices WHERE id = ?;", (inv_id,))
+        try:
+            from services.audit_service import log_activity
+            log_activity(user_id, 'INVOICE_DELETED', 'invoices', inv_id,
+                         f"Deleted invoice {inv.get('invoice_number')} ({inv.get('status')}, total {inv.get('total')}) "
+                         f"for cancelled order {inv.get('order_number')}")
+        except Exception:
+            pass
+        return success_response(start_response, data={"id": inv_id},
+                                message=f"Invoice {inv.get('invoice_number')} deleted")
 
     # ── GET /api/invoices/<id> ─────────────────────────────────────────────
     match_detail = re.match(r'^/api/(?:admin/)?invoices/(\d+)$', path)

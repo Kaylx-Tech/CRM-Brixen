@@ -20,12 +20,29 @@ import { IconUpload, IconCheck, IconAlertCircle, IconLoader2, IconBuilding, Icon
 import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import ToastSave from '@/components/ToastSave'
+import { apiRequest } from '@/lib/api'
+
+/** Same rules as the backend: strip punctuation, drop a leading "NO", pad all-digit numbers to 8. */
+function parseCompanyNumbers(text) {
+  const seen = new Set()
+  const out = []
+  for (const part of String(text || '').split(/[\s,;]+/)) {
+    let n = part.toUpperCase().replace(/[^A-Z0-9]/g, '')
+    if (n.startsWith('NO')) n = n.slice(2)
+    if (/^\d+$/.test(n) && n.length < 8) n = n.padStart(8, '0')
+    if (!n || seen.has(n)) continue
+    seen.add(n)
+    out.push(n)
+  }
+  return out
+}
 
 export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
   const [companyNumbers, setCompanyNumbers] = useState('')
   const [clientMode, setClientMode] = useState('existing')
   const [selectedClientId, setSelectedClientId] = useState('')
   const [clientQuery, setClientQuery] = useState('')
+  const [activeIdx, setActiveIdx] = useState(0)
   const [suggestOpen, setSuggestOpen] = useState(false)
   const [newClientName, setNewClientName] = useState('')
   const [newClientEmail, setNewClientEmail] = useState('')
@@ -38,6 +55,56 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
   const [importResults, setImportResults] = useState(null)
   const [showUnsavedToast, setShowUnsavedToast] = useState(false)
   const [toastSaveState, setToastSaveState] = useState('initial')
+
+  // Companies House preview: number -> { loading } | preview item from /webfiling-preview
+  const [lookups, setLookups] = useState({})
+  const [excluded, setExcluded] = useState(() => new Set())
+  const [lookupError, setLookupError] = useState('')
+  const parsedNumbers = React.useMemo(() => parseCompanyNumbers(companyNumbers), [companyNumbers])
+
+  useEffect(() => {
+    const pending = parsedNumbers.filter((n) => !lookups[n]).slice(0, 100)
+    if (!pending.length) return
+    const timer = setTimeout(async () => {
+      setLookups((prev) => {
+        const next = { ...prev }
+        pending.forEach((n) => { next[n] = { loading: true } })
+        return next
+      })
+      const res = await apiRequest('/admin/companies/webfiling-preview', {
+        method: 'POST',
+        body: { company_numbers: pending.join('\n') },
+        silent: true,
+        label: 'Companies House lookup',
+      })
+      const items = res.ok ? (res.data?.data?.items || []) : []
+      setLookupError(res.ok ? '' : (res.reason || 'Companies House lookup failed'))
+      setLookups((prev) => {
+        const next = { ...prev }
+        pending.forEach((n) => {
+          const item = items.find((it) => it.company_number === n)
+          if (item) next[n] = item
+          else if (res.ok) next[n] = { company_number: n, found: false, message: 'Company not found at Companies House' }
+          // Lookup failed (no key, network): keep it importable, the import itself re-checks Companies House
+          else next[n] = { company_number: n, lookupFailed: true }
+        })
+        return next
+      })
+    }, 700)
+    return () => clearTimeout(timer)
+  }, [parsedNumbers, lookups])
+
+  const toggleNumber = (n) => {
+    setExcluded((prev) => {
+      const next = new Set(prev)
+      if (next.has(n)) next.delete(n)
+      else next.add(n)
+      return next
+    })
+  }
+
+  const isSelectable = (n) => lookups[n]?.found !== false
+  const selectedNumbers = parsedNumbers.filter((n) => isSelectable(n) && !excluded.has(n))
 
   const isDirty = Boolean(companyNumbers.trim() || newClientName.trim() || newClientEmail.trim())
 
@@ -89,11 +156,15 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
     e.preventDefault()
     setErrorMsg('')
 
-    const cleanNumbers = companyNumbers.trim()
-    if (!cleanNumbers) {
+    if (!parsedNumbers.length) {
       setErrorMsg('Please paste at least one Companies House number.')
       return
     }
+    if (!selectedNumbers.length) {
+      setErrorMsg('Select at least one company to import.')
+      return
+    }
+    const cleanNumbers = selectedNumbers.join('\n')
 
     if (clientMode === 'existing' && !selectedClientId) {
       setErrorMsg('Please select a client to assign these companies to.')
@@ -163,6 +234,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
     setNewClientEmail('')
     setSelectedClientId('')
     setClientQuery('')
+    setExcluded(new Set())
   }
 
   const clientLabel = (c) => c.name || c.full_name || c.email || 'Customer'
@@ -182,6 +254,27 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
     setSuggestOpen(false)
   }
 
+  const showSuggestions = suggestOpen && clientQuery.trim() && !selectedClientId
+
+  const onClientKeyDown = (e) => {
+    if (!showSuggestions) return
+    if (e.key === 'ArrowDown' && suggestions.length) {
+      e.preventDefault()
+      setActiveIdx((i) => (i + 1) % suggestions.length)
+    } else if (e.key === 'ArrowUp' && suggestions.length) {
+      e.preventDefault()
+      setActiveIdx((i) => (i - 1 + suggestions.length) % suggestions.length)
+    } else if (e.key === 'Enter') {
+      // Enter picks the highlighted customer instead of submitting the form
+      e.preventDefault()
+      if (suggestions[activeIdx]) pickClient(suggestions[activeIdx])
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      e.stopPropagation()
+      setSuggestOpen(false)
+    }
+  }
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleAttemptClose() }}>
@@ -190,7 +283,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
             <div className="flex items-center gap-2">
               <div>
                 <DialogTitle className="text-xl">Import WebFiling Companies</DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                <DialogDescription className="text-sm text-muted-foreground mt-0.5">
                   Bulk import official company records from your Companies House WebFiling list.
                 </DialogDescription>
               </div>
@@ -200,7 +293,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
           <ScrollArea className="max-h-[75vh]">
             <form onSubmit={handleSubmit} className="p-6 pt-2 space-y-5">
               {errorMsg && (
-                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center gap-2">
+                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-2">
                   <IconAlertCircle className="h-4 w-4 shrink-0" />
                   <span>{errorMsg}</span>
                 </div>
@@ -219,7 +312,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                   </div>
 
                   {Array.isArray(importResults.results) && importResults.results.length > 0 && (
-                    <div className="max-h-48 overflow-y-auto divide-y divide-border/40 text-xs rounded-lg border bg-muted/30">
+                    <div className="max-h-48 overflow-y-auto divide-y divide-border/40 text-sm rounded-lg border bg-muted/30">
                       {importResults.results.map((r, i) => (
                         <div key={i} className="p-2.5 flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 overflow-hidden">
@@ -251,19 +344,92 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                   </Label>
                   <span className="text-[11px] text-muted-foreground">Up to 100 numbers</span>
                 </div>
-                <Input
+                <Textarea
                   id="webfiling-numbers"
-                  placeholder="Paste company numbers here (separated by spaces, commas or new lines)&#10;e.g.&#10;17361321&#10;17379440&#10;17208527"
+                  placeholder={'Paste company numbers here (separated by spaces, commas or new lines)\ne.g.\n17361321\n17379440'}
                   rows={3}
-                  className="text-xs font-mono"
+                  className="text-sm font-mono"
                   value={companyNumbers}
                   onChange={(e) => setCompanyNumbers(e.target.value)}
                   disabled={isSubmitting}
                 />
-                <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                  <IconInfoCircle className="h-3.5 w-3.5" />
-                  Live official name, incorporation date, directors and address will be fetched automatically.
-                </p>
+
+                {parsedNumbers.length > 0 ? (
+                  <div className="rounded-2xl border bg-muted/20">
+                    <div className="flex items-center justify-between px-3 py-2 text-xs text-muted-foreground border-b">
+                      <span>Companies House results</span>
+                      <span>{selectedNumbers.length} of {parsedNumbers.length} selected</span>
+                    </div>
+                    <ul className="max-h-60 overflow-y-auto overscroll-contain divide-y divide-border/50">
+                      {parsedNumbers.map((n) => {
+                        const info = lookups[n]
+                        const selectable = isSelectable(n)
+                        const checked = selectable && !excluded.has(n)
+                        return (
+                          <li key={n}>
+                            <div
+                              className={`flex items-start gap-3 px-3 py-2.5 ${selectable ? 'cursor-pointer hover:bg-muted/40' : 'opacity-70'}`}
+                              onClick={(e) => {
+                                // The checkbox toggles itself; clicks anywhere else on the row toggle it too
+                                if (!selectable || isSubmitting || e.target.closest('[data-slot="checkbox"]')) return
+                                toggleNumber(n)
+                              }}
+                            >
+                              <Checkbox
+                                className="mt-0.5"
+                                checked={checked}
+                                disabled={!selectable || isSubmitting}
+                                onCheckedChange={() => toggleNumber(n)}
+                              />
+                              <div className="min-w-0 flex-1">
+                                {!info || info.loading ? (
+                                  <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                    <IconLoader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Looking up {n}…
+                                  </p>
+                                ) : info.found ? (
+                                  <>
+                                    <div className="flex items-center gap-2">
+                                      <span className="truncate text-sm font-medium">{info.name}</span>
+                                      <Badge className={info.status === 'Active' ? 'badge-green' : 'badge-amber'}>{info.status}</Badge>
+                                    </div>
+                                    <p className="truncate text-xs text-muted-foreground">
+                                      {info.company_number}
+                                      {info.inc_date ? ` · Inc. ${info.inc_date}` : ''}
+                                      {info.reg_office ? ` · ${info.reg_office}` : ''}
+                                    </p>
+                                    {info.existing ? (
+                                      <p className="mt-0.5 text-xs text-amber-600">
+                                        Already in portal{info.existing.owner_name ? ` (${info.existing.owner_name})` : ''}
+                                        {updateExisting ? ' · will be refreshed' : ' · will be skipped'}
+                                      </p>
+                                    ) : null}
+                                  </>
+                                ) : info.lookupFailed ? (
+                                  <p className="text-sm">
+                                    <span className="font-mono">{n}</span>
+                                    <span className="text-xs text-muted-foreground"> · could not check now, will be checked on import</span>
+                                  </p>
+                                ) : (
+                                  <p className="text-sm text-destructive">
+                                    <span className="font-mono">{n}</span>
+                                    <span className="text-xs"> · {info.message || 'Not found at Companies House'}</span>
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                    <IconInfoCircle className="h-3.5 w-3.5" />
+                    Each number is checked at Companies House and shown here so you can pick which ones to import.
+                  </p>
+                )}
+                {lookupError ? <p className="text-xs text-destructive">{lookupError}</p> : null}
               </div>
 
               {/* Step 2: Client Assignment Mode */}
@@ -281,7 +447,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                   >
                     <Label
                       htmlFor="client-existing"
-                      className="flex items-center gap-1.5 cursor-pointer text-xs font-medium"
+                      className="flex items-center gap-1.5 cursor-pointer text-sm font-medium"
                     >
                       <RadioGroupItem value="existing" id="client-existing" />
                       <span>Existing Client</span>
@@ -289,7 +455,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
 
                     <Label
                       htmlFor="client-new"
-                      className="flex items-center gap-1.5 cursor-pointer text-xs font-medium"
+                      className="flex items-center gap-1.5 cursor-pointer text-sm font-medium"
                     >
                       <RadioGroupItem value="new" id="client-new" />
                       <span>New Client</span>
@@ -299,36 +465,52 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                 </div>
 
                 {clientMode === 'existing' && (
-                  <div className="relative max-w-md">
+                  <div className="max-w-md">
                     <Input
                       placeholder={isLoadingClients ? 'Loading clients...' : 'Type the customer name or email...'}
-                      className="h-8 text-xs"
+                      className="text-sm"
                       value={clientQuery}
                       disabled={isSubmitting || isLoadingClients}
                       autoComplete="off"
+                      role="combobox"
+                      aria-expanded={!!showSuggestions}
+                      aria-controls="webfiling-client-suggestions"
                       onChange={(e) => {
                         setClientQuery(e.target.value)
                         setSelectedClientId('')
                         setSuggestOpen(true)
+                        setActiveIdx(0)
                       }}
                       onFocus={() => setSuggestOpen(true)}
+                      onBlur={() => setSuggestOpen(false)}
+                      onKeyDown={onClientKeyDown}
                     />
-                    {suggestOpen && clientQuery.trim() && !selectedClientId && (
-                      <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-56 overflow-y-auto p-1">
+                    {/* Rendered in the flow (not absolute) so the dialog's scroll area never clips it */}
+                    {showSuggestions && (
+                      <div
+                        id="webfiling-client-suggestions"
+                        role="listbox"
+                        className="mt-1.5 max-h-56 overflow-y-auto overscroll-contain rounded-3xl bg-popover p-1.5 text-popover-foreground shadow-lg ring-1 ring-foreground/5 dark:ring-foreground/10 animate-in fade-in-0 zoom-in-95 duration-100"
+                      >
                         {suggestions.length ? (
-                          suggestions.map((c) => (
+                          suggestions.map((c, i) => (
                             <button
                               key={c.id}
                               type="button"
-                              className="w-full text-left rounded-sm px-2 py-1.5 text-xs hover:bg-accent cursor-pointer"
+                              role="option"
+                              aria-selected={i === activeIdx}
+                              className={`w-full cursor-pointer rounded-[18px] px-3 py-2 text-left text-sm outline-none ${i === activeIdx ? 'bg-accent text-accent-foreground' : ''}`}
+                              // mousedown keeps focus in the input so onBlur doesn't close the list before the click lands
+                              onMouseDown={(e) => e.preventDefault()}
+                              onMouseEnter={() => setActiveIdx(i)}
                               onClick={() => pickClient(c)}
                             >
-                              <span className="font-medium">{clientLabel(c)}</span>
-                              {c.email ? <span className="block text-[11px] text-muted-foreground">{c.email}</span> : null}
+                              <span className="block truncate font-medium">{clientLabel(c)}</span>
+                              {c.email ? <span className="block truncate text-xs text-muted-foreground">{c.email}</span> : null}
                             </button>
                           ))
                         ) : (
-                          <p className="px-2 py-1.5 text-xs text-muted-foreground">No customer found</p>
+                          <p className="px-3 py-2 text-sm text-muted-foreground">No customer found</p>
                         )}
                       </div>
                     )}
@@ -341,23 +523,23 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                 {clientMode === 'new' && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     <div className="space-y-1">
-                      <Label htmlFor="new-client-name" className="text-xs font-normal">Full Name</Label>
+                      <Label htmlFor="new-client-name" className="text-sm font-normal">Full Name</Label>
                       <Input
                         id="new-client-name"
                         placeholder="e.g. John Doe"
-                        className="text-xs"
+                        className="text-sm"
                         value={newClientName}
                         onChange={(e) => setNewClientName(e.target.value)}
                         disabled={isSubmitting}
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="new-client-email" className="text-xs font-normal">Email Address</Label>
+                      <Label htmlFor="new-client-email" className="text-sm font-normal">Email Address</Label>
                       <Input
                         id="new-client-email"
                         type="email"
                         placeholder="e.g. john@example.com"
-                        className="text-xs"
+                        className="text-sm"
                         value={newClientEmail}
                         onChange={(e) => setNewClientEmail(e.target.value)}
                         disabled={isSubmitting}
@@ -375,7 +557,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                   onCheckedChange={(checked) => setUpdateExisting(!!checked)}
                   disabled={isSubmitting}
                 />
-                <Label htmlFor="update-existing" className="text-xs text-muted-foreground font-normal cursor-pointer">
+                <Label htmlFor="update-existing" className="text-sm text-muted-foreground font-normal cursor-pointer">
                   Refresh/Update details from Companies House if company is already in portal
                 </Label>
               </div>

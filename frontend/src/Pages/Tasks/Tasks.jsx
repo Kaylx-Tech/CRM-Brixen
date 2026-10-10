@@ -46,6 +46,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { apiRequest, getApiBase, toastApiEmpty } from '@/lib/api'
+import { getCurrentUser, isAdminRole } from '@/lib/permissions'
 import {
   toastUndoableDelete,
   toastProcessing,
@@ -153,6 +154,13 @@ const Tasks = () => {
 
   const [taskToDelete, setTaskToDelete] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Only admins add or remove team members (the backend enforces the same rule)
+  const currentUser = useMemo(() => getCurrentUser(), [])
+  const canManageTeam = isAdminRole(currentUser)
+  const isSuperAdmin = String(currentUser?.role || '').toUpperCase() === 'SUPER_ADMIN'
+  const [memberToRemove, setMemberToRemove] = useState(null)
+  const [isRemovingMember, setIsRemovingMember] = useState(false)
 
   const loadTasks = useCallback(async () => {
     setIsLoading(true)
@@ -401,6 +409,33 @@ const Tasks = () => {
     }
   }
 
+  const confirmRemoveMember = async () => {
+    if (!memberToRemove) return
+    setIsRemovingMember(true)
+    const toastId = toastProcessing('Removing team member…')
+    try {
+      const res = await apiRequest(`/admin/staff/${memberToRemove.id}`, {
+        method: 'DELETE',
+        label: 'Remove team member',
+        silent: true,
+      })
+      if (!res.ok) {
+        toastFail(toastId, res.reason || 'Failed to remove team member.')
+        return
+      }
+      toastDone(toastId, res.data?.message || 'Team member removed')
+      setMemberToRemove(null)
+      await loadStaff()
+    } finally {
+      setIsRemovingMember(false)
+    }
+  }
+
+  const canRemoveMember = (m) =>
+    canManageTeam &&
+    String(m.id) !== String(currentUser?.id) &&
+    (m.role !== 'SUPER_ADMIN' || isSuperAdmin)
+
   const counts = useMemo(() => {
     const all = tasks.length
     const by = Object.fromEntries(STATUSES.map((s) => [s, 0]))
@@ -428,7 +463,7 @@ const Tasks = () => {
             {row.original.description ? (
               <OverflowTooltip
                 text={row.original.description}
-                className="text-xs text-muted-foreground"
+                className="text-sm text-muted-foreground"
               />
             ) : null}
         </div>
@@ -523,7 +558,7 @@ const Tasks = () => {
         cell: ({ row }) => (
           <div className="flex flex-col min-w-0">
             <span className="font-medium text-foreground">{row.original.name}</span>
-            <span className="text-xs text-muted-foreground">{row.original.email}</span>
+            <span className="text-sm text-muted-foreground">{row.original.email}</span>
           </div>
         ),
       }),
@@ -562,8 +597,29 @@ const Tasks = () => {
           <span className="text-sm text-muted-foreground">{getValue() || '—'}</span>
       ),
     }),
+      ...(canManageTeam
+        ? [
+            columnHelper.display({
+              id: 'actions',
+              header: '',
+              cell: ({ row }) =>
+                canRemoveMember(row.original) ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setMemberToRemove(row.original)}
+                  >
+                    <IconTrash className="size-4" />
+                    Remove
+                  </Button>
+                ) : null,
+            }),
+          ]
+        : []),
     ],
-    []
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [canManageTeam, isSuperAdmin]
   )
 
   return (
@@ -594,7 +650,7 @@ const Tasks = () => {
               <IconPlus className="size-4" />
               New task
             </Button>
-          ) : (
+          ) : canManageTeam ? (
             <Button
               onClick={() => {
                 setStaffError('')
@@ -605,7 +661,7 @@ const Tasks = () => {
               <IconUserPlus className="size-4" />
               Add member
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -623,7 +679,7 @@ const Tasks = () => {
               {['All', ...STATUSES].map((s) => (
                 <TabsTrigger key={s} value={s}>
                   {s}
-                  <span className="ml-1.5 text-xs text-muted-foreground">
+                  <span className="ml-1.5 text-sm text-muted-foreground">
                     {counts[s] ?? 0}
                   </span>
                 </TabsTrigger>
@@ -947,6 +1003,20 @@ const Tasks = () => {
             ? `“${taskToDelete.title}” will be permanently removed.`
             : ''
         }
+      />
+
+      <DeleteConfirmation
+        isOpen={!!memberToRemove}
+        onClose={() => !isRemovingMember && setMemberToRemove(null)}
+        onConfirm={confirmRemoveMember}
+        isLoading={isRemovingMember}
+        title="Remove team member?"
+        description={
+          memberToRemove
+            ? `${memberToRemove.name} (${memberToRemove.email}) will be signed out and can no longer log in. Their tasks and history are kept. You can add them back later with the same email.`
+            : ''
+        }
+        confirmText="Remove"
       />
     </div>
   )

@@ -140,7 +140,7 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
                     <RadioGroupItem value="individual" id="individual" />
                     <div>
                       <span className="font-semibold text-sm">Individual</span>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-sm text-muted-foreground">
                         Has only one company. Single / personal company owner.
                       </p>
                     </div>
@@ -158,7 +158,7 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
                     <RadioGroupItem value="business" id="business" />
                     <div>
                       <span className="font-semibold text-sm">Business</span>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-sm text-muted-foreground">
                         Multiple companies. Direct multi-company corporate account.
                       </p>
                     </div>
@@ -176,7 +176,7 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
                     <RadioGroupItem value="b2b" id="b2b" />
                     <div>
                       <span className="font-semibold text-sm">B2B Account</span>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-sm text-muted-foreground">
                         Deals on behalf of others. Intermediary/agent managing client portfolios.
                       </p>
                     </div>
@@ -236,7 +236,7 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
                 />
               </div>
 
-              <p className="md:col-span-2 text-xs text-muted-foreground">
+              <p className="md:col-span-2 text-sm text-muted-foreground">
                 The login password is set automatically to the default password, and notification emails go to the
                 email above. Both can be changed later from the customer profile.
               </p>

@@ -29,7 +29,7 @@ import {
 import { useNavigate } from "react-router-dom"
 
 const itemClass =
-  "text-slate-200 hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white cursor-pointer rounded-lg px-2.5 py-2 text-xs font-medium flex items-center gap-2 transition-colors"
+  "text-slate-200 hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white cursor-pointer rounded-lg px-2.5 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
 
 export function NavUser({
   user: defaultUser
@@ -68,13 +68,13 @@ export function NavUser({
           >
             <Avatar className="size-8 rounded-lg">
               <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback className="rounded-lg bg-white/10 text-white font-medium text-xs border border-white/10">
+              <AvatarFallback className="rounded-lg bg-white/10 text-white font-medium text-sm border border-white/10">
                 {(user.name || 'AD').substring(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-medium text-sidebar-foreground">{user.name}</span>
-              <span className="truncate text-xs text-sidebar-foreground/70">
+              <span className="truncate text-sm text-sidebar-foreground/70">
                 {user.email}
               </span>
             </div>
@@ -126,7 +126,7 @@ export function NavUser({
 
             <DropdownMenuItem
               onClick={handleLogout}
-              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-300 cursor-pointer rounded-lg px-2.5 py-2 text-xs font-medium flex items-center gap-2 transition-colors"
+              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-300 cursor-pointer rounded-lg px-2.5 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
             >
               <IconLogout className="size-4" />
               <span>Log out</span>

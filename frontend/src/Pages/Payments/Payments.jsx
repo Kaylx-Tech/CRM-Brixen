@@ -18,7 +18,10 @@ import {
   IconPencil,
   IconLoader2,
   IconRefresh,
+  IconTrash,
 } from "@tabler/icons-react"
+import DeleteConfirmation from "@/components/DeleteConfirmation"
+import { isAdminRole } from "@/lib/permissions"
 import { createColumnHelper } from "@tanstack/react-table"
 import { DataTable } from "../../Layout/DataTable"
 import { SectionCards } from "../../Layout/StatsCard"
@@ -126,6 +129,10 @@ export default function Payments() {
   const [invoicesError, setInvoicesError] = useState(null)
   const [payFilter, setPayFilter] = useState('all')
   const [sendingId, setSendingId] = useState(null)
+  // Admins can delete an invoice once its order has been cancelled
+  const canDeleteInvoices = useMemo(() => isAdminRole(), [])
+  const [invoiceToDelete, setInvoiceToDelete] = useState(null)
+  const [isDeletingInvoice, setIsDeletingInvoice] = useState(false)
 
   // Edit invoice
   const [editInvoice, setEditInvoice] = useState(null)
@@ -438,6 +445,28 @@ export default function Payments() {
     }
   }
 
+  const confirmDeleteInvoice = async () => {
+    if (!invoiceToDelete) return
+    setIsDeletingInvoice(true)
+    const toastId = toastProcessing('Deleting invoice…')
+    try {
+      const res = await apiRequest(`/invoices/${invoiceToDelete.id}`, {
+        method: 'DELETE',
+        label: 'Delete invoice',
+        silent: true,
+      })
+      if (!res.ok) {
+        toastFail(toastId, res.reason || 'Failed to delete invoice')
+        return
+      }
+      toastDone(toastId, res.data?.message || 'Invoice deleted')
+      setInvoices((prev) => prev.filter((i) => i.id !== invoiceToDelete.id))
+      setInvoiceToDelete(null)
+    } finally {
+      setIsDeletingInvoice(false)
+    }
+  }
+
   const openEdit = (inv) => {
     setEditInvoice(inv)
     const money = invoiceMoneyBits(inv)
@@ -523,14 +552,14 @@ export default function Payments() {
   const invoiceColumns = useMemo(() => [
     invoiceCol.accessor('invoice_number', {
       header: 'Invoice #',
-      cell: ({ row }) => <span className="font-medium text-xs">{row.getValue('invoice_number')}</span>,
+      cell: ({ row }) => <span className="font-medium text-sm">{row.getValue('invoice_number')}</span>,
     }),
     invoiceCol.accessor('ownerDisplay', {
       header: 'Owner',
       cell: ({ row }) => (
         <div className="flex flex-col">
           <span className="font-medium text-sm">{row.original.ownerDisplay}</span>
-          <span className="text-xs text-muted-foreground">{row.original.emailDisplay}</span>
+          <span className="text-sm text-muted-foreground">{row.original.emailDisplay}</span>
         </div>
       ),
     }),
@@ -556,7 +585,7 @@ export default function Payments() {
     }),
     invoiceCol.accessor('whenLabel', {
       header: 'When',
-      cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.getValue('whenLabel')}</span>,
+      cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.getValue('whenLabel')}</span>,
     }),
     invoiceCol.accessor('statusLabel', {
       header: 'Status',
@@ -567,7 +596,7 @@ export default function Payments() {
     }),
     invoiceCol.accessor('dateLabel', {
       header: 'Date',
-      cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.getValue('dateLabel')}</span>,
+      cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.getValue('dateLabel')}</span>,
     }),
     invoiceCol.display({
       id: 'actions',
@@ -582,7 +611,7 @@ export default function Payments() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 text-xs gap-1"
+                className="h-7 text-sm gap-1"
                 disabled={isSending}
                 onClick={() => handleSendInvoice(inv)}
               >
@@ -590,15 +619,26 @@ export default function Payments() {
                 {paid ? 'Thank you' : 'Send'}
               </Button>
             )}
-            <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => openEdit(inv)}>
+            <Button variant="outline" size="sm" className="h-7 text-sm gap-1" onClick={() => openEdit(inv)}>
               <IconPencil className="w-3.5 h-3.5" />
               Edit
             </Button>
+            {canDeleteInvoices && inv.order_status === 'Cancelled' && (
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-7 text-sm gap-1"
+                onClick={() => setInvoiceToDelete(inv)}
+              >
+                <IconTrash className="w-3.5 h-3.5" />
+                Delete
+              </Button>
+            )}
           </div>
         )
       },
     }),
-  ], [sendingId])
+  ], [sendingId, canDeleteInvoices])
 
   const costColumns = useMemo(() => [
     costCol.accessor('order_number', {
@@ -614,7 +654,7 @@ export default function Payments() {
       cell: ({ row }) => (
         <div className="flex flex-col">
           <span className="font-medium text-sm">{row.original.clientDisplay}</span>
-          <span className="text-xs text-muted-foreground">{row.original.emailDisplay || '—'}</span>
+          <span className="text-sm text-muted-foreground">{row.original.emailDisplay || '—'}</span>
         </div>
       ),
     }),
@@ -660,7 +700,7 @@ export default function Payments() {
     }),
     costCol.accessor('source', {
       header: 'Source',
-      cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.getValue('source')}</span>,
+      cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.getValue('source')}</span>,
     }),
   ], [costInputs, isSavingCost])
 
@@ -670,7 +710,7 @@ export default function Payments() {
       cell: ({ row }) => (
         <div className="flex flex-col">
           <span className="font-medium text-sm">{row.original.name}</span>
-          <span className="text-xs text-muted-foreground">{row.original.email}</span>
+          <span className="text-sm text-muted-foreground">{row.original.email}</span>
         </div>
       ),
     }),
@@ -694,7 +734,7 @@ export default function Payments() {
       cell: ({ row }) => (
         <div className="flex flex-col">
           <span className="font-medium text-sm">{row.original.name}</span>
-          <span className="text-xs text-muted-foreground">{row.original.email}</span>
+          <span className="text-sm text-muted-foreground">{row.original.email}</span>
         </div>
       ),
     }),
@@ -739,10 +779,10 @@ export default function Payments() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList>
-          <TabsTrigger value="invoices" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="invoices" className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             Invoices
           </TabsTrigger>
-          <TabsTrigger value="revenue" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="revenue" className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             Revenue
           </TabsTrigger>
         </TabsList>
@@ -775,7 +815,7 @@ export default function Payments() {
         <>
           <div className="flex items-center gap-2">
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-[180px] h-8 text-xs">
+              <SelectTrigger className="w-[180px] h-8 text-sm">
                 <SelectValue placeholder="Month" />
               </SelectTrigger>
               <SelectContent>
@@ -788,7 +828,7 @@ export default function Payments() {
 
           <SectionCards stats={revenueStats} isLoading={isLoadingOrders} compact />
 
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Set <strong>Order cost</strong> per customer/order. Profit = Sell price − Cost.
           </p>
 
@@ -824,7 +864,7 @@ export default function Payments() {
             <div className="grid gap-3 py-1">
               <div>
                 <div className="text-sm font-extrabold">{editInvoice.invoice_number}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">
+                <div className="text-sm text-muted-foreground mt-0.5">
                   {[editInvoice.owner_name || editInvoice.client_name, editInvoice.owner_form_email || editInvoice.client_email, editInvoice.order_number]
                     .filter(Boolean)
                     .join(' · ')}
@@ -949,6 +989,22 @@ export default function Payments() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeleteConfirmation
+        isOpen={!!invoiceToDelete}
+        onClose={() => !isDeletingInvoice && setInvoiceToDelete(null)}
+        onConfirm={confirmDeleteInvoice}
+        isLoading={isDeletingInvoice}
+        title="Delete invoice?"
+        description={
+          invoiceToDelete
+            ? `Invoice ${invoiceToDelete.invoice_number} for cancelled order ${invoiceToDelete.order_number || ''} will be permanently deleted${
+                invoiceToDelete.money?.paid > 0.004 ? `, including the £${invoiceToDelete.money.paid.toFixed(2)} recorded as received` : ''
+              }. This cannot be undone.`
+            : ''
+        }
+        confirmText="Delete invoice"
+      />
     </div>
   )
 }

@@ -222,10 +222,6 @@ const Dashboard = () => {
         trendDirection: revTrend.trendDirection,
       }] : []),
       {
-        title: "Total Products",
-        value: String(s.total_products ?? 0),
-      },
-      {
         title: "Total Customers",
         value: String(s.total_customers ?? 0),
         trendValue: custTrend.trendValue,
@@ -256,6 +252,7 @@ const Dashboard = () => {
       { title: "Today's Orders", value: String(s.today_orders ?? 0), footerSubText: `${s.today_customers ?? 0} new customers today`, onClick: () => navigate('/admin/orders') },
       { title: "Open Tickets", value: String(s.open_tickets ?? 0) },
       { title: "Documents Pending", value: String(s.pending_documents ?? 0), footerSubText: `of ${s.total_documents ?? 0} documents`, onClick: () => navigate('/admin/documents') },
+      { title: "Total Products", value: String(s.total_products ?? 0), onClick: () => navigate('/admin/services') },
       ...(s.pending_payments !== undefined
         ? [{ title: "Pending Payments", value: formatCurrency(null, s.pending_payments), onClick: () => navigate('/admin/payments') }]
         : []),
@@ -292,7 +289,7 @@ const Dashboard = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-sm text-muted-foreground mt-0.5">
             Showing statistics for {monthLabel}
           </p>
         </div>
@@ -372,7 +369,7 @@ const Dashboard = () => {
                     <Badge className="h-8 w-10 justify-center text-sm">{p.grade}</Badge>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold truncate">{p.full_name}</p>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-sm text-muted-foreground truncate">
                         {p.completed_count}/{p.assigned_count} tasks · SLA {p.sla_rate}%
                       </p>
                     </div>
@@ -410,7 +407,7 @@ const Dashboard = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold truncate">{item.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
+                    <p className="text-sm text-muted-foreground truncate">{item.subtitle}</p>
                     <div className="flex items-center gap-2 mt-1.5">
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
                         {item.meta_tag || item.kind}

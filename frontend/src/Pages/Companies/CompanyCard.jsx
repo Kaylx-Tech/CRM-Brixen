@@ -42,7 +42,7 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
                   {name}
                 </button>
               </h3>
-              <span className="text-xs text-muted-foreground">{number}</span>
+              <span className="text-sm text-muted-foreground">{number}</span>
             </div>
           </div>
           
@@ -71,7 +71,7 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
           </div>
         </CardHeader>
         
-        <CardContent className="pb-4 space-y-3 flex-1 text-xs">
+        <CardContent className="pb-4 space-y-3 flex-1 text-sm">
           <div>
             <span className="font-medium text-muted-foreground">Director · </span>
             <span className="text-foreground">{director}</span>
@@ -82,7 +82,7 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
           </div>
           
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <span>{countryFlag}</span>
               <span>{countryName}</span>
             </div>

@@ -167,7 +167,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
               <div className="flex items-center gap-2 flex-wrap">
                 <DialogTitle className="text-xl font-bold truncate max-w-[500px]" title={name}>{name}</DialogTitle>
                 {isGenuine && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                     <IconShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     Genuine Record
                   </span>
@@ -211,15 +211,15 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
               <TabsContent value="overview" className="m-0 space-y-6 outline-none">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Company Name</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Company Name</span>
                     <span className="font-semibold text-foreground">{name}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Company Number</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Company Number</span>
                     <span className="font-semibold text-foreground">{number}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Status</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Status</span>
                     <div>
                       <Badge className={status === 'Active' ? 'badge-green' : 'badge-amber'}>
                         {status}
@@ -227,25 +227,25 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Country</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Country</span>
                     <span className="font-medium text-foreground">United Kingdom</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Incorporation Date</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Incorporation Date</span>
                     <span className="font-medium text-foreground">{incDateFormatted}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Director</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Director</span>
                     <span className="font-medium text-foreground">{director}</span>
                   </div>
                   {clientName !== '—' && (
                     <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Client Owner</span>
+                      <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Client Owner</span>
                       <span className="font-medium text-foreground">{clientName}</span>
                     </div>
                   )}
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Record Security</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Record Security</span>
                     <span className="font-medium text-foreground flex items-center gap-1.5">
                       {isGenuine ? (
                         <>
@@ -262,7 +262,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Business / Contact Email</Label>
+                    <Label className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Business / Contact Email</Label>
                     <div className="flex items-center gap-3">
                       <Input value={clientEmail || '—'} className="max-w-md bg-muted/40" readOnly />
                       {clientEmail && <Badge variant="secondary" className="shrink-0">Verified</Badge>}
@@ -270,7 +270,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Phone / WhatsApp Number</Label>
+                    <Label className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Phone / WhatsApp Number</Label>
                     <div className="flex items-center gap-3">
                       <Input value={clientPhone || '—'} className="max-w-md bg-muted/40" readOnly />
                     </div>
@@ -282,16 +282,16 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
               <TabsContent value="registered-office" className="m-0 space-y-6 outline-none">
                 <div className="grid grid-cols-1 gap-y-4">
                   <div className="space-y-1">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Registered Office Address</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Registered Office Address</span>
                     <p className="text-sm font-medium bg-muted/30 p-3 rounded-lg border">{address}</p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Jurisdiction</span>
+                      <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Jurisdiction</span>
                       <p className="text-sm font-medium text-foreground">England & Wales</p>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Entity Type</span>
+                      <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Entity Type</span>
                       <p className="text-sm font-medium text-foreground">Private Limited Company (LTD)</p>
                     </div>
                   </div>
@@ -301,7 +301,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
               {/* Business Activity Tab */}
               <TabsContent value="business-activity" className="m-0 space-y-6 outline-none">
                 <div className="border rounded-xl p-4 space-y-2 bg-background shadow-xs">
-                  <div className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Principal Activity / SIC</div>
+                  <div className="text-sm uppercase tracking-wider font-semibold text-muted-foreground">Principal Activity / SIC</div>
                   <div className="font-medium text-sm text-foreground">
                     {sicCodes}
                   </div>
@@ -423,7 +423,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
 
                 {/* Standing Box matching screenshot */}
                 <div className="p-4 rounded-xl border bg-muted/10 space-y-1 mt-4">
-                  <span className="text-xs text-muted-foreground block font-medium">Standing</span>
+                  <span className="text-sm text-muted-foreground block font-medium">Standing</span>
                   <span className="text-sm font-bold text-foreground">
                     {detail?.account_status || raw.account_status || company.account_status || 'Good Standing'}
                   </span>
@@ -440,7 +440,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                           <div className="font-semibold text-sm mb-1 flex items-center gap-1.5 flex-wrap">
                             #{ord.order_number || ord.id} <span className="font-normal text-muted-foreground">— {ord.service_name || ord.title || 'Service'}</span>
                           </div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-sm text-muted-foreground">
                             Status: <span className="font-medium text-foreground">{ord.status || 'In Progress'}</span>
                           </div>
                         </div>
@@ -466,7 +466,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                       <div key={doc.id || idx} className="border rounded-xl p-4 flex flex-col md:flex-row md:items-start justify-between gap-4 bg-background shadow-xs">
                         <div className="space-y-1">
                           <h4 className="font-medium text-sm text-foreground">{doc.title || doc.filename || 'Document'}</h4>
-                          <p className="text-xs text-muted-foreground">{doc.category || 'Company Document'} • {doc.size || ''}</p>
+                          <p className="text-sm text-muted-foreground">{doc.category || 'Company Document'} • {doc.size || ''}</p>
                         </div>
                       </div>
                     ))}

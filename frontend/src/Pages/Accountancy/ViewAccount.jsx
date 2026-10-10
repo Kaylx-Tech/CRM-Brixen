@@ -416,7 +416,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
       <DialogContent className="sm:max-w-[720px] p-0 overflow-hidden gap-0">
         <DialogHeader className="px-6 pt-5 pb-3 border-b text-left space-y-1 shrink-0">
           <DialogTitle className="text-lg font-bold tracking-tight">{title}</DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
+          <DialogDescription className="text-sm text-muted-foreground">
             {subtitleBits.join(" · ")}
           </DialogDescription>
         </DialogHeader>
@@ -440,7 +440,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                 <section className="space-y-3">
                   <div>
                     <h4 className="text-sm font-bold">UK filing checks</h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-sm text-muted-foreground mt-0.5">
                       Companies Act registered office, ECCTA identity verification, PSC register, and Companies House codes.
                     </p>
                   </div>
@@ -453,9 +453,9 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-xs font-semibold">Identity verification</Label>
+                      <Label className="text-sm font-semibold">Identity verification</Label>
                       <Select value={identity} onValueChange={setIdentity}>
-                        <SelectTrigger className="w-full text-xs">
+                        <SelectTrigger className="w-full text-sm">
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                         <SelectContent className="max-h-60 overflow-hidden p-0">
@@ -470,9 +470,9 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-semibold">PSC verification</Label>
+                      <Label className="text-sm font-semibold">PSC verification</Label>
                       <Select value={psc} onValueChange={setPsc}>
-                        <SelectTrigger className="w-full text-xs">
+                        <SelectTrigger className="w-full text-sm">
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                         <SelectContent className="max-h-60 overflow-hidden p-0">
@@ -504,7 +504,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                     {issues.length ? (
                       issues.map((issue, idx) => <IssueBanner key={`${issue.code}-${idx}`} issue={issue} />)
                     ) : (
-                      <p className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">
+                      <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
                         UK filing checks are complete for this period.
                       </p>
                     )}
@@ -515,7 +515,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                 <section className="space-y-3">
                   <div>
                     <h4 className="text-sm font-bold">Bank statements</h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-sm text-muted-foreground mt-0.5">
                       Upload the period statements, then post each line into the cash book.
                     </p>
                   </div>
@@ -538,18 +538,18 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-muted-foreground">No bank statements on file for this company yet.</p>
+                      <p className="text-sm text-muted-foreground">No bank statements on file for this company yet.</p>
                     )}
                   </div>
 
                   <form onSubmit={handleUpload} className="space-y-3 rounded-xl border bg-card p-4">
                     <div className="space-y-2">
-                      <Label className="text-xs font-semibold">Statement file</Label>
+                      <Label className="text-sm font-semibold">Statement file</Label>
                       <Input
                         name="statementFile"
                         type="file"
                         accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.zip"
-                        className="w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-xs file:font-medium"
+                        className="w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium"
                         required
                       />
                     </div>
@@ -569,7 +569,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                 <section className="space-y-3">
                   <div>
                     <h4 className="text-sm font-bold">Cash book</h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-sm text-muted-foreground mt-0.5">
                       FRS 105 headings for micro-entity accounts. Receipts are positive; costs and drawings are payments out.
                     </p>
                   </div>
@@ -577,17 +577,17 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                   <form onSubmit={handleAddEntry} className="space-y-4 rounded-xl border bg-card p-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label className="text-xs font-semibold">Date</Label>
+                        <Label className="text-sm font-semibold">Date</Label>
                         <Input
                           type="date"
                           value={entryDate}
                           onChange={(e) => setEntryDate(e.target.value)}
-                          className="w-full text-xs"
+                          className="w-full text-sm"
                           required
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-xs font-semibold">Heading</Label>
+                        <Label className="text-sm font-semibold">Heading</Label>
                         <Select
                           value={entryCategory}
                           onValueChange={(val) => {
@@ -595,7 +595,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                             setEntryDirection(OUTFLOW_CATEGORIES.has(val) ? "out" : "in")
                           }}
                         >
-                          <SelectTrigger className="w-full text-xs">
+                          <SelectTrigger className="w-full text-sm">
                             <SelectValue placeholder="Select heading" />
                           </SelectTrigger>
                           <SelectContent className="max-h-60 w-(--anchor-width) overflow-hidden p-0">
@@ -612,20 +612,20 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-xs font-semibold">Description</Label>
+                      <Label className="text-sm font-semibold">Description</Label>
                       <Input
                         value={entryDesc}
                         onChange={(e) => setEntryDesc(e.target.value)}
                         placeholder="Statement narrative"
                         maxLength={200}
-                        className="w-full text-xs"
+                        className="w-full text-sm"
                         required
                       />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label className="text-xs font-semibold">Amount (£)</Label>
+                        <Label className="text-sm font-semibold">Amount (£)</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -633,14 +633,14 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                           value={entryAmount}
                           onChange={(e) => setEntryAmount(e.target.value)}
                           placeholder="0.00"
-                          className="w-full text-xs"
+                          className="w-full text-sm"
                           required
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-xs font-semibold">Direction</Label>
+                        <Label className="text-sm font-semibold">Direction</Label>
                         <Select value={entryDirection} onValueChange={setEntryDirection}>
-                          <SelectTrigger className="w-full text-xs">
+                          <SelectTrigger className="w-full text-sm">
                             <SelectValue placeholder="In / Out" />
                           </SelectTrigger>
                           <SelectContent className="overflow-hidden p-0">
@@ -682,12 +682,12 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-xs">Date</TableHead>
-                          <TableHead className="text-xs">Description</TableHead>
-                          <TableHead className="text-xs">Heading</TableHead>
-                          <TableHead className="text-xs">Amount</TableHead>
-                          <TableHead className="text-xs">Source</TableHead>
-                          <TableHead className="text-xs w-10" />
+                          <TableHead className="text-sm">Date</TableHead>
+                          <TableHead className="text-sm">Description</TableHead>
+                          <TableHead className="text-sm">Heading</TableHead>
+                          <TableHead className="text-sm">Amount</TableHead>
+                          <TableHead className="text-sm">Source</TableHead>
+                          <TableHead className="text-sm w-10" />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -696,13 +696,13 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                             const amount = Number(entry.amount || 0)
                             return (
                               <TableRow key={entry.id}>
-                                <TableCell className="text-xs">{formatUkDate(entry.entry_date)}</TableCell>
-                                <TableCell className="text-xs font-medium">{entry.description || entry.desc || ""}</TableCell>
-                                <TableCell className="text-xs">{entry.category || "Other"}</TableCell>
-                                <TableCell className={`text-xs font-semibold ${amount >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                                <TableCell className="text-sm">{formatUkDate(entry.entry_date)}</TableCell>
+                                <TableCell className="text-sm font-medium">{entry.description || entry.desc || ""}</TableCell>
+                                <TableCell className="text-sm">{entry.category || "Other"}</TableCell>
+                                <TableCell className={`text-sm font-semibold ${amount >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
                                   {formatGbp(amount)}
                                 </TableCell>
-                                <TableCell className="text-xs text-muted-foreground">
+                                <TableCell className="text-sm text-muted-foreground">
                                   {entry.source === "bank_statement" ? "Statement" : "Manual"}
                                 </TableCell>
                                 <TableCell>
@@ -721,7 +721,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                           })
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={6} className="h-20 text-center text-xs text-muted-foreground">
+                            <TableCell colSpan={6} className="h-20 text-center text-sm text-muted-foreground">
                               No cash book lines yet. Post each bank statement line here.
                             </TableCell>
                           </TableRow>

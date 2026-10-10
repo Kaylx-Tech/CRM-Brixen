@@ -51,7 +51,7 @@ export function PromptDialog({
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">{title}</DialogTitle>
             {description ? (
-              <DialogDescription className="text-xs mt-0.5">{description}</DialogDescription>
+              <DialogDescription className="text-sm mt-0.5">{description}</DialogDescription>
             ) : null}
           </DialogHeader>
           <div className="space-y-1.5">

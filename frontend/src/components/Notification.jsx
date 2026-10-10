@@ -239,7 +239,7 @@ export default function Notifications() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                className="h-7 px-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer"
                 onClick={handleMarkAllAsRead}
                 title="Mark all as read"
               >
@@ -251,7 +251,7 @@ export default function Notifications() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                className="h-7 px-2 text-sm text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
                 onClick={handleClearAll}
                 title="Clear all notifications"
               >
@@ -295,13 +295,13 @@ export default function Notifications() {
               <IconBell className="h-6 w-6" />
             </div>
             <h4 className="text-sm font-semibold text-foreground mb-1">No notifications</h4>
-            <p className="text-xs text-muted-foreground max-w-56 leading-relaxed mb-4">
+            <p className="text-sm text-muted-foreground max-w-56 leading-relaxed mb-4">
               You're completely caught up! New alerts and updates will appear here.
             </p>
             <Button
               variant="outline"
               size="sm"
-              className="h-8 text-xs gap-1.5 cursor-pointer"
+              className="h-8 text-sm gap-1.5 cursor-pointer"
               onClick={() => fetchNotifications(true)}
               disabled={isRefreshing}
             >
@@ -351,7 +351,7 @@ export default function Notifications() {
                         </span>
                       </div>
 
-                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                      <p className="mt-0.5 text-sm text-muted-foreground line-clamp-2 leading-relaxed">
                         {item.message || item.description || ""}
                       </p>
 
@@ -373,7 +373,7 @@ export default function Notifications() {
           <Button
             variant="ghost"
             size="sm"
-            className="w-full h-8 text-xs justify-center cursor-pointer"
+            className="w-full h-8 text-sm justify-center cursor-pointer"
             onClick={() => {
               setIsOpen(false)
               navigate("/admin/notifications")

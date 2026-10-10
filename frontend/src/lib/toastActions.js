@@ -73,7 +73,8 @@ export function toastUndoableDelete({
       await onCommit?.()
     } catch (err) {
       onUndo?.()
-      toastFail(id, err?.message || 'Delete failed. Item restored.')
+      // The "deleted" toast has already closed by now, so show the failure as a fresh toast
+      toast.error(err?.message || 'Delete failed. Item restored.', { duration: 6000 })
     }
   }
 

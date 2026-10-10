@@ -613,14 +613,14 @@ export default function Intake() {
       </Tabs>
 
       <div className="flex flex-wrap items-center gap-3">
-        <span className="text-xs text-muted-foreground">Categories</span>
+        <span className="text-sm text-muted-foreground">Categories</span>
         {INTAKE_DOC_CATEGORIES.map((cat) => {
           const Icon = cat.icon
           const isChecked = selectedCategories.includes(cat.id)
           return (
             <label
               key={cat.id}
-              className="inline-flex items-center gap-1.5 text-xs cursor-pointer select-none"
+              className="inline-flex items-center gap-1.5 text-sm cursor-pointer select-none"
             >
               <Checkbox
                 checked={isChecked}
@@ -654,7 +654,7 @@ export default function Intake() {
                 ? `${queue.length} document${queue.length > 1 ? 's' : ''} in queue`
                 : 'Drag & drop files or folders here'}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               PDF, PNG, JPG, DOCX, ZIP · OCR + Companies House matching
             </p>
           </div>
@@ -663,7 +663,7 @@ export default function Intake() {
               type="button"
               variant="outline"
               size="sm"
-              className="h-7 text-xs"
+              className="h-7 text-sm"
               onClick={() => filesInputRef.current?.click()}
             >
               <IconFilePlus className="mr-1.5 h-4 w-4" />
@@ -673,7 +673,7 @@ export default function Intake() {
               type="button"
               variant="outline"
               size="sm"
-              className="h-7 text-xs"
+              className="h-7 text-sm"
               onClick={() => folderInputRef.current?.click()}
             >
               <IconFolderPlus className="mr-1.5 h-4 w-4" />
@@ -683,7 +683,7 @@ export default function Intake() {
               type="button"
               variant="outline"
               size="sm"
-              className="h-7 text-xs"
+              className="h-7 text-sm"
               onClick={() => setIsDriveModalOpen(true)}
             >
               <IconBrandGoogleDrive className="mr-1.5 h-4 w-4" />
@@ -725,21 +725,21 @@ export default function Intake() {
             </h3>
             <div className="flex items-center gap-2">
               {isAnyProcessing ? (
-                <Badge className="badge-sky gap-1.5 text-xs">
+                <Badge className="badge-sky gap-1.5 text-sm">
                   <IconLoader2 className="h-3 w-3 animate-spin" />
                   {progressText || 'Processing…'}
                 </Badge>
               ) : totalProcessed > 0 && totalProcessed === queue.length ? (
-                <Badge className="badge-green gap-1 text-xs">
+                <Badge className="badge-green gap-1 text-sm">
                   <IconCheck className="h-3 w-3" />
                   All Processed
                 </Badge>
               ) : totalFailed > 0 ? (
-                <Badge className="badge-amber text-xs">
+                <Badge className="badge-amber text-sm">
                   {totalProcessed} filed · {totalFailed} failed
                 </Badge>
               ) : (
-                <span className="text-xs text-muted-foreground">Ready to process</span>
+                <span className="text-sm text-muted-foreground">Ready to process</span>
               )}
             </div>
           </div>
@@ -764,7 +764,7 @@ export default function Intake() {
                       <TableCell className="font-medium max-w-[220px]">
                         <div className="flex items-center gap-2 min-w-0">
                           <IconFileCode className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="truncate text-xs" title={item.name}>{item.name}</span>
+                          <span className="truncate text-sm" title={item.name}>{item.name}</span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -778,14 +778,14 @@ export default function Intake() {
                             onValueChange={(v) => updateItemCategory(item.id, v)}
                             disabled={isAnyProcessing}
                           >
-                            <SelectTrigger className="h-7 w-[150px] text-xs">
+                            <SelectTrigger className="h-7 w-[150px] text-sm">
                               <SelectValue />
                             </SelectTrigger>
                             
                             <SelectContent>
                               <SelectGroup>
                               {INTAKE_DOC_CATEGORIES.map((cat) => (
-                                <SelectItem key={cat.id} value={cat.id} className="text-xs">
+                                <SelectItem key={cat.id} value={cat.id} className="text-sm">
                                     {cat.label}
                                   </SelectItem>
                                 ))}
@@ -794,11 +794,11 @@ export default function Intake() {
                           </Select>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
+                      <TableCell className="text-sm text-muted-foreground">
                         {formatBytes(item.size)}
                       </TableCell>
                       <TableCell>{statusBadge(item)}</TableCell>
-                      <TableCell className="max-w-[260px] truncate text-xs text-muted-foreground">
+                      <TableCell className="max-w-[260px] truncate text-sm text-muted-foreground">
                         <span title={item.process_status}>{item.process_status}</span>
                       </TableCell>
                       <TableCell className="text-right">
@@ -822,11 +822,11 @@ export default function Intake() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={resetAll} disabled={isAnyProcessing}>
+            <Button variant="outline" size="sm" className="h-7 text-sm" onClick={resetAll} disabled={isAnyProcessing}>
               <IconRefresh className="mr-1.5 h-3.5 w-3.5" />
               Reset Queue
             </Button>
-            <Button size="sm" className="h-7 text-xs" onClick={processQueue} disabled={isAnyProcessing || queue.length === 0}>
+            <Button size="sm" className="h-7 text-sm" onClick={processQueue} disabled={isAnyProcessing || queue.length === 0}>
               {isAnyProcessing ? (
                 <IconLoader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
               ) : (
@@ -848,10 +848,10 @@ export default function Intake() {
             <div className="rounded-md border bg-card p-4 space-y-2">
               <div className="text-[11px] text-muted-foreground">Client profile</div>
               <div className="text-sm font-semibold truncate">{extractedName}</div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-sm text-muted-foreground">
                 DOB: <span className="text-foreground">{extractedDob || 'Not detected'}</span>
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-sm text-muted-foreground">
                 Nationality: <span className="text-foreground">{extractedNat || 'Not detected'}</span>
               </div>
               {clientProfile.id ? (
@@ -864,7 +864,7 @@ export default function Intake() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-7 text-xs w-full"
+                  className="h-7 text-sm w-full"
                   onClick={() => navigate('/admin/customers')}
                 >
                   <IconUser className="mr-1.5 h-3.5 w-3.5" />
@@ -878,7 +878,7 @@ export default function Intake() {
               <div className="text-sm font-semibold truncate">
                 {companyProfile.name || chMatch.company_name || 'No Direct Match'}
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-sm text-muted-foreground">
                 Company #: <span className="text-foreground font-mono">{companyProfile.company_number || chMatch.company_number || '—'}</span>
               </div>
               {chMatch.status === 'matched' || companyProfile.id ? (
@@ -891,7 +891,7 @@ export default function Intake() {
               {candidates.length > 0 && !companyProfile.id && (
                 <div className="space-y-1.5 pt-1 border-t">
                   {candidates.slice(0, 2).map((cand, idx) => (
-                    <div key={idx} className="flex items-center justify-between gap-2 text-xs">
+                    <div key={idx} className="flex items-center justify-between gap-2 text-sm">
                       <span className="truncate font-medium">{cand.name}</span>
                       <Button
                         type="button"
@@ -912,7 +912,7 @@ export default function Intake() {
             <div className="rounded-md border bg-card p-4 space-y-2">
               <div className="text-[11px] text-muted-foreground">Filing status</div>
               <div className="text-sm font-semibold">Customer Uploads</div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 Documents filed for staff review. Confirm identity and contact details on the customer profile.
               </p>
               <Badge className="badge-amber text-[11px]">Pending Review</Badge>
@@ -923,7 +923,7 @@ export default function Intake() {
               <div className="text-sm font-semibold">
                 {quality.label || (quality.score ? `${quality.score}% Score` : 'OCR Complete')}
               </div>
-              <p className="text-xs text-muted-foreground truncate" title={docProc.text_preview}>
+              <p className="text-sm text-muted-foreground truncate" title={docProc.text_preview}>
                 {docProc.text_preview
                   ? `Preview: ${docProc.text_preview.slice(0, 60)}…`
                   : 'OCR text extracted and parsed.'}
@@ -952,7 +952,7 @@ export default function Intake() {
                   <TableBody>
                     {results.filed_documents.map((doc, idx) => (
                       <TableRow key={doc.id || idx}>
-                        <TableCell className="font-medium text-xs max-w-[200px] truncate">
+                        <TableCell className="font-medium text-sm max-w-[200px] truncate">
                           {doc.name || doc.file_name || 'Document'}
                         </TableCell>
                         <TableCell>
@@ -960,10 +960,10 @@ export default function Intake() {
                             {doc.category || doc.document_type || 'Customer Upload'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
+                        <TableCell className="text-sm text-muted-foreground">
                           {doc.client_name || clientProfile.full_name || `Client #${doc.user_id || clientProfile.id || '—'}`}
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
+                        <TableCell className="text-sm text-muted-foreground">
                           {doc.company_name || companyProfile.name || 'Unassigned'}
                         </TableCell>
                         <TableCell>
@@ -974,7 +974,7 @@ export default function Intake() {
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-7 text-xs"
+                            className="h-7 text-sm"
                             onClick={() => navigate('/admin/documents')}
                           >
                             <IconEye className="mr-1 h-3.5 w-3.5" />
@@ -1010,7 +1010,7 @@ export default function Intake() {
                 onChange={(e) => setDriveLink(e.target.value)}
               />
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Link must allow view access. Files are queued for OCR after import.
             </p>
           </div>

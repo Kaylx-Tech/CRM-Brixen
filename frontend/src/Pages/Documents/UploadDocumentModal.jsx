@@ -284,7 +284,7 @@ export default function UploadDocumentModal({
 
         <form onSubmit={handleSubmit} className="grid gap-3.5">
           {formError && (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive" role="alert">
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive" role="alert">
               {formError}
             </div>
           )}
@@ -355,7 +355,7 @@ export default function UploadDocumentModal({
               File <span className="text-destructive">*</span>
             </Label>
             <Input
-              className="w-full text-xs"
+              className="w-full text-sm"
               type="file"
               accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.zip"
               onChange={onFileChange}
@@ -375,7 +375,7 @@ export default function UploadDocumentModal({
             />
           </div>
 
-          <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer">
+          <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
             <Checkbox
               checked={clientVisible}
               onCheckedChange={(v) => setClientVisible(!!v)}

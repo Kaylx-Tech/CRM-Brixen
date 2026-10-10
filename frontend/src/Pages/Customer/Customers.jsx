@@ -18,14 +18,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { toast } from "sonner"
 import { useNavigate } from "react-router-dom"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
@@ -42,7 +34,6 @@ const Customers = () => {
   const [isDeleting, setIsDeleting] = useState(false)
   const navigate = useNavigate()
   const [activeTypeTab, setActiveTypeTab] = useState('All')
-  const [ageFilter, setAgeFilter] = useState('all')
   const [customers, setCustomers] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
@@ -279,7 +270,7 @@ const Customers = () => {
     }),
     columnHelper.accessor("signedUp", {
       header: "Signed up",
-      cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.getValue("signedUp")}</span>,
+      cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.getValue("signedUp")}</span>,
     }),
     columnHelper.accessor("source", {
       header: "Source",
@@ -294,7 +285,7 @@ const Customers = () => {
     columnHelper.accessor("companies", {
       header: "Companies",
       cell: ({ row }) => (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-sm font-medium bg-muted text-muted-foreground">
           {row.getValue("companies")}
         </span>
       ),
@@ -302,7 +293,7 @@ const Customers = () => {
     columnHelper.accessor("orders", {
       header: "Orders",
       cell: ({ row }) => (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-sm font-medium bg-muted text-muted-foreground">
           {row.getValue("orders")}
         </span>
       ),
@@ -374,12 +365,9 @@ const Customers = () => {
   const filteredCustomers = useMemo(() => {
     return customers.filter((c) => {
       if (activeTypeTab !== 'All' && (c.type || '').toLowerCase() !== activeTypeTab.toLowerCase()) return false
-      if (ageFilter !== 'all') {
-        if (c.ageDays === null || c.ageDays === undefined || c.ageDays > Number(ageFilter)) return false
-      }
       return true
     })
-  }, [customers, activeTypeTab, ageFilter])
+  }, [customers, activeTypeTab])
 
   const customerFilterConfig = [
     {
@@ -428,38 +416,20 @@ const Customers = () => {
         className="w-full"
       >
         <TabsList>
-          <TabsTrigger value="All" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="All" className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             All
           </TabsTrigger>
-          <TabsTrigger value="Individual" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="Individual" className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             Individual
           </TabsTrigger>
-          <TabsTrigger value="Business" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="Business" className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             Business
           </TabsTrigger>
-          <TabsTrigger value="B2B" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="B2B" className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             B2B
           </TabsTrigger>
         </TabsList>
       </Tabs>
-
-      <div className="flex items-center gap-3 -mt-2">
-        <Select value={ageFilter} onValueChange={setAgeFilter}>
-          <SelectTrigger className="h-8 w-[170px] text-xs">
-            <SelectValue placeholder="All dates" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem value="all">All dates</SelectItem>
-              <SelectItem value="7">New — last 7 days</SelectItem>
-              <SelectItem value="30">Last 30 days</SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-        <span className="text-xs text-muted-foreground">
-          {filteredCustomers.length} of {customers.length} accounts
-        </span>
-      </div>
 
       <DataTable
         columns={columns}

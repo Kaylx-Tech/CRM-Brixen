@@ -28,7 +28,7 @@ export default function ToastSaveDemo() {
       
       {/* Action to trigger unsaved changes */}
       {state === "initial" && (
-        <p className="text-xs text-muted-foreground mb-2">
+        <p className="text-sm text-muted-foreground mb-2">
           (Click Save to see animation)
         </p>
       )}

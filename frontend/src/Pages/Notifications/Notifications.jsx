@@ -205,7 +205,7 @@ export default function NotificationsPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Notifications</h2>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Alerts for orders, tasks, documents, and account activity
             {unreadCount > 0 ? ` · ${unreadCount} unread` : ''}
           </p>
@@ -242,7 +242,7 @@ export default function NotificationsPage() {
         <TabsList className="h-auto flex-wrap bg-background gap-1 p-1">
           <TabsTrigger
             value="all"
-            className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
             All
             <span className="ml-1.5 rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0 text-[10px] font-semibold">
@@ -251,7 +251,7 @@ export default function NotificationsPage() {
           </TabsTrigger>
           <TabsTrigger
             value="unread"
-            className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
             Unread
             <span className="ml-1.5 rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0 text-[10px] font-semibold">
@@ -281,7 +281,7 @@ export default function NotificationsPage() {
             <h3 className="text-sm font-semibold">
               {tab === 'unread' ? 'No unread notifications' : 'No notifications'}
             </h3>
-            <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
               {tab === 'unread'
                 ? 'You’re all caught up. Switch to All to see older alerts.'
                 : 'New order, task, and document alerts will show up here.'}
@@ -324,7 +324,7 @@ export default function NotificationsPage() {
                               <Badge className="badge-sky text-[10px]">Unread</Badge>
                             ) : null}
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
                             {item.message || '—'}
                           </p>
                           <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">

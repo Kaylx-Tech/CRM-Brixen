@@ -230,7 +230,7 @@ function ToastItem({ t, onDismiss }) {
             transition={contentSwap.transition}
           >
             <ToastTypeIcon type={t.type} />
-            <span className="text-xs font-medium text-zinc-50 leading-snug max-w-[340px] truncate">
+            <span className="text-sm font-medium text-zinc-50 leading-snug max-w-[340px] truncate">
               {message}
             </span>
           </motion.div>
@@ -254,7 +254,7 @@ function ToastItem({ t, onDismiss }) {
                   const result = t.action.onClick?.()
                   if (result !== false) onDismiss(t.id)
                 }}
-                className="h-7 px-2 text-xs font-semibold text-sky-300 hover:text-sky-200 hover:bg-white/10 rounded-lg"
+                className="h-7 px-2 text-sm font-semibold text-sky-300 hover:text-sky-200 hover:bg-white/10 rounded-lg"
               >
                 {t.action.label || "Action"}
               </Button>
@@ -368,7 +368,7 @@ export function ToastSave({
                   {state === "loading" && (
                     <>
                       <IconLoader2 className="w-4 h-4 text-sky-300 animate-spin" />
-                      <span className="text-xs font-medium whitespace-nowrap text-zinc-50">
+                      <span className="text-sm font-medium whitespace-nowrap text-zinc-50">
                         {loadingText}
                       </span>
                     </>
@@ -379,7 +379,7 @@ export function ToastSave({
                       <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-400/15 text-emerald-400 ring-1 ring-emerald-400/20">
                         <IconCheck className="w-3.5 h-3.5" />
                       </div>
-                      <span className="text-xs font-medium whitespace-nowrap text-emerald-300">
+                      <span className="text-sm font-medium whitespace-nowrap text-emerald-300">
                         {successText}
                       </span>
                     </>
@@ -390,7 +390,7 @@ export function ToastSave({
                       <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-400/15 text-amber-300 ring-1 ring-amber-400/20">
                         <IconAlertTriangle className="w-3.5 h-3.5" />
                       </div>
-                      <span className="text-xs font-medium whitespace-nowrap text-zinc-50">
+                      <span className="text-sm font-medium whitespace-nowrap text-zinc-50">
                         {initialText}
                       </span>
                     </>
@@ -406,7 +406,7 @@ export function ToastSave({
                       size="sm"
                       variant="ghost"
                       onClick={onCancel}
-                      className="h-7 px-2.5 text-xs font-normal text-zinc-400 hover:text-zinc-100 hover:bg-white/10 rounded-lg"
+                      className="h-7 px-2.5 text-sm font-normal text-zinc-400 hover:text-zinc-100 hover:bg-white/10 rounded-lg"
                     >
                       {cancelText}
                     </Button>
@@ -418,7 +418,7 @@ export function ToastSave({
                       size="sm"
                       variant="outline"
                       onClick={handleDiscard}
-                      className="h-7 px-2.5 text-xs font-medium text-red-300 hover:bg-red-400/10 hover:text-red-200 border-red-400/30 bg-transparent rounded-lg"
+                      className="h-7 px-2.5 text-sm font-medium text-red-300 hover:bg-red-400/10 hover:text-red-200 border-red-400/30 bg-transparent rounded-lg"
                     >
                       <IconX className="w-3 h-3 mr-1" />
                       {discardText}
@@ -430,7 +430,7 @@ export function ToastSave({
                       type="button"
                       size="sm"
                       onClick={onSave}
-                      className="h-7 px-3 text-xs font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-400 shadow-sm shadow-sky-950/40"
+                      className="h-7 px-3 text-sm font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-400 shadow-sm shadow-sky-950/40"
                     >
                       <IconDeviceFloppy className="w-3.5 h-3.5 mr-1" />
                       {saveText}

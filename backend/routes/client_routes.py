@@ -169,9 +169,11 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         b2b_id = f"B2B-{str(cid).zfill(6)}" if is_b2b else None
         execute_db("""
             UPDATE users
-            SET client_type = ?, is_b2b = ?, b2b_id = COALESCE(b2b_id, ?), type_change_count = COALESCE(type_change_count, 0) + 1, type_locked = 1
+            SET client_type = ?, is_b2b = ?, b2b_id = COALESCE(b2b_id, ?), type_change_count = COALESCE(type_change_count, 0) + 1, type_locked = 1,
+                notification_email = CASE WHEN ? IN ('B2B', 'Business') AND TRIM(COALESCE(notification_email, '')) = ''
+                                          THEN email ELSE notification_email END
             WHERE id = ?;
-        """, (client_type, is_b2b, b2b_id, cid))
+        """, (client_type, is_b2b, b2b_id, client_type, cid))
         _audit(user, 'CUSTOMER_TYPE_CHANGE', 'users', cid, f"Updated customer type to {client_type} (locked)")
         return success_response(start_response, message=f"Customer type updated to {client_type} and permanently locked", data={"type": client_type, "is_b2b": is_b2b, "type_locked": 1, "type_change_count": 1})
 
@@ -199,13 +201,16 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         target = _client_target(cid) if cid else None
         if not target or target.get('role') != 'CLIENT':
             return error_response(start_response, "Customer not found", status_code=404)
-        execute_db("UPDATE users SET notification_email = ? WHERE id = ?;", (raw_email or None, cid))
+        # Blank means "use the signup email", so store that instead of leaving it empty
+        login_email = (target.get('email') or '').strip().lower()
+        saved_email = raw_email or login_email or None
+        execute_db("UPDATE users SET notification_email = ? WHERE id = ?;", (saved_email, cid))
         _audit(user, 'CUSTOMER_NOTIFICATION_EMAIL_UPDATE', 'users', cid,
                f"Notification email for {target.get('email')} set to {raw_email or '(login email)'}")
         return success_response(
             start_response,
             message="Notification email saved. All client emails for this customer will use it.",
-            data={"notification_email": raw_email, "effective_email": raw_email or target.get('email') or ''})
+            data={"notification_email": saved_email or '', "effective_email": saved_email or ''})
 
     # ── 4. POST /api/admin/customers/password (Set / Reset Password) ─────────
     if path in ('/api/admin/customers/password', '/api/admin/customers/set-password') and method == 'POST':
@@ -291,6 +296,7 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
                     WHERE t.assigned_staff_id = u.id) as total_tasks
             FROM users u
             WHERE u.role IN ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
+              AND u.removed_at IS NULL
             ORDER BY
               CASE u.role
                 WHEN 'SUPER_ADMIN' THEN 0
@@ -305,6 +311,41 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
             "staff": staff,
             "total": len(staff),
         })
+
+    # ── 6c. DELETE /api/admin/staff/<id> (Remove team member, admin only) ────
+    # Soft remove: the account is switched off and signed out, but kept so task and audit history stay intact.
+    match_staff = re.match(r'^/api/admin/staff/(\d+)$', path)
+    if match_staff and method == 'DELETE':
+        if user_role not in ('SUPER_ADMIN', 'ADMIN'):
+            return error_response(start_response, "Only an admin can remove team members", status_code=403)
+        sid = int(match_staff.group(1))
+        member = query_db("SELECT id, full_name, email, role, status FROM users WHERE id = ? LIMIT 1;", (sid,), one=True)
+        if not member or member.get('role') not in ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF'):
+            return error_response(start_response, "Team member not found", status_code=404)
+        if sid == user.get('id'):
+            return error_response(start_response, "You cannot remove your own account", status_code=400)
+        if member.get('role') == 'SUPER_ADMIN' and user_role != 'SUPER_ADMIN':
+            return error_response(start_response, "Only a super admin can remove another super admin", status_code=403)
+        if member.get('role') == 'SUPER_ADMIN':
+            others = query_db("""
+                SELECT COUNT(*) AS c FROM users
+                WHERE role = 'SUPER_ADMIN' AND status = 'Active' AND id <> ?;
+            """, (sid,), one=True)
+            if not (others or {}).get('c'):
+                return error_response(start_response, "The last super admin cannot be removed", status_code=400)
+
+        execute_db("UPDATE users SET status = 'Suspended', removed_at = datetime('now') WHERE id = ?;", (sid,))
+        execute_db("UPDATE user_sessions SET revoked_at = datetime('now') WHERE user_id = ? AND revoked_at IS NULL;", (sid,))
+        open_tasks = (query_db("""
+            SELECT COUNT(*) AS c FROM tasks
+            WHERE assigned_staff_id = ? AND status IN ('Open', 'In Progress');
+        """, (sid,), one=True) or {}).get('c') or 0
+        _audit(user, 'STAFF_REMOVED', 'users', sid,
+               f"Removed team member {member.get('email')} ({member.get('role')})")
+        msg = f"{member.get('full_name') or member.get('email')} was removed from the team"
+        if open_tasks:
+            msg += f". They still had {open_tasks} open task(s) - reassign them from Tasks."
+        return success_response(start_response, message=msg, data={"id": sid, "open_tasks": open_tasks})
 
     # ── 7. POST /api/admin/staff OR /api/admin/customers (Create Customer) ───
     if path in ('/api/admin/staff', '/api/admin/customers', '/api/clients') and method == 'POST':
@@ -322,11 +363,14 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         creatable = {
             'SUPER_ADMIN': {'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF', 'CLIENT'},
             'ADMIN': {'ADMIN', 'MANAGER', 'STAFF', 'CLIENT'},
-            'MANAGER': {'STAFF', 'CLIENT'},
+            # Only admins add team members; managers and staff can still create customers
+            'MANAGER': {'CLIENT'},
             'STAFF': {'CLIENT'},
         }.get(user_role, set())
         if role not in creatable:
-            return error_response(start_response, "You cannot create an account with that role", status_code=403)
+            msg = ("Only an admin can add team members" if role != 'CLIENT'
+                   else "You cannot create an account with that role")
+            return error_response(start_response, msg, status_code=403)
         if not check_permission(user, 'clients.create' if role == 'CLIENT' else 'staff.manage'):
             return _forbidden(start_response)
 
@@ -337,7 +381,16 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
                 start_response, f"Staff accounts need an explicit password (min {STAFF_MIN_PASSWORD_LEN} characters)",
                 status_code=400)
 
-        existing = query_db("SELECT id FROM users WHERE email = ?;", (email,), one=True)
+        existing = query_db("SELECT id, role, removed_at FROM users WHERE email = ?;", (email,), one=True)
+        if existing and role != 'CLIENT' and existing.get('removed_at') and existing.get('role') != 'CLIENT':
+            # Adding back someone who was removed earlier: switch the old account on again
+            execute_db("""
+                UPDATE users SET full_name = ?, password_hash = ?, role = ?, phone = COALESCE(?, phone),
+                                 status = 'Active', removed_at = NULL
+                WHERE id = ?;
+            """, (full_name, hash_password(password), role, phone or None, existing['id']))
+            _audit(user, 'STAFF_RESTORED', 'users', existing['id'], f"Re-added {role} account for {email}")
+            return success_response(start_response, message=f"Team member '{full_name}' added back", data={"id": existing['id']})
         if existing:
             return error_response(start_response, "An account with this email already exists", status_code=400)
 
@@ -353,7 +406,8 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
             execute_db("UPDATE users SET b2b_id = COALESCE(b2b_id, ?) WHERE id = ?;", (f"B2B-{str(new_id).zfill(6)}", new_id))
         _audit(user, 'CUSTOMER_CREATED' if role == 'CLIENT' else 'STAFF_CREATED', 'users', new_id,
                f"Created {role} account for {email}")
-        return success_response(start_response, message=f"Customer '{full_name}' created successfully", data={"id": new_id})
+        noun = 'Customer' if role == 'CLIENT' else 'Team member'
+        return success_response(start_response, message=f"{noun} '{full_name}' created successfully", data={"id": new_id})
 
     # ── 8. GET /api/clients/<id> OR /api/admin/customers/<id> (Detail) ───────
     match_detail = re.match(r'^/(?:api/clients|api/admin/customers)/(\d+)$', path)

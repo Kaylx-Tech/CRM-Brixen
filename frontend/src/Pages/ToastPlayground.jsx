@@ -48,7 +48,7 @@ export default function ToastPlayground() {
         <Card className="rounded-2xl shadow-sm border">
           <CardHeader>
             <CardTitle className="text-base font-semibold">Standard Notifications</CardTitle>
-            <CardDescription className="text-xs">
+            <CardDescription className="text-sm">
               Click any button below to trigger the spring-animated pill toast.
             </CardDescription>
           </CardHeader>
@@ -56,7 +56,7 @@ export default function ToastPlayground() {
             <div className="grid grid-cols-2 gap-2.5">
               <Button
                 variant="outline"
-                className="gap-2 text-xs h-9 justify-start border-emerald-500/20 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                className="gap-2 text-sm h-9 justify-start border-emerald-500/20 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
                 onClick={() => toast.success('Order #GB15339 updated successfully!')}
               >
                 <IconCheck className="w-4 h-4" />
@@ -65,7 +65,7 @@ export default function ToastPlayground() {
 
               <Button
                 variant="outline"
-                className="gap-2 text-xs h-9 justify-start border-destructive/20 hover:bg-destructive/10 text-destructive"
+                className="gap-2 text-sm h-9 justify-start border-destructive/20 hover:bg-destructive/10 text-destructive"
                 onClick={() => toast.error('Failed to update company. Please try again.')}
               >
                 <IconAlertOctagon className="w-4 h-4" />
@@ -74,7 +74,7 @@ export default function ToastPlayground() {
 
               <Button
                 variant="outline"
-                className="gap-2 text-xs h-9 justify-start border-amber-500/20 hover:bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                className="gap-2 text-sm h-9 justify-start border-amber-500/20 hover:bg-amber-500/10 text-amber-700 dark:text-amber-400"
                 onClick={() => toast.warning('Accounts filing deadline is approaching (7 days left).')}
               >
                 <IconAlertTriangle className="w-4 h-4" />
@@ -83,7 +83,7 @@ export default function ToastPlayground() {
 
               <Button
                 variant="outline"
-                className="gap-2 text-xs h-9 justify-start border-primary/20 hover:bg-primary/10 text-primary"
+                className="gap-2 text-sm h-9 justify-start border-primary/20 hover:bg-primary/10 text-primary"
                 onClick={() => toast.info('New KYC document uploaded to company vault.')}
               >
                 <IconInfoCircle className="w-4 h-4" />
@@ -92,7 +92,7 @@ export default function ToastPlayground() {
 
               <Button
                 variant="outline"
-                className="gap-2 text-xs h-9 justify-start"
+                className="gap-2 text-sm h-9 justify-start"
                 onClick={() => {
                   const id = toast.loading('Uploading company documents...')
                   setTimeout(() => {
@@ -107,7 +107,7 @@ export default function ToastPlayground() {
 
               <Button
                 variant="outline"
-                className="gap-2 text-xs h-9 justify-start"
+                className="gap-2 text-sm h-9 justify-start"
                 onClick={() => {
                   const id = 'playground-undo-demo'
                   toast.success('Document deleted from vault', {
@@ -135,17 +135,17 @@ export default function ToastPlayground() {
             </div>
 
             <div className="pt-3 border-t space-y-2">
-              <Label className="text-xs font-semibold">Custom Toast Message</Label>
+              <Label className="text-sm font-semibold">Custom Toast Message</Label>
               <div className="flex gap-2">
                 <Input
                   value={customMsg}
                   onChange={(e) => setCustomMsg(e.target.value)}
-                  className="text-xs h-8"
+                  className="text-sm h-8"
                   placeholder="Type any message..."
                 />
                 <Button
                   size="sm"
-                  className="h-8 text-xs font-semibold shrink-0"
+                  className="h-8 text-sm font-semibold shrink-0"
                   onClick={() => toast.success(customMsg || 'Hello from custom toast!')}
                 >
                   Send
@@ -159,18 +159,18 @@ export default function ToastPlayground() {
         <Card className="rounded-2xl shadow-sm border">
           <CardHeader>
             <CardTitle className="text-base font-semibold">Unsaved Changes Prompt (ToastSave)</CardTitle>
-            <CardDescription className="text-xs">
+            <CardDescription className="text-sm">
               Interactive preview of the modal discard/save safety confirmation.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-xs text-muted-foreground leading-relaxed">
+            <p className="text-sm text-muted-foreground leading-relaxed">
               This toast pops up when a user modifies a form or wizard and tries to close without saving.
             </p>
 
             <div className="flex flex-wrap gap-2 pt-2">
               <Button
-                className="gap-2 text-xs h-9"
+                className="gap-2 text-sm h-9"
                 onClick={() => {
                   setSaveToastState('initial')
                   setShowSaveToast(true)
@@ -182,14 +182,14 @@ export default function ToastPlayground() {
 
               <Button
                 variant="ghost"
-                className="text-xs h-9"
+                className="text-sm h-9"
                 onClick={() => setShowSaveToast(false)}
               >
                 Hide Confirmation
               </Button>
             </div>
 
-            <div className="rounded-xl border bg-muted/30 p-3 text-xs space-y-1">
+            <div className="rounded-xl border bg-muted/30 p-3 text-sm space-y-1">
               <div className="font-semibold text-foreground">Current State:</div>
               <div className="text-muted-foreground">
                 Visible: <span className="font-mono text-primary">{showSaveToast ? 'true' : 'false'}</span> | Status:{' '}

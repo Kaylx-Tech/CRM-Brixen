@@ -77,7 +77,7 @@ export function SiteHeader() {
                   {index > 0 && <BreadcrumbSeparator />}
                   <BreadcrumbItem>
                     {item.isCurrent ? (
-                      <BreadcrumbPage className=" text-xs text-foreground">
+                      <BreadcrumbPage className=" text-sm text-foreground">
                         {item.label}
                       </BreadcrumbPage>
                     ) : (

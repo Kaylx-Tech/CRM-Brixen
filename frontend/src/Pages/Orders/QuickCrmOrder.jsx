@@ -352,7 +352,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
           <DrawerTitle className="text-xl font-extrabold tracking-tight">
             Create Manual Order &amp; Company Registration
           </DrawerTitle>
-          <DrawerDescription className="text-xs">
+          <DrawerDescription className="text-sm">
             Complete official company formation and registration details. Portal login stays on the client; work
             notifications go to the company email.
           </DrawerDescription>
@@ -363,14 +363,14 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
             <ScrollArea className="h-full">
               <div className="px-6 py-4 space-y-5">
               {error ? (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive">
                   {error}
                 </div>
               ) : null}
 
               <Section title="1. Client Account & Contact Details">
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Client Type</Label>
+                  <Label className="text-sm font-semibold">Client Type</Label>
                   <div className="flex flex-wrap gap-4 text-sm font-medium">
                     <label className="inline-flex items-center gap-2 cursor-pointer">
                       <input
@@ -397,7 +397,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
 
                 {clientMode === "existing" ? (
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Select Client Account *</Label>
+                    <Label className="text-sm font-semibold">Select Client Account *</Label>
                     <Select value={clientId || undefined} onValueChange={setClientId} disabled={loadingClients}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="-- Select Client --" />
@@ -418,7 +418,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-xs font-semibold">Client Full Name *</Label>
+                      <Label className="text-sm font-semibold">Client Full Name *</Label>
                       <Input
                         className="w-full"
                         value={newClientName}
@@ -427,7 +427,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-semibold">Portal Login Email *</Label>
+                      <Label className="text-sm font-semibold">Portal Login Email *</Label>
                       <Input
                         type="email"
                         className="w-full"
@@ -443,7 +443,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
               <Section title="2. Company Formation & Registration Details">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Existing Company (Optional)</Label>
+                    <Label className="text-sm font-semibold">Existing Company (Optional)</Label>
                     <Select value={companyId} onValueChange={setCompanyId} disabled={loadingCompanies}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="No company / create with details below" />
@@ -461,7 +461,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Company Registered Name</Label>
+                    <Label className="text-sm font-semibold">Company Registered Name</Label>
                     <Input
                       className="w-full"
                       value={companyName}
@@ -470,7 +470,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Company Entity Type</Label>
+                    <Label className="text-sm font-semibold">Company Entity Type</Label>
                     <Select value={companyType} onValueChange={setCompanyType}>
                       <SelectTrigger className="w-full">
                         <SelectValue />
@@ -485,7 +485,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">SIC Code / Business Activity</Label>
+                    <Label className="text-sm font-semibold">SIC Code / Business Activity</Label>
                     <Select value={sicCode} onValueChange={setSicCode}>
                       <SelectTrigger className="w-full">
                         <SelectValue />
@@ -500,7 +500,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Company Work Notification Email *</Label>
+                    <Label className="text-sm font-semibold">Company Work Notification Email *</Label>
                     <Input
                       type="email"
                       required
@@ -511,7 +511,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Company Contact Phone</Label>
+                    <Label className="text-sm font-semibold">Company Contact Phone</Label>
                     <Input
                       className="w-full"
                       value={companyPhone}
@@ -522,7 +522,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Registered Office Address</Label>
+                  <Label className="text-sm font-semibold">Registered Office Address</Label>
                   <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr_1fr] gap-3">
                     <Input
                       className="w-full"
@@ -549,7 +549,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
               <Section title="3. Director & Officer Information">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Director / Owner Full Name</Label>
+                    <Label className="text-sm font-semibold">Director / Owner Full Name</Label>
                     <Input
                       className="w-full"
                       value={ownerName}
@@ -558,7 +558,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Director Direct Phone</Label>
+                    <Label className="text-sm font-semibold">Director Direct Phone</Label>
                     <Input
                       className="w-full"
                       value={directorPhone}
@@ -567,7 +567,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Director Nationality</Label>
+                    <Label className="text-sm font-semibold">Director Nationality</Label>
                     <Input
                       className="w-full"
                       value={directorNationality}
@@ -576,7 +576,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Country of Residence</Label>
+                    <Label className="text-sm font-semibold">Country of Residence</Label>
                     <Input
                       className="w-full"
                       value={directorResidence}
@@ -589,7 +589,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
 
               <Section title="4. Ordered Products, Pricing & Payment Mode *">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs text-muted-foreground">Add one or more services for this order.</p>
+                  <p className="text-sm text-muted-foreground">Add one or more services for this order.</p>
                   <Button
                     type="button"
                     variant="outline"
@@ -643,7 +643,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3 border-t">
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Payment Channel</Label>
+                    <Label className="text-sm font-semibold">Payment Channel</Label>
                     <Select value={paymentMode} onValueChange={setPaymentMode}>
                       <SelectTrigger className="w-full">
                         <SelectValue />
@@ -658,7 +658,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Initial Status</Label>
+                    <Label className="text-sm font-semibold">Initial Status</Label>
                     <Select value={status} onValueChange={setStatus}>
                       <SelectTrigger className="w-full">
                         <SelectValue />
@@ -679,9 +679,9 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Internal Notes & Special Instructions</Label>
+                  <Label className="text-sm font-semibold">Internal Notes & Special Instructions</Label>
                   <Textarea
-                    className="text-xs min-h-16"
+                    className="text-sm min-h-16"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Add internal notes or special customer instructions..."

@@ -79,7 +79,7 @@ function asBool(val, fallback = false) {
 function Field({ id, label, hint, children }) {
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={id} className="text-xs">{label}</Label>
+      <Label htmlFor={id} className="text-sm">{label}</Label>
       {children}
       {hint ? <p className="text-[11px] text-muted-foreground m-0">{hint}</p> : null}
     </div>
@@ -92,7 +92,7 @@ function Section({ title, description, children }) {
       <div>
         <h3 className="text-sm font-semibold">{title}</h3>
         {description ? (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+          <p className="text-sm text-muted-foreground mt-1">{description}</p>
         ) : null}
       </div>
       {children}
@@ -436,7 +436,7 @@ export default function Settings() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">System Settings</h2>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Branding, email, integrations, compliance, and your profile
           </p>
         </div>
@@ -648,7 +648,7 @@ export default function Settings() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-7 text-xs"
+                  className="h-7 text-sm"
                   disabled={!!testing || isLoading}
                   onClick={() => runTest('smtp')}
                 >
@@ -687,7 +687,7 @@ export default function Settings() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 text-xs"
+                className="h-7 text-sm"
                 disabled={!!testing || isLoading}
                 onClick={() => runTest('ch')}
               >
@@ -742,7 +742,7 @@ export default function Settings() {
               <Field id="google_service_account_json" label="Service account JSON">
                 <textarea
                   id="google_service_account_json"
-                  className="flex min-h-[110px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-xs shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:opacity-50"
+                  className="flex min-h-[110px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:opacity-50"
                   value={form.google_service_account_json}
                   onChange={(e) => setField('google_service_account_json', e.target.value)}
                   placeholder='{"type":"service_account", ...}'
@@ -753,7 +753,7 @@ export default function Settings() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 text-xs"
+                className="h-7 text-sm"
                 disabled={!!testing || isLoading}
                 onClick={() => runTest('drive')}
               >
@@ -811,7 +811,7 @@ export default function Settings() {
                   ['compliance_alerts_whatsapp_enabled', 'Include WhatsApp contact option'],
                   ['compliance_alerts_test_mode', 'Test mode (redirect all to test recipient)'],
                 ].map(([key, label]) => (
-                  <label key={key} className="inline-flex items-center gap-2 text-xs cursor-pointer">
+                  <label key={key} className="inline-flex items-center gap-2 text-sm cursor-pointer">
                     <Checkbox
                       checked={!!form[key]}
                       onCheckedChange={(v) => setField(key, !!v)}
@@ -886,7 +886,7 @@ export default function Settings() {
           <TabsContent value="profile" className="mt-0 space-y-4">
             <Section title="Account" description="Your staff login details. Email cannot be changed here.">
               <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="text-xs text-muted-foreground">Signed-in role</span>
+                <span className="text-sm text-muted-foreground">Signed-in role</span>
                 {profile.role ? (
                   <Badge className="badge-sky text-[11px]">{profile.role}</Badge>
                 ) : null}

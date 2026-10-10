@@ -135,14 +135,14 @@ export default function RelinkFilesDialog({ open, onOpenChange, onDone }) {
             <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
               <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
             </div>
-            <div className="flex flex-wrap gap-2 text-xs">
+            <div className="flex flex-wrap gap-2 text-sm">
               <span>{done}/{queue.length} done ({pct}%)</span>
               {Object.entries(counts).map(([k, v]) => (
                 <Badge key={k} variant={LABELS[k]?.variant || "outline"}>{LABELS[k]?.text || k}: {v}</Badge>
               ))}
             </div>
             {running && (
-              <p className="text-xs text-muted-foreground truncate">Uploading: {queue[done]?.name}</p>
+              <p className="text-sm text-muted-foreground truncate">Uploading: {queue[done]?.name}</p>
             )}
           </div>
         )}
@@ -155,13 +155,13 @@ export default function RelinkFilesDialog({ open, onOpenChange, onDone }) {
                   <div className="min-w-0">
                     <p className="truncate font-medium">{r.filename}</p>
                     {(r.note || r.detail?.customer) && (
-                      <p className="text-xs text-muted-foreground truncate">{r.note || r.detail.customer}</p>
+                      <p className="text-sm text-muted-foreground truncate">{r.note || r.detail.customer}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Badge variant={LABELS[r.result]?.variant || "outline"}>{LABELS[r.result]?.text || r.result}</Badge>
                     {r.result === "SIZE_MISMATCH" && (
-                      <Button size="sm" variant="ghost" className="h-7 text-xs" disabled={running} onClick={() => attachAnyway(idx)}>
+                      <Button size="sm" variant="ghost" className="h-7 text-sm" disabled={running} onClick={() => attachAnyway(idx)}>
                         Attach anyway
                       </Button>
                     )}

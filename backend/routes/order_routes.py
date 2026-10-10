@@ -509,12 +509,17 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         if not existing:
             return error_response(start_response, "Order not found", status_code=404)
 
-        # Same rules as the old portal: locked "genuine" orders need a super admin override.
+        # Genuine (paid / website) orders are locked; an admin unlocks them by confirming in the
+        # delete dialog, which sends force_delete_genuine. Only admins ever reach this point.
         from services import data_protection, permanent_purge
-        force = user_role == 'SUPER_ADMIN' and bool((body or {}).get('force_delete_genuine'))
-        blocked = data_protection.refuse_manual_delete_order(existing, force=force, actor=user)
-        if blocked:
-            return error_response(start_response, blocked, status_code=403)
+        force_flag = (body or {}).get('force_delete_genuine') if isinstance(body, dict) else None
+        if force_flag is None:
+            force_flag = ((query or {}).get('force_delete_genuine') or [''])[0]
+        force = str(force_flag).strip().lower() in ('1', 'true', 'yes')
+        if not force:
+            blocked = data_protection.refuse_manual_delete_order(existing, actor=user)
+            if blocked:
+                return error_response(start_response, blocked, status_code=403)
 
         result = permanent_purge.purge_order_from_live(order=existing, actor=user, scrub_backups=True)
         root = os.path.abspath(permanent_purge.storage_dir())

@@ -63,7 +63,7 @@ export default function DocumentPreview({ doc, className = "" }) {
     <div className={`flex flex-col items-center justify-center gap-3 py-16 text-center ${className}`}>
       <IconFileText className="w-10 h-10 text-muted-foreground" />
       <p className="text-sm font-medium">{name}</p>
-      <p className="text-xs text-muted-foreground">Preview is not available for this file type.</p>
+      <p className="text-sm text-muted-foreground">Preview is not available for this file type.</p>
       <div className="flex gap-2">
         <Button size="sm" onClick={() => downloadDocument(doc.id, name)}>Download</Button>
         {driveLink && (

@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/drawer"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -81,7 +82,7 @@ function StepPill({ step, current, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-all w-full cursor-pointer select-none ${
+      className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition-all w-full cursor-pointer select-none ${
         active
           ? "border-primary bg-primary/10 text-primary shadow-xs ring-1 ring-primary/20"
           : done
@@ -458,7 +459,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
         <DrawerHeader className="px-6 pt-3 pb-4 border-b text-left space-y-3 shrink-0">
           <div>
             <DrawerTitle className="text-xl font-extrabold tracking-tight">Create New Order</DrawerTitle>
-            <DrawerDescription className="text-xs mt-1">
+            <DrawerDescription className="text-sm mt-1">
               {selectedCustomer
                 ? `Customer: ${selectedCustomer.full_name || selectedCustomer.email}`
                 : "5-step staff order wizard — customer, products, details, documents, review."}
@@ -472,7 +473,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
         </DrawerHeader>
 
         {error ? (
-          <div className="mx-6 mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive shrink-0">
+          <div className="mx-6 mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive shrink-0">
             {error}
           </div>
         ) : null}
@@ -484,7 +485,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
               <section className="space-y-4">
                 <div>
                   <h4 className="text-base font-bold">Select Customer</h4>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-sm text-muted-foreground mt-0.5">
                     Search or select the customer placing this order.
                   </p>
                 </div>
@@ -496,13 +497,13 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
                       value={customerSearch}
                       onChange={(e) => setCustomerSearch(e.target.value)}
                       placeholder="Search customer by name, email, phone..."
-                      className="pl-9 text-xs"
+                      className="pl-9 text-sm"
                     />
                   </div>
                   <Tabs value={customerType} onValueChange={setCustomerType}>
                     <TabsList className="flex flex-wrap h-auto p-1 gap-1">
                       {typePills.map((p) => (
-                        <TabsTrigger key={p.key} value={p.key} className="text-xs">
+                        <TabsTrigger key={p.key} value={p.key} className="text-sm">
                           {p.label}
                         </TabsTrigger>
                       ))}
@@ -539,9 +540,9 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
                             </div>
                             <div>
                               <div className="font-bold text-sm leading-snug">{c.full_name || "Client"}</div>
-                              <p className="text-xs text-muted-foreground mt-1 break-all line-clamp-1">{c.email}</p>
+                              <p className="text-sm text-muted-foreground mt-1 break-all line-clamp-1">{c.email}</p>
                             </div>
-                            <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center justify-between text-sm">
                               {b2b && c.b2b_id ? (
                                 <span className="font-bold text-emerald-700 dark:text-emerald-300">
                                   {c.b2b_id}
@@ -571,7 +572,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
               <section className="space-y-4">
                 <div>
                   <h4 className="text-base font-bold">Select products</h4>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-sm text-muted-foreground mt-0.5">
                     Tick as many as you need. Requirements merge into one details form and one document upload.
                   </p>
                 </div>
@@ -583,18 +584,23 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
                       value={productSearch}
                       onChange={(e) => setProductSearch(e.target.value)}
                       placeholder="Search products or services..."
-                      className="pl-9 text-xs"
+                      className="pl-9 text-sm"
                     />
                   </div>
-                  <Tabs value={category} onValueChange={setCategory}>
-                    <TabsList className="flex flex-wrap h-auto p-1 gap-1">
-                      {categories.map((cat) => (
-                        <TabsTrigger key={cat} value={cat} className="text-xs">
-                          {cat}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </Tabs>
+                  <Select value={category} onValueChange={(v) => setCategory(v || "All")}>
+                    <SelectTrigger className="w-full lg:w-56 text-sm">
+                      <SelectValue>{category === "All" ? "All categories" : category}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {cat === "All" ? "All categories" : cat}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                 </div>
 
 
@@ -631,7 +637,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
                                 <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{p.description}</p>
                               ) : null}
                             </div>
-                            <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center justify-between text-sm">
                               <span className="font-bold text-primary">
                                 {selectedCustomer && isB2BCustomer(selectedCustomer)
                                   ? "Custom B2B"
@@ -659,7 +665,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
                   <div>
                     <Badge className="badge-sky text-[10px]">{selectedSummary.cat}</Badge>
                     <h4 className="text-base font-extrabold mt-1">{selectedSummary.title}</h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-sm text-muted-foreground mt-0.5">
                       Customer: {selectedCustomer?.full_name} ({selectedCustomer?.email})
                     </p>
                   </div>
@@ -669,7 +675,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
                         ? "Custom B2B Rate"
                         : formatGbp(selectedSummary.price)}
                     </div>
-                    <Button type="button" variant="ghost" size="sm" className="text-xs mt-1" onClick={() => setStep(2)}>
+                    <Button type="button" variant="ghost" size="sm" className="text-sm mt-1" onClick={() => setStep(2)}>
                       Change products
                     </Button>
                   </div>
@@ -677,34 +683,34 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Full name *</Label>
+                    <Label className="text-sm font-semibold">Full name *</Label>
                     <Input
-                      className="w-full text-xs"
+                      className="w-full text-sm"
                       value={formValues.full_name}
                       onChange={(e) => setFormValues((f) => ({ ...f, full_name: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Email *</Label>
+                    <Label className="text-sm font-semibold">Email *</Label>
                     <Input
                       type="email"
-                      className="w-full text-xs"
+                      className="w-full text-sm"
                       value={formValues.email}
                       onChange={(e) => setFormValues((f) => ({ ...f, email: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Phone</Label>
+                    <Label className="text-sm font-semibold">Phone</Label>
                     <Input
-                      className="w-full text-xs"
+                      className="w-full text-sm"
                       value={formValues.phone}
                       onChange={(e) => setFormValues((f) => ({ ...f, phone: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Proposed company name</Label>
+                    <Label className="text-sm font-semibold">Proposed company name</Label>
                     <Input
-                      className="w-full text-xs"
+                      className="w-full text-sm"
                       value={formValues.company_name}
                       onChange={(e) => setFormValues((f) => ({ ...f, company_name: e.target.value }))}
                       placeholder="Optional"
@@ -721,20 +727,20 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-xs font-semibold">Service Account Email</Label>
+                      <Label className="text-sm font-semibold">Service Account Email</Label>
                       <Input
                         type="email"
-                        className="w-full text-xs"
+                        className="w-full text-sm"
                         value={formValues.access_email}
                         onChange={(e) => setFormValues((f) => ({ ...f, access_email: e.target.value }))}
                         placeholder="e.g. info@clientcompany.co.uk"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-semibold">Email Password / Access Code</Label>
+                      <Label className="text-sm font-semibold">Email Password / Access Code</Label>
                       <Input
                         type="password"
-                        className="w-full text-xs"
+                        className="w-full text-sm"
                         value={formValues.access_email_password}
                         onChange={(e) => setFormValues((f) => ({ ...f, access_email_password: e.target.value }))}
                         placeholder="Enter password / access code"
@@ -751,7 +757,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
               <section className="space-y-4">
                 <div>
                   <h4 className="text-base font-bold">Upload required documents once</h4>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-sm text-muted-foreground mt-0.5">
                     If you selected several products, requirements are merged and asked only once.
                   </p>
                 </div>
@@ -795,7 +801,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
                         {selectedSummary.cat}
                       </div>
                       <h3 className="text-xl font-extrabold mt-1">{selectedSummary.title}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <p className="text-sm text-muted-foreground mt-0.5">
                         Customer: {selectedCustomer?.full_name} ({selectedCustomer?.email})
                       </p>
                     </div>
@@ -833,7 +839,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
                       <h5 className="text-sm font-bold">Order specifications</h5>
                       <span className="text-[11px] text-muted-foreground">Checked once</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                       {[
                         ["Full name", formValues.full_name],
                         ["Email", formValues.email],
@@ -853,13 +859,13 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Order Notes & Special Instructions</Label>
+                    <Label className="text-sm font-semibold">Order Notes & Special Instructions</Label>
                     <Textarea
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       placeholder="Add any special instructions or staff notes..."
                       rows={3}
-                      className="text-xs"
+                      className="text-sm"
                     />
                   </div>
                 </div>

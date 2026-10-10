@@ -101,7 +101,7 @@ const SetCustomerPassword = ({ customer, isOpen, onClose, onPasswordSet }) => {
         <DialogContent className="sm:max-w-100">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Set Customer Password</DialogTitle>
-            <DialogDescription className="text-xs mt-0.5">
+            <DialogDescription className="text-sm mt-0.5">
               Set password for <strong>{customer.name}</strong>
             </DialogDescription>
           </DialogHeader>

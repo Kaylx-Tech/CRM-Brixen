@@ -54,7 +54,7 @@ const Row = ({ title, meta, right }) => (
   <div className="border rounded-xl p-3.5 bg-card shadow-xs flex items-start justify-between gap-3">
     <div className="min-w-0">
       <p className="font-semibold text-sm truncate">{title}</p>
-      {meta && <p className="text-xs text-muted-foreground mt-0.5">{meta}</p>}
+      {meta && <p className="text-sm text-muted-foreground mt-0.5">{meta}</p>}
     </div>
     {right}
   </div>
@@ -209,12 +209,12 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-sm">
                   {b2bId && (
                     <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">B2B Identifier</span>
+                      <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">B2B Identifier</span>
                       <span className="font-semibold text-primary">{b2bId}</span>
                     </div>
                   )}
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Customer Type</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Customer Type</span>
                     {canEditType ? (
                       <Select value={type} onValueChange={(val) => val !== type && setPendingType(val)}>
                         <SelectTrigger className="h-8 w-44 text-sm">
@@ -239,31 +239,31 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
                     )}
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Login Email</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Login Email</span>
                     <span className="font-medium truncate">{email}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Phone Number</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Phone Number</span>
                     <span className="font-medium">{phone}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Country</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Country</span>
                     <span className="font-medium">{country}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Registration Date</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Registration Date</span>
                     <span className="font-medium">{signedUp}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Source</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Source</span>
                     <span className="font-medium">{customer.source || "CRM"}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Access</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Access</span>
                     <span className="font-medium">{customer.access || '—'}</span>
                   </div>
                   <div className="flex flex-col gap-1 sm:col-span-2">
-                    <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Address</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Address</span>
                     <span className="font-medium">{address}</span>
                   </div>
                 </div>
@@ -353,13 +353,13 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
                     right={(
                       <div className="flex items-center gap-1.5 shrink-0">
                         <Badge variant="outline">{d.status || '—'}</Badge>
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setPreviewDoc(d)}>
+                        <Button size="sm" variant="outline" className="h-7 text-sm" onClick={() => setPreviewDoc(d)}>
                           View
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-7 text-xs"
+                          className="h-7 text-sm"
                           onClick={() => downloadDocument(d.id, d.name).catch((e) => toast.error(e.message || 'Download failed'))}
                         >
                           Download
@@ -416,7 +416,7 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
         <DialogContent className="sm:max-w-[900px] p-0 overflow-hidden">
           <DialogHeader className="p-4 border-b">
             <DialogTitle className="text-base truncate pr-6">{previewDoc?.name}</DialogTitle>
-            <DialogDescription className="text-xs">{previewDoc?.category || 'Document'}</DialogDescription>
+            <DialogDescription className="text-sm">{previewDoc?.category || 'Document'}</DialogDescription>
           </DialogHeader>
           <div className="p-4 max-h-[80vh] overflow-auto">
             {previewDoc && <DocumentPreview doc={previewDoc} />}

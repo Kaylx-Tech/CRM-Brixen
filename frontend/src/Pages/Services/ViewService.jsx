@@ -99,7 +99,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                 <Badge variant={status === 'Active' ? 'default' : 'secondary'} className={status === 'Active' ? 'bg-emerald-500 hover:bg-emerald-600' : ''}>
                   {status}
                 </Badge>
-                <Badge variant="outline" className="font-mono text-xs">
+                <Badge variant="outline" className="font-mono text-sm">
                   {serviceId}
                 </Badge>
               </div>
@@ -131,36 +131,36 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="p-4 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between">
                     <div className="flex items-center justify-between text-muted-foreground">
-                      <span className="text-xs font-semibold uppercase tracking-wider">Sell Price</span>
+                      <span className="text-sm font-semibold uppercase tracking-wider">Sell Price</span>
                       <IconCurrencyPound className="w-4 h-4 text-primary" />
                     </div>
                     <div className="mt-2">
                       <div className="text-2xl font-bold text-foreground">£{sellPriceNum.toFixed(2)}</div>
-                      <span className="text-xs text-muted-foreground">Customer price</span>
+                      <span className="text-sm text-muted-foreground">Customer price</span>
                     </div>
                   </div>
 
                   <div className="p-4 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between">
                     <div className="flex items-center justify-between text-muted-foreground">
-                      <span className="text-xs font-semibold uppercase tracking-wider">Cost Price</span>
+                      <span className="text-sm font-semibold uppercase tracking-wider">Cost Price</span>
                       <IconReceipt2 className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <div className="mt-2">
                       <div className="text-2xl font-bold text-muted-foreground">£{costPriceNum.toFixed(2)}</div>
-                      <span className="text-xs text-muted-foreground">Base cost</span>
+                      <span className="text-sm text-muted-foreground">Base cost</span>
                     </div>
                   </div>
 
                   <div className="p-4 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between">
                     <div className="flex items-center justify-between text-muted-foreground">
-                      <span className="text-xs font-semibold uppercase tracking-wider">Profit Margin</span>
+                      <span className="text-sm font-semibold uppercase tracking-wider">Profit Margin</span>
                       <IconTrendingUp className="w-4 h-4 text-emerald-500" />
                     </div>
                     <div className="mt-2">
                       <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                         £{profitNum.toFixed(2)}
                       </div>
-                      <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
                         {marginPercent}% net margin
                       </span>
                     </div>
@@ -169,20 +169,20 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
 
                 {/* Details Grid */}
                 <div className="border rounded-xl p-5 bg-card/40 space-y-4">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Service Information</h4>
+                  <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Service Information</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-sm">
                     <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Service Name</span>
+                      <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Service Name</span>
                       <span className="font-semibold text-foreground">{service.name}</span>
                     </div>
 
                     <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Category</span>
+                      <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Category</span>
                       <span className="font-medium">{category}</span>
                     </div>
 
                     <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Duration / Validity</span>
+                      <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Duration / Validity</span>
                       <div className="flex items-center gap-1.5 font-medium">
                         <IconClock className="w-4 h-4 text-muted-foreground" />
                         <span>{duration}</span>
@@ -190,7 +190,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                     </div>
 
                     <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Current Status</span>
+                      <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Current Status</span>
                       <div>
                         <Badge variant={status === 'Active' ? 'outline' : 'secondary'} className={status === 'Active' ? 'text-emerald-600 border-emerald-300' : ''}>
                           {status}
@@ -200,14 +200,14 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
 
                     {service.vat_rate !== undefined && (
                       <div className="flex flex-col gap-1">
-                        <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">VAT Rate</span>
+                        <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">VAT Rate</span>
                         <span className="font-medium">{service.vat_rate || '20% (Standard)'}</span>
                       </div>
                     )}
 
                     {service.estimated_delivery_time && (
                       <div className="flex flex-col gap-1">
-                        <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Delivery Turnaround</span>
+                        <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Delivery Turnaround</span>
                         <span className="font-medium">{service.estimated_delivery_time}</span>
                       </div>
                     )}
@@ -216,7 +216,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
 
                 {/* Description */}
                 <div className="border rounded-xl p-5 bg-card/40 space-y-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description & Scope</h4>
+                  <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Description & Scope</h4>
                   <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
                     {description}
                   </p>
@@ -249,7 +249,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
 
                   {/* Visual Margin Bar */}
                   <div className="pt-2">
-                    <div className="flex justify-between text-xs text-muted-foreground mb-1.5 font-medium">
+                    <div className="flex justify-between text-sm text-muted-foreground mb-1.5 font-medium">
                       <span>Cost: {costPriceNum > 0 && sellPriceNum > 0 ? (100 - parseFloat(marginPercent)).toFixed(1) : 0}%</span>
                       <span>Profit: {marginPercent}%</span>
                     </div>
@@ -276,7 +276,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                     </div>
                     <div>
                       <p className="font-semibold text-sm">Standard Intake Documents</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-sm text-muted-foreground">
                         Required identification and compliance paperwork for client delivery.
                       </p>
                     </div>
@@ -289,7 +289,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                       <IconShieldCheck className="w-4 h-4 text-primary mt-0.5" />
                       <div>
                         <p className="text-sm font-medium">Proof of Identity (Photo ID)</p>
-                        <p className="text-xs text-muted-foreground">Passport or Driving Licence (PDF, JPG, PNG)</p>
+                        <p className="text-sm text-muted-foreground">Passport or Driving Licence (PDF, JPG, PNG)</p>
                       </div>
                     </div>
 
@@ -297,7 +297,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                       <IconShieldCheck className="w-4 h-4 text-primary mt-0.5" />
                       <div>
                         <p className="text-sm font-medium">Proof of Address</p>
-                        <p className="text-xs text-muted-foreground">Utility bill or Bank statement issued within last 3 months</p>
+                        <p className="text-sm text-muted-foreground">Utility bill or Bank statement issued within last 3 months</p>
                       </div>
                     </div>
 
@@ -305,7 +305,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                       <IconBriefcase className="w-4 h-4 text-primary mt-0.5" />
                       <div>
                         <p className="text-sm font-medium">Service Authorization Details</p>
-                        <p className="text-xs text-muted-foreground">Client authorization form and designated company details</p>
+                        <p className="text-sm text-muted-foreground">Client authorization form and designated company details</p>
                       </div>
                     </div>
                   </div>
@@ -318,7 +318,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
 
         {/* Footer Section */}
         <div className="p-4 border-t bg-muted/10 flex items-center justify-between">
-          <div className="text-xs text-muted-foreground">
+          <div className="text-sm text-muted-foreground">
             ID: <span className="font-mono">{serviceId}</span>
           </div>
           <div className="flex items-center gap-2">

@@ -24,7 +24,7 @@ export function DeleteConfirmation({
       <DialogContent showCloseButton={false} className="sm:max-w-75">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold">{title}</DialogTitle>
-          <DialogDescription className="text-xs mt-0.5">
+          <DialogDescription className="text-sm mt-0.5">
             {description}
           </DialogDescription>
         </DialogHeader>

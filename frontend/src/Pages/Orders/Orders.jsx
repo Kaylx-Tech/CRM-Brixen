@@ -153,7 +153,7 @@ function shortenProductName(name) {
 
 function ProductPills({ summary }) {
   const parts = String(summary || '').split(',').map((p) => p.trim()).filter(Boolean)
-  if (!parts.length) return <span className="text-muted-foreground text-xs">—</span>
+  if (!parts.length) return <span className="text-muted-foreground text-sm">—</span>
   return (
     <div className="flex flex-wrap gap-1 max-w-[220px]">
       {parts.map((name, idx) => {
@@ -299,7 +299,8 @@ export default function Orders() {
       description: 'Undo available for a few seconds',
       onUndo: () => setOrders(snapshot),
       onCommit: async () => {
-        const res = await apiRequest(`/orders/${victim.id}`, {
+        // The admin confirmed in the dialog, so this also removes locked (paid / website) orders
+        const res = await apiRequest(`/orders/${victim.id}?force_delete_genuine=1`, {
           method: 'DELETE',
           label: 'Delete order',
           silent: true,
@@ -356,7 +357,7 @@ export default function Orders() {
     columnHelper.accessor('created_at', {
       header: 'Date',
       cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
           {row.original.created_at
             ? new Date(row.original.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' })
             : '—'}
@@ -376,7 +377,7 @@ export default function Orders() {
             onClick={() => handleOpenOrder(o.id)}
           >
             <TruncatedTooltip text={name} className="block max-w-full truncate text-left font-medium text-sm cursor-pointer" />
-            <TruncatedTooltip text={email} className="block max-w-full truncate text-left text-xs text-muted-foreground cursor-pointer" />
+            <TruncatedTooltip text={email} className="block max-w-full truncate text-left text-sm text-muted-foreground cursor-pointer" />
           </div>
         )
       },
@@ -388,7 +389,7 @@ export default function Orders() {
         return (
           <TruncatedTooltip
             text={name}
-            className="block max-w-[140px] truncate text-left text-xs cursor-default"
+            className="block max-w-[140px] truncate text-left text-sm cursor-default"
           />
         )
       },
@@ -407,7 +408,7 @@ export default function Orders() {
         const o = row.original
         const totalNum = Number(o.total || 0)
         return (
-          <span className="text-xs font-semibold tabular-nums">
+          <span className="text-sm font-semibold tabular-nums">
             £{totalNum.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         )
@@ -425,7 +426,7 @@ export default function Orders() {
             onValueChange={(val) => updateOrder(o.id, { payment_mode: val === 'none' ? null : val })}
             disabled={savingId === o.id}
           >
-            <SelectTrigger className="h-7 w-[88px] text-xs">
+            <SelectTrigger className="h-7 w-[88px] text-sm">
               <SelectValue placeholder="Select" />
             </SelectTrigger>
             <SelectContent className="overflow-hidden p-0">
@@ -465,22 +466,20 @@ export default function Orders() {
         const o = row.original
         return (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-                <IconDotsVertical className="h-4 w-4" />
-              </Button>
+            <DropdownMenuTrigger
+              render={<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" aria-label="Order actions" />}
+            >
+              <IconDotsVertical className="h-4 w-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => handleOpenOrder(o.id)}>
-                <IconFolderOpen className="w-4 h-4 mr-2" />
                 Open order
               </DropdownMenuItem>
               {isAdminRole() && (
                 <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
+                  variant="destructive"
                   onClick={() => setCancelTarget(o)}
                 >
-                  <IconTrash className="w-4 h-4 mr-2" />
                   Delete order
                 </DropdownMenuItem>
               )}
@@ -581,16 +580,16 @@ export default function Orders() {
         }}
       >
         <TabsList>
-          <TabsTrigger value="All" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="All" className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             All Orders
           </TabsTrigger>
-          <TabsTrigger value="Customer" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="Customer" className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             Individual
           </TabsTrigger>
-          <TabsTrigger value="Business" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="Business" className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             Business
           </TabsTrigger>
-          <TabsTrigger value="B2B" className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="B2B" className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             B2B Clients
           </TabsTrigger>
         </TabsList>
@@ -599,9 +598,9 @@ export default function Orders() {
       {clientType === 'B2B' && (
         <div className="rounded-lg border bg-card p-3 space-y-2">
           <div className="text-sm font-semibold">Select a B2B client</div>
-          <p className="text-xs text-muted-foreground">Open a B2B account first, then their orders appear below.</p>
+          <p className="text-sm text-muted-foreground">Open a B2B account first, then their orders appear below.</p>
           <Select value={b2bClientId} onValueChange={setB2bClientId}>
-            <SelectTrigger className="max-w-md h-8 text-xs">
+            <SelectTrigger className="max-w-md h-8 text-sm">
               <SelectValue placeholder="Choose B2B client" />
             </SelectTrigger>
             <SelectContent>
@@ -627,7 +626,7 @@ export default function Orders() {
         onClearFilters={clearFilters}
       />
 
-      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
         <span>
           {pagination.total || 0} orders · page {pagination.page || 1} of {pagination.total_pages || 1}
         </span>

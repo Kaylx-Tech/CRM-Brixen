@@ -51,7 +51,7 @@ export function ChartBarMultiple({
         </div>
         {onTimeFilterChange && (
           <Select value={timeFilter} onValueChange={onTimeFilterChange}>
-            <SelectTrigger className="w-[120px] h-8 text-xs">
+            <SelectTrigger className="w-[120px] h-8 text-sm">
               <SelectValue placeholder="Filter" />
             </SelectTrigger>
             <SelectContent>
@@ -148,7 +148,7 @@ export function ChartPieSeparatorNone({ data = [], isLoading = false }) {
             </PieChart>
           </ChartContainer>
         </CardContent>
-        <div className="flex-[2] flex flex-col items-start gap-2.5 text-xs px-2 sm:px-0 mt-6 sm:mt-0">
+        <div className="flex-[2] flex flex-col items-start gap-2.5 text-sm px-2 sm:px-0 mt-6 sm:mt-0">
           {pieData.map((item, index) => {
             const pct = item.pct ?? (total > 0 ? Math.round((item.value / total) * 100) : 0)
             return (
@@ -187,7 +187,7 @@ export function ChartAreaSalesTrend({ data = [], isLoading = false }) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Sales Trend</CardTitle>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-primary"></span> Online Activity
             </span>

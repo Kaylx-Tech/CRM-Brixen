@@ -91,7 +91,7 @@ function TwoLineCell({ title, subtitle }) {
     <div className="flex flex-col gap-0.5 min-w-0 max-w-[200px]">
       <OverflowTooltip
         text={title}
-        className="text-xs font-medium text-foreground"
+        className="text-sm font-medium text-foreground"
       />
       {subtitle ? (
         <OverflowTooltip
@@ -408,7 +408,7 @@ export default function Documents() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-7 shrink-0 px-2.5 text-xs"
+                  className="h-7 shrink-0 px-2.5 text-sm"
                   disabled={busy}
                   onClick={() => setPreviewDoc(d)}
                 >
@@ -424,7 +424,7 @@ export default function Documents() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-7 shrink-0 px-2.5 text-xs"
+                  className="h-7 shrink-0 px-2.5 text-sm"
                   disabled={busy}
                   onClick={async () => {
                     try { await downloadDocument(d.id, d.name) }
@@ -443,7 +443,7 @@ export default function Documents() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-7 shrink-0 px-2.5 text-xs"
+                  className="h-7 shrink-0 px-2.5 text-sm"
                   disabled={busy}
                   onClick={() => setTriageDoc(d)}
                 >
@@ -459,7 +459,7 @@ export default function Documents() {
                   <Button
                     type="button"
                     size="sm"
-                    className="h-7 shrink-0 px-2.5 text-xs"
+                    className="h-7 shrink-0 px-2.5 text-sm"
                     disabled={busy}
                     onClick={() => approveOne(d.id)}
                   >
@@ -512,7 +512,7 @@ export default function Documents() {
             <TabsTrigger
               key={tab.key}
               value={tab.key}
-              className="text-xs rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
               {tab.label}
               <span className="ml-1.5 rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0 text-[10px] font-semibold">
@@ -524,20 +524,20 @@ export default function Documents() {
       </Tabs>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setSelected(new Set())}>
+        <Button variant="outline" size="sm" className="h-7 text-sm" onClick={() => setSelected(new Set())}>
           Clear
         </Button>
-        <Button size="sm" className="h-7 text-xs" onClick={() => bulkApprove(false)}>
+        <Button size="sm" className="h-7 text-sm" onClick={() => bulkApprove(false)}>
           Bulk Approve Selected
         </Button>
-        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => bulkApprove(true)}>
+        <Button variant="outline" size="sm" className="h-7 text-sm" onClick={() => bulkApprove(true)}>
           Bulk Approve + Override
         </Button>
-        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => (selectedIds.length ? setQuarantineOpen(true) : toast.message('Select documents first'))}>
+        <Button variant="outline" size="sm" className="h-7 text-sm" onClick={() => (selectedIds.length ? setQuarantineOpen(true) : toast.message('Select documents first'))}>
           Bulk Quarantine
         </Button>
         {selectedIds.length > 0 && (
-          <span className="text-xs text-muted-foreground">{selectedIds.length} selected</span>
+          <span className="text-sm text-muted-foreground">{selectedIds.length} selected</span>
         )}
       </div>
 
@@ -563,7 +563,7 @@ export default function Documents() {
             <div className="grid gap-3 py-1 text-sm">
               <div>
                 <div className="font-semibold">{triageDoc.name || 'Document'}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">
+                <div className="text-sm text-muted-foreground mt-0.5">
                   {[triageDoc.category, triageDoc.file_type, triageDoc.file_size].filter(Boolean).join(' · ')}
                 </div>
               </div>
@@ -591,7 +591,7 @@ export default function Documents() {
                 <ConfidencePill label="Duplicate" value={triageDoc.duplicate_confidence} />
               </div>
 
-              <div className="text-xs">
+              <div className="text-sm">
                 Score gap Δ:{' '}
                 <strong>
                   {triageDoc.score_gap != null
@@ -634,7 +634,7 @@ export default function Documents() {
               )}
 
               {triageDoc.review_notes && (
-                <p className="text-xs text-muted-foreground m-0">{triageDoc.review_notes}</p>
+                <p className="text-sm text-muted-foreground m-0">{triageDoc.review_notes}</p>
               )}
             </div>
           )}
@@ -794,7 +794,7 @@ export default function Documents() {
                 <DialogTitle className="text-base font-bold truncate">
                   {previewDoc?.name || previewDoc?.file_name || 'Document Preview'}
                 </DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground">
+                <DialogDescription className="text-sm text-muted-foreground">
                   {previewDoc?.category || 'Document'} {previewDoc?.file_size ? `· ${previewDoc?.file_size}` : ''}
                 </DialogDescription>
               </div>
@@ -804,7 +804,7 @@ export default function Documents() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs gap-1.5"
+                className="h-8 text-sm gap-1.5"
                 onClick={() => previewDoc && downloadDocument(previewDoc.id, previewDoc.name)}
               >
                 <IconDownload className="w-3.5 h-3.5" />
@@ -815,7 +815,7 @@ export default function Documents() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 text-xs gap-1.5"
+                  className="h-8 text-sm gap-1.5"
                   asChild
                 >
                   <a href={previewDoc.drive_web_link} target="_blank" rel="noopener noreferrer">

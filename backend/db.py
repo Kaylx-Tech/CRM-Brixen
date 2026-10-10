@@ -364,12 +364,22 @@ def ensure_schema():
         conn.execute("ALTER TABLE users ADD COLUMN type_change_count INTEGER NOT NULL DEFAULT 0")
     if 'type_locked' not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN type_locked INTEGER NOT NULL DEFAULT 0")
+    if 'removed_at' not in user_cols:
+        # Set when an admin removes a team member (account is also Suspended so it cannot log in)
+        conn.execute("ALTER TABLE users ADD COLUMN removed_at TEXT")
 
     # Safe Audit: Normalize client types for non-B2B accounts if unset
     conn.execute("""
         UPDATE users 
         SET b2b_id = NULL, is_b2b = 0, client_type = 'Individual'
         WHERE role = 'CLIENT' AND (is_b2b = 0 OR is_b2b IS NULL) AND (client_type IS NULL OR client_type = 'Normal');
+    """)
+    # B2B / Business customers get their signup email as the notification email when none is set
+    conn.execute("""
+        UPDATE users
+        SET notification_email = LOWER(TRIM(email))
+        WHERE role = 'CLIENT' AND (is_b2b = 1 OR client_type IN ('B2B', 'Business'))
+          AND TRIM(COALESCE(notification_email, '')) = '' AND TRIM(COALESCE(email, '')) <> '';
     """)
     if 'theme_preference' not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN theme_preference TEXT DEFAULT 'system'")

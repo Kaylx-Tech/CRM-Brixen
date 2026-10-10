@@ -26,7 +26,6 @@ import {
   IconBell,
   IconSearch,
 } from "@tabler/icons-react"
-import { Input } from "@/components/ui/input"
 import { CommandManyItems } from "@/components/ComboSearch"
 
 const data = {
@@ -55,7 +54,7 @@ export function AppSidebar({
   const [searchOpen, setSearchOpen] = React.useState(false)
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
+    <Sidebar collapsible="offcanvas" className="group-data-[side=left]:border-r-0" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -64,16 +63,15 @@ export function AppSidebar({
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
-        <div className="relative cursor-pointer" onClick={() => setSearchOpen(true)}>
-          <IconSearch className="absolute left-2.5 top-1.5 h-3.5 w-3.5 text-muted pointer-events-none" />
-          <Input
-            className="max-w-xs pl-8 text-xs text-muted bg-white/10 border border-input/10 cursor-pointer"
-            placeholder="Search"
-            readOnly
-            onClick={() => setSearchOpen(true)}
-          />
-          <span className="absolute right-2.5 top-1.5 text-xs text-white/50 rounded-[8px] pointer-events-none">CRTL + K</span>
-        </div>
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          className="flex h-8 w-full items-center gap-2 rounded-md border border-white/10 bg-white/5 px-2.5 text-sm text-white/50 transition-colors hover:bg-white/10 hover:text-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 cursor-pointer"
+        >
+          <IconSearch className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1 text-left">Search</span>
+          <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-sans text-[10px] text-white/50">Ctrl K</kbd>
+        </button>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />

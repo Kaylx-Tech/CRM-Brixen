@@ -28,7 +28,7 @@ export function CustomerTypeConfirmDialog({
               <DialogTitle className="text-base font-bold">
                 Change Customer Type
               </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+              <DialogDescription className="text-sm text-muted-foreground mt-0.5">
                 Confirm 1-time account type adjustment
               </DialogDescription>
             </div>
@@ -36,16 +36,16 @@ export function CustomerTypeConfirmDialog({
         </DialogHeader>
 
         <div className="space-y-3 py-2 text-sm">
-          <p className="text-muted-foreground text-xs leading-relaxed">
+          <p className="text-muted-foreground text-sm leading-relaxed">
             Are you sure you want to change the customer type for{" "}
             <strong className="text-foreground">{customerName}</strong> to{" "}
-            <Badge variant={newType === "B2B" ? "default" : newType === "Business" ? "outline" : "secondary"} className="text-xs px-2 py-0 font-semibold">
+            <Badge variant={newType === "B2B" ? "default" : newType === "Business" ? "outline" : "secondary"} className="text-sm px-2 py-0 font-semibold">
               {newType} Account
             </Badge>
             ?
           </p>
 
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2.5">
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-700 dark:text-amber-400 flex items-start gap-2.5">
             <IconLock className="w-4 h-4 shrink-0 mt-0.5" />
             <div className="space-y-1">
               <strong className="font-semibold block">Permanent Lock Notice</strong>
@@ -63,7 +63,7 @@ export function CustomerTypeConfirmDialog({
             size="sm"
             onClick={onClose}
             disabled={isLoading}
-            className="sm:flex-1 text-xs"
+            className="sm:flex-1 text-sm"
           >
             Cancel
           </Button>
@@ -72,7 +72,7 @@ export function CustomerTypeConfirmDialog({
             size="sm"
             onClick={onConfirm}
             disabled={isLoading}
-            className="sm:flex-1 text-xs gap-1.5 font-medium"
+            className="sm:flex-1 text-sm gap-1.5 font-medium"
           >
             {isLoading ? (
               <>
