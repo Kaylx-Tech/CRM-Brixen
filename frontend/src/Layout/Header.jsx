@@ -13,6 +13,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 import { ModeToggle } from '@/components/ThemeTogge'
 import Notification from '@/components/Notification'
 import { PrivacyToggle } from '@/components/PrivacyToggle'
+import TeamSwitcher from '@/components/TeamSwitcher'
 
 const ROUTE_LABELS = {
   admin: 'Admin',
@@ -101,6 +102,8 @@ export function SiteHeader({ homeHref = '/admin/dashboard' }) {
           <PrivacyToggle />
           <Notification />
           <ModeToggle />
+          <Separator orientation="vertical" className="mx-1 h-6 data-vertical:self-auto" />
+          <TeamSwitcher />
         </div>
       </div>
     </header>

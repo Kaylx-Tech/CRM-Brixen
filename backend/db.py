@@ -364,6 +364,10 @@ def ensure_schema():
         conn.execute("ALTER TABLE users ADD COLUMN type_change_count INTEGER NOT NULL DEFAULT 0")
     if 'type_locked' not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN type_locked INTEGER NOT NULL DEFAULT 0")
+    session_cols = {row[1] for row in conn.execute("PRAGMA table_info(user_sessions)").fetchall()}
+    if session_cols and 'impersonator_token' not in session_cols:
+        # Set on sessions an admin opened with "Switch user"; points back to the admin's own session
+        conn.execute("ALTER TABLE user_sessions ADD COLUMN impersonator_token TEXT")
     if 'removed_at' not in user_cols:
         # Set when an admin removes a team member (account is also Suspended so it cannot log in)
         conn.execute("ALTER TABLE users ADD COLUMN removed_at TEXT")

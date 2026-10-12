@@ -77,6 +77,40 @@ def _public_user(user_row):
     }
 
 
+SWITCH_ROLES = ('SUPER_ADMIN', 'ADMIN')
+ROLE_RANK = {'STAFF': 1, 'MANAGER': 2, 'ADMIN': 3, 'SUPER_ADMIN': 4}
+
+
+def _can_switch_to(actor, target):
+    """Old portal rule: admins switch to lower-ranked active team members; super admins to anyone on the team."""
+    if not actor or not target or actor.get('id') == target.get('id'):
+        return False
+    if actor.get('role') not in SWITCH_ROLES or target.get('role') not in ROLE_RANK:
+        return False
+    if target.get('status') != 'Active' or target.get('removed_at'):
+        return False
+    if actor.get('role') == 'SUPER_ADMIN':
+        return True
+    return ROLE_RANK[target['role']] < ROLE_RANK[actor['role']]
+
+
+def _impersonation_origin(session_token):
+    """The admin (with their live session token) behind a switched session, or None."""
+    if not session_token:
+        return None
+    row = query_db("SELECT impersonator_token FROM user_sessions WHERE session_token = ? LIMIT 1;",
+                   (session_token,), one=True)
+    origin_token = (row or {}).get('impersonator_token')
+    if not origin_token:
+        return None
+    origin = query_db("""
+        SELECT u.*, s.session_token FROM user_sessions s JOIN users u ON u.id = s.user_id
+        WHERE s.session_token = ? AND s.revoked_at IS NULL AND datetime(s.expires_at) > datetime('now')
+          AND u.status = 'Active' LIMIT 1;
+    """, (origin_token,), one=True)
+    return dict(origin) if origin else None
+
+
 def _session_cookie(token, *, clear=False):
     """Build Set-Cookie for session_token (Secure on HTTPS / Coolify)."""
     if clear:
@@ -172,7 +206,69 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
             return error_response(start_response, "Unauthorized", status_code=401)
 
         fresh = query_db("SELECT * FROM users WHERE id = ? LIMIT 1;", (user['id'],), one=True) or user
-        return success_response(start_response, data={"user": _public_user(fresh)})
+        payload = _public_user(fresh)
+        origin = _impersonation_origin(user.get('session_token'))
+        payload['impersonated'] = bool(origin)
+        payload['impersonator_name'] = (origin or {}).get('full_name') or ''
+        return success_response(start_response, data={"user": payload})
+
+    # ── GET /api/auth/switch-users (team members the signed-in admin may switch to) ──
+    if path == '/api/auth/switch-users' and method == 'GET':
+        if not user:
+            return error_response(start_response, "Unauthorized", status_code=401)
+        if _impersonation_origin(user.get('session_token')) or user.get('role') not in SWITCH_ROLES:
+            return success_response(start_response, data={"users": []})
+        rows = query_db("""
+            SELECT id, full_name, email, role, status FROM users
+            WHERE role IN ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF') AND status = 'Active'
+              AND removed_at IS NULL AND id != ?
+            ORDER BY full_name COLLATE NOCASE;
+        """, (user['id'],)) or []
+        users = [dict(r) for r in rows if _can_switch_to(user, r)]
+        return success_response(start_response, data={"users": users})
+
+    # ── POST /api/auth/switch-user (admin views the CRM as a team member) ──
+    if path == '/api/auth/switch-user' and method == 'POST':
+        if not user:
+            return error_response(start_response, "Unauthorized", status_code=401)
+        if _impersonation_origin(user.get('session_token')):
+            return error_response(start_response, "Return to your own account before switching again.", status_code=400)
+        target = query_db("SELECT * FROM users WHERE id = ? LIMIT 1;", ((body or {}).get('user_id'),), one=True)
+        if not target or not _can_switch_to(user, target):
+            return error_response(start_response, "You cannot switch to that user.", status_code=403)
+        token = str(uuid.uuid4())
+        execute_db("""
+            INSERT INTO user_sessions (session_token, user_id, expires_at, last_activity_at, impersonator_token)
+            VALUES (?, ?, datetime('now', '+8 hours'), datetime('now'), ?);
+        """, (token, target['id'], user['session_token']))
+        execute_db(
+            "INSERT INTO activity_logs (user_id, user_email, action, entity_type, entity_id, details) VALUES (?, ?, ?, ?, ?, ?);",
+            (user['id'], user.get('email'), 'USER_IMPERSONATE', 'users', str(target['id']),
+             f"Switched session to {target['email']} ({target['role']})"))
+        payload = _public_user(dict(target))
+        payload.update({'impersonated': True, 'impersonator_name': user.get('full_name') or user.get('name') or ''})
+        return success_response(start_response, data={"token": token, "user": payload},
+                                message=f"You are now viewing the CRM as {target['full_name']}.",
+                                headers=[('Set-Cookie', _session_cookie(token))])
+
+    # ── POST /api/auth/switch-back (return to the admin's own session) ─────
+    if path == '/api/auth/switch-back' and method == 'POST':
+        if not user:
+            return error_response(start_response, "Unauthorized", status_code=401)
+        origin = _impersonation_origin(user.get('session_token'))
+        if not origin:
+            return error_response(start_response, "You are already on your own account.", status_code=400)
+        execute_db("UPDATE user_sessions SET revoked_at = datetime('now') WHERE session_token = ?;",
+                   (user['session_token'],))
+        execute_db(
+            "INSERT INTO activity_logs (user_id, user_email, action, entity_type, entity_id, details) VALUES (?, ?, ?, ?, ?, ?);",
+            (origin['id'], origin.get('email'), 'USER_IMPERSONATE_STOP', 'users', str(user['id']),
+             'Returned to original account'))
+        payload = _public_user(dict(origin))
+        payload.update({'impersonated': False, 'impersonator_name': ''})
+        return success_response(start_response, data={"token": origin['session_token'], "user": payload},
+                                message="Back on your own account.",
+                                headers=[('Set-Cookie', _session_cookie(origin['session_token']))])
 
     # ── POST /api/auth/logout ─────────────────────────────────────────────
     if path == '/api/auth/logout' and method == 'POST':

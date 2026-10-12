@@ -30,39 +30,19 @@ import {
 } from "@tabler/icons-react"
 import { getRole } from "@/lib/permissions"
 
-/** Same sections as the old customer portal sidebar. */
-const NAV_GROUPS = [
-  { label: null, items: [{ title: "Dashboard", url: "/portal/dashboard", icon: <IconLayoutDashboard /> }] },
-  {
-    label: "My portfolio",
-    items: [
-      { title: "Companies", url: "/portal/companies", icon: <IconBuilding /> },
-      { title: "Accountancy", url: "/portal/accountancy", icon: <IconCalculator /> },
-      { title: "Addresses", url: "/portal/addresses", icon: <IconMapPin /> },
-    ],
-  },
-  {
-    label: "Financials",
-    items: [
-      { title: "Orders", url: "/portal/orders", icon: <IconShoppingBag /> },
-      { title: "Invoices & Payments", url: "/portal/invoices", icon: <IconFileInvoice /> },
-    ],
-  },
-  {
-    label: "Services",
-    items: [
-      { title: "Documents", url: "/portal/documents", icon: <IconFolder /> },
-      { title: "Services", url: "/portal/services", icon: <IconApps /> },
-    ],
-  },
-  {
-    label: "Support",
-    items: [
-      { title: "Order Support", url: "/portal/support", icon: <IconHeadset /> },
-      { title: "Messages", url: "/portal/messages", icon: <IconMessage /> },
-    ],
-  },
-  { label: "Account", items: [{ title: "Profile", url: "/portal/profile", icon: <IconUserCheck /> }] },
+/** Customer portal pages (same pages as the old portal, one flat list). */
+const NAV_ITEMS = [
+  { title: "Dashboard", url: "/portal/dashboard", icon: <IconLayoutDashboard /> },
+  { title: "Companies", url: "/portal/companies", icon: <IconBuilding /> },
+  { title: "Accountancy", url: "/portal/accountancy", icon: <IconCalculator /> },
+  { title: "Addresses", url: "/portal/addresses", icon: <IconMapPin /> },
+  { title: "Orders", url: "/portal/orders", icon: <IconShoppingBag /> },
+  { title: "Invoices & Payments", url: "/portal/invoices", icon: <IconFileInvoice /> },
+  { title: "Documents", url: "/portal/documents", icon: <IconFolder /> },
+  { title: "Services", url: "/portal/services", icon: <IconApps /> },
+  { title: "Order Support", url: "/portal/support", icon: <IconHeadset /> },
+  { title: "Messages", url: "/portal/messages", icon: <IconMessage /> },
+  { title: "Profile", url: "/portal/profile", icon: <IconUserCheck /> },
 ]
 
 export default function ClientLayout() {
@@ -82,7 +62,7 @@ export default function ClientLayout() {
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
-          <NavMain groups={NAV_GROUPS} />
+          <NavMain items={NAV_ITEMS} />
         </SidebarContent>
         <SidebarFooter>
           <NavUser profileHref="/portal/profile" notificationsHref="/portal/notifications" />
