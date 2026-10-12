@@ -496,7 +496,7 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
         conditions = []
 
         if not is_staff:
-            conditions.append("d.user_id = ?")
+            conditions.append("d.user_id = ? AND COALESCE(d.client_visible, 0) = 1")
             params.append(user_id)
         elif client_id:
             conditions.append("d.user_id = ?")
@@ -631,9 +631,12 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
             cv_val = data.get('client_visible')
             if cv_val is False or cv_val == 0 or str(cv_val).lower() in ('0', 'false', 'off', 'no'):
                 client_visible_flag = 0
+        if not is_staff:
+            # Customer uploads wait for staff review (old portal); they are not auto-approved
+            client_visible_flag = 0
 
         # Staff intentional delivery posts immediately (app.py parity)
-        staff_post_now = category not in ('Checkout Upload',) and (
+        staff_post_now = is_staff and category not in ('Checkout Upload',) and (
             data.get('post_immediately') in (True, 1, '1', 'true', 'True')
             or category in (
                 'Posted Documents',
@@ -725,7 +728,8 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
             return error_response(start_response, "Document not found", status_code=404)
         doc = dict(doc_row)
 
-        if not is_staff and doc.get('user_id') != user_id:
+        if not is_staff and (doc.get('user_id') != user_id or int(doc.get('client_visible') or 0) != 1):
+            # Customers only open documents that were shared with them (not internal files)
             return error_response(start_response, "Access denied", status_code=403)
 
         return _serve_document(start_response, doc, inline=inline)

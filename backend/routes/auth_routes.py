@@ -153,12 +153,10 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
             VALUES (?, ?, datetime('now', '+30 days'), datetime('now'));
         """, (session_token, user_row['id']))
         
-        user_data = {
-            "id": user_row['id'],
-            "email": user_row['email'],
-            "name": user_row['name'],
-            "role": user_row['role']
-        }
+        # Same safe payload as /me, so the frontend gets department (staff page access depends on it)
+        full_row = query_db("SELECT * FROM users WHERE id = ? LIMIT 1;", (user_row['id'],), one=True)
+        user_data = _public_user(dict(full_row)) if full_row else {
+            "id": user_row['id'], "email": user_row['email'], "name": user_row['name'], "role": user_row['role']}
         
         cookie_header = _session_cookie(session_token)
         return success_response(start_response, data={

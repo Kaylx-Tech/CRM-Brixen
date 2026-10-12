@@ -276,6 +276,11 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         data['timeline'] = [dict(e) for e in events]
         data['documents'] = [dict(d) for d in docs]
         data['line_items'] = [dict(li) for li in line_items]
+        if not is_staff:
+            # Customers never see costs, profit, staff notes or internal documents
+            from routes.client_portal_routes import public_order, public_document
+            data = public_order(data)
+            data['documents'] = [public_document(dict(d)) for d in docs if int(d.get('client_visible') or 0) == 1]
 
         if data.get('checkout_form_json'):
             try:

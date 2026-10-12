@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from "./ui/alert"
 import { IconAlertCircle } from "@tabler/icons-react"
 import { toast } from "sonner"
 import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
+import { homePath } from "@/lib/permissions"
 
 export function LoginForm({
   className,
@@ -62,7 +63,8 @@ export function LoginForm({
         localStorage.setItem("token", token)
         localStorage.setItem("user", JSON.stringify(userObj || { email }))
         toastDone(toastId, "Logged in successfully")
-        navigate("/admin/dashboard")
+        // Customers land on their portal, the team on the CRM
+        navigate(homePath(userObj || {}))
       } else if (isSuccess && !token) {
         // Logged in but no token in response — should not happen
         const msg = "Login succeeded but no session token received. Contact support."

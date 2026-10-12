@@ -3,7 +3,8 @@ import { AppSidebar } from "./Sidebar"
 import { SiteHeader } from "./Header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Outlet } from "react-router-dom"
+import { Navigate, Outlet } from "react-router-dom"
+import { getRole } from "@/lib/permissions"
 import AiInput from "@/components/ai-input"
 import { authHeaders } from "@/lib/api"
 
@@ -51,6 +52,9 @@ const AdminLayout = () => {
       setAiLoading(false)
     }
   }
+
+  // Customers have their own portal; the admin CRM is for the team only
+  if (getRole() === 'CLIENT') return <Navigate to="/portal/dashboard" replace />
 
   return (
     <SidebarProvider>

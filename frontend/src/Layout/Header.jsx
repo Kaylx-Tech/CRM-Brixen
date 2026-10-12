@@ -30,20 +30,25 @@ const ROUTE_LABELS = {
   settings: 'Settings',
   notifications: 'Notifications',
   profile: 'Profile & Password',
+  performance: 'Performance',
+  invoices: 'Invoices',
+  addresses: 'Addresses',
+  support: 'Support',
+  messages: 'Messages',
 }
 
-export function SiteHeader() {
+export function SiteHeader({ homeHref = '/admin/dashboard' }) {
   const location = useLocation()
   const pathSegments = location.pathname.split('/').filter(Boolean)
 
   const getBreadcrumbs = () => {
-    // If on /admin/dashboard or /admin or /
+    // If on <base>/dashboard or <base> or /
     if (pathSegments.length <= 1 || (pathSegments.length === 2 && pathSegments[1] === 'dashboard')) {
-      return [{ label: 'Dashboard', href: '/admin/dashboard', isCurrent: true }]
+      return [{ label: 'Dashboard', href: homeHref, isCurrent: true }]
     }
 
     const items = [
-      { label: 'Dashboard', href: '/admin/dashboard', isCurrent: false }
+      { label: 'Dashboard', href: homeHref, isCurrent: false }
     ]
 
     const currentSegment = pathSegments[pathSegments.length - 1]

@@ -19,7 +19,20 @@ import Settings from './Pages/Settings/Settings'
 import NotificationsPage from './Pages/Notifications/Notifications'
 import Performance, { StaffDashboard } from './Pages/Performance/Performance'
 import PageGuard from './components/PageGuard'
-import { isStaffRole } from './lib/permissions'
+import { isStaffRole, homePath } from './lib/permissions'
+import ClientLayout from './Layout/ClientLayout'
+import PortalDashboard from './Pages/Portal/PortalDashboard'
+import PortalCompanies from './Pages/Portal/PortalCompanies'
+import PortalOrders from './Pages/Portal/PortalOrders'
+import PortalInvoices from './Pages/Portal/PortalInvoices'
+import PortalDocuments from './Pages/Portal/PortalDocuments'
+import PortalSupport, { PortalMessages } from './Pages/Portal/PortalSupport'
+import { PortalServices, PortalAddresses, PortalAccountancy } from './Pages/Portal/PortalMisc'
+
+// "/" sends each user to their own home (customers -> portal, team -> CRM)
+function HomeRedirect() {
+  return <Navigate to={homePath()} replace />
+}
 
 // Staff land on their own work; admins and managers get the company overview (money stays admin-only)
 function DashboardHome() {
@@ -38,7 +51,7 @@ const App = () => {
         <TooltipProvider>
           <BrowserRouter>
             <Routes>
-            <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/" element={<HomeRedirect />} />
             
             {/* Public Login Route */}
             <Route
@@ -56,6 +69,23 @@ const App = () => {
 
             {/* Protected Admin Routes (Requires Login) */}
             <Route element={<ProtectedRoute />}>
+              {/* Customer portal (CLIENT role), same sections as the old portal */}
+              <Route path="/portal" element={<ClientLayout />}>
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<PortalDashboard />} />
+                <Route path="companies" element={<PortalCompanies />} />
+                <Route path="accountancy" element={<PortalAccountancy />} />
+                <Route path="addresses" element={<PortalAddresses />} />
+                <Route path="orders" element={<PortalOrders />} />
+                <Route path="invoices" element={<PortalInvoices />} />
+                <Route path="payments" element={<Navigate to="/portal/invoices" replace />} />
+                <Route path="documents" element={<PortalDocuments />} />
+                <Route path="services" element={<PortalServices />} />
+                <Route path="support" element={<PortalSupport />} />
+                <Route path="messages" element={<PortalMessages />} />
+                <Route path="profile" element={<Settings />} />
+                <Route path="notifications" element={<NotificationsPage />} />
+              </Route>
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<DashboardHome />} />

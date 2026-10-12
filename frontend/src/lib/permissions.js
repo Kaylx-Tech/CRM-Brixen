@@ -11,6 +11,11 @@ export function getRole(user = getCurrentUser()) {
   return String(user?.role || "").toUpperCase()
 }
 
+/** Where a user lands after login: customers get their portal, the team gets the CRM. */
+export function homePath(user = getCurrentUser()) {
+  return getRole(user) === "CLIENT" ? "/portal/dashboard" : "/admin/dashboard"
+}
+
 export function isAdminRole(user = getCurrentUser()) {
   const role = getRole(user)
   return role === "ADMIN" || role === "SUPER_ADMIN"

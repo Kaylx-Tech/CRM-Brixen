@@ -17,6 +17,7 @@ from .audit_routes import handle_audit_routes
 from .webhook_routes import handle_webhook_routes
 from .accounts_routes import handle_accountancy_routes
 from .settings_routes import handle_settings_routes
+from .client_portal_routes import handle_client_portal_routes
 
 
 # Accounts file integration
@@ -30,6 +31,11 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
     
     # 1. Authentication
     res = handle_auth_routes(environ, start_response, path, method, user, body, query)
+    if res is not None:
+        return res
+
+    # 1b. Customer portal (/api/client/*, CLIENT role only; orders/accountancy/notifications fall through)
+    res = handle_client_portal_routes(environ, start_response, path, method, user, body, query)
     if res is not None:
         return res
 

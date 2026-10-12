@@ -33,7 +33,9 @@ const itemClass =
   "text-slate-200 hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white cursor-pointer rounded-lg px-2.5 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
 
 export function NavUser({
-  user: defaultUser
+  user: defaultUser,
+  profileHref = '/admin/settings?tab=profile',
+  notificationsHref = '/admin/notifications',
 }) {
   const navigate = useNavigate()
 
@@ -89,14 +91,14 @@ export function NavUser({
           >
             <DropdownMenuGroup className="space-y-0.5">
               <DropdownMenuItem
-                onClick={() => navigate('/admin/settings?tab=profile')}
+                onClick={() => navigate(profileHref)}
                 className={itemClass}
               >
                 <IconUserCircle className="size-4" />
                 <span>Account</span>
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => navigate('/admin/notifications')}
+                onClick={() => navigate(notificationsHref)}
                 className={itemClass}
               >
                 <IconNotification className="size-4" />
