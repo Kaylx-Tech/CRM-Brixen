@@ -10,6 +10,7 @@ import { DataTable } from "../../Layout/DataTable"
 import AddService from "./AddService"
 import ViewService from "./ViewService"
 import DeleteConfirmation from "../../components/DeleteConfirmation"
+import { isAdminRole } from "@/lib/permissions"
 import { 
   Dialog, 
   DialogContent, 
@@ -32,6 +33,8 @@ const Services = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [isAddOpen, setIsAddOpen] = useState(false)
+  // Prices sync to the website, so only admins add, edit or delete services (old portal rule)
+  const canManageCatalog = isAdminRole()
   const [viewingService, setViewingService] = useState(null)
 
   // Edit state
@@ -125,7 +128,13 @@ const Services = () => {
       })
       const json = await res.json()
       if (res.ok) {
-        toastDone(toastId, json.message || "Service updated successfully")
+        const sync = json.data?.website_sync
+        if (sync && !sync.ok && !sync.skipped) {
+          // Saved in the CRM but WooCommerce refused the change: say so clearly
+          toastFail(toastId, json.message || "Saved in the CRM, but the website was not updated")
+        } else {
+          toastDone(toastId, json.message || "Service updated successfully")
+        }
         setEditService(null)
         fetchServices()
       } else {
@@ -279,31 +288,35 @@ const Services = () => {
         const service = row.original
         return (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-                <IconDotsVertical className="h-4 w-4" />
-              </Button>
+            <DropdownMenuTrigger
+              render={<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" aria-label="Service actions" />}
+            >
+              <IconDotsVertical className="h-4 w-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setViewingService(service)}>
                 View Details
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openEditDialog(service)}>
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={() => setServiceToDelete(service)}
-              >
-                Delete
-              </DropdownMenuItem>
+              {canManageCatalog && (
+                <>
+                  <DropdownMenuItem onClick={() => openEditDialog(service)}>
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => setServiceToDelete(service)}
+                  >
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )
       },
     }),
-  ], [])
+  ], [canManageCatalog])
 
   const filterConfig = [
     {
@@ -343,10 +356,12 @@ const Services = () => {
           <h2 className="text-2xl font-bold tracking-tight">Services Catalog</h2>
         </div>
         
-        <Button onClick={ () => setIsAddOpen(true)}>
-          <IconPlus className="mr-2 h-4 w-4" />
-          Add Service
-        </Button>
+        {canManageCatalog && (
+          <Button onClick={ () => setIsAddOpen(true)}>
+            <IconPlus className="mr-2 h-4 w-4" />
+            Add Service
+          </Button>
+        )}
         <AddService 
           isOpen={isAddOpen} 
           onClose={() => setIsAddOpen(false)} 
@@ -360,7 +375,7 @@ const Services = () => {
         data={data}
         filterConfig={filterConfig}
         isLoading={isLoading}
-        onDeleteSelected={(rows) => setBulkDeleteRows(rows)}
+        onDeleteSelected={canManageCatalog ? (rows) => setBulkDeleteRows(rows) : undefined}
       />
 
       {/* ── Edit Service Dialog ── */}

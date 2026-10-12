@@ -26,7 +26,7 @@ import CreateOrderWizard from "./CreateOrderWizard"
 import QuickCrmOrder from "./QuickCrmOrder"
 import ViewOrder from "./ViewOrder"
 import DeleteConfirmation from "@/components/DeleteConfirmation"
-import { isAdminRole } from "@/lib/permissions"
+import { isAdminRole, canViewRevenue } from "@/lib/permissions"
 
 const columnHelper = createColumnHelper()
 
@@ -176,6 +176,7 @@ function ProductPills({ summary }) {
 }
 
 export default function Orders() {
+  const showFinance = canViewRevenue()
   const [orders, setOrders] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
@@ -316,12 +317,12 @@ export default function Orders() {
     { title: 'Pending', value: String(stats.pending ?? 0), footerSubText: 'Pending / verification' },
     { title: 'In Progress', value: String(stats.in_progress ?? 0), footerSubText: 'Processing + in progress' },
     { title: 'Completed', value: String(stats.completed ?? 0), footerSubText: 'Finished orders' },
-    {
+    ...(showFinance ? [{
       title: 'Total Revenue',
       value: `£${Number(stats.revenue || 0).toFixed(2)}`,
       footerSubText: 'Excluding cancelled',
-    },
-  ], [stats])
+    }] : []),
+  ], [stats, showFinance])
 
   const columns = useMemo(() => [
     columnHelper.display({
@@ -401,7 +402,8 @@ export default function Orders() {
         <ProductPills summary={row.original.products_summary || row.original.service_name} />
       ),
     }),
-    columnHelper.display({
+    // Price and payment are finance details: admins only (old portal hid them from managers and staff)
+    ...(showFinance ? [columnHelper.display({
       id: 'price',
       header: 'Price',
       cell: ({ row }) => {
@@ -440,7 +442,7 @@ export default function Orders() {
           </Select>
         )
       },
-    }),
+    })] : []),
     columnHelper.display({
       id: 'status',
       header: 'Status',
@@ -488,7 +490,7 @@ export default function Orders() {
         )
       },
     }),
-  ], [savingId, handleOpenOrder])
+  ], [savingId, handleOpenOrder, showFinance])
 
   const tableFilterConfig = useMemo(() => [
     {

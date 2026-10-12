@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
+import { canOpenPath, isAdminRole } from "@/lib/permissions"
 import {
   IconDashboard,
   IconUsers,
@@ -74,6 +75,18 @@ export function CommandManyItems({ open: controlledOpen, onOpenChange: setContro
   const isControlled = controlledOpen !== undefined
   const open = isControlled ? controlledOpen : internalOpen
 
+  // Only offer pages this role can open ("System Settings" itself is admin-only; profile is for everyone)
+  const visibleGroups = React.useMemo(() => {
+    const admin = isAdminRole()
+    return commandGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) =>
+          canOpenPath(item.url) && (admin || item.url !== "/admin/settings")),
+      }))
+      .filter((group) => group.items.length > 0)
+  }, [])
+
   const setOpen = React.useCallback((value) => {
     if (setControlledOpen) {
       setControlledOpen(value)
@@ -111,7 +124,7 @@ export function CommandManyItems({ open: controlledOpen, onOpenChange: setContro
             </div>
           </CommandEmpty>
 
-          {commandGroups.map((group, idx) => (
+          {visibleGroups.map((group, idx) => (
             <React.Fragment key={group.heading}>
               {idx > 0 && <CommandSeparator />}
               <CommandGroup heading={group.heading}>

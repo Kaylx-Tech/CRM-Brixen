@@ -46,7 +46,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { apiRequest, getApiBase, toastApiEmpty } from '@/lib/api'
-import { getCurrentUser, isAdminRole } from '@/lib/permissions'
+import { getCurrentUser, isAdminRole, isManagerOrAbove } from '@/lib/permissions'
 import {
   toastUndoableDelete,
   toastProcessing,
@@ -158,6 +158,8 @@ const Tasks = () => {
   // Only admins add or remove team members (the backend enforces the same rule)
   const currentUser = useMemo(() => getCurrentUser(), [])
   const canManageTeam = isAdminRole(currentUser)
+  // Admins and managers create, assign and delete tasks; staff work on the tasks they are given
+  const canManageTasks = isManagerOrAbove(currentUser)
   const isSuperAdmin = String(currentUser?.role || '').toUpperCase() === 'SUPER_ADMIN'
   const [memberToRemove, setMemberToRemove] = useState(null)
   const [isRemovingMember, setIsRemovingMember] = useState(false)
@@ -506,10 +508,10 @@ const Tasks = () => {
           const task = row.original
           return (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
-                </Button>
+              <DropdownMenuTrigger
+                render={<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" aria-label="Task actions" />}
+              >
+                <IconDotsVertical className="size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={() => openEditTask(task)}>
@@ -534,13 +536,17 @@ const Tasks = () => {
                     Mark complete
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={() => setTaskToDelete(task)}
-                >
-                  Delete
-                </DropdownMenuItem>
+                {canManageTasks && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => setTaskToDelete(task)}
+                    >
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )
@@ -548,7 +554,7 @@ const Tasks = () => {
       }),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [staff]
+    [staff, canManageTasks]
   )
 
   const staffColumns = useMemo(
@@ -646,10 +652,12 @@ const Tasks = () => {
             Refresh
           </Button>
           {activeTab === 'Tasks' ? (
-            <Button onClick={openCreateTask}>
-              <IconPlus className="size-4" />
-              New task
-            </Button>
+            canManageTasks ? (
+              <Button onClick={openCreateTask}>
+                <IconPlus className="size-4" />
+                New task
+              </Button>
+            ) : null
           ) : canManageTeam ? (
             <Button
               onClick={() => {
@@ -668,7 +676,7 @@ const Tasks = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList>
           <TabsTrigger value="Tasks">Tasks</TabsTrigger>
-          <TabsTrigger value="Team">Team</TabsTrigger>
+          {canManageTasks && <TabsTrigger value="Team">Team</TabsTrigger>}
         </TabsList>
       </Tabs>
 
@@ -808,6 +816,7 @@ const Tasks = () => {
                   onValueChange={(val) =>
                     setTaskForm((p) => ({ ...p, department: val }))
                   }
+                  disabled={!canManageTasks}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Department" />
@@ -841,6 +850,7 @@ const Tasks = () => {
                 onValueChange={(val) =>
                   setTaskForm((p) => ({ ...p, assigned_staff_id: val }))
                 }
+                disabled={!canManageTasks}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Assign to…" />

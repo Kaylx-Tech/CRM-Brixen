@@ -25,8 +25,10 @@ import {
   IconSettings,
   IconBell,
   IconSearch,
+  IconTrophy,
 } from "@tabler/icons-react"
 import { CommandManyItems } from "@/components/ComboSearch"
+import { canOpenPath, isStaffRole } from "@/lib/permissions"
 
 const data = {
   user: {
@@ -45,6 +47,7 @@ const data = {
     { title: "Accountancy", url: "/admin/accountancy", icon: <IconCalculator /> },
     { title: "Payment/Invoices", url: "/admin/payments", icon: <IconFileInvoice /> },
     { title: "Documents Review", url: "/admin/documents", icon: <IconFileCheck /> },
+    { title: "Performance", url: "/admin/performance", icon: <IconTrophy /> },
   ],
 }
 
@@ -52,6 +55,13 @@ export function AppSidebar({
   ...props
 }) {
   const [searchOpen, setSearchOpen] = React.useState(false)
+  // Each role only sees the pages it can open; staff land on their own work instead of the admin overview
+  const navItems = React.useMemo(() => {
+    const staff = isStaffRole()
+    return data.navMain
+      .filter((item) => canOpenPath(item.url))
+      .map((item) => (staff && item.url === "/admin/dashboard" ? { ...item, title: "My Dashboard" } : item))
+  }, [])
 
   return (
     <Sidebar collapsible="offcanvas" className="group-data-[side=left]:border-r-0" {...props}>
@@ -74,7 +84,7 @@ export function AppSidebar({
         </button>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={navItems} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />

@@ -499,8 +499,8 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
     # ── DELETE /api/admin/companies/<id> (Delete with genuine protection) ─
     match_del = re.match(r'^/api/(?:admin/)?companies/(\d+)$', path)
     if match_del and method == 'DELETE':
-        if not is_staff:
-            return error_response(start_response, "Access denied", status_code=403)
+        if user_role not in ('SUPER_ADMIN', 'ADMIN'):
+            return error_response(start_response, "Only an admin can delete companies", status_code=403)
         comp_id = int(match_del.group(1))
 
         comp = query_db("SELECT id, name, company_number FROM companies WHERE id = ? LIMIT 1;", (comp_id,), one=True)
@@ -517,8 +517,8 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
 
     # ── POST /api/admin/companies/bulk-delete ──────────────────────────────
     if path in ('/api/admin/companies/bulk-delete', '/api/companies/bulk-delete') and method == 'POST':
-        if not is_staff:
-            return error_response(start_response, "Access denied", status_code=403)
+        if user_role not in ('SUPER_ADMIN', 'ADMIN'):
+            return error_response(start_response, "Only an admin can delete companies", status_code=403)
         ids = body.get('company_ids') or body.get('ids') or []
         if not ids:
             return error_response(start_response, "No company IDs provided", status_code=400)

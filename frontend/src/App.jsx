@@ -17,6 +17,14 @@ import Intake from './Pages/Intake/Intake'
 import AuditLogs from './Pages/AuditLogs/AuditLogs'
 import Settings from './Pages/Settings/Settings'
 import NotificationsPage from './Pages/Notifications/Notifications'
+import Performance, { StaffDashboard } from './Pages/Performance/Performance'
+import PageGuard from './components/PageGuard'
+import { isStaffRole } from './lib/permissions'
+
+// Staff land on their own work; admins and managers get the company overview (money stays admin-only)
+function DashboardHome() {
+  return isStaffRole() ? <StaffDashboard /> : <Dashboard />
+}
 import ToastPlayground from './Pages/ToastPlayground'
 import { TooltipProvider } from './components/ui/tooltip'
 import { ThemeProvider } from './hooks/theme-provider'
@@ -50,17 +58,18 @@ const App = () => {
             <Route element={<ProtectedRoute />}>
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Navigate to="dashboard" replace />} />
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="customers" element={<Customers />} />
+                <Route path="dashboard" element={<DashboardHome />} />
+                <Route path="performance" element={<Performance />} />
+                <Route path="customers" element={<PageGuard page="customers"><Customers /></PageGuard>} />
                 <Route path="companies" element={<Companies />} />
-                <Route path="accountancy" element={<Accountancy />} />
-                <Route path="orders" element={<Orders />} />
+                <Route path="accountancy" element={<PageGuard page="accountancy"><Accountancy /></PageGuard>} />
+                <Route path="orders" element={<PageGuard page="orders"><Orders /></PageGuard>} />
                 <Route path="tasks" element={<Tasks />} />
-                <Route path="services" element={<Services />} />
-                <Route path="payments" element={<Payments />} />
-                <Route path="documents" element={<Documents />} />
-                <Route path="intake" element={<Intake />} />
-                <Route path="logs" element={<AuditLogs />} />
+                <Route path="services" element={<PageGuard page="services"><Services /></PageGuard>} />
+                <Route path="payments" element={<PageGuard page="payments"><Payments /></PageGuard>} />
+                <Route path="documents" element={<PageGuard page="documents"><Documents /></PageGuard>} />
+                <Route path="intake" element={<PageGuard page="intake"><Intake /></PageGuard>} />
+                <Route path="logs" element={<PageGuard page="logs"><AuditLogs /></PageGuard>} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="profile" element={<Navigate to="/admin/settings?tab=profile" replace />} />

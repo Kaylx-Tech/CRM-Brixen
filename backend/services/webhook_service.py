@@ -7,6 +7,67 @@ from services.audit_service import log_order_timeline
 from services.notification_service import notify_staff
 
 
+def process_woocommerce_customer(payload):
+    """WooCommerce customer.created / customer.updated: add or update the signup in the CRM."""
+    if not isinstance(payload, dict):
+        return {"success": False, "error": "Invalid payload"}
+    wp_id = str(payload.get('id') or '').strip()
+    email = str(payload.get('email') or '').strip().lower()
+    if not email or not wp_id.isdigit():
+        return {"success": False, "error": "Customer payload missing id or email"}
+    role = str(payload.get('role') or 'customer').strip().lower()
+    if role not in ('customer', 'subscriber'):
+        return {"success": True, "skipped": True, "reason": f"Ignored {role} account"}
+
+    try:
+        from services.permanent_purge import is_purged_email
+        if is_purged_email(email):
+            return {"success": True, "skipped": True, "reason": "Email was permanently deleted"}
+    except Exception:
+        pass
+
+    billing = payload.get('billing') or {}
+    first = str(payload.get('first_name') or billing.get('first_name') or '').strip()
+    last = str(payload.get('last_name') or billing.get('last_name') or '').strip()
+    full_name = f"{first} {last}".strip() or str(payload.get('username') or '').strip() or email.split('@')[0]
+    phone = str(billing.get('phone') or '').strip() or None
+    country = str(billing.get('country') or '').strip() or None
+
+    existing = query_db(
+        "SELECT id, role, full_name, phone, wordpress_user_id FROM users WHERE wordpress_user_id = ? LIMIT 1;",
+        (wp_id,), one=True) or query_db(
+        "SELECT id, role, full_name, phone, wordpress_user_id FROM users WHERE lower(email) = ? LIMIT 1;",
+        (email,), one=True)
+
+    if existing:
+        if existing.get('role') != 'CLIENT':
+            return {"success": True, "skipped": True, "reason": "Email belongs to a staff account"}
+        # Link the website account and fill blanks; never overwrite details staff already edited in the CRM
+        execute_db("""
+            UPDATE users
+            SET wordpress_user_id = CASE WHEN COALESCE(wordpress_user_id, '') = '' OR wordpress_user_id LIKE 'local_%'
+                                         THEN ? ELSE wordpress_user_id END,
+                full_name = CASE WHEN TRIM(COALESCE(full_name, '')) = '' THEN ? ELSE full_name END,
+                phone = COALESCE(NULLIF(TRIM(phone), ''), ?),
+                last_synced_at = CURRENT_TIMESTAMP
+            WHERE id = ?;
+        """, (wp_id, full_name, phone, existing['id']))
+        return {"success": True, "customer_id": existing['id'], "created": False}
+
+    created = str(payload.get('date_created') or '').replace('T', ' ')[:19] or None
+    cid = execute_db("""
+        INSERT INTO users (wordpress_user_id, email, password_hash, full_name, phone, country, role, status,
+                           client_type, is_b2b, notification_email, created_at, last_synced_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'CLIENT', 'Active', 'Individual', 0, ?, COALESCE(?, datetime('now')), CURRENT_TIMESTAMP);
+    """, (wp_id, email, unusable_password_hash(), full_name, phone, country, email, created))
+    try:
+        notify_staff('New website signup', f"{full_name} ({email}) signed up on the website.",
+                     'signup', '/admin/customers')
+    except Exception:
+        pass
+    return {"success": True, "customer_id": cid, "created": True}
+
+
 def process_woocommerce_order(payload):
     """Process an incoming WooCommerce order webhook payload."""
     if not isinstance(payload, dict):

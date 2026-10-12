@@ -29,6 +29,7 @@ import { toast } from 'sonner'
 import { toastUndoableDelete } from '@/lib/toastActions'
 import { Card, CardContent } from '@/components/ui/card'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
+import { isAdminRole } from '@/lib/permissions'
 import { apiRequest, getApiBase, toastApiEmpty } from '@/lib/api'
 
 const Companies = () => {
@@ -295,18 +296,20 @@ const Companies = () => {
             <Button variant="ghost" size="sm" onClick={handleDeselectAll} className="text-sm h-8">
               Clear selection
             </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              className="text-sm h-8"
-              onClick={() => {
-                setSingleDeleteId(null)
-                setDeleteConfirmOpen(true)
-              }}
-            >
-              <IconTrash className="mr-1.5 h-3.5 w-3.5" />
-              Delete Selected ({selectedIds.length})
-            </Button>
+            {isAdminRole() && (
+              <Button
+                variant="destructive"
+                size="sm"
+                className="text-sm h-8"
+                onClick={() => {
+                  setSingleDeleteId(null)
+                  setDeleteConfirmOpen(true)
+                }}
+              >
+                <IconTrash className="mr-1.5 h-3.5 w-3.5" />
+                Delete Selected ({selectedIds.length})
+              </Button>
+            )}
           </div>
           </CardContent>
         </Card>
@@ -345,10 +348,10 @@ const Companies = () => {
               isSelected={selectedIds.includes(company.id)}
               onToggleSelect={handleToggleSelect}
               onRefresh={fetchCompanies}
-              onDelete={(id) => {
+              onDelete={isAdminRole() ? (id) => {
                 setSingleDeleteId(id)
                 setDeleteConfirmOpen(true)
-              }}
+              } : undefined}
             />
           ))}
         </div>

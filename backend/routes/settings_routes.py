@@ -44,6 +44,9 @@ def handle_settings_routes(environ, start_response, path, method, user, body, qu
     user_role = str(user.get('role', '')).upper()
     if user_role not in STAFF_ROLES:
         return error_response(start_response, "Access denied. Staff privilege required.", status_code=403)
+    # Old portal: system settings (and the integration tests) need settings.manage, i.e. admins only
+    if user_role not in ADMIN_ROLES:
+        return error_response(start_response, "System settings are available to administrators only.", status_code=403)
 
     # ── 2. GET /api/admin/settings ───────────────────────────────────────────
     if path == '/api/admin/settings' and method == 'GET':
@@ -96,5 +99,34 @@ def handle_settings_routes(environ, start_response, path, method, user, body, qu
         if result.get('success'):
             return success_response(start_response, data=result, message=result.get('message'))
         return error_response(start_response, result.get('error', 'Companies House Test Failed'), status_code=400, details=result)
+
+    # ── 7. POST /api/admin/settings/test-wordpress (Application Password check) ──
+    if path == '/api/admin/settings/test-wordpress' and method == 'POST':
+        from services import wordpress_service
+        result = wordpress_service.connection_status()
+        if result.get('ok'):
+            return success_response(start_response, data=result, message=result.get('message'))
+        return error_response(start_response, result.get('message') or 'WordPress connection failed', status_code=400)
+
+    # ── 8. POST /api/admin/settings/wordpress-webhooks (create signup webhook on WooCommerce) ──
+    if path == '/api/admin/settings/wordpress-webhooks' and method == 'POST':
+        if user_role not in ADMIN_ROLES:
+            return error_response(start_response, "Only Administrators can set up webhooks.", status_code=403)
+        from services import wordpress_service
+        from routes.webhook_routes import _webhook_secret
+        secret = _webhook_secret()
+        if not secret:
+            return error_response(start_response, "Set WORDPRESS_WEBHOOK_SECRET on the server first.", status_code=400)
+        proto = (environ.get('HTTP_X_FORWARDED_PROTO') or environ.get('wsgi.url_scheme') or 'https').split(',')[0].strip()
+        host = (environ.get('HTTP_X_FORWARDED_HOST') or environ.get('HTTP_HOST') or '').split(',')[0].strip()
+        if not host or host.split(':')[0] in ('localhost', '127.0.0.1', '0.0.0.0'):
+            return error_response(start_response, "Run this from the live CRM; the website cannot reach a local server.",
+                                  status_code=400)
+        delivery_url = f"{proto}://{host}/api/webhooks/woocommerce"
+        result = wordpress_service.ensure_webhook('customer.created', delivery_url, secret)
+        if result.get('ok'):
+            return success_response(start_response, data={**result, 'delivery_url': delivery_url},
+                                    message=result.get('message'))
+        return error_response(start_response, result.get('message') or 'Could not create the webhook', status_code=400)
 
     return None

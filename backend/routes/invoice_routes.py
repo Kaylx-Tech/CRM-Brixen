@@ -18,6 +18,10 @@ def handle_invoice_routes(environ, start_response, path, method, user, body, que
     user_role = user.get('role', 'CLIENT')
     user_id = user.get('id')
     is_staff = user_role in ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
+    # Old portal rule: the STAFF role never sees Payments / Invoices (managers and admins do)
+    if user_role == 'STAFF':
+        return error_response(start_response, "Payments and invoices are not available for staff accounts",
+                              status_code=403)
 
     # Normalize admin alias → same handlers
     # ── GET /api/invoices | /api/admin/invoices (List) ─────────────────────

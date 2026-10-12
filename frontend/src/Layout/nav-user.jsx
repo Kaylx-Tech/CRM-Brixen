@@ -27,6 +27,7 @@ import {
   IconSettings,
 } from "@tabler/icons-react"
 import { useNavigate } from "react-router-dom"
+import { isAdminRole } from "@/lib/permissions"
 
 const itemClass =
   "text-slate-200 hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white cursor-pointer rounded-lg px-2.5 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
@@ -103,24 +104,29 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
 
-            <DropdownMenuSeparator className="bg-white/10 my-1" />
+            {/* System logs and settings are admin-only */}
+            {isAdminRole() && (
+              <>
+                <DropdownMenuSeparator className="bg-white/10 my-1" />
 
-            <DropdownMenuGroup className="space-y-0.5">
-              <DropdownMenuItem
-                onClick={() => navigate('/admin/logs')}
-                className={itemClass}
-              >
-                <IconHistory className="size-4" />
-                <span>System Logs</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => navigate('/admin/settings')}
-                className={itemClass}
-              >
-                <IconSettings className="size-4" />
-                <span>Settings</span>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
+                <DropdownMenuGroup className="space-y-0.5">
+                  <DropdownMenuItem
+                    onClick={() => navigate('/admin/logs')}
+                    className={itemClass}
+                  >
+                    <IconHistory className="size-4" />
+                    <span>System Logs</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => navigate('/admin/settings')}
+                    className={itemClass}
+                  >
+                    <IconSettings className="size-4" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </>
+            )}
 
             <DropdownMenuSeparator className="bg-white/10 my-1" />
 

@@ -1,13 +1,14 @@
 """Webhook Endpoints (/api/webhooks)
 HMAC-verified WooCommerce/WordPress inbound webhooks (same contract as app.py).
 """
+import base64
 import hmac
 import hashlib
 import json
 import os
 from db import query_db
 from utils.response import success_response, error_response
-from services.webhook_service import process_woocommerce_order
+from services.webhook_service import process_woocommerce_order, process_woocommerce_customer
 
 
 def _webhook_secret():
@@ -19,12 +20,14 @@ def _webhook_secret():
 
 
 def _verify_webhook_signature(raw_body_bytes, signature_hdr, secret):
+    """WooCommerce signs with base64(HMAC-SHA256); the old Brixen plugin sent hex. Accept either."""
     if not signature_hdr or not secret or not raw_body_bytes:
         return False
     clean_sig = str(signature_hdr).replace('sha256=', '').strip()
-    expected = hmac.new(secret.encode('utf-8'), raw_body_bytes, hashlib.sha256).hexdigest()
+    digest = hmac.new(secret.encode('utf-8'), raw_body_bytes, hashlib.sha256).digest()
     try:
-        return hmac.compare_digest(clean_sig, expected)
+        return (hmac.compare_digest(clean_sig, digest.hex())
+                or hmac.compare_digest(clean_sig, base64.b64encode(digest).decode('ascii')))
     except Exception:
         return False
 
@@ -39,6 +42,10 @@ def handle_webhook_routes(environ, start_response, path, method, user, body, que
         secret = _webhook_secret()
         if not secret:
             return error_response(start_response, "Webhook secret is not configured", status_code=401)
+
+        # WooCommerce pings a new webhook with just "webhook_id=<n>" (unsigned); answer it, process nothing
+        if isinstance(body, dict) and set(body.keys()) == {'webhook_id'}:
+            return success_response(start_response, message="Webhook ping received.")
 
         signature = (
             environ.get('HTTP_X_WC_WEBHOOK_SIGNATURE')
@@ -55,7 +62,11 @@ def handle_webhook_routes(environ, start_response, path, method, user, body, que
         if not _verify_webhook_signature(raw_body, signature, secret):
             return error_response(start_response, "Invalid webhook signature", status_code=401)
 
-        result = process_woocommerce_order(body or {})
+        topic = str(environ.get('HTTP_X_WC_WEBHOOK_TOPIC') or '').strip().lower()
+        if topic.startswith('customer.'):
+            result = process_woocommerce_customer(body or {})
+        else:
+            result = process_woocommerce_order(body or {})
         if result.get('success'):
             return success_response(start_response, data=result, message="Webhook processed successfully.")
         return error_response(start_response, message=result.get('error', 'Failed to process webhook'), status_code=400)

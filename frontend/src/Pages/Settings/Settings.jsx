@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { IconRefresh, IconDeviceFloppy, IconLoader2, IconMail, IconBuilding, IconCloud } from '@tabler/icons-react'
+import { isAdminRole } from '@/lib/permissions'
+import { IconRefresh, IconDeviceFloppy, IconLoader2, IconMail, IconBuilding, IconCloud, IconWorld, IconWebhook } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import { apiRequest } from '@/lib/api'
@@ -103,7 +104,9 @@ function Section({ title, description, children }) {
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
-  const tab = SETTINGS_TABS.has(tabParam) ? tabParam : 'general'
+  // System settings are admin-only (old portal rule); everyone else only gets their own profile
+  const canManageSettings = isAdminRole()
+  const tab = !canManageSettings ? 'profile' : (SETTINGS_TABS.has(tabParam) ? tabParam : 'general')
   const isProfileTab = tab === 'profile'
 
   const setTab = (next) => {
@@ -165,6 +168,10 @@ export default function Settings() {
     setIsLoading(true)
     setLoadError(null)
     try {
+      if (!canManageSettings) {
+        await loadProfile()
+        return
+      }
       const [res] = await Promise.all([
         apiRequest('/admin/settings', { label: 'System Settings' }),
         loadProfile(),
@@ -235,7 +242,7 @@ export default function Settings() {
     } finally {
       setIsLoading(false)
     }
-  }, [loadProfile])
+  }, [loadProfile, canManageSettings])
 
   useEffect(() => {
     loadSettings()
@@ -384,6 +391,8 @@ export default function Settings() {
       smtp: 'Testing SMTP…',
       ch: 'Testing Companies House…',
       drive: 'Testing Google Drive…',
+      wp: 'Testing WordPress connection…',
+      wphook: 'Setting up the signup webhook…',
     }
     const toastId = toastProcessing(labels[kind] || 'Testing connection…')
     try {
@@ -411,6 +420,10 @@ export default function Settings() {
         body = form.google_service_account_json.trim()
           ? { google_service_account_json: form.google_service_account_json.trim() }
           : {}
+      } else if (kind === 'wp') {
+        path = '/admin/settings/test-wordpress'
+      } else if (kind === 'wphook') {
+        path = '/admin/settings/wordpress-webhooks'
       }
       const res = await apiRequest(path, {
         method: 'POST',
@@ -435,9 +448,11 @@ export default function Settings() {
     <div className="flex flex-col gap-4 w-full pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">System Settings</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{canManageSettings ? 'System Settings' : 'My Profile'}</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Branding, email, integrations, compliance, and your profile
+            {canManageSettings
+              ? 'Branding, email, integrations, compliance, and your profile'
+              : 'Your details and password'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -470,7 +485,7 @@ export default function Settings() {
             ['integrations', 'Integrations'],
             ['compliance', 'Compliance'],
             ['profile', 'Profile & Password'],
-          ].map(([value, label]) => (
+          ].filter(([value]) => canManageSettings || value === 'profile').map(([value, label]) => (
             <TabsTrigger
               key={value}
               value={value}
@@ -698,6 +713,44 @@ export default function Settings() {
                 )}
                 Test Companies House
               </Button>
+            </Section>
+
+            <Section
+              title="WordPress website"
+              description="Uses the Application Password set on the server (WORDPRESS_API_USER / WORDPRESS_APP_PASSWORD). Service price, name, description and active status sync to the linked WooCommerce product when you change them; new website signups arrive through the signup webhook."
+            >
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-sm"
+                  disabled={!!testing || isLoading}
+                  onClick={() => runTest('wp')}
+                >
+                  {testing === 'wp' ? (
+                    <IconLoader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <IconWorld className="mr-1.5 h-3.5 w-3.5" />
+                  )}
+                  Test WordPress connection
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-sm"
+                  disabled={!!testing || isLoading}
+                  onClick={() => runTest('wphook')}
+                >
+                  {testing === 'wphook' ? (
+                    <IconLoader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <IconWebhook className="mr-1.5 h-3.5 w-3.5" />
+                  )}
+                  Set up signup webhook
+                </Button>
+              </div>
             </Section>
 
             <Section

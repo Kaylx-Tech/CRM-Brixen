@@ -82,6 +82,8 @@ def handle_catalog_routes(environ, start_response, path, method, user, body, que
         denied = _require_staff()
         if denied:
             return denied
+        if user.get('role') not in ('SUPER_ADMIN', 'ADMIN'):
+            return error_response(start_response, "Only an admin can add services.", 403)
 
         name = body.get('name', '').strip()
         category = body.get('category', 'Corporate')
@@ -144,9 +146,11 @@ def handle_catalog_routes(environ, start_response, path, method, user, body, que
         if not existing:
             return error_response(start_response, "Service not found", 404)
 
+        # Prices and products sync to the website, so only admins change the catalog (old portal rule)
+        if user.get('role') not in ('SUPER_ADMIN', 'ADMIN'):
+            return error_response(start_response, "Only an admin can change services.", 403)
+
         if method == 'DELETE':
-            if user.get('role') not in ('SUPER_ADMIN', 'ADMIN'):
-                return error_response(start_response, "Deletion is restricted to Administrator accounts only.", 403)
             execute_db("UPDATE orders SET service_id = NULL WHERE service_id = ?;", (sid,))
             execute_db("DELETE FROM services WHERE id = ?;", (sid,))
             return success_response(start_response, message="Service deleted.", data={"service_id": sid})
@@ -182,7 +186,36 @@ def handle_catalog_routes(environ, start_response, path, method, user, body, que
             WHERE id = ?;
         """, (name, description or name, category, price, cost_price, duration, status, sid))
         updated = query_db("SELECT * FROM services WHERE id = ?;", (sid,), one=True)
-        return success_response(start_response, data=dict(updated) if updated else {"id": sid}, message="Service updated.")
+
+        # Push only what changed to the linked WooCommerce product (CRM is the source of truth)
+        changes = {}
+        if name != (existing.get('name') or '').strip():
+            changes['name'] = name
+        if (description or name) != (existing.get('description') or '').strip():
+            changes['description'] = description or name
+        if abs(price - float(existing.get('price') or 0)) > 0.004:
+            changes['price'] = price
+        if status != (existing.get('status') or 'Active'):
+            changes['active'] = status == 'Active'
+        message = "Service updated."
+        website = None
+        if changes and str(existing.get('woocommerce_product_id') or '').strip().isdigit():
+            from services import wordpress_service
+            website = wordpress_service.update_woo_product(existing['woocommerce_product_id'], changes)
+            if website.get('ok') and not website.get('skipped'):
+                message = "Service updated here and on the website."
+            elif not website.get('ok') and not website.get('skipped'):
+                message = f"Service updated in the CRM, but the website was not updated: {website.get('message')}"
+            try:
+                from services.audit_service import log_activity
+                log_activity((user or {}).get('id'),
+                             'WEBSITE_PRODUCT_SYNCED' if website.get('ok') else 'WEBSITE_PRODUCT_SYNC_FAILED',
+                             'services', sid, f"{', '.join(changes)} -> {website.get('message')}")
+            except Exception:
+                pass
+        data = dict(updated) if updated else {"id": sid}
+        data['website_sync'] = website
+        return success_response(start_response, data=data, message=message)
 
 
     # ── GET /api/catalog/schema (Dynamic form config for service) ──────────

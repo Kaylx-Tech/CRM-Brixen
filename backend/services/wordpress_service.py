@@ -122,3 +122,114 @@ def provision_website_user(*, email, password, full_name=None, phone=None, wordp
     if err or not isinstance(data, dict) or not data.get('id'):
         return {'ok': False, 'message': err or 'WordPress did not return a user'}
     return {'ok': True, 'wordpress_user_id': str(data['id']), 'message': 'Website login saved'}
+
+
+# Website accounts the CRM may lock or delete. Anything else (admins, shop managers, editors) is never touched.
+CUSTOMER_ROLES = {'customer', 'subscriber'}
+
+
+def _customer_account(wordpress_user_id):
+    """Return (wp_user, error). Refuses anything that is not a plain customer account."""
+    wp_id = str(wordpress_user_id or '').strip()
+    if not wp_id.isdigit():
+        return None, 'No website account linked'
+    if not is_configured():
+        return None, 'WordPress is not configured (API user / application password missing)'
+    status, data, err = wp_request('GET', f'/wp/v2/users/{wp_id}', params={'context': 'edit'})
+    if status == 404:
+        return None, 'Website account no longer exists'
+    if err or not isinstance(data, dict):
+        return None, err or 'Could not load the website account'
+    roles = set(data.get('roles') or [])
+    if not roles or not roles.issubset(CUSTOMER_ROLES):
+        return None, f"Website account has role {', '.join(sorted(roles)) or 'none'}; only customer accounts are changed"
+    return data, None
+
+
+def lock_website_user(wordpress_user_id):
+    """Block website login for a suspended customer by giving the account a random password."""
+    import secrets
+    account, err = _customer_account(wordpress_user_id)
+    if err:
+        return {'ok': False, 'message': err}
+    status, data, err = wp_request('POST', f"/wp/v2/users/{account['id']}",
+                                   payload={'password': secrets.token_urlsafe(24)})
+    if err:
+        return {'ok': False, 'message': err}
+    return {'ok': True, 'message': 'Website login blocked'}
+
+
+def delete_website_user(wordpress_user_id):
+    """Permanently delete a customer's WordPress account (their WooCommerce orders stay as guest orders)."""
+    account, err = _customer_account(wordpress_user_id)
+    if err:
+        return {'ok': False, 'message': err}
+    status, me, err = wp_request('GET', '/wp/v2/users/me')
+    if err or not isinstance(me, dict) or not me.get('id'):
+        return {'ok': False, 'message': err or 'Could not identify the WordPress API user'}
+    status, data, err = wp_request('DELETE', f"/wp/v2/users/{account['id']}",
+                                   params={'force': 'true', 'reassign': me['id']})
+    if err:
+        return {'ok': False, 'message': err}
+    return {'ok': True, 'message': 'Website account deleted'}
+
+
+def update_woo_product(product_id, changes):
+    """Push changed service fields to the linked WooCommerce product.
+
+    `changes` holds only what the admin changed: any of name, description, price, active.
+    Returns {'ok': bool, 'message': str, 'skipped': bool}.
+    """
+    pid = str(product_id or '').strip()
+    if not pid.isdigit():
+        return {'ok': False, 'skipped': True, 'message': 'Service is not linked to a website product'}
+    if not is_configured():
+        return {'ok': False, 'skipped': True, 'message': 'WordPress is not configured'}
+    payload = {}
+    if 'name' in changes:
+        payload['name'] = changes['name']
+    if 'description' in changes:
+        payload['description'] = changes['description']
+    if 'price' in changes:
+        payload['regular_price'] = f"{float(changes['price']):.2f}"
+    if 'active' in changes:
+        payload['status'] = 'publish' if changes['active'] else 'draft'
+    if not payload:
+        return {'ok': True, 'skipped': True, 'message': 'Nothing to update on the website'}
+    status, data, err = wp_request('PUT', f'/wc/v3/products/{pid}', payload=payload)
+    if err:
+        return {'ok': False, 'skipped': False, 'message': err}
+    return {'ok': True, 'skipped': False, 'message': 'Website product updated'}
+
+
+def ensure_webhook(topic, delivery_url, secret):
+    """Create the WooCommerce webhook for `topic` pointing at the CRM, unless one already exists."""
+    if not is_configured():
+        return {'ok': False, 'message': 'WordPress is not configured'}
+    status, hooks, err = wp_request('GET', '/wc/v3/webhooks', params={'per_page': 100})
+    if err:
+        return {'ok': False, 'message': err}
+    for hook in hooks or []:
+        if hook.get('topic') == topic and str(hook.get('delivery_url') or '').rstrip('/') == delivery_url.rstrip('/'):
+            if hook.get('status') != 'active':
+                wp_request('PUT', f"/wc/v3/webhooks/{hook['id']}", payload={'status': 'active', 'secret': secret})
+                return {'ok': True, 'message': f'{topic} webhook re-activated', 'id': hook['id']}
+            return {'ok': True, 'message': f'{topic} webhook already set up', 'id': hook['id']}
+    status, data, err = wp_request('POST', '/wc/v3/webhooks', payload={
+        'name': f'Brixen CRM - {topic}', 'topic': topic, 'delivery_url': delivery_url,
+        'secret': secret, 'status': 'active',
+    })
+    if err or not isinstance(data, dict):
+        return {'ok': False, 'message': err or 'WordPress did not create the webhook'}
+    return {'ok': True, 'message': f'{topic} webhook created', 'id': data.get('id')}
+
+
+def connection_status():
+    """Quick check used by Settings: can we log in, and as whom."""
+    if not is_configured():
+        return {'ok': False, 'message': 'Set WORDPRESS_API_USER and WORDPRESS_APP_PASSWORD'}
+    status, me, err = wp_request('GET', '/wp/v2/users/me', params={'context': 'edit'})
+    if err or not isinstance(me, dict):
+        return {'ok': False, 'message': err or 'Login failed'}
+    return {'ok': True, 'message': f"Connected as {me.get('name')}", 'roles': me.get('roles') or [],
+            'site': wordpress_base_url()}

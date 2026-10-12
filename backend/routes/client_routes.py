@@ -74,6 +74,14 @@ def _remove_customers(ids, actor):
             pass
     _audit(actor, 'CLIENTS_PERMANENTLY_DELETED', 'users', ','.join(str(x['id']) for x in allowed),
            f"Permanently deleted {len(allowed)} customer profile(s)")
+    # Delete the matching website (WordPress) accounts too; failures are logged, the CRM delete stands
+    for t in allowed:
+        if str(t.get('wordpress_user_id') or '').isdigit():
+            site = wordpress_service.delete_website_user(t['wordpress_user_id'])
+            _audit(actor, 'WEBSITE_ACCOUNT_DELETED' if site.get('ok') else 'WEBSITE_ACCOUNT_DELETE_FAILED',
+                   'users', t['id'], f"{t.get('email')}: {site.get('message')}")
+            if not site.get('ok'):
+                blocked_msgs.append(f"{t.get('email')}: removed from the CRM, website account not deleted ({site.get('message')})")
     return int(result.get('deleted') or len(allowed)), blocked_msgs
 
 def handle_client_routes(environ, start_response, path, method, user, body, query):
@@ -145,9 +153,23 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         new_status = body.get('status')
         if not cid or new_status not in ('Active', 'Suspended', 'Pending'):
             return error_response(start_response, "Customer ID and a valid status are required", status_code=400)
+        target = _client_target(cid)
+        if not target or target.get('role') != 'CLIENT':
+            return error_response(start_response, "Customer not found", status_code=404)
         execute_db("UPDATE users SET status = ? WHERE id = ? AND role = 'CLIENT';", (new_status, cid))
         _audit(user, 'CUSTOMER_STATUS_CHANGE', 'users', cid, f"Updated status to {new_status}")
-        return success_response(start_response, message=f"Customer status updated to {new_status}")
+        message = f"Customer status updated to {new_status}"
+        website = None
+        if str(target.get('wordpress_user_id') or '').isdigit():
+            if new_status == 'Suspended':
+                website = wordpress_service.lock_website_user(target['wordpress_user_id'])
+                message += ". Website login blocked." if website.get('ok') else \
+                    f". Website login NOT blocked: {website.get('message')}"
+                _audit(user, 'WEBSITE_LOGIN_LOCKED' if website.get('ok') else 'WEBSITE_LOGIN_LOCK_FAILED',
+                       'users', cid, website.get('message'))
+            elif new_status == 'Active':
+                message += ". To let them sign in on the website again, set a new password for them."
+        return success_response(start_response, message=message, data={"website": website})
 
     # ── 2.1 POST /api/admin/customers/type (one change, then locked) ──────────
     if path in ('/api/admin/customers/type', '/api/admin/customers/client-type') and method == 'POST':
@@ -268,7 +290,8 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         if deleted < 1:
             return _forbidden(start_response, "This client could not be deleted. " + (blocked[0] if blocked else
                               "If records are locked, sign in as Super Admin (owner) and try again."))
-        return success_response(start_response, message=f"Customer '{target.get('full_name') or target.get('email')}' has been removed successfully.")
+        note = f" Note: {blocked[0]}" if blocked else ""
+        return success_response(start_response, message=f"Customer '{target.get('full_name') or target.get('email')}' has been removed successfully.{note}")
 
     # ── 6. POST /api/admin/customers/bulk-delete (Bulk Delete) ───────────────
     if path == '/api/admin/customers/bulk-delete' and method == 'POST':
@@ -281,7 +304,7 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         if deleted < 1:
             return _forbidden(start_response, "No customers were removed. " + (blocked[0] if blocked else
                               "If records are locked, sign in as Super Admin (owner) and try again."))
-        suffix = f" ({len(blocked)} blocked: locked genuine records)" if blocked else ""
+        suffix = f" {len(blocked)} note(s): " + "; ".join(blocked[:3]) if blocked else ""
         return success_response(start_response, message=f"Successfully removed {deleted} customer(s).{suffix}",
                                 data={"deleted_count": deleted, "blocked": blocked})
 

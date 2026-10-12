@@ -5,6 +5,7 @@ import AddCustomer from "./AddCustomer"
 import ViewCustomer from "./ViewCustomer"
 import SetCustomerPassword from "./SetCustomerPassword"
 import DeleteConfirmation from "../../components/DeleteConfirmation"
+import { isAdminRole } from "@/lib/permissions"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { createColumnHelper } from "@tanstack/react-table"
@@ -348,13 +349,17 @@ const Customers = () => {
                   Set Password
                 </DropdownMenuItem>
               </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                variant="destructive"
-                onClick={() => setCustomerToDelete(customer)}
-              >
-                Delete
-              </DropdownMenuItem>
+              {isAdminRole() && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => setCustomerToDelete(customer)}
+                  >
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )
@@ -436,7 +441,7 @@ const Customers = () => {
         data={filteredCustomers}
         filterConfig={customerFilterConfig}
         isLoading={isLoading}
-        onDeleteSelected={(rows) => setBulkDeleteRows(rows)}
+        onDeleteSelected={isAdminRole() ? (rows) => setBulkDeleteRows(rows) : undefined}
       />
      
       {/* Create Customer Modal */}
