@@ -28,9 +28,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { IconBuilding, IconCheck, IconFileText, IconShoppingBag, IconAlertCircle, IconShieldCheck, IconLoader2, IconDeviceFloppy, IconShieldCheckFilled, IconClock, IconAlertTriangle } from '@tabler/icons-react'
+import { IconBuilding, IconCheck, IconFileText, IconShoppingBag, IconAlertCircle, IconShieldCheck, IconLoader2, IconDeviceFloppy, IconShieldCheckFilled, IconClock, IconAlertTriangle, IconUpload, IconEye, IconDownload } from '@tabler/icons-react'
+import { Checkbox } from '@/components/ui/checkbox'
 import { apiRequest } from '@/lib/api'
+import { openDocument, downloadDocument } from '@/lib/documents'
 import { toast } from 'sonner'
+
+const DOC_CATEGORIES = [
+  'Company Documents',
+  'Certificate of Incorporation',
+  'Memorandum & Articles',
+  'Share Certificate',
+  'ID Document',
+  'Proof of Address',
+  'Bank Statement',
+  'Other',
+]
 
 const getInitials = (name) => {
   if (!name) return 'CO'
@@ -44,6 +57,13 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
   const [detail, setDetail] = useState(null)
   const [isLoadingDetail, setIsLoadingDetail] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+  // Documents tab upload
+  const [docFile, setDocFile] = useState(null)
+  const [docCategory, setDocCategory] = useState('Company Documents')
+  const [docVisible, setDocVisible] = useState(true)
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false)
+  const [fileInputKey, setFileInputKey] = useState(0)
 
   const [formData, setFormData] = useState({
     identity_verified: 'Not started',
@@ -67,7 +87,8 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
     apiRequest(`/admin/companies/${company.id}`, { label: 'Company Details' })
       .then((res) => {
         if (isMounted && res.ok && res.data) {
-          setDetail(res.data)
+          // The API wraps the company in { success, data }
+          setDetail(res.data.data || res.data)
         }
       })
       .catch((err) => {
@@ -80,7 +101,51 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
     return () => {
       isMounted = false
     }
-  }, [isOpen, company?.id])
+  }, [isOpen, company?.id, refreshKey])
+
+  const uploadCompanyDocument = async () => {
+    if (!docFile || !company?.id) return
+    if (docFile.size > 15 * 1024 * 1024) {
+      toast.error('Files must be 15 MB or smaller')
+      return
+    }
+    setIsUploadingDoc(true)
+    try {
+      const raw = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result || ''))
+        reader.onerror = () => reject(new Error('The file could not be read'))
+        reader.readAsDataURL(docFile)
+      })
+      // The backend files it under the company's owner (customer) automatically
+      const res = await apiRequest('/admin/documents/upload', {
+        method: 'POST',
+        body: {
+          company_id: company.id,
+          name: docFile.name,
+          file_name: docFile.name,
+          file_content_base64: raw.slice(raw.indexOf(',') + 1),
+          mime_type: docFile.type || 'application/octet-stream',
+          category: docCategory,
+          client_visible: docVisible ? 1 : 0,
+        },
+        label: 'Company document',
+        silent: true,
+      })
+      if (!res.ok) {
+        toast.error(res.reason || 'Upload failed')
+        return
+      }
+      toast.success(res.data?.message || 'Document uploaded')
+      setDocFile(null)
+      setFileInputKey((k) => k + 1)
+      setRefreshKey((k) => k + 1)
+    } catch (err) {
+      toast.error(err?.message || 'Upload failed')
+    } finally {
+      setIsUploadingDoc(false)
+    }
+  }
 
   // Sync formData when detail or company changes
   useEffect(() => {
@@ -108,7 +173,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
       })
       if (res.ok) {
         toast.success('Company compliance & status updated successfully')
-        const updatedData = res.data || {}
+        const updatedData = res.data?.data || res.data || {}
         setDetail((prev) => ({ ...(prev || {}), ...formData, ...updatedData }))
         if (onUpdate) onUpdate({ ...(company || {}), ...formData, ...updatedData })
       } else {
@@ -460,14 +525,66 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
 
               {/* Documents Tab */}
               <TabsContent value="documents" className="m-0 space-y-6 outline-none">
+                {/* Upload a document against this company */}
+                <div className="rounded-xl border bg-muted/20 p-4 space-y-3">
+                  <div>
+                    <h4 className="text-sm font-semibold">Upload document</h4>
+                    <p className="text-xs text-muted-foreground">PDF, image or Word, up to 15 MB. Filed under this company and its owner.</p>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-[1fr_200px]">
+                    <Input
+                      key={fileInputKey}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+                      onChange={(e) => setDocFile(e.target.files?.[0] || null)}
+                      disabled={isUploadingDoc}
+                      aria-label="Choose document"
+                    />
+                    <Select value={docCategory} onValueChange={(v) => v && setDocCategory(v)} disabled={isUploadingDoc}>
+                      <SelectTrigger className="w-full" aria-label="Document type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {DOC_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <Label className="flex cursor-pointer items-center gap-2 text-sm font-normal">
+                      <Checkbox checked={docVisible} onCheckedChange={(on) => setDocVisible(!!on)} disabled={isUploadingDoc} />
+                      Show to the customer in their portal
+                    </Label>
+                    <Button onClick={uploadCompanyDocument} disabled={!docFile || isUploadingDoc}>
+                      {isUploadingDoc ? <IconLoader2 className="w-4 h-4 animate-spin" /> : <IconUpload className="w-4 h-4" />}
+                      Upload
+                    </Button>
+                  </div>
+                </div>
+
                 {Array.isArray(d.documents) && d.documents.length > 0 ? (
                   <div className="space-y-3">
                     {d.documents.map((doc, idx) => (
-                      <div key={doc.id || idx} className="border rounded-xl p-4 flex flex-col md:flex-row md:items-start justify-between gap-4 bg-background shadow-xs">
-                        <div className="space-y-1">
-                          <h4 className="font-medium text-sm text-foreground">{doc.title || doc.filename || 'Document'}</h4>
-                          <p className="text-sm text-muted-foreground">{doc.category || 'Company Document'} • {doc.size || ''}</p>
+                      <div key={doc.id || idx} className="border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background shadow-xs">
+                        <div className="min-w-0 space-y-1">
+                          <h4 className="truncate font-medium text-sm text-foreground">{doc.name || doc.title || doc.filename || 'Document'}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {doc.category || 'Company Document'}
+                            {doc.created_at ? ` • ${String(doc.created_at).slice(0, 10)}` : ''}
+                            {Number(doc.client_visible) === 1 ? ' • Shared with customer' : ' • Internal'}
+                          </p>
                         </div>
+                        {doc.id ? (
+                          <div className="flex shrink-0 gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => openDocument(doc.id).catch((e) => toast.error(e.message))}>
+                              <IconEye className="w-4 h-4" /> View
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => downloadDocument(doc.id, doc.name).catch((e) => toast.error(e.message))}>
+                              <IconDownload className="w-4 h-4" /> Download
+                            </Button>
+                          </div>
+                        ) : null}
                       </div>
                     ))}
                   </div>

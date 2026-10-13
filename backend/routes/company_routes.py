@@ -306,7 +306,7 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
             "registered": bool(exact),
             "match": exact,
             "in_crm": _in_crm(exact['number']) if exact else None,
-            "suggestions": [i for i in items if i is not exact][:5],
+            "suggestions": [i for i in items if i is not exact][:8],
         })
 
     # ── GET /api/companies/name-availability?name= (order form "Company name availability") ──
@@ -515,6 +515,14 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
         data = public_client_company(row, for_staff=is_staff)
         data['directors'] = [dict(d) for d in (directors or [])]
         data['orders'] = [dict(o) for o in (orders or [])]
+        # Documents filed against this company (customers only see the ones shared with them)
+        visible = "" if is_staff else "AND COALESCE(client_visible, 0) = 1"
+        docs = query_db(f"""
+            SELECT id, name, category, file_type, file_size, status, created_at, client_visible, uploaded_by, order_id
+            FROM documents WHERE company_id = ? {visible}
+            ORDER BY created_at DESC, id DESC;
+        """, (comp_id,)) or []
+        data['documents'] = [dict(x) for x in docs]
 
         return success_response(start_response, data=data)
 

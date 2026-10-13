@@ -118,9 +118,11 @@ function fieldTitle(f) {
 }
 
 /**
- * "Company" order-form field: the typed name or number is checked at Companies House. Registered -> the
- * official name and number are kept; not registered -> the typed text is kept as the proposed company name.
- * The value is an object { input, state, name, number, companyStatus, address, suggestions, inCrm }.
+ * "Company" order-form field: the typed name or number is searched at Companies House and the matching companies
+ * are listed; one must be picked (as in Import WebFiling), or "not registered" chosen to keep the typed text as the
+ * proposed company name.
+ * Value: { input, state: idle|typing|checking|results|registered|not_registered|error, results, exactNumber,
+ *          name, number, companyStatus, address, inCrm }.
  */
 function CompanyCheckField({ id, value, onChange, placeholder }) {
   const current = value && typeof value === "object" ? value : { input: "", state: "idle" }
@@ -139,19 +141,21 @@ function CompanyCheckField({ id, value, onChange, placeholder }) {
       const d = res.data?.data || {}
       if (!res.ok) {
         onChange({ input, state: "error", error: res.reason || "Companies House could not be checked" })
-      } else if (d.registered && d.match) {
-        onChange({ input, state: "registered", name: d.match.name, number: d.match.number, companyStatus: d.match.status,
-          address: d.match.address, inCrm: d.in_crm || null, suggestions: [] })
-      } else {
-        onChange({ input, state: "not_registered", suggestions: d.suggestions || [] })
+        return
       }
+      // Exact match first, then the other search results; nothing is chosen until the user picks one
+      const results = [...(d.match ? [{ ...d.match, inCrm: d.in_crm || null }] : []), ...(d.suggestions || [])]
+      onChange({ input, state: "results", results, exactNumber: d.match?.number || "" })
     }, 600)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input, current.state])
 
-  const pickSuggestion = (s) =>
-    onChange({ input: s.name, state: "registered", name: s.name, number: s.number, companyStatus: s.status, address: s.address, suggestions: [] })
+  const pick = (r) =>
+    onChange({ ...current, state: "registered", name: r.name, number: r.number, companyStatus: r.status, address: r.address, inCrm: r.inCrm || null })
+  const pickNotRegistered = () => onChange({ ...current, state: "not_registered" })
+  const change = () => onChange({ ...current, state: "results" })
+  const results = current.results || []
 
   return (
     <div className="space-y-2">
@@ -170,42 +174,66 @@ function CompanyCheckField({ id, value, onChange, placeholder }) {
         ) : null}
       </div>
 
+      {current.state === "results" ? (
+        <div className="rounded-xl bg-popover p-1.5 text-popover-foreground shadow-md ring-1 ring-foreground/5 dark:ring-foreground/10">
+          <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+            {results.length ? "Select the company:" : "No registered company found."}
+          </p>
+          <div className="max-h-64 overflow-y-auto overscroll-contain">
+            {results.map((r) => (
+              <button
+                key={r.number}
+                type="button"
+                onClick={() => pick(r)}
+                className="flex w-full cursor-pointer items-start gap-2 rounded-[14px] px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+              >
+                <IconBuilding className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate font-medium">{r.name}</span>
+                    {r.number === current.exactNumber ? <Badge className="badge-green text-[10px]">Exact match</Badge> : null}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {r.number}{r.status ? ` · ${r.status}` : ""}{r.address ? ` · ${r.address}` : ""}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={pickNotRegistered}
+            className="mt-1 flex w-full cursor-pointer items-start gap-2 rounded-[14px] border-t px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+          >
+            <IconInfoCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <span>
+              <span className="font-medium">None of these, not registered yet</span>
+              <span className="block text-xs text-muted-foreground">Use "{input.trim()}" as the proposed company name</span>
+            </span>
+          </button>
+        </div>
+      ) : null}
+
       {current.state === "registered" ? (
         <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-[12px]">
           <IconCircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="font-semibold text-emerald-700 dark:text-emerald-400">Registered at Companies House</p>
             <p className="truncate">{current.name} · {current.number}{current.companyStatus ? ` · ${current.companyStatus}` : ""}</p>
             {current.address ? <p className="truncate text-muted-foreground">{current.address}</p> : null}
             {current.inCrm ? <p className="text-muted-foreground">Already in the CRM as "{current.inCrm.name}"</p> : null}
           </div>
+          <Button type="button" variant="ghost" size="sm" onClick={change}>Change</Button>
         </div>
       ) : null}
 
       {current.state === "not_registered" ? (
-        <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[12px]">
-          <p className="flex items-center gap-2 font-semibold text-amber-700 dark:text-amber-400">
-            <IconInfoCircle className="h-4 w-4" />
+        <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[12px]">
+          <IconInfoCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <p className="flex-1 font-semibold text-amber-700 dark:text-amber-400">
             Not registered. "{input.trim()}" will be used as the proposed company name.
           </p>
-          {(current.suggestions || []).length ? (
-            <div>
-              <p className="text-muted-foreground">Did you mean one of these registered companies?</p>
-              <div className="mt-1 flex flex-col gap-1">
-                {current.suggestions.map((s) => (
-                  <button
-                    key={s.number}
-                    type="button"
-                    className="cursor-pointer truncate rounded-md px-2 py-1 text-left hover:bg-muted"
-                    onClick={() => pickSuggestion(s)}
-                  >
-                    <span className="font-medium">{s.name}</span>
-                    <span className="text-muted-foreground"> · {s.number}{s.status ? ` · ${s.status}` : ""}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
+          <Button type="button" variant="ghost" size="sm" onClick={change}>Change</Button>
         </div>
       ) : null}
 
@@ -645,7 +673,8 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
       if (!v || !String(v.input || "").trim()) return ""
       if (v.state === "registered") return `${v.name} (${v.number}) · Registered${v.companyStatus ? `, ${v.companyStatus}` : ""}`
       if (v.state === "not_registered") return `${v.input.trim()} · Not registered (proposed name)`
-      return `${v.input.trim()} · Not checked at Companies House`
+      if (v.state === "error") return `${v.input.trim()} · Not checked at Companies House`
+      return "" // results shown but nothing picked yet
     }
     if (f.type === "company_name") {
       if (!v || !String(v.input || "").trim()) return ""
@@ -684,7 +713,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
         service_fields: textFields.map((f) => {
           const item = { label: fieldTitle(f), type: f.type, value: fieldAnswer(f), services: f.services }
           const v = fieldValues[f.key]
-          if (f.type === "company" && v && String(v.input || "").trim()) {
+          if (f.type === "company" && v && ["registered", "not_registered"].includes(v.state)) {
             item.company = {
               registered: v.state === "registered",
               name: v.state === "registered" ? v.name : v.input.trim(),
@@ -718,6 +747,9 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
       if (lookups.some((f) => ["typing", "checking"].includes(fieldValues[f.key]?.state))) {
         return "Wait a moment, Companies House is still being checked."
       }
+      // A company search that returned results needs a choice: one of the companies, or "not registered"
+      const unpicked = lookups.filter((f) => f.type === "company" && fieldValues[f.key]?.state === "results")
+      if (unpicked.length) return `Select the company for "${fieldTitle(unpicked[0])}" from the list.`
       const taken = lookups.filter((f) => f.type === "company_name" && fieldValues[f.key]?.state === "taken")
       if (taken.length) return `"${fieldValues[taken[0].key].input.trim()}" is already registered. Choose a different company name.`
       const missingText = textFields.filter((f) => {
