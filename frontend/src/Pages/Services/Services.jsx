@@ -11,6 +11,8 @@ import AddService from "./AddService"
 import ViewService from "./ViewService"
 import DeleteConfirmation from "../../components/DeleteConfirmation"
 import { isAdminRole } from "@/lib/permissions"
+import FormFieldsBuilder, { formFieldsError } from "./FormFieldsBuilder"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { 
   Dialog, 
   DialogContent, 
@@ -103,6 +105,7 @@ const Services = () => {
       originalPrice: String(Number(service.cost_price) || '0'),
       duration: service.duration || '12 Months',
       status: service.status || 'Active',
+      form_fields: Array.isArray(service.form_fields) ? service.form_fields : [],
     })
   }
 
@@ -110,6 +113,11 @@ const Services = () => {
   const handleEditSubmit = async () => {
     if (!editForm.name.trim() || !editForm.sellPrice) {
       toast.error("Name and Sell price are required.")
+      return
+    }
+    const formError = formFieldsError(editForm.form_fields)
+    if (formError) {
+      toast.error(formError)
       return
     }
 
@@ -380,14 +388,15 @@ const Services = () => {
 
       {/* ── Edit Service Dialog ── */}
       <Dialog open={!!editService} onOpenChange={(open) => !open && setEditService(null)}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle>Edit Service</DialogTitle>
             <DialogDescription>
               Update the service details below.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <ScrollArea className="-mx-6" viewportClassName="max-h-[60vh]">
+          <div className="grid gap-4 px-6 py-4">
             <div className="grid gap-2">
               <Label htmlFor="edit-name">Name *</Label>
               <Input
@@ -490,7 +499,14 @@ const Services = () => {
                 </Select>
               </div>
             </div>
+
+            <FormFieldsBuilder
+              value={editForm.form_fields || []}
+              onChange={(form_fields) => setEditForm((prev) => ({ ...prev, form_fields }))}
+              disabled={isEditing}
+            />
           </div>
+          </ScrollArea>
           <DialogFooter className="gap-3">
             <Button variant="outline" onClick={() => setEditService(null)} disabled={isEditing}>Cancel</Button>
             <Button onClick={handleEditSubmit} disabled={isEditing}>

@@ -274,6 +274,14 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
       if (o.trading_proof) fields.push({ label: 'Trading proof', value: o.trading_proof })
     }
 
+    // Answers to the services' own order-form questions (Create Order wizard)
+    const serviceAnswers = o.order_form_values?.service_fields
+    if (Array.isArray(serviceAnswers)) {
+      serviceAnswers
+        .filter((f) => f && f.label && String(f.value || '').trim())
+        .forEach((f) => fields.push({ label: f.label, value: String(f.value) }))
+    }
+
     setFormFields(fields)
   }
 

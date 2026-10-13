@@ -16,6 +16,8 @@ import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import { IconLoader2 } from '@tabler/icons-react'
 import ToastSave from '@/components/ToastSave'
+import FormFieldsBuilder, { formFieldsError } from './FormFieldsBuilder'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 const AddService = ({ isOpen, onClose, onSuccess }) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -28,7 +30,8 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
     description: '',
     sellPrice: '',
     originalPrice: '0',
-    duration: '12 Months'
+    duration: '12 Months',
+    form_fields: [],
   })
 
   const resetForm = () => {
@@ -38,7 +41,8 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
       description: '',
       sellPrice: '',
       originalPrice: '0',
-      duration: '12 Months'
+      duration: '12 Months',
+      form_fields: [],
     })
     setShowUnsavedToast(false)
   }
@@ -70,6 +74,11 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
   const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.sellPrice.trim()) {
       toast.error("Name and Sell price are required fields.")
+      return
+    }
+    const formError = formFieldsError(formData.form_fields)
+    if (formError) {
+      toast.error(formError)
       return
     }
 
@@ -106,14 +115,16 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleAttemptClose() }}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle>Add Service</DialogTitle>
             <DialogDescription>
               Add a new service to the database.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          {/* Header and buttons stay put; only the form scrolls */}
+          <ScrollArea className="-mx-6" viewportClassName="max-h-[60vh]">
+          <div className="grid gap-4 px-6 py-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Name *</Label>
               <Input 
@@ -204,7 +215,14 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
                 </SelectContent>
               </Select>
             </div>
+
+            <FormFieldsBuilder
+              value={formData.form_fields}
+              onChange={(form_fields) => setFormData((prev) => ({ ...prev, form_fields }))}
+              disabled={isSubmitting}
+            />
           </div>
+          </ScrollArea>
           <DialogFooter className="gap-3">
             <Button variant="outline" onClick={handleAttemptClose} disabled={isSubmitting}>Cancel</Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>

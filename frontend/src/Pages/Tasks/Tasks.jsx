@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Dialog,
@@ -58,7 +59,20 @@ const columnHelper = createColumnHelper()
 
 const STATUSES = ['Open', 'In Progress', 'Completed', 'Cancelled']
 const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent']
-const DEPARTMENTS = ['General', 'Compliance', 'Accountancy', 'Sales', 'Support']
+// Same list as the backend STAFF_DEPARTMENTS: staff access and task routing both use it
+const DEPARTMENTS = ['New Signups', 'Orders', 'Documents', 'Support', 'Compliance', 'Accounts', 'Accountancy', 'General']
+
+function parseDepartments(value) {
+  if (Array.isArray(value)) return value
+  const text = String(value || '').trim()
+  if (!text) return []
+  try {
+    const parsed = JSON.parse(text)
+    return Array.isArray(parsed) ? parsed : [text]
+  } catch {
+    return text.split(',').map((d) => d.trim()).filter(Boolean)
+  }
+}
 const STAFF_ROLES = ['STAFF', 'MANAGER', 'ADMIN']
 
 const emptyTaskForm = {
@@ -77,6 +91,43 @@ const emptyStaffForm = {
   phone: '',
   role: 'STAFF',
   password: '',
+  departments: [...DEPARTMENTS],
+}
+
+/** Checkboxes for the areas a staff member may work in (Customers = New Signups, Payments = Accounts, …). */
+function DepartmentPicker({ value, onChange, disabled }) {
+  const toggle = (dept, on) =>
+    onChange(on ? [...new Set([...value, dept])] : value.filter((d) => d !== dept))
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label>Departments</Label>
+        <button
+          type="button"
+          className="cursor-pointer text-xs text-primary hover:underline"
+          onClick={() => onChange(value.length === DEPARTMENTS.length ? [] : [...DEPARTMENTS])}
+          disabled={disabled}
+        >
+          {value.length === DEPARTMENTS.length ? 'Clear all' : 'Select all'}
+        </button>
+      </div>
+      <div className="grid grid-cols-2 gap-2 rounded-xl border p-3">
+        {DEPARTMENTS.map((dept) => (
+          <Label key={dept} className="flex cursor-pointer items-center gap-2 text-sm font-normal">
+            <Checkbox
+              checked={value.includes(dept)}
+              onCheckedChange={(on) => toggle(dept, !!on)}
+              disabled={disabled}
+            />
+            {dept}
+          </Label>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Staff only open the pages for their departments. Admins and managers can open everything. None ticked gives all.
+      </p>
+    </div>
+  )
 }
 
 function formatWhen(value) {
@@ -162,6 +213,8 @@ const Tasks = () => {
   const canManageTasks = isManagerOrAbove(currentUser)
   const isSuperAdmin = String(currentUser?.role || '').toUpperCase() === 'SUPER_ADMIN'
   const [memberToRemove, setMemberToRemove] = useState(null)
+  const [accessMember, setAccessMember] = useState(null)
+  const [accessSaving, setAccessSaving] = useState(false)
   const [isRemovingMember, setIsRemovingMember] = useState(false)
 
   const loadTasks = useCallback(async () => {
@@ -223,6 +276,7 @@ const Tasks = () => {
         phone: s.phone || '',
         role: s.role || 'STAFF',
         status: s.status || 'Active',
+        departments: parseDepartments(s.department),
         openTasks: Number(s.open_tasks) || 0,
         totalTasks: Number(s.total_tasks) || 0,
         joined: formatWhen(s.created_at),
@@ -390,6 +444,7 @@ const Tasks = () => {
           phone: staffForm.phone.trim() || undefined,
           role: staffForm.role,
           password: staffForm.password,
+          departments: staffForm.departments,
         }),
         label: 'Add team member',
         silent: true,
@@ -408,6 +463,30 @@ const Tasks = () => {
       toastFail(toastId, err?.message || 'Failed to create team member.')
     } finally {
       setStaffSaving(false)
+    }
+  }
+
+  const saveAccess = async (e) => {
+    e?.preventDefault?.()
+    if (!accessMember) return
+    setAccessSaving(true)
+    const toastId = toastProcessing('Saving access…')
+    try {
+      const res = await apiRequest(`/admin/staff/${accessMember.id}`, {
+        method: 'PATCH',
+        body: { role: accessMember.role, departments: accessMember.departments },
+        label: 'Team access',
+        silent: true,
+      })
+      if (!res.ok) {
+        toastFail(toastId, res.reason || 'Failed to save access.')
+        return
+      }
+      toastDone(toastId, res.data?.message || 'Access updated')
+      setAccessMember(null)
+      await loadStaff()
+    } finally {
+      setAccessSaving(false)
     }
   }
 
@@ -582,6 +661,21 @@ const Tasks = () => {
           </Badge>
         ),
       }),
+      columnHelper.accessor('departments', {
+        header: 'Departments',
+        cell: ({ row }) => {
+          const m = row.original
+          if (m.role !== 'STAFF') return <span className="text-sm text-muted-foreground">All (by role)</span>
+          const list = m.departments || []
+          if (!list.length) return <Badge className="badge-red">None</Badge>
+          if (list.length === DEPARTMENTS.length) return <span className="text-sm">All</span>
+          return (
+            <span className="block max-w-56 truncate text-sm" title={list.join(', ')}>
+              {list.join(', ')}
+            </span>
+          )
+        },
+      }),
       columnHelper.accessor('openTasks', {
         header: 'Open tasks',
       cell: ({ row }) => (
@@ -610,15 +704,32 @@ const Tasks = () => {
               header: '',
               cell: ({ row }) =>
                 canRemoveMember(row.original) ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => setMemberToRemove(row.original)}
-                  >
-                    <IconTrash className="size-4" />
-                    Remove
-                  </Button>
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setAccessMember({
+                          id: row.original.id,
+                          name: row.original.name,
+                          role: row.original.role,
+                          departments: row.original.departments.length ? row.original.departments : [...DEPARTMENTS],
+                        })
+                      }
+                    >
+                      <IconEdit className="size-4" />
+                      Access
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setMemberToRemove(row.original)}
+                    >
+                      <IconTrash className="size-4" />
+                      Remove
+                    </Button>
+                  </div>
                 ) : null,
             }),
           ]
@@ -981,6 +1092,13 @@ const Tasks = () => {
                 required
               />
             </div>
+            {staffForm.role === 'STAFF' && (
+              <DepartmentPicker
+                value={staffForm.departments}
+                onChange={(departments) => setStaffForm((p) => ({ ...p, departments }))}
+                disabled={staffSaving}
+              />
+            )}
 
             <DialogFooter>
               <Button
@@ -996,6 +1114,50 @@ const Tasks = () => {
                   <IconLoader2 className="size-4 animate-spin" />
                 ) : null}
                 Add member
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change a member's role and departments */}
+      <Dialog open={!!accessMember} onOpenChange={(open) => !open && !accessSaving && setAccessMember(null)}>
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={saveAccess} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>Access for {accessMember?.name}</DialogTitle>
+              <DialogDescription>Choose what this team member can open in the CRM.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select
+                value={accessMember?.role}
+                onValueChange={(val) => setAccessMember((m) => ({ ...m, role: val || m.role }))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue>{humanRole(accessMember?.role)}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {STAFF_ROLES.map((r) => (
+                    <SelectItem key={r} value={r}>{humanRole(r)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {accessMember?.role === 'STAFF' && (
+              <DepartmentPicker
+                value={accessMember.departments}
+                onChange={(departments) => setAccessMember((m) => ({ ...m, departments }))}
+                disabled={accessSaving}
+              />
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAccessMember(null)} disabled={accessSaving}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={accessSaving}>
+                {accessSaving ? <IconLoader2 className="size-4 animate-spin" /> : null}
+                Save access
               </Button>
             </DialogFooter>
           </form>

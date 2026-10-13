@@ -252,6 +252,125 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
             message=(f"Imported {summary['imported']}, updated {summary['updated']}, "
                      f"skipped {summary['skipped']}, failed {summary['failed']}."))
 
+    # ── GET /api/companies/check-name?q= (order form "Company" field) ──────
+    # Is this name / number a registered UK company? Registered -> its official name; otherwise the
+    # typed text is treated as a proposed (new) company name.
+    if path in ('/api/companies/check-name', '/api/admin/companies/check-name') and method == 'GET':
+        q = (query.get('q') or [''])[0].strip()[:160]
+        if len(q) < 2:
+            return success_response(start_response, data={"query": q, "registered": False, "suggestions": []})
+        if not get_ch_api_key():
+            return error_response(start_response, "Companies House API key is not set (Settings > Integrations).",
+                                  status_code=503)
+
+        def _norm(name):
+            text = re.sub(r'[^a-z0-9 ]+', ' ', str(name or '').lower())
+            text = re.sub(r'\b(limited|ltd|plc|llp|company|co)\b', ' ', text)
+            return re.sub(r'\s+', ' ', text).strip()
+
+        def _pick(item):
+            return {
+                "name": item.get('company_name') or item.get('title') or '',
+                "number": item.get('company_number') or '',
+                "status": (item.get('company_status') or '').replace('-', ' ').capitalize(),
+                "incorporated": item.get('date_of_creation') or '',
+                "address": item.get('address_snippet') or ', '.join(
+                    str(v) for k, v in (item.get('registered_office_address') or {}).items()
+                    if k in ('address_line_1', 'address_line_2', 'locality', 'postal_code') and v),
+            }
+
+        def _in_crm(number):
+            if not number:
+                return None
+            row = query_db("SELECT id, name FROM companies WHERE UPPER(company_number) = ? LIMIT 1;",
+                           (number.upper(),), one=True)
+            return {"id": row['id'], "name": row['name']} if row else None
+
+        compact = re.sub(r'\s+', '', q).upper()
+        if re.fullmatch(r'[A-Z]{0,2}\d{5,8}', compact):
+            prof = fetch_company_profile(compact)
+            if prof.get('success') and prof.get('data'):
+                match = _pick(prof['data'])
+                return success_response(start_response, data={
+                    "query": q, "registered": True, "match": match, "suggestions": [],
+                    "in_crm": _in_crm(match['number'])})
+
+        res = search_companies_house(q)
+        if not res.get('success'):
+            return error_response(start_response, res.get('error') or 'Companies House search failed', status_code=502)
+        items = [_pick(i) for i in (res.get('results') or []) if i.get('company_number')]
+        wanted = _norm(q)
+        exact = next((i for i in items if wanted and _norm(i['name']) == wanted), None)
+        return success_response(start_response, data={
+            "query": q,
+            "registered": bool(exact),
+            "match": exact,
+            "in_crm": _in_crm(exact['number']) if exact else None,
+            "suggestions": [i for i in items if i is not exact][:5],
+        })
+
+    # ── GET /api/companies/name-availability?name= (order form "Company name availability") ──
+    # Can this new company name be registered? Applies the Companies House "same as" comparison:
+    # case, punctuation, spaces, "&"/"and", a leading "The" and endings like Ltd / Limited / PLC are ignored.
+    # Names of dissolved companies can be reused, so only live companies block a name.
+    if path in ('/api/companies/name-availability', '/api/admin/companies/name-availability') and method == 'GET':
+        name = (query.get('name') or [''])[0].strip()[:160]
+        if len(name) < 3:
+            return error_response(start_response, "Type at least 3 characters", status_code=400)
+        if not get_ch_api_key():
+            return error_response(start_response, "Companies House API key is not set (Settings > Integrations).",
+                                  status_code=503)
+
+        endings = r'(public limited company|limited liability partnership|limited|ltd|plc|llp|company|co|cyf|cyfyngedig|ccc)'
+
+        def _same_as(text):
+            t = str(text or '').lower().replace('&', ' and ').replace('+', ' plus ')
+            t = re.sub(r"[^a-z0-9 ]+", ' ', t)
+            t = re.sub(r'\s+', ' ', t).strip()
+            t = re.sub(r'^the ', '', t)
+            t = re.sub(rf'(\s+{endings})+$', '', t)
+            return t.replace(' ', '')
+
+        wanted = _same_as(name)
+        if not wanted:
+            return error_response(start_response, "Type the name you want to register", status_code=400)
+        # Search with the same core words the comparison uses (no leading "The", no Ltd/Limited ending)
+        core = re.sub(r'^\s*the\s+', '', name, flags=re.I)
+        core = re.sub(rf'(\s+{endings}\.?)+\s*$', '', core, flags=re.I).strip() or name
+        res = search_companies_house(core)
+        if not res.get('success'):
+            return error_response(start_response, res.get('error') or 'Companies House search failed', status_code=502)
+
+        conflicts, similar = [], []
+        for item in res.get('results') or []:
+            entry = {
+                "name": item.get('title') or item.get('company_name') or '',
+                "number": item.get('company_number') or '',
+                "status": (item.get('company_status') or '').replace('-', ' ').capitalize(),
+            }
+            live = str(item.get('company_status') or '').lower() not in ('dissolved', 'converted-closed', 'removed')
+            if _same_as(entry['name']) == wanted and live:
+                conflicts.append(entry)
+            elif len(similar) < 5:
+                similar.append(entry)
+
+        warnings = []
+        if not re.search(rf'\b{endings}\.?\s*$', name, flags=re.I):
+            warnings.append('A private company name must end with "Ltd" or "Limited".')
+        sensitive = ('bank', 'royal', 'british', 'england', 'national', 'international', 'police', 'charity',
+                     'university', 'trust', 'insurance', 'chartered', 'institute', 'government', 'council')
+        found = [w for w in sensitive if re.search(rf'\b{w}\b', name, flags=re.I)]
+        if found:
+            warnings.append(f"Contains sensitive word(s) needing approval: {', '.join(found)}.")
+
+        return success_response(start_response, data={
+            "name": name,
+            "available": not conflicts,
+            "conflicts": conflicts,
+            "similar": similar,
+            "warnings": warnings,
+        })
+
     # ── GET /api/companies/lookup-ch (Companies House Search & Auto-fill) ─
     if path in ('/api/companies/lookup-ch', '/api/admin/companies/lookup-ch', '/api/admin/companies/search', '/api/companies-house/search', '/api/admin/companies/ch-live', '/api/companies-house/company') and method == 'GET':
         comp_number = (query.get('number') or [''])[0].strip()

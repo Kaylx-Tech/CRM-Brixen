@@ -1,5 +1,6 @@
 """Client Directory & CRM Routes (/api/clients, /api/admin/customers, /api/admin/staff)
 """
+import json
 import os
 import re
 from db import query_db, execute_db, hash_password
@@ -13,6 +14,13 @@ STAFF_EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 DELETE_ROLES = ('SUPER_ADMIN', 'ADMIN')
 # Initial password for customers created from the CRM (override with DEFAULT_CUSTOMER_PASSWORD).
 DEFAULT_CUSTOMER_PASSWORD = os.environ.get('DEFAULT_CUSTOMER_PASSWORD') or 'Google@126'
+
+
+def _departments_or_all(value):
+    """Valid departments from the request; every department when none were picked."""
+    from services.permissions import STAFF_DEPARTMENTS, _parse_departments
+    picked = _parse_departments(value)
+    return picked or list(STAFF_DEPARTMENTS)
 
 
 def _audit(user, action, entity_type=None, entity_id=None, details=None):
@@ -311,7 +319,7 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
     # ── 6b. GET /api/admin/staff (List staff / team members) ─────────────────
     if path == '/api/admin/staff' and method == 'GET':
         rows = query_db("""
-            SELECT u.id, u.full_name, u.email, u.phone, u.role, u.status, u.created_at,
+            SELECT u.id, u.full_name, u.email, u.phone, u.role, u.status, u.created_at, u.department,
                    (SELECT COUNT(*) FROM tasks t
                     WHERE t.assigned_staff_id = u.id
                       AND t.status IN ('Open', 'In Progress')) as open_tasks,
@@ -334,6 +342,32 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
             "staff": staff,
             "total": len(staff),
         })
+
+    # ── 6b2. PATCH /api/admin/staff/<id> (role + departments, admin only) ─────
+    match_staff_edit = re.match(r'^/api/admin/staff/(\d+)$', path)
+    if match_staff_edit and method in ('PATCH', 'PUT'):
+        if user_role not in ('SUPER_ADMIN', 'ADMIN'):
+            return error_response(start_response, "Only an admin can change team access", status_code=403)
+        sid = int(match_staff_edit.group(1))
+        member = query_db("SELECT id, email, role FROM users WHERE id = ? AND removed_at IS NULL LIMIT 1;",
+                          (sid,), one=True)
+        if not member or member.get('role') not in ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF'):
+            return error_response(start_response, "Team member not found", status_code=404)
+        new_role = str(body.get('role') or member['role']).upper()
+        allowed_roles = ('ADMIN', 'MANAGER', 'STAFF') + (('SUPER_ADMIN',) if user_role == 'SUPER_ADMIN' else ())
+        if new_role != member['role']:
+            if sid == user.get('id'):
+                return error_response(start_response, "You cannot change your own role", status_code=400)
+            if member['role'] == 'SUPER_ADMIN' and user_role != 'SUPER_ADMIN':
+                return error_response(start_response, "Only a super admin can change a super admin", status_code=403)
+            if new_role not in allowed_roles:
+                return error_response(start_response, "You cannot give that role", status_code=403)
+        departments = _departments_or_all(body.get('departments'))
+        execute_db("UPDATE users SET role = ?, department = ? WHERE id = ?;", (new_role, json.dumps(departments), sid))
+        _audit(user, 'STAFF_ACCESS_CHANGED', 'users', sid,
+               f"{member['email']}: role {member['role']} -> {new_role}; departments {', '.join(departments)}")
+        return success_response(start_response, message="Access updated. The member sees it the next time a page loads.",
+                                data={"id": sid, "role": new_role, "departments": departments})
 
     # ── 6c. DELETE /api/admin/staff/<id> (Remove team member, admin only) ────
     # Soft remove: the account is switched off and signed out, but kept so task and audit history stay intact.
@@ -409,9 +443,10 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
             # Adding back someone who was removed earlier: switch the old account on again
             execute_db("""
                 UPDATE users SET full_name = ?, password_hash = ?, role = ?, phone = COALESCE(?, phone),
-                                 status = 'Active', removed_at = NULL
+                                 status = 'Active', removed_at = NULL, department = ?
                 WHERE id = ?;
-            """, (full_name, hash_password(password), role, phone or None, existing['id']))
+            """, (full_name, hash_password(password), role, phone or None,
+                  json.dumps(_departments_or_all(body.get('departments'))), existing['id']))
             _audit(user, 'STAFF_RESTORED', 'users', existing['id'], f"Re-added {role} account for {email}")
             return success_response(start_response, message=f"Team member '{full_name}' added back", data={"id": existing['id']})
         if existing:
@@ -427,6 +462,10 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
 
         if is_b2b and new_id:
             execute_db("UPDATE users SET b2b_id = COALESCE(b2b_id, ?) WHERE id = ?;", (f"B2B-{str(new_id).zfill(6)}", new_id))
+        if role != 'CLIENT' and new_id:
+            # Staff access depends on departments; without any, a new member could open nothing
+            execute_db("UPDATE users SET department = ? WHERE id = ?;",
+                       (json.dumps(_departments_or_all(body.get('departments'))), new_id))
         _audit(user, 'CUSTOMER_CREATED' if role == 'CLIENT' else 'STAFF_CREATED', 'users', new_id,
                f"Created {role} account for {email}")
         noun = 'Customer' if role == 'CLIENT' else 'Team member'

@@ -7,7 +7,9 @@ Folder Structure:
       └── <Customer Name>
           └── <files & documents>
 """
+import os
 import re
+import uuid
 from pathlib import Path
 from services.google_drive_service import (
     upload_file_to_google_drive,
@@ -30,6 +32,18 @@ def is_allowed_file(filename):
     ext = Path(filename).suffix.lower()
     return ext in ALLOWED_EXTENSIONS
 
+def _save_local_copy(client_id, order_id, clean_name, file_bytes):
+    """Write the file under STORAGE_DIR/customer_uploads/<client>/<order|general>/ and return its relative path."""
+    from config import STORAGE_DIR
+    sub = os.path.join('customer_uploads', str(client_id or 'unassigned'), f"order_{order_id}" if order_id else 'general')
+    folder = os.path.join(STORAGE_DIR, sub)
+    os.makedirs(folder, exist_ok=True)
+    name = f"{uuid.uuid4().hex[:10]}_{clean_name}"
+    with open(os.path.join(folder, name), 'wb') as fh:
+        fh.write(file_bytes)
+    return os.path.join(sub, name).replace('\\', '/')
+
+
 def save_client_file(client_id, customer_name, filename, file_bytes, order_id=None, mime_type=None, order_name=None):
     """Upload directly to Google Drive 5TB storage with zero local disk storage.
     Path on Drive: Brixen-CRM/Customers/<customer_name>/[<order_name>/]<filename>
@@ -49,12 +63,31 @@ def save_client_file(client_id, customer_name, filename, file_bytes, order_id=No
     )
     
     if not drive_res.get('success'):
+        # Never lose an upload because Drive is down or its token expired: keep the file on the server's
+        # persistent storage; scripts/drive_sync.py moves it to Drive later (it picks up rows without a drive_file_id).
+        drive_error = drive_res.get('message') or drive_res.get('error') or 'Google Drive upload failed.'
+        print(f"[Storage] Drive upload failed ({drive_error}); saving {clean_name} locally")
+        try:
+            local_rel = _save_local_copy(client_id, order_id, clean_name, file_bytes)
+        except OSError as exc:
+            return {
+                "success": False,
+                "title": clean_name,
+                "file_size": len(file_bytes),
+                "mime_type": mime_type,
+                "error": f"Upload failed: Google Drive ({drive_error}) and local storage ({exc}) are both unavailable."
+            }
         return {
-            "success": False,
+            "success": True,
             "title": clean_name,
             "file_size": len(file_bytes),
             "mime_type": mime_type,
-            "error": drive_res.get('message') or drive_res.get('error', 'Google Drive upload failed.')
+            "file_path": local_rel,
+            "drive_file_id": None,
+            "drive_web_link": None,
+            "drive_download_link": None,
+            "stored_locally": True,
+            "drive_error": drive_error,
         }
 
     return {

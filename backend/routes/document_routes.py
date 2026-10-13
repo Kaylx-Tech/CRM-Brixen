@@ -698,6 +698,9 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
             if client_visible_flag
             else 'Document stored. It is saved as an internal document and not visible to the client.'
         )
+        if res.get('stored_locally') and is_staff:
+            msg += (' Google Drive could not be reached, so the file is kept on the server for now '
+                    '(run the Drive sync later). Check Settings > Integrations > Test Google Drive.')
         return json_response(start_response, {
             "success": True,
             "status": "success",
