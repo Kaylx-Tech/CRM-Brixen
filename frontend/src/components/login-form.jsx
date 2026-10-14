@@ -27,11 +27,13 @@ export function LoginForm({
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [websiteUrl, setWebsiteUrl] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError("")
+    setWebsiteUrl("")
     setIsLoading(true)
     const toastId = toastProcessing("Signing in…")
 
@@ -73,6 +75,8 @@ export function LoginForm({
       } else {
         const msg = data.message || data.error || "Invalid email or password."
         setError(msg)
+        // Individual / Business customers sign in on the website, not this portal
+        setWebsiteUrl(data.details?.login_target === "website" ? data.details.website_url || "" : "")
         toastFail(toastId, msg)
       }
 
@@ -114,6 +118,11 @@ export function LoginForm({
                 <IconAlertCircle className="size-4" />
                 <AlertDescription>
                  {error}
+                 {websiteUrl ? (
+                   <a href={websiteUrl} className="mt-1 block font-semibold underline">
+                     Sign in on the Brixen website
+                   </a>
+                 ) : null}
                 </AlertDescription>
                </Alert>
               )}

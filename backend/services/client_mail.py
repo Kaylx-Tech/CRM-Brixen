@@ -164,7 +164,8 @@ def notify_client(user_id, *, title, message, ntype='info', link=None, email=Tru
             points=points,
             details=details,
             cta_label=cta_label,
-            cta_url=cta_url or client_panel_url(),
+            # B2B accounts use the CRM portal; everyone else uses the website client panel
+            cta_url=cta_url or (_crm_url('/portal') if _is_b2b(client) else client_panel_url()),
             category=category,
         )
         ok = send_email(recipient, subj, html, text_content=text, category=category, user_id=client['id'],

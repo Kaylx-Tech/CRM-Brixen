@@ -179,7 +179,15 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
         _clear_login_failures(attempt_key)
         if user_row.get('status') != 'Active':
             return error_response(start_response, "Account is disabled. Please contact support.", status_code=403)
-            
+
+        # Only B2B customers use this portal; Individual / Business customers sign in on the website
+        if user_row.get('role') == 'CLIENT':
+            from services.portal_access import client_can_use_crm_portal, website_login_url, WEBSITE_ONLY_MESSAGE
+            full = query_db("SELECT * FROM users WHERE id = ?;", (user_row['id'],), one=True)
+            if not client_can_use_crm_portal(dict(full or {})):
+                return error_response(start_response, WEBSITE_ONLY_MESSAGE, status_code=403,
+                                      details={'login_target': 'website', 'website_url': website_login_url()})
+
         # Generate new DB session token (30 days validity)
         session_token = str(uuid.uuid4())
         execute_db("""
@@ -353,10 +361,22 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
 
         generic_msg = "If that email is registered, a password reset link has been sent."
         user_row = query_db(
-            "SELECT id, email, full_name FROM users WHERE lower(email) = ? AND status = 'Active' LIMIT 1;",
+            "SELECT * FROM users WHERE lower(email) = ? AND status = 'Active' LIMIT 1;",
             (email,),
             one=True,
         )
+        from services.portal_access import client_can_use_crm_portal, website_lost_password_url
+        if user_row and user_row.get('role') == 'CLIENT' and not client_can_use_crm_portal(dict(user_row)):
+            # Website customers reset their password on the website (app.py parity)
+            from services.client_mail import compose_client_email
+            subj, text, html = compose_client_email(
+                subject='Sign in on the Brixen website', headline='Your account is on the Brixen website',
+                greeting=str(user_row.get('full_name') or 'there').split()[0],
+                message='You asked to reset your password. Your account signs in on the Brixen website, '
+                        'so please reset your password there.',
+                cta_label='Reset password on the website', cta_url=website_lost_password_url(), category='SECURITY')
+            send_email(email, subj, html, text_content=text, category='SECURITY', user_id=user_row['id'])
+            user_row = None
         if user_row:
             raw_token = secrets.token_urlsafe(32)
             token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
@@ -398,7 +418,7 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
 
         token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
         found_user = query_db("""
-            SELECT id FROM users
+            SELECT * FROM users
             WHERE password_reset_token = ?
               AND password_reset_expires IS NOT NULL
               AND datetime(password_reset_expires) > datetime('now')
@@ -406,6 +426,11 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
         """, (token_hash,), one=True)
         if not found_user:
             return error_response(start_response, "This reset link is invalid or has expired. Request a new one.", status_code=400)
+        from services.portal_access import client_can_use_crm_portal, website_lost_password_url
+        if found_user.get('role') == 'CLIENT' and not client_can_use_crm_portal(dict(found_user)):
+            return error_response(start_response, "This account signs in on the Brixen website, not the CRM portal.",
+                                  status_code=403, details={'login_target': 'website',
+                                                            'website_url': website_lost_password_url()})
 
         execute_db("""
             UPDATE users

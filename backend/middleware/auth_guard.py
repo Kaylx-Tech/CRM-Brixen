@@ -87,7 +87,7 @@ def get_authenticated_user(environ):
     # has every field it needs; `name` alias kept for existing route code.
     row = query_db("""
         SELECT u.*, u.full_name AS name,
-               s.session_token, s.expires_at
+               s.session_token, s.expires_at, s.impersonator_token
         FROM user_sessions s
         JOIN users u ON s.user_id = u.id
         WHERE s.session_token = ?
@@ -99,6 +99,12 @@ def get_authenticated_user(environ):
 
     if not row:
         return _dev_admin_user()
+
+    # Only B2B customers use the CRM portal; Individual / Business customers sign in on the website.
+    # A session an admin opened by switching into the customer still works.
+    from services.portal_access import client_can_use_crm_portal
+    if not client_can_use_crm_portal(row, impersonated=bool(row.get('impersonator_token'))):
+        return None
 
     # Keep active sessions alive: slide expiry forward + track activity.
     try:

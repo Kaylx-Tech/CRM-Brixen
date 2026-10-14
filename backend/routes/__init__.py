@@ -20,6 +20,7 @@ from .settings_routes import handle_settings_routes
 from .client_portal_routes import handle_client_portal_routes
 from .email_log_routes import handle_email_log_routes
 from .ticket_routes import handle_ticket_routes
+from .website_routes import handle_website_routes
 
 
 # Accounts file integration
@@ -93,6 +94,11 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
 
     # 12. External Webhooks
     res = handle_webhook_routes(environ, start_response, path, method, user, body, query)
+    if res is not None:
+        return res
+
+    # 12b. Website (WordPress plugin) client panel + SSO, signed requests
+    res = handle_website_routes(environ, start_response, path, method, user, body, query)
     if res is not None:
         return res
 

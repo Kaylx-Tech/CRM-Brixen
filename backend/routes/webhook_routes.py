@@ -34,6 +34,9 @@ def _verify_webhook_signature(raw_body_bytes, signature_hdr, secret):
 
 def handle_webhook_routes(environ, start_response, path, method, user, body, query):
     """Route handler for /api/webhooks endpoints."""
+    # /api/v1/wordpress/webhook is the address the old portal registered in WooCommerce: same handler
+    if path == '/api/v1/wordpress/webhook':
+        path = '/api/webhooks/woocommerce'
     if not path.startswith('/api/webhooks'):
         return None
 

@@ -17,6 +17,7 @@ import Intake from './Pages/Intake/Intake'
 import AuditLogs from './Pages/AuditLogs/AuditLogs'
 import EmailLog from './Pages/EmailLog/EmailLog'
 import Tickets from './Pages/Tickets/Tickets'
+import Sso from './Pages/Sso'
 import Settings from './Pages/Settings/Settings'
 import NotificationsPage from './Pages/Notifications/Notifications'
 import Performance, { StaffDashboard } from './Pages/Performance/Performance'
@@ -65,6 +66,9 @@ const App = () => {
               }
             />
             
+            {/* Sign-in handed over from the Brixen website (B2B accounts) */}
+            <Route path="/sso" element={<Sso />} />
+
             {/* SignUp disabled for now */}
             {/* <Route path="/signup" element={<SignUp />} /> */}
             <Route path="/signup" element={<Navigate to="/login" replace />} />
