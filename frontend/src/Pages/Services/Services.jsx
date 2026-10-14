@@ -274,10 +274,6 @@ const Services = () => {
       header: "Profit",
       cell: ({ row }) => <span className="font-semibold text-green-600 dark:text-green-400">{row.getValue("profit")}</span>,
     }),
-    columnHelper.accessor("duration", {
-      header: "Duration",
-      cell: ({ row }) => <span className="text-sm">{row.getValue("duration")}</span>,
-    }),
     columnHelper.accessor("status", {
       header: "Status",
       cell: ({ row }) => {
@@ -344,17 +340,6 @@ const Services = () => {
         { label: "Inactive", value: "Inactive" },
       ]
     },
-    {
-      columnKey: "duration",
-      placeholder: "Duration",
-      options: [
-        { label: "One Time", value: "One Time" },
-        { label: "1 Month", value: "1 Month" },
-        { label: "3 Months", value: "3 Months" },
-        { label: "6 Months", value: "6 Months" },
-        { label: "12 Months", value: "12 Months" },
-      ]
-    }
   ];
 
   return (
@@ -463,25 +448,6 @@ const Services = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-duration">Duration</Label>
-                <Select
-                  value={editForm.duration}
-                  onValueChange={(val) => setEditForm(prev => ({ ...prev, duration: val }))}
-                  disabled={isEditing}
-                >
-                  <SelectTrigger id="edit-duration" className="w-full">
-                    <SelectValue placeholder="Select duration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="One Time">One Time</SelectItem>
-                    <SelectItem value="1 Month">1 Month</SelectItem>
-                    <SelectItem value="3 Months">3 Months</SelectItem>
-                    <SelectItem value="6 Months">6 Months</SelectItem>
-                    <SelectItem value="12 Months">12 Months</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
               <div className="grid gap-2">
                 <Label htmlFor="edit-status">Status</Label>
                 <Select

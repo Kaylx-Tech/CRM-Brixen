@@ -19,7 +19,6 @@ import { Separator } from '@/components/ui/separator'
 import { 
   IconBriefcase, 
   IconCurrencyPound, 
-  IconClock, 
   IconTag, 
   IconFileText, 
   IconChecklist, 
@@ -27,8 +26,75 @@ import {
   IconEdit, 
   IconShieldCheck,
   IconReceipt2,
-  IconBox
+  IconBox,
+  IconCornerDownRight,
+  IconForms,
 } from '@tabler/icons-react'
+import { FIELD_TYPES } from './FormFieldsBuilder'
+
+/** Read-only view of a service's order form (as built in Edit Service), with sub-fields under their trigger. */
+function FormFieldsPreview({ fields, nested = false }) {
+  return (
+    <ul className={nested ? 'mt-2 space-y-2 border-l-2 border-dashed pl-3' : 'space-y-2'}>
+      {fields.map((f, i) => {
+        const type = FIELD_TYPES.find((t) => t.value === f.type)
+        const Icon = type?.icon || IconForms
+        return (
+          <li key={f.id || i} className={`rounded-lg border p-3 ${nested ? 'bg-background' : 'bg-muted/20'}`}>
+            <div className="flex items-start gap-2">
+              <Icon className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium">{f.label}</span>
+                  {f.required ? (
+                    <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30">
+                      {f.type === 'checkbox' ? 'Must be ticked' : 'Required'}
+                    </Badge>
+                  ) : null}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {type?.label || f.type}
+                  {f.placeholder ? ` · hint: "${f.placeholder}"` : ''}
+                </p>
+                {f.type === 'radio' ? (
+                  <ul className="mt-2 space-y-1.5">
+                    {(f.options || []).map((opt, oi) => {
+                      const branch = (f.option_fields || [])[oi] || []
+                      return (
+                        <li key={opt} className="text-sm">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="size-2.5 rounded-full border border-muted-foreground/60" />
+                            {opt}
+                          </span>
+                          {branch.length ? (
+                            <div className="ml-4">
+                              <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                <IconCornerDownRight className="w-3.5 h-3.5" /> When chosen, also ask:
+                              </p>
+                              <FormFieldsPreview fields={branch} nested />
+                            </div>
+                          ) : null}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : null}
+                {f.type === 'checkbox' && (f.fields || []).length ? (
+                  <>
+                    <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                      <IconCornerDownRight className="w-3.5 h-3.5" /> When ticked, also ask:
+                    </p>
+                    <FormFieldsPreview fields={f.fields} nested />
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
 
 const getCategoryColor = (category) => {
   switch (category?.toLowerCase()) {
@@ -82,8 +148,8 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
   const serviceId = service.id ? `SRV-${String(service.id).padStart(4, '0')}` : 'SRV-0000'
   const category = service.category || 'Corporate'
   const status = service.status || 'Active'
-  const duration = service.duration || '12 Months'
   const description = service.description || 'No detailed description provided for this catalog service.'
+  const formFields = Array.isArray(service.form_fields) ? service.form_fields : []
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -105,8 +171,6 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
               </div>
               <DialogDescription className="text-sm mt-1 flex items-center gap-2">
                 <span className="font-medium text-foreground">{category}</span>
-                <span>•</span>
-                <span>{duration}</span>
               </DialogDescription>
             </div>
           </DialogHeader>
@@ -119,6 +183,9 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="pricing">Financials & Margin</TabsTrigger>
               <TabsTrigger value="compliance">Requirements & Docs</TabsTrigger>
+              <TabsTrigger value="form">
+                Order Form{formFields.length ? ` (${formFields.length})` : ''}
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -179,14 +246,6 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                     <div className="flex flex-col gap-1">
                       <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Category</span>
                       <span className="font-medium">{category}</span>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Duration / Validity</span>
-                      <div className="flex items-center gap-1.5 font-medium">
-                        <IconClock className="w-4 h-4 text-muted-foreground" />
-                        <span>{duration}</span>
-                      </div>
                     </div>
 
                     <div className="flex flex-col gap-1">
@@ -310,6 +369,33 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                     </div>
                   </div>
                 </div>
+              </TabsContent>
+
+              {/* Order Form Tab: the questions asked when this service is ordered */}
+              <TabsContent value="form" className="m-0 space-y-4 outline-none">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-sm">Order form</p>
+                    <p className="text-sm text-muted-foreground">
+                      Asked in the Create Order wizard when this service is selected.
+                    </p>
+                  </div>
+                  {onEdit ? (
+                    <Button variant="outline" size="sm" className="shrink-0" onClick={() => {
+                        onClose()
+                        onEdit(service)
+                      }}>
+                      <IconEdit className="w-4 h-4" /> Edit form
+                    </Button>
+                  ) : null}
+                </div>
+                {formFields.length ? (
+                  <FormFieldsPreview fields={formFields} />
+                ) : (
+                  <p className="rounded-xl border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+                    No order form yet. The order uses the standard details only.
+                  </p>
+                )}
               </TabsContent>
 
             </div>

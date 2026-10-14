@@ -194,28 +194,6 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
               </div>
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="duration">Duration</Label>
-              <Select 
-                value={formData.duration}
-                onValueChange={(val) => handleSelectChange('duration', val)}
-                disabled={isSubmitting}
-              >
-                <SelectTrigger id="duration" className="w-full">
-                  <SelectValue placeholder="Select duration" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="One Time">One Time</SelectItem>
-                    <SelectItem value="1 Month">1 Month</SelectItem>
-                    <SelectItem value="3 Months">3 Months</SelectItem>
-                    <SelectItem value="6 Months">6 Months</SelectItem>
-                    <SelectItem value="12 Months">12 Months</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-
             <FormFieldsBuilder
               value={formData.form_fields}
               onChange={(form_fields) => setFormData((prev) => ({ ...prev, form_fields }))}

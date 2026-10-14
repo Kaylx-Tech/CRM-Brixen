@@ -31,8 +31,34 @@ export const FIELD_TYPES = [
 const MAX_FIELDS = 30
 const MAX_OPTIONS = 20
 
-function newField(type) {
-  const field = { label: "", type, required: type === "file", placeholder: "" }
+// A new field starts with this label (editable); repeated ones are numbered so they stay separate questions
+const DEFAULT_LABELS = {
+  text: "Text field",
+  file: "Document upload",
+  radio: "Question",
+  checkbox: "Checkbox option",
+  company: "Company name or number",
+  company_name: "Proposed company name",
+}
+
+function isDefaultLabel(label) {
+  const text = String(label || "").trim()
+  return !text || Object.values(DEFAULT_LABELS).some((d) => text === d || new RegExp(`^${d} \\d+$`).test(text))
+}
+
+function defaultLabel(type, fields, skipIndex = -1) {
+  const base = DEFAULT_LABELS[type] || "Field"
+  const taken = new Set(
+    fields.filter((_, i) => i !== skipIndex).map((f) => String(f.label || "").trim().toLowerCase())
+  )
+  if (!taken.has(base.toLowerCase())) return base
+  let n = 2
+  while (taken.has(`${base} ${n}`.toLowerCase())) n += 1
+  return `${base} ${n}`
+}
+
+function newField(type, fields = []) {
+  const field = { label: defaultLabel(type, fields), type, required: type === "file", placeholder: "" }
   if (type === "radio") field.options = ["Yes", "No"]
   if (type === "checkbox") field.fields = []
   return field
@@ -115,6 +141,8 @@ export default function FormFieldsBuilder({ value = [], onChange, disabled, nest
   const changeType = (index, type) => {
     const field = value[index]
     const next = { ...field, type }
+    // A label the user never changed follows the new type; a typed label is kept
+    if (isDefaultLabel(field.label)) next.label = defaultLabel(type, value, index)
     if (type === "radio" && !(field.options || []).length) next.options = ["Yes", "No"]
     if (type === "checkbox" && !Array.isArray(field.fields)) next.fields = []
     update(index, next)
@@ -127,7 +155,7 @@ export default function FormFieldsBuilder({ value = [], onChange, disabled, nest
     ;[next[index], next[target]] = [next[target], next[index]]
     onChange(next)
   }
-  const add = (type) => onChange([...value, newField(type)])
+  const add = (type) => onChange([...value, newField(type, value)])
 
   return (
     <div className="space-y-3">
@@ -153,6 +181,8 @@ export default function FormFieldsBuilder({ value = [], onChange, disabled, nest
                 <Input
                   value={field.label}
                   onChange={(e) => update(index, { label: e.target.value })}
+                  // The suggested label is selected on click, so typing replaces it straight away
+                  onFocus={(e) => isDefaultLabel(field.label) && e.target.select()}
                   placeholder={{
                     file: "e.g. Passport copy",
                     radio: "e.g. Is the director a UK resident?",
