@@ -693,6 +693,15 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
             client_visible_flag, 'Approved' if is_posted else 'Pending Review', review_notes,
         ))
 
+        # Tell the customer: a document shared with them, or confirmation of their own upload
+        mail = {'notification_created': False, 'email_sent': False, 'email_status': 'not_applicable'}
+        if is_staff and client_visible_flag and target_client and target_user_id != user_id:
+            from services.client_mail import notify_document_available
+            mail = notify_document_available(doc_id, client_message or None, triggered_by=user_id) or mail
+        elif not is_staff:
+            from services.client_mail import notify_customer_upload_received
+            mail = notify_customer_upload_received(user_id, clean_title) or mail
+
         msg = (
             'Document uploaded successfully.'
             if client_visible_flag
@@ -705,9 +714,9 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
             "success": True,
             "status": "success",
             "message": msg,
-            "notification_created": False,
-            "email_sent": False,
-            "email_status": "not_applicable",
+            "notification_created": bool(mail.get('notification_created')),
+            "email_sent": bool(mail.get('email_sent')),
+            "email_status": mail.get('email_status'),
             "document": {"id": doc_id, "name": clean_title, "category": category},
             "data": {
                 "id": doc_id,

@@ -104,11 +104,8 @@ def get_setting(key: str, default=None):
 
 def mask_value(val: str) -> str:
     """Mask sensitive credentials for safe client display."""
-    if not val:
-        return ""
-    if len(val) <= 6:
-        return "******"
-    return val[:2] + "******" + val[-2:]
+    # Never reveal any characters of a secret (saving "******" back keeps the stored value)
+    return "******" if val else ""
 
 def get_all_settings(raw: bool = False):
     """Get all application settings categorized, optionally masking secrets."""

@@ -174,6 +174,10 @@ def process_woocommerce_order(payload):
             f"Order {order_num} from {full_name or email} is in the CRM.",
             'order_update', '/admin/orders',
         )
+        from services.client_mail import email_team
+        email_team(f"New website order {order_num} — Brixen Consultants",
+                   f"A new website order is in the CRM.\nOrder: {order_num}\nClient: {full_name or email}",
+                   link_path='/admin/orders', order_id=order_id)
         created = True
 
     # 4. Replace line items when present

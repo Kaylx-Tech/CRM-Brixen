@@ -530,10 +530,14 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
             updates.append("order_form_values_json = ?")
             params.append(ofv_json)
 
+        old_status = (query_db("SELECT status FROM orders WHERE id = ?;", (order_id,), one=True) or {}).get('status')
         if updates:
             updates.append("updated_at = datetime('now')")
             params.append(order_id)
             execute_db(f"UPDATE orders SET {', '.join(updates)} WHERE id = ?;", params)
+        if 'status' in body and body.get('status') != old_status:
+            from services.client_mail import notify_order_status_changed
+            notify_order_status_changed(order_id, old_status, triggered_by=user_id)
 
         return success_response(start_response, message="Order updated successfully.")
 
@@ -549,7 +553,11 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         if not new_status:
             return error_response(start_response, "Status is required", status_code=400)
 
+        old_status = (query_db("SELECT status FROM orders WHERE id = ?;", (order_id,), one=True) or {}).get('status')
         execute_db("UPDATE orders SET status = ? WHERE id = ?;", (new_status, order_id))
+        if new_status != old_status:
+            from services.client_mail import notify_order_status_changed
+            notify_order_status_changed(order_id, old_status, triggered_by=user_id)
         if str(new_status).strip().lower() == 'completed':
             done = query_db("SELECT order_number, service_name FROM orders WHERE id = ?;", (order_id,), one=True) or {}
             notify_staff(

@@ -229,6 +229,10 @@ def handle_task_routes(environ, start_response, path, method, user, body, query)
             'task_assigned', '/admin/tasks',
             exclude_user_id=user_id,
         )
+        from services.client_mail import email_staff_member
+        email_staff_member(assigned_to, 'Task assigned',
+                           f"You have been assigned task '{title}' ({priority} priority)"
+                           f"{', due ' + str(due_date) if due_date else ''}.", triggered_by=user_id)
 
         return success_response(
             start_response,
@@ -252,8 +256,8 @@ def handle_task_routes(environ, start_response, path, method, user, body, query)
             return success_response(start_response, message="Task deleted.")
 
         if method in ('PUT', 'PATCH'):
-            existing = query_db("SELECT id, title, status, assigned_staff_id, department FROM tasks WHERE id = ?;",
-                                (task_id,), one=True)
+            existing = query_db("SELECT id, title, status, assigned_staff_id, created_by_id, department FROM tasks "
+                                "WHERE id = ?;", (task_id,), one=True)
             if not existing:
                 return error_response(start_response, "Task not found", status_code=404)
             if not _staff_can_access(user, existing):
@@ -303,10 +307,19 @@ def handle_task_routes(environ, start_response, path, method, user, body, query)
                 params.append(task_id)
                 execute_db(f"UPDATE tasks SET {', '.join(updates)} WHERE id = ?;", params)
 
+            from services.client_mail import email_staff_member
+            task_title = existing.get('title') or 'Task'
             new_assignee = body.get('assigned_staff_id') or body.get('assigned_to')
             if reassigning and new_assignee:
-                notify_user(new_assignee, 'Task assigned to you', existing.get('title') or 'Task',
+                notify_user(new_assignee, 'Task assigned to you', task_title,
                             'task_assigned', '/admin/tasks', exclude_user_id=user_id)
+                email_staff_member(new_assignee, 'Task assigned', f"You have been assigned task '{task_title}'.",
+                                   triggered_by=user_id)
+            # Completed -> the assignee and the person who created it hear about it (app.py parity)
+            if body.get('status') == 'Completed' and existing['status'] != 'Completed':
+                for member in {existing.get('assigned_staff_id'), existing.get('created_by_id')} - {None}:
+                    email_staff_member(member, 'Task completed',
+                                       f"Task '{task_title}' has been marked completed.", triggered_by=user_id)
 
             return success_response(start_response, message="Task updated successfully.")
 

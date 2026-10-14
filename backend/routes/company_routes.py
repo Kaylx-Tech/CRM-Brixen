@@ -618,6 +618,14 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
             values = list(updates.values()) + [comp_id]
             execute_db(f"UPDATE companies SET {', '.join(set_clauses)} WHERE id = ?;", tuple(values))
 
+        # Identity / PSC verification newly marked Verified by the team -> tell the customer (app.py parity)
+        if is_staff:
+            events = [ev for ev, col in (('identity', 'identity_verified'), ('psc', 'psc_verified'))
+                      if str(updates.get(col) or '') == 'Verified' and str(comp.get(col) or '') != 'Verified']
+            if events:
+                from services.client_mail import notify_compliance_done
+                notify_compliance_done(comp_id, events, triggered_by=user_id)
+
         updated_row = query_db(f"""
             SELECT {COMPANY_STAFF_SELECT}
             FROM companies c

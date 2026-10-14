@@ -24,6 +24,7 @@ import {
   IconNotification,
   IconLogout,
   IconHistory,
+  IconMail,
   IconSettings,
 } from "@tabler/icons-react"
 import { useNavigate } from "react-router-dom"
@@ -118,6 +119,13 @@ export function NavUser({
                   >
                     <IconHistory className="size-4" />
                     <span>System Logs</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => navigate('/admin/email-log')}
+                    className={itemClass}
+                  >
+                    <IconMail className="size-4" />
+                    <span>Email Log</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => navigate('/admin/settings')}

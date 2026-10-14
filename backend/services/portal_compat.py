@@ -122,5 +122,5 @@ class EmailService:
     @staticmethod
     def send_notification_email(recipient, subject, body_text, body_html=None):
         from services.email_service import send_email
-        ok = send_email(recipient, subject, body_html or body_text, text_content=body_text)
+        ok = send_email(recipient, subject, body_html or body_text, text_content=body_text, category='COMPLIANCE')
         return ok, 'sent' if ok else 'SMTP send failed or not configured'

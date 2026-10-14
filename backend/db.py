@@ -683,6 +683,13 @@ def ensure_schema():
             FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
         );
     """)
+    # email_outbox doubles as the email log: who it was for, what it was about, and whether it went out
+    outbox_cols = {row[1] for row in conn.execute("PRAGMA table_info(email_outbox)").fetchall()}
+    for col, ddl in (('category', 'TEXT'), ('user_id', 'INTEGER'), ('order_id', 'INTEGER'),
+                     ('company_id', 'INTEGER'), ('triggered_by', 'INTEGER')):
+        if col not in outbox_cols:
+            conn.execute(f"ALTER TABLE email_outbox ADD COLUMN {col} {ddl}")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_email_outbox_created ON email_outbox(created_at)")
     conn.commit()
     conn.close()
     ensure_rbac()

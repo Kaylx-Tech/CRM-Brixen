@@ -287,6 +287,10 @@ def handle_client_portal_routes(environ, start_response, path, method, user, bod
                          'document_upload', '/admin/documents')
         except Exception:
             pass
+        from services.client_mail import notify_customer_upload_received
+        order_number = (query_db("SELECT order_number FROM orders WHERE id = ?;", (order_id,), one=True) or {}
+                        ).get('order_number') if order_id else None
+        notify_customer_upload_received(uid, doc_name, order_number)
         return success_response(start_response, data={'id': doc_id},
                                 message="Document uploaded. Our team will review it shortly.", status_code=201)
 
@@ -337,6 +341,11 @@ def handle_client_portal_routes(environ, start_response, path, method, user, bod
                          'support_ticket', '/admin/dashboard')
         except Exception:
             pass
+        from services.client_mail import email_team
+        email_team(f"New support ticket {number} — Brixen Consultants",
+                   f"A client opened a support ticket.\nTicket: {number}\n"
+                   f"Client: {user.get('full_name') or user.get('email')}\nSubject: {subject}",
+                   link_path='/admin/dashboard')
         return success_response(start_response, data={'id': tid, 'ticket_number': number},
                                 message=f"Ticket {number} submitted. We'll reply here.", status_code=201)
 

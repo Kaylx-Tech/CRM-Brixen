@@ -250,7 +250,8 @@ def send_payment_requested(invoice, order):
         sections_html=_build_sections(invoice, order, include_bank=True),
         category='INVOICE',
     )
-    ok = send_email(to, subject, html, text_content=text)
+    ok = send_email(to, subject, html, text_content=text, category='INVOICE',
+                    user_id=invoice.get('user_id'), order_id=invoice.get('order_id'))
     return {
         'email_sent': bool(ok),
         'email_status': 'sent' if ok else 'SMTP send failed or not configured',
@@ -292,7 +293,8 @@ def send_payment_received(invoice, order):
         sections_html=_build_sections(invoice, order, include_bank=False),
         category='PAYMENT',
     )
-    ok = send_email(to, subject, html, text_content=text)
+    ok = send_email(to, subject, html, text_content=text, category='INVOICE',
+                    user_id=invoice.get('user_id'), order_id=invoice.get('order_id'))
     return {
         'email_sent': bool(ok),
         'email_status': 'sent' if ok else 'SMTP send failed or not configured',

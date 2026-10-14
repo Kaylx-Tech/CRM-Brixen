@@ -15,6 +15,7 @@ import Payments from './Pages/Payments/Payments'
 import Documents from './Pages/Documents/Documents'
 import Intake from './Pages/Intake/Intake'
 import AuditLogs from './Pages/AuditLogs/AuditLogs'
+import EmailLog from './Pages/EmailLog/EmailLog'
 import Settings from './Pages/Settings/Settings'
 import NotificationsPage from './Pages/Notifications/Notifications'
 import Performance, { StaffDashboard } from './Pages/Performance/Performance'
@@ -100,6 +101,7 @@ const App = () => {
                 <Route path="documents" element={<PageGuard page="documents"><Documents /></PageGuard>} />
                 <Route path="intake" element={<PageGuard page="intake"><Intake /></PageGuard>} />
                 <Route path="logs" element={<PageGuard page="logs"><AuditLogs /></PageGuard>} />
+                <Route path="email-log" element={<PageGuard page="email-log"><EmailLog /></PageGuard>} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="profile" element={<Navigate to="/admin/settings?tab=profile" replace />} />

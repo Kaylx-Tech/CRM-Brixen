@@ -377,6 +377,7 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
                         f"<p><a href='{reset_link}'>{reset_link}</a></p>"
                         f"<p>This link expires in 2 hours.</p>"
                     ),
+                    category='SECURITY', user_id=user_row['id'], store_body=False,
                 )
             except Exception as e:
                 print(f"[Email Error] Failed to send reset link: {e}")

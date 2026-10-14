@@ -293,7 +293,7 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
         conf_num = body.get('confirmation_number') or f"AC-{secrets.randbelow(900000) + 100000}"
 
         # Insert or update in company_accounts
-        existing = query_db("SELECT id FROM company_accounts WHERE company_id = ? LIMIT 1;", (company_id,), one=True)
+        existing = query_db("SELECT id, status FROM company_accounts WHERE company_id = ? LIMIT 1;", (company_id,), one=True)
         if existing:
             execute_db("""
                 UPDATE company_accounts
@@ -312,6 +312,11 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
 
         # Update company's account_status
         execute_db("UPDATE companies SET account_status = ? WHERE id = ?;", (status, company_id))
+
+        # Newly filed -> tell the customer (app.py notify_accounts_filed)
+        if str(status).strip().lower() == 'filed' and str((existing or {}).get('status') or '').lower() != 'filed':
+            from services.client_mail import notify_accounts_filed
+            notify_accounts_filed(company_id, period_end=period_end, confirmation=conf_num, triggered_by=user_id)
 
         return success_response(start_response, data={
             "id": filing_id,

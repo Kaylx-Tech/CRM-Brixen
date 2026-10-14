@@ -15,6 +15,7 @@ import {
   IconFileCheck,
   IconBrain,
   IconHistory,
+  IconMail,
   IconSettings,
   IconUserCircle,
   IconBell,
@@ -63,6 +64,7 @@ const commandGroups = [
     items: [
       { title: "Notifications", url: "/admin/notifications", icon: IconBell },
       { title: "Audit Logs", url: "/admin/logs", icon: IconHistory },
+      { title: "Email Log", url: "/admin/email-log", icon: IconMail },
       { title: "System Settings", url: "/admin/settings", icon: IconSettings },
       { title: "Profile & Password", url: "/admin/settings?tab=profile", icon: IconUserCircle },
     ],

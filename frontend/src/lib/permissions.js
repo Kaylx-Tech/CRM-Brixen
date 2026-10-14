@@ -70,6 +70,7 @@ const PAGE_ACCESS = {
   accountancy: { roles: "internal", departments: ["Accountancy", "Accounts", "Compliance"] },
   payments: { roles: ["SUPER_ADMIN", "ADMIN", "MANAGER"] },
   logs: { roles: ["SUPER_ADMIN", "ADMIN"] },
+  "email-log": { roles: ["SUPER_ADMIN", "ADMIN"] },
   // The Settings page also holds "Profile & Password"; it shows only that tab to non-admins
   settings: { roles: "internal" },
 }
