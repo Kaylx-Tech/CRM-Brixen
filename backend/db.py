@@ -345,6 +345,9 @@ def ensure_schema():
         conn.execute("ALTER TABLE orders ADD COLUMN current_step INTEGER NOT NULL DEFAULT 1")
     if 'b2b_client_id' not in order_cols:
         conn.execute("ALTER TABLE orders ADD COLUMN b2b_client_id TEXT")
+    # Team member who added the order in the CRM (NULL = website / customer / before this was recorded)
+    if 'created_by_id' not in order_cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN created_by_id INTEGER")
     user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
     if 'department' not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN department TEXT")

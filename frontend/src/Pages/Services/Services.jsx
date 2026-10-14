@@ -266,14 +266,17 @@ const Services = () => {
       header: "Sell price",
       cell: ({ row }) => <span className="font-medium">{row.getValue("sellPrice")}</span>,
     }),
-    columnHelper.accessor("originalPrice", {
-      header: "Original price",
-      cell: ({ row }) => <span className="text-muted-foreground">{row.getValue("originalPrice")}</span>,
-    }),
-    columnHelper.accessor("profit", {
-      header: "Profit",
-      cell: ({ row }) => <span className="font-semibold text-green-600 dark:text-green-400">{row.getValue("profit")}</span>,
-    }),
+    // Cost and profit are for admins only; the team sees the sell price
+    ...(canManageCatalog ? [
+      columnHelper.accessor("originalPrice", {
+        header: "Original price",
+        cell: ({ row }) => <span className="text-muted-foreground">{row.getValue("originalPrice")}</span>,
+      }),
+      columnHelper.accessor("profit", {
+        header: "Profit",
+        cell: ({ row }) => <span className="font-semibold text-green-600 dark:text-green-400">{row.getValue("profit")}</span>,
+      }),
+    ] : []),
     columnHelper.accessor("status", {
       header: "Status",
       cell: ({ row }) => {

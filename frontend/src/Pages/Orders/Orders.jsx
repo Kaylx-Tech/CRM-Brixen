@@ -26,7 +26,7 @@ import CreateOrderWizard from "./CreateOrderWizard"
 import QuickCrmOrder from "./QuickCrmOrder"
 import ViewOrder from "./ViewOrder"
 import DeleteConfirmation from "@/components/DeleteConfirmation"
-import { isAdminRole, canViewRevenue } from "@/lib/permissions"
+import { isAdminRole, canViewRevenue, getRole } from "@/lib/permissions"
 
 const columnHelper = createColumnHelper()
 
@@ -177,6 +177,8 @@ function ProductPills({ summary }) {
 
 export default function Orders() {
   const showFinance = canViewRevenue()
+  // Team members (STAFF) only get their own orders from the API, so "Added by" is for admins / managers
+  const showAddedBy = getRole() !== 'STAFF'
   const [orders, setOrders] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
@@ -192,6 +194,7 @@ export default function Orders() {
   const [companyFilter, setCompanyFilter] = useState('all')
   const [paymentFilter, setPaymentFilter] = useState('all')
   const [datePreset, setDatePreset] = useState('all')
+  const [addedByFilter, setAddedByFilter] = useState('all')
   const [b2bClientId, setB2bClientId] = useState(() => new URLSearchParams(window.location.search).get('b2b') || 'all')
   const [savingId, setSavingId] = useState(null)
   const [cancelTarget, setCancelTarget] = useState(null)
@@ -216,6 +219,7 @@ export default function Orders() {
       if (companyFilter !== 'all') qs.set('company_id', companyFilter)
       if (paymentFilter !== 'all') qs.set('payment_status', paymentFilter)
       if (datePreset !== 'all') qs.set('date_preset', datePreset)
+      if (addedByFilter !== 'all') qs.set('created_by', addedByFilter)
       if (clientType === 'B2B') {
         qs.set('client_type', 'B2B')
         if (b2bClientId !== 'all') qs.set('customer_id', b2bClientId)
@@ -246,7 +250,7 @@ export default function Orders() {
     } finally {
       setIsLoading(false)
     }
-  }, [search, statusFilter, productFilter, companyFilter, paymentFilter, datePreset, clientType, b2bClientId])
+  }, [search, statusFilter, productFilter, companyFilter, paymentFilter, datePreset, addedByFilter, clientType, b2bClientId])
 
   function applyPayload(data, page) {
     const list = data.orders || []
@@ -383,6 +387,25 @@ export default function Orders() {
         )
       },
     }),
+    // Which team member added the order (admins and managers; team members only see their own orders)
+    ...(showAddedBy ? [columnHelper.display({
+      id: 'added_by',
+      header: 'Added by',
+      cell: ({ row }) => {
+        const o = row.original
+        if (o.created_by_name) {
+          return (
+            <TruncatedTooltip
+              text={o.created_by_name}
+              className="block max-w-[120px] truncate text-left text-sm cursor-default"
+            />
+          )
+        }
+        return (
+          <span className="text-sm text-muted-foreground">{Number(o.from_website) ? 'Website' : '—'}</span>
+        )
+      },
+    })] : []),
     columnHelper.accessor('company_name', {
       header: 'Company',
       cell: ({ row }) => {
@@ -490,7 +513,7 @@ export default function Orders() {
         )
       },
     }),
-  ], [savingId, handleOpenOrder, showFinance])
+  ], [savingId, handleOpenOrder, showFinance, showAddedBy])
 
   const tableFilterConfig = useMemo(() => [
     {
@@ -538,7 +561,19 @@ export default function Orders() {
       onValueChange: setDatePreset,
       options: DATE_PRESETS.filter((d) => d.value !== 'all').map((d) => ({ label: d.label, value: d.value })),
     },
-  ], [facets.companies, facets.products, companyFilter, statusFilter, productFilter, paymentFilter, datePreset])
+    ...(showAddedBy ? [{
+      key: 'added_by',
+      placeholder: 'Added by',
+      allLabel: 'Anyone',
+      value: addedByFilter,
+      onValueChange: setAddedByFilter,
+      options: [
+        ...(facets.added_by || []).map((m) => ({ label: m.full_name || `#${m.id}`, value: String(m.id) })),
+        { label: 'Website / not recorded', value: 'website' },
+      ],
+    }] : []),
+  ], [facets.companies, facets.products, facets.added_by, companyFilter, statusFilter, productFilter, paymentFilter,
+      datePreset, addedByFilter, showAddedBy])
 
   const clearFilters = () => {
     setSearch('')
@@ -547,6 +582,7 @@ export default function Orders() {
     setCompanyFilter('all')
     setPaymentFilter('all')
     setDatePreset('all')
+    setAddedByFilter('all')
     setB2bClientId('all')
   }
 

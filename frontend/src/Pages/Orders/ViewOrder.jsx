@@ -681,6 +681,12 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                   )}
                   <span>•</span>
                   <span className="font-semibold text-primary">£{Number(order?.total || 0).toFixed(2)}</span>
+                  {order?.created_by_name ? (
+                    <>
+                      <span>•</span>
+                      <span>Added by <span className="font-medium text-foreground">{order.created_by_name}</span></span>
+                    </>
+                  ) : null}
                 </DialogDescription>
               </div>
             </DialogHeader>

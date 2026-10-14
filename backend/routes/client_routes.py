@@ -494,7 +494,9 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
             ORDER BY id DESC;
         """, (client_id,))
         
-        orders = query_db("""
+        # Team members (STAFF) only see the orders they added, and no invoices
+        own_sql, own_params = ("AND o.created_by_id = ?", (user['id'],)) if user_role == 'STAFF' else ("", ())
+        orders = query_db(f"""
             SELECT o.id, o.order_number, o.service_name,
                    COALESCE((SELECT GROUP_CONCAT(li.product_name, ', ') FROM order_line_items li WHERE li.order_id = o.id), o.service_name) AS products_summary,
                    o.status,
@@ -504,14 +506,14 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
                    c.name as company_name
             FROM orders o
             LEFT JOIN companies c ON o.company_id = c.id
-            WHERE o.user_id = ?
+            WHERE o.user_id = ? AND COALESCE(o.is_draft, 0) = 0 {own_sql}
             ORDER BY o.created_at DESC;
-        """, (client_id,))
-        
-        invoices = query_db("""
+        """, (client_id, *own_params))
+
+        invoices = [] if user_role == 'STAFF' else query_db("""
             SELECT id, invoice_number, amount, total, status, due_date, paid_at, created_at
-            FROM invoices 
-            WHERE user_id = ? 
+            FROM invoices
+            WHERE user_id = ?
             ORDER BY created_at DESC;
         """, (client_id,))
 
@@ -568,12 +570,13 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
             "SELECT id, name, company_number, status FROM companies WHERE user_id = ? ORDER BY name;",
             (client_id,),
         )
+        own_sql, own_params = ("AND created_by_id = ?", (user['id'],)) if user_role == 'STAFF' else ("", ())
         orders = query_db(
-            """
+            f"""
             SELECT id, order_number, service_name, status, company_id, total as amount, created_at
-            FROM orders WHERE user_id = ? ORDER BY created_at DESC;
+            FROM orders WHERE user_id = ? AND COALESCE(is_draft, 0) = 0 {own_sql} ORDER BY created_at DESC;
             """,
-            (client_id,),
+            (client_id, *own_params),
         )
         return json_response(start_response, {
             "success": True,

@@ -12,6 +12,14 @@ from services.manual_order_service import create_manual_crm_order
 from services.notification_service import notify_staff
 
 
+ORDER_FINANCE_FIELDS = ('cost_price', 'catalog_cost', 'manual_cost', 'resolved_cost', 'cost_source', 'profit')
+
+
+def strip_order_finance(order):
+    """An order without its cost / profit figures (team members only see what the customer pays)."""
+    return {k: v for k, v in dict(order).items() if k not in ORDER_FINANCE_FIELDS}
+
+
 def _wizard_line_items(body):
     items = body.get('line_items')
     if isinstance(items, list) and items:
@@ -19,7 +27,7 @@ def _wizard_line_items(body):
     return []
 
 
-def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False):
+def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False, own_orders_only=False):
     """Create or update an order from the universal order wizard payload."""
     service_name = (body.get('service_name') or '').strip()
     line_items = _wizard_line_items(body)
@@ -82,11 +90,14 @@ def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False):
     is_draft = 1 if as_draft else 0
 
     if draft_id:
-        # Only a saved draft can be continued (never a placed order); customers only their own
+        # Only a saved draft can be continued (never a placed order); customers only their own,
+        # team members (STAFF) only the drafts they started
         existing = query_db(
-            "SELECT id, order_number, user_id FROM orders WHERE id = ? AND COALESCE(is_draft, 0) = 1 LIMIT 1;",
+            "SELECT id, order_number, user_id, created_by_id FROM orders WHERE id = ? AND COALESCE(is_draft, 0) = 1 LIMIT 1;",
             (draft_id,), one=True)
         if existing and not is_staff and int(existing.get('user_id') or 0) != int(user_id or 0):
+            existing = None
+        if existing and own_orders_only and int(existing.get('created_by_id') or 0) != int(user_id or 0):
             existing = None
         if existing:
             execute_db("""
@@ -124,8 +135,8 @@ def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False):
                 checkout_form_json, order_form_values_json,
                 is_draft, current_step,
                 access_email, access_email_password,
-                created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'));
+                created_by_id, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'));
         """, (
             order_num, client_id, company_id, service_id, service_name,
             amount, vat, total, status, notes,
@@ -133,6 +144,7 @@ def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False):
             checkout_json, form_json,
             is_draft, current_step,
             access_email, access_password,
+            user_id if is_staff else None,
         ))
 
     for idx, item in enumerate(line_items):
@@ -219,6 +231,15 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
     user_role = user.get('role', 'CLIENT')
     user_id = user.get('id')
     is_staff = user_role in ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
+    # Team members (STAFF) only work with the orders they added themselves and never see costs or profit
+    own_orders_only = user_role == 'STAFF'
+
+    match_any_order = re.match(r'^/api/(?:admin/|client/)?orders/(\d+)(?:/|$)', path)
+    if own_orders_only and match_any_order:
+        owner = query_db("SELECT created_by_id FROM orders WHERE id = ? LIMIT 1;",
+                         (int(match_any_order.group(1)),), one=True)
+        if not owner or int(owner.get('created_by_id') or 0) != int(user_id or 0):
+            return error_response(start_response, "Order not found", status_code=404)
 
     # ── GET /api/orders | /api/admin/orders (List) ─────────────────────────
     if path in ('/api/orders', '/api/admin/orders', '/api/client/orders') and method == 'GET':
@@ -228,8 +249,11 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
             orders = payload.get('orders') or []
             payload['total'] = (payload.get('pagination') or {}).get('total', len(orders))
             payload['total_sell'] = sum(float(o.get('total') or 0) for o in orders)
-            payload['total_cost'] = sum(float(o.get('resolved_cost') or 0) for o in orders)
-            payload['net_profit'] = payload['total_sell'] - payload['total_cost']
+            if own_orders_only:
+                payload['orders'] = [strip_order_finance(o) for o in orders]
+            else:
+                payload['total_cost'] = sum(float(o.get('resolved_cost') or 0) for o in orders)
+                payload['net_profit'] = payload['total_sell'] - payload['total_cost']
             payload['limit'] = (payload.get('pagination') or {}).get('limit')
             payload['offset'] = ((payload.get('pagination') or {}).get('page', 1) - 1) * (payload.get('limit') or 25)
             return success_response(start_response, data=payload)
@@ -272,10 +296,11 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
 
         row = query_db("""
             SELECT o.*, o.total as amount, u.full_name as client_name, u.email as client_email, u.phone as client_phone,
-                   c.name as company_name, c.company_number
+                   c.name as company_name, c.company_number, cb.full_name as created_by_name
             FROM orders o
             LEFT JOIN users u ON o.user_id = u.id
             LEFT JOIN companies c ON o.company_id = c.id
+            LEFT JOIN users cb ON o.created_by_id = cb.id
             WHERE o.id = ?
             LIMIT 1;
         """, (order_id,), one=True)
@@ -294,6 +319,8 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         data['timeline'] = [dict(e) for e in events]
         data['documents'] = [dict(d) for d in docs]
         data['line_items'] = [dict(li) for li in line_items]
+        if own_orders_only:
+            data = strip_order_finance(data)
         if not is_staff:
             # Customers never see costs, profit, staff notes or internal documents
             from routes.client_portal_routes import public_order, public_document
@@ -315,7 +342,8 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
 
     # ── POST /api/orders/draft (Wizard draft save) ─────────────────────────
     if path in ('/api/orders/draft', '/api/admin/orders/draft', '/api/client/orders/draft') and method == 'POST':
-        result, err = _upsert_wizard_order(body=body or {}, user_id=user_id, is_staff=is_staff, as_draft=True)
+        result, err = _upsert_wizard_order(body=body or {}, user_id=user_id, is_staff=is_staff, as_draft=True,
+                                           own_orders_only=own_orders_only)
         if err:
             return error_response(start_response, err, status_code=400)
         return success_response(
@@ -340,7 +368,8 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         if is_manual:
             result, err = create_manual_crm_order(payload, actor=user)
         else:
-            result, err = _upsert_wizard_order(body=payload, user_id=user_id, is_staff=is_staff, as_draft=False)
+            result, err = _upsert_wizard_order(body=payload, user_id=user_id, is_staff=is_staff, as_draft=False,
+                                               own_orders_only=own_orders_only)
         if err:
             return error_response(start_response, err, status_code=400)
         if not is_manual:  # manual CRM orders notify from inside create_manual_crm_order
@@ -361,8 +390,8 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
     match_cost = re.match(r'^/api/(?:admin/)?orders/(\d+)/cost$', path)
     if match_cost and method in ('POST', 'PATCH', 'PUT'):
         order_id = int(match_cost.group(1))
-        if not is_staff:
-            return error_response(start_response, "Only staff can update order cost", status_code=403)
+        if not is_staff or own_orders_only:
+            return error_response(start_response, "Only admins and managers can update order cost", status_code=403)
 
         if 'cost_price' in body and body.get('cost_price') is None:
             execute_db("UPDATE orders SET cost_price = NULL, updated_at = datetime('now') WHERE id = ?;", (order_id,))
@@ -455,7 +484,7 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
 
         updates = []
         params = []
-        if 'cost_price' in body:
+        if 'cost_price' in body and not own_orders_only:
             if body.get('cost_price') is None or str(body.get('cost_price')).strip() == '':
                 updates.append("cost_price = NULL")
             else:

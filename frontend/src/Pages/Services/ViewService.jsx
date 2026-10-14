@@ -31,6 +31,7 @@ import {
   IconForms,
 } from '@tabler/icons-react'
 import { FIELD_TYPES } from './FormFieldsBuilder'
+import { canViewRevenue } from '@/lib/permissions'
 
 /** Read-only view of a service's order form (as built in Edit Service), with sub-fields under their trigger. */
 function FormFieldsPreview({ fields, nested = false }) {
@@ -133,6 +134,9 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
 
   if (!service) return null
 
+  // Cost price, profit and margin are for admins only; the team sees the sell price
+  const showFinance = canViewRevenue()
+
   // Calculate pricing numbers safely
   const sellPriceNum = typeof service.price === 'number' 
     ? service.price 
@@ -181,7 +185,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
           <div className="px-6 py-2 border-b bg-background">
             <TabsList className="flex w-full justify-start overflow-x-auto h-auto py-1">
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="pricing">Financials & Margin</TabsTrigger>
+              {showFinance ? <TabsTrigger value="pricing">Financials & Margin</TabsTrigger> : null}
               <TabsTrigger value="compliance">Requirements & Docs</TabsTrigger>
               <TabsTrigger value="form">
                 Order Form{formFields.length ? ` (${formFields.length})` : ''}
@@ -195,7 +199,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
               {/* Overview Tab */}
               <TabsContent value="overview" className="m-0 space-y-6 outline-none">
                 {/* Financial KPI Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className={`grid grid-cols-1 gap-3 ${showFinance ? 'sm:grid-cols-3' : ''}`}>
                   <div className="p-4 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between">
                     <div className="flex items-center justify-between text-muted-foreground">
                       <span className="text-sm font-semibold uppercase tracking-wider">Sell Price</span>
@@ -207,6 +211,8 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                     </div>
                   </div>
 
+                  {showFinance ? (
+                  <>
                   <div className="p-4 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between">
                     <div className="flex items-center justify-between text-muted-foreground">
                       <span className="text-sm font-semibold uppercase tracking-wider">Cost Price</span>
@@ -232,6 +238,8 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                       </span>
                     </div>
                   </div>
+                  </>
+                  ) : null}
                 </div>
 
                 {/* Details Grid */}

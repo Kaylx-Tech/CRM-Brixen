@@ -160,8 +160,8 @@ def handle_catalog_routes(environ, start_response, path, method, user, body, que
                 item = dict(s)
                 item['form_fields'] = form_fields_of(item)
                 item.pop('form_config_json', None)
-                if not is_staff:
-                    item.pop('cost_price', None)   # buy price is internal
+                if user_role not in ('SUPER_ADMIN', 'ADMIN'):
+                    item.pop('cost_price', None)   # buy price / profit: admins only (the team sees the sell price)
                 products.append(item)
             return success_response(start_response, data=products)
 

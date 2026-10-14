@@ -184,13 +184,14 @@ def create_manual_crm_order(data, actor=None):
             price, vat, total, status, notes, payment_mode,
             owner_name, owner_form_email,
             checkout_form_json, is_draft, current_step,
-            created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 5, datetime('now'));
+            created_by_id, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 5, ?, datetime('now'));
     """, (
         order_num, client_id, company_id, service_name,
         price, vat, total, status, notes, payment_mode,
         owner_name, owner_email,
         checkout_json,
+        (actor or {}).get('id') if (actor or {}).get('role') in ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF') else None,
     ))
 
     for idx, item in enumerate(valid_items):

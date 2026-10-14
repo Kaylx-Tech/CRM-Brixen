@@ -548,7 +548,12 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
             return error_response(start_response, "Access denied", status_code=403)
 
         directors = query_db("SELECT * FROM company_directors WHERE company_id = ? ORDER BY id ASC;", (comp_id,))
-        orders = query_db("SELECT id, order_number, service_name, status, total as amount, created_at FROM orders WHERE company_id = ? ORDER BY created_at DESC;", (comp_id,))
+        # Team members (STAFF) only see the orders they added
+        own_sql, own_params = ("AND created_by_id = ?", (user_id,)) if user_role == 'STAFF' else ("", ())
+        orders = query_db(
+            "SELECT id, order_number, service_name, status, total as amount, created_at FROM orders "
+            f"WHERE company_id = ? AND COALESCE(is_draft, 0) = 0 {own_sql} ORDER BY created_at DESC;",
+            (comp_id, *own_params))
 
         data = public_client_company(row, for_staff=is_staff)
         data['directors'] = [dict(d) for d in (directors or [])]

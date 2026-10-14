@@ -65,6 +65,23 @@ def build_admin_order_list(user, query):
     if not is_staff:
         clauses.append("o.user_id = ?")
         params.append(user_id)
+    # Team members (STAFF) only see the orders they added themselves
+    own_only = user_role == 'STAFF'
+    if own_only:
+        clauses.append("o.created_by_id = ?")
+        params.append(user_id)
+
+    # Admins can filter by the team member who added the order ("website" = not added in the CRM)
+    created_by = _qs_first(query, 'created_by')
+    if created_by and not own_only:
+        if created_by == 'website':
+            clauses.append("o.created_by_id IS NULL")
+        else:
+            try:
+                clauses.append("o.created_by_id = ?")
+                params.append(int(created_by))
+            except ValueError:
+                clauses.pop()
 
     search = _qs_first(query, 'search')
     if search:
@@ -144,6 +161,7 @@ def build_admin_order_list(user, query):
         FROM orders o
         JOIN users u ON o.user_id = u.id
         LEFT JOIN companies c ON o.company_id = c.id
+        LEFT JOIN users cb ON o.created_by_id = cb.id
     """
 
     try:
@@ -177,6 +195,8 @@ def build_admin_order_list(user, query):
                u.full_name as client_name, u.email as client_email, u.email as portal_account_email,
                u.is_b2b, u.client_type,
                c.name as company_name, c.company_number,
+               o.created_by_id, cb.full_name as created_by_name, cb.role as created_by_role,
+               CASE WHEN COALESCE(o.woocommerce_order_id, '') != '' THEN 1 ELSE 0 END as from_website,
                COALESCE(
                    (SELECT GROUP_CONCAT(li.product_name, ', ') FROM order_line_items li WHERE li.order_id = o.id),
                    o.service_name
@@ -212,22 +232,32 @@ def build_admin_order_list(user, query):
         ) t WHERE name IS NOT NULL AND TRIM(name) != '' ORDER BY name COLLATE NOCASE;
     """) or []
 
-    companies = query_db("""
+    # Filter options only come from the orders this user may see
+    scope_sql, scope_params = ("AND o.created_by_id = ?", [user_id]) if own_only else ("", [])
+    companies = query_db(f"""
         SELECT DISTINCT c.id, c.name
         FROM companies c
         WHERE c.name IS NOT NULL AND TRIM(c.name) != ''
           AND (
-            EXISTS (SELECT 1 FROM orders o WHERE o.company_id = c.id)
-            OR EXISTS (SELECT 1 FROM orders o WHERE o.user_id = c.user_id)
+            EXISTS (SELECT 1 FROM orders o WHERE o.company_id = c.id {scope_sql})
+            OR EXISTS (SELECT 1 FROM orders o WHERE o.user_id = c.user_id {scope_sql})
           )
         ORDER BY c.name COLLATE NOCASE;
-    """) or []
+    """, scope_params * 2) or []
 
-    customers = query_db("""
+    customers = query_db(f"""
         SELECT DISTINCT u.id, u.full_name, u.email, u.is_b2b, u.client_type, u.b2b_id
         FROM orders o JOIN users u ON u.id = o.user_id
+        WHERE 1 = 1 {scope_sql}
         ORDER BY u.full_name COLLATE NOCASE;
-    """) or []
+    """, scope_params) or []
+
+    added_by = [] if own_only else (query_db("""
+        SELECT DISTINCT cb.id, cb.full_name, cb.role
+        FROM orders o JOIN users cb ON cb.id = o.created_by_id
+        WHERE COALESCE(o.is_draft, 0) = 0
+        ORDER BY cb.full_name COLLATE NOCASE;
+    """) or [])
 
     stats = {
         'total_orders': int(stats_row.get('total_orders') or 0),
@@ -250,5 +280,6 @@ def build_admin_order_list(user, query):
             'products': [r['name'] for r in products],
             'companies': [{'id': r['id'], 'name': r['name']} for r in companies],
             'customers': [dict(r) for r in customers],
+            'added_by': [dict(r) for r in added_by],
         },
     }
