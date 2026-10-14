@@ -128,7 +128,8 @@ def public_client_company(row, for_staff=True):
         'attention': attention,
         'needs_attention': bool(attention),
         'ch_checked_at': src.get('ch_checked_at'),
-        'raw': src,
+        'b2b_id': src.get('b2b_id'),
+        'client_type': src.get('client_type'),
     }
 
 def pending_registration_orders(user_id=None, for_client=False):
@@ -229,6 +230,11 @@ def schedule_portfolio_ch_sync(user_id=None):
     t = threading.Thread(target=_job, daemon=True)
     t.start()
     return True
+
+COMPANY_STATUSES = (
+    'Active', 'Dissolved', 'Liquidation', 'Receivership', 'Administration', 'Closed', 'Strike off proposed',
+    'Pending', 'Draft', 'Dormant', 'Inactive', 'Overdue',
+)
 
 COMPANY_STAFF_SELECT = (
     "c.id, c.name, c.company_number, c.status, c.inc_date, c.director, c.reg_office, c.package, c.account_status, "
@@ -592,6 +598,15 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
             db_key = alias_map.get(key, key)
             if db_key in updatable_fields:
                 updates[db_key] = val
+
+        # Only real company statuses (a whole API response once saved its "success" as the status)
+        if 'status' in updates:
+            wanted = str(updates['status'] or '').strip().lower()
+            match = next((s for s in COMPANY_STATUSES if s.lower() == wanted), None)
+            if match:
+                updates['status'] = match
+            else:
+                updates.pop('status')
 
         if updates:
             set_clauses = [f"{k} = ?" for k in updates.keys()]
