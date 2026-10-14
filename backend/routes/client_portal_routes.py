@@ -338,14 +338,14 @@ def handle_client_portal_routes(environ, start_response, path, method, user, bod
         """, (tid, uid, user.get('full_name') or user.get('email'), message))
         try:
             notify_staff('New support ticket', f"{number}: {subject} ({user.get('full_name') or user.get('email')})",
-                         'support_ticket', '/admin/dashboard')
+                         'support_ticket', '/admin/tickets')
         except Exception:
             pass
         from services.client_mail import email_team
         email_team(f"New support ticket {number} — Brixen Consultants",
                    f"A client opened a support ticket.\nTicket: {number}\n"
                    f"Client: {user.get('full_name') or user.get('email')}\nSubject: {subject}",
-                   link_path='/admin/dashboard')
+                   link_path='/admin/tickets')
         return success_response(start_response, data={'id': tid, 'ticket_number': number},
                                 message=f"Ticket {number} submitted. We'll reply here.", status_code=201)
 
@@ -365,6 +365,12 @@ def handle_client_portal_routes(environ, start_response, path, method, user, bod
             """, (tid, uid, user.get('full_name') or user.get('email'), text))
             if ticket.get('status') in ('Resolved', 'Closed'):
                 execute_db("UPDATE support_tickets SET status = 'Open' WHERE id = ?;", (tid,))
+            try:
+                notify_staff('Customer replied on a ticket',
+                             f"{ticket['ticket_number']}: {user.get('full_name') or user.get('email')} replied.",
+                             'support_ticket', '/admin/tickets')
+            except Exception:
+                pass
         msgs = query_db("""
             SELECT id, sender_name, sender_role, message, created_at FROM support_messages
             WHERE ticket_id = ? ORDER BY created_at ASC, id ASC;

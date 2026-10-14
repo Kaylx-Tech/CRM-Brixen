@@ -19,6 +19,7 @@ from .accounts_routes import handle_accountancy_routes
 from .settings_routes import handle_settings_routes
 from .client_portal_routes import handle_client_portal_routes
 from .email_log_routes import handle_email_log_routes
+from .ticket_routes import handle_ticket_routes
 
 
 # Accounts file integration
@@ -102,6 +103,11 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
 
     # 14. System Settings & Integrations
     res = handle_settings_routes(environ, start_response, path, method, user, body, query)
+    if res is not None:
+        return res
+
+    # 14a. Support tickets (team side)
+    res = handle_ticket_routes(environ, start_response, path, method, user, body, query)
     if res is not None:
         return res
 

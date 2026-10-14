@@ -71,6 +71,7 @@ const PAGE_ACCESS = {
   payments: { roles: ["SUPER_ADMIN", "ADMIN", "MANAGER"] },
   logs: { roles: ["SUPER_ADMIN", "ADMIN"] },
   "email-log": { roles: ["SUPER_ADMIN", "ADMIN"] },
+  tickets: { roles: "internal", departments: ["Support"] },
   // The Settings page also holds "Profile & Password"; it shows only that tab to non-admins
   settings: { roles: "internal" },
 }

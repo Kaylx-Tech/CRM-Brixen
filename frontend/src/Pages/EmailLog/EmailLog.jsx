@@ -34,6 +34,7 @@ const CATEGORY_LABELS = {
   KYC: 'KYC / PSC',
   COMPLIANCE: 'Compliance',
   SECURITY: 'Password reset',
+  SUPPORT: 'Support reply',
   STAFF: 'Team',
 }
 
