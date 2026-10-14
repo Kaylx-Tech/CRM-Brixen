@@ -58,7 +58,8 @@ def build_admin_order_list(user, query):
     user_id = (user or {}).get('id')
     is_staff = user_role in ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
 
-    clauses = []
+    # Draft wizard rows stay out of the orders board until submitted (as in app.py)
+    clauses = ["COALESCE(o.is_draft, 0) = 0"]
     params = []
 
     if not is_staff:

@@ -75,7 +75,8 @@ def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False):
     }
     checkout_json = json.dumps(checkout_payload)
     form_json = json.dumps(form_values)
-    status = 'Draft' if as_draft else 'Pending'
+    # orders.status CHECK has no 'Draft' (as in app.py): a draft is Pending + is_draft = 1
+    status = 'Pending'
     is_draft = 1 if as_draft else 0
 
     if draft_id:
@@ -146,12 +147,22 @@ def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False):
             idx,
         ))
 
+    # Companies picked or added on the service form are found / created in the CRM and linked to the order
+    linked_companies = []
+    if not as_draft and is_staff and isinstance(body.get('companies'), list) and client_id:
+        from services.order_companies import link_order_companies
+        try:
+            linked_companies = link_order_companies(order_id, client_id, body['companies'][:20])
+        except Exception as exc:
+            print(f"[order companies] order {order_id}: {exc}")
+
     return {
         'id': order_id,
         'order_id': order_id,
         'order_number': order_num,
         'service_name': service_name,
         'status': status,
+        'linked_companies': linked_companies,
         'order': {
             'id': order_id,
             'order_number': order_num,
@@ -309,7 +320,10 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
     # ── POST /api/orders (Create Order / Wizard submit / Manual CRM) ───────
     if path in ('/api/orders', '/api/admin/orders', '/api/client/orders') and method == 'POST':
         payload = body or {}
-        is_manual = bool(
+        # The order wizard sends its answers in form_values (and the customer's email as company_email);
+        # it must take the wizard path, which saves those answers and finalises a saved draft.
+        is_wizard = isinstance(payload.get('form_values'), dict)
+        is_manual = not is_wizard and bool(
             payload.get('client_mode')
             or payload.get('new_client_email')
             or payload.get('company_email')

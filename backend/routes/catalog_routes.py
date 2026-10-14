@@ -35,8 +35,9 @@ DEFAULT_DOCUMENT_REQUIREMENTS = [
 # checkbox = tick box that opens its own sub-form (`fields`) when ticked
 # company = name/number checked against Companies House (registered -> official name, else proposed name)
 # company_name = proposed new name checked for availability at Companies House
-FORM_FIELD_TYPES = ('text', 'file', 'radio', 'checkbox', 'company', 'company_name')
-SUB_FORM_TYPES = ('text', 'file', 'radio', 'company', 'company_name')   # no checkbox inside a sub-form
+# companies = "Add company" list: one or more companies, each checked like `company`, all linked to the order
+FORM_FIELD_TYPES = ('text', 'file', 'radio', 'checkbox', 'company', 'company_name', 'companies')
+SUB_FORM_TYPES = ('text', 'file', 'radio', 'company', 'company_name', 'companies')   # no checkbox inside a sub-form
 MAX_FORM_FIELDS = 30
 MAX_RADIO_OPTIONS = 20
 
@@ -65,7 +66,7 @@ def _clean_field_list(raw, allowed_types, used_ids, path=''):
             'label': label,
             'type': ftype,
             'required': bool(item.get('required')),
-            'placeholder': str(item.get('placeholder') or '').strip()[:160] if ftype in ('text', 'company', 'company_name') else '',
+            'placeholder': str(item.get('placeholder') or '').strip()[:160] if ftype in ('text', 'company', 'company_name', 'companies') else '',
         }
         if ftype == 'radio':
             # option_fields[i] = fields asked when options[i] is chosen (only on top-level questions)

@@ -281,6 +281,16 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
         .filter((f) => f && f.label && String(f.value || '').trim())
         .forEach((f) => fields.push({ label: f.label, value: String(f.value) }))
     }
+    // Companies from the form that were found / created in the CRM and linked to this order
+    const linked = o.order_form_values?.linked_companies
+    if (Array.isArray(linked) && linked.length) {
+      fields.push({
+        label: 'Linked companies',
+        value: linked
+          .map((c) => `${c.name}${c.number ? ` (${c.number})` : ' (not registered)'}${c.created ? ' · added to CRM' : ''}`)
+          .join('\n'),
+      })
+    }
 
     setFormFields(fields)
   }
@@ -674,7 +684,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                   <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">
                                     {field.label}
                                   </span>
-                                  <span className="font-semibold text-foreground text-sm break-words">
+                                  <span className="font-semibold text-foreground text-sm break-words whitespace-pre-line">
                                     {field.value || '—'}
                                   </span>
                                 </div>

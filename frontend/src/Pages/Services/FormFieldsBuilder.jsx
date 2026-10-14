@@ -17,6 +17,7 @@ import {
   IconCornerDownRight,
   IconBuilding,
   IconSignature,
+  IconBuildingPlus,
 } from "@tabler/icons-react"
 
 export const FIELD_TYPES = [
@@ -26,6 +27,7 @@ export const FIELD_TYPES = [
   { value: "checkbox", label: "Checkbox + sub-form", icon: IconSquareCheck },
   { value: "company", label: "Company (Companies House check)", icon: IconBuilding },
   { value: "company_name", label: "Company name availability", icon: IconSignature },
+  { value: "companies", label: "Add company (one or more)", icon: IconBuildingPlus },
 ]
 
 const MAX_FIELDS = 30
@@ -159,6 +161,7 @@ export default function FormFieldsBuilder({ value = [], onChange, disabled, nest
                     checkbox: "e.g. Add a second director",
                     company: "e.g. Company name or number",
                     company_name: "e.g. Proposed company name",
+                    companies: "e.g. Companies for this package",
                   }[field.type] || "e.g. Director date of birth"}
                   maxLength={120}
                   disabled={disabled}
@@ -195,8 +198,18 @@ export default function FormFieldsBuilder({ value = [], onChange, disabled, nest
 
               {field.type === "company" ? (
                 <p className="mt-2 rounded-lg border bg-background px-3 py-2 text-xs text-muted-foreground">
-                  Checked live at Companies House while the order is filled in. If the company is registered, its official
-                  name and number are used; if not, the typed name is kept as the proposed company name.
+                  Checked live at Companies House while the order is filled in. When a registered company is selected,
+                  its official name, number, incorporation date, registered office and directors (with month/year of
+                  birth) are filled in automatically, and the company is linked to the order. If not registered, the
+                  typed name is kept as the proposed company name.
+                </p>
+              ) : null}
+
+              {field.type === "companies" ? (
+                <p className="mt-2 rounded-lg border bg-background px-3 py-2 text-xs text-muted-foreground">
+                  An "Add company" button on the order: add as many companies as needed. Each one is checked at
+                  Companies House like the Company field, and all of them are added to the customer's companies and
+                  linked to the order.
                 </p>
               ) : null}
 

@@ -270,6 +270,20 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
             message=(f"Imported {summary['imported']}, updated {summary['updated']}, "
                      f"skipped {summary['skipped']}, failed {summary['failed']}."))
 
+    # ── GET /api/companies/ch-details?number= (order form: details of the selected company) ──
+    # Official profile + active directors (month/year of birth, nationality, appointed) from Companies House.
+    if path in ('/api/companies/ch-details', '/api/admin/companies/ch-details') and method == 'GET':
+        if not is_staff:
+            return error_response(start_response, "Insufficient permissions", status_code=403)
+        if not get_ch_api_key():
+            return error_response(start_response, "Companies House API key is not set (Settings > Integrations).",
+                                  status_code=503)
+        from services.order_companies import company_ch_details
+        details, error = company_ch_details((query.get('number') or [''])[0].strip()[:12])
+        if error:
+            return error_response(start_response, error, status_code=404)
+        return success_response(start_response, data=details)
+
     # ── GET /api/companies/check-name?q= (order form "Company" field) ──────
     # Is this name / number a registered UK company? Registered -> its official name; otherwise the
     # typed text is treated as a proposed (new) company name.

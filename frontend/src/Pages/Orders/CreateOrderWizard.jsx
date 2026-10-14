@@ -131,6 +131,32 @@ function CompanyCheckField({ id, value, onChange, placeholder }) {
   const latestInput = useRef(input)
   latestInput.current = input
 
+  // Once a registered company is picked, its details (incorporation date, office, directors) are loaded
+  useEffect(() => {
+    if (current.state !== "registered" || !current.number || current.detailsState) return
+    const number = current.number
+    onChange((prev) => ({ ...prev, detailsState: "loading" }))
+    apiRequest(`/companies/ch-details?number=${encodeURIComponent(number)}`, { silent: true, label: "Companies House" }).then((res) => {
+      onChange((prev) => {
+        if (!prev || prev.state !== "registered" || prev.number !== number) return prev
+        if (!res.ok) return { ...prev, detailsState: "error", detailsError: res.reason || "Details could not be loaded" }
+        const d = res.data?.data || {}
+        return {
+          ...prev,
+          detailsState: "done",
+          name: d.name || prev.name,
+          companyStatus: d.status || prev.companyStatus,
+          address: d.address || prev.address,
+          incorporated: d.incorporated || "",
+          sicCodes: d.sic_codes || "",
+          directors: d.directors || [],
+          inCrm: d.in_crm || prev.inCrm || null,
+        }
+      })
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current.state, current.number, current.detailsState])
+
   useEffect(() => {
     const q = input.trim()
     if (q.length < 2 || current.state !== "typing") return
@@ -152,7 +178,18 @@ function CompanyCheckField({ id, value, onChange, placeholder }) {
   }, [input, current.state])
 
   const pick = (r) =>
-    onChange({ ...current, state: "registered", name: r.name, number: r.number, companyStatus: r.status, address: r.address, inCrm: r.inCrm || null })
+    onChange({
+      ...current,
+      state: "registered",
+      name: r.name,
+      number: r.number,
+      companyStatus: r.status,
+      address: r.address,
+      inCrm: r.inCrm || null,
+      incorporated: r.incorporated || "",
+      directors: [],
+      detailsState: "",
+    })
   const pickNotRegistered = () => onChange({ ...current, state: "not_registered" })
   const change = () => onChange({ ...current, state: "results" })
   const results = current.results || []
@@ -220,8 +257,38 @@ function CompanyCheckField({ id, value, onChange, placeholder }) {
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-emerald-700 dark:text-emerald-400">Registered at Companies House</p>
             <p className="truncate">{current.name} · {current.number}{current.companyStatus ? ` · ${current.companyStatus}` : ""}</p>
-            {current.address ? <p className="truncate text-muted-foreground">{current.address}</p> : null}
-            {current.inCrm ? <p className="text-muted-foreground">Already in the CRM as "{current.inCrm.name}"</p> : null}
+            <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
+              <dt className="text-muted-foreground">Incorporated</dt>
+              <dd>{current.incorporated ? formatUkDate(current.incorporated) : "—"}</dd>
+              <dt className="text-muted-foreground">Registered office</dt>
+              <dd className="min-w-0 break-words">{current.address || "—"}</dd>
+              <dt className="text-muted-foreground">Directors</dt>
+              <dd>
+                {current.detailsState === "loading" ? (
+                  <span className="inline-flex items-center gap-1 text-muted-foreground">
+                    <IconLoader2 className="h-3 w-3 animate-spin" /> Loading from Companies House…
+                  </span>
+                ) : current.detailsState === "error" ? (
+                  <span className="text-destructive">{current.detailsError}</span>
+                ) : (current.directors || []).length ? (
+                  <ul className="space-y-0.5">
+                    {current.directors.map((d) => (
+                      <li key={`${d.name}-${d.appointed}`}>
+                        <span className="font-medium">{d.name}</span>
+                        {d.dob ? ` · born ${d.dob}` : ""}
+                        {d.nationality ? ` · ${d.nationality}` : ""}
+                        {d.appointed ? ` · appointed ${formatUkDate(d.appointed)}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  "—"
+                )}
+              </dd>
+            </dl>
+            {current.inCrm ? <p className="mt-1 text-muted-foreground">Already in the CRM as "{current.inCrm.name}". The order will be linked to it.</p> : (
+              <p className="mt-1 text-muted-foreground">Will be added to the customer's companies and linked to the order.</p>
+            )}
           </div>
           <Button type="button" variant="ghost" size="sm" onClick={change}>Change</Button>
         </div>
@@ -240,6 +307,81 @@ function CompanyCheckField({ id, value, onChange, placeholder }) {
       {current.state === "error" ? (
         <p className="text-[12px] text-destructive">{current.error}. The typed name will be kept as entered.</p>
       ) : null}
+    </div>
+  )
+}
+
+function formatUkDate(value) {
+  const m = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})/)
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : String(value || "")
+}
+
+/** One line describing a Company field's answer (empty while nothing is picked yet). */
+function companyAnswer(v) {
+  if (!v || !String(v.input || "").trim()) return ""
+  if (v.state === "registered") {
+    const extra = [
+      v.companyStatus,
+      v.incorporated ? `incorporated ${formatUkDate(v.incorporated)}` : "",
+      (v.directors || []).length ? `directors: ${v.directors.map((d) => `${d.name}${d.dob ? ` (born ${d.dob})` : ""}`).join(", ")}` : "",
+    ].filter(Boolean)
+    return `${v.name} (${v.number}) · Registered${extra.length ? `, ${extra.join(", ")}` : ""}`
+  }
+  if (v.state === "not_registered") return `${v.input.trim()} · Not registered (proposed name)`
+  if (v.state === "error") return `${v.input.trim()} · Not checked at Companies House`
+  return "" // results shown but nothing picked yet
+}
+
+/** The company sent with the order for linking / creating in the CRM (only once a choice is made). */
+function companyForOrder(v) {
+  if (!v || !["registered", "not_registered"].includes(v.state)) return null
+  return {
+    registered: v.state === "registered",
+    name: v.state === "registered" ? v.name : v.input.trim(),
+    number: v.state === "registered" ? v.number : "",
+    status: v.companyStatus || "",
+    incorporated: v.incorporated || "",
+    address: v.state === "registered" ? v.address || "" : "",
+    directors: v.state === "registered" ? v.directors || [] : [],
+  }
+}
+
+/**
+ * "Add company" field: a list of companies, each checked at Companies House like the Company field.
+ * Value: array of Company-field values.
+ */
+function CompaniesListField({ id, value, onChange, placeholder }) {
+  const list = Array.isArray(value) ? value : []
+  const setItem = (i, upd) =>
+    onChange((prev) => (Array.isArray(prev) ? prev : []).map((x, j) => (j === i ? (typeof upd === "function" ? upd(x) : upd) : x)))
+  return (
+    <div className="space-y-3">
+      {list.map((item, i) => (
+        <div key={i} className="space-y-2 rounded-lg border bg-background p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-muted-foreground">Company {i + 1}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={() => onChange((prev) => (Array.isArray(prev) ? prev : []).filter((_, j) => j !== i))}
+            >
+              Remove
+            </Button>
+          </div>
+          <CompanyCheckField id={i === 0 ? id : `${id}-${i}`} value={item} onChange={(upd) => setItem(i, upd)} placeholder={placeholder} />
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => onChange((prev) => [...(Array.isArray(prev) ? prev : []), { input: "", state: "idle" }])}
+        disabled={list.length >= 20}
+      >
+        <IconBuilding /> Add company
+      </Button>
     </div>
   )
 }
@@ -368,11 +510,13 @@ function ServiceFieldInput({ field, value, onChange, hint }) {
   const id = `svc-field-${field.key.replace(/[^a-z0-9]+/gi, "-")}`
   return (
     <div className="space-y-2">
-      <Label htmlFor={["text", "company", "company_name"].includes(field.type) ? id : undefined} className="text-sm font-semibold">
+      <Label htmlFor={["text", "company", "company_name", "companies"].includes(field.type) ? id : undefined} className="text-sm font-semibold">
         {field.label}
         {field.required ? <span className="text-destructive ml-1">*</span> : null}
       </Label>
-      {field.type === "company_name" ? (
+      {field.type === "companies" ? (
+        <CompaniesListField id={id} value={value} onChange={onChange} placeholder={field.placeholder} />
+      ) : field.type === "company_name" ? (
         <CompanyNameAvailabilityField id={id} value={value} onChange={onChange} placeholder={field.placeholder} />
       ) : field.type === "company" ? (
         <CompanyCheckField id={id} value={value} onChange={onChange} placeholder={field.placeholder} />
@@ -669,12 +813,9 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
   const fieldAnswer = (f) => {
     const v = fieldValues[f.key]
     if (f.type === "checkbox") return v === true ? "Yes" : "No"
-    if (f.type === "company") {
-      if (!v || !String(v.input || "").trim()) return ""
-      if (v.state === "registered") return `${v.name} (${v.number}) · Registered${v.companyStatus ? `, ${v.companyStatus}` : ""}`
-      if (v.state === "not_registered") return `${v.input.trim()} · Not registered (proposed name)`
-      if (v.state === "error") return `${v.input.trim()} · Not checked at Companies House`
-      return "" // results shown but nothing picked yet
+    if (f.type === "company") return companyAnswer(v)
+    if (f.type === "companies") {
+      return (Array.isArray(v) ? v : []).map(companyAnswer).filter(Boolean).map((a, i) => `${i + 1}. ${a}`).join("\n")
     }
     if (f.type === "company_name") {
       if (!v || !String(v.input || "").trim()) return ""
@@ -688,8 +829,12 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
   // The first company field decides the order's company name (official name if registered, else proposed)
   // (falls back to the first "Company name availability" field when there is no company field)
   useEffect(() => {
-    const field = activeFields.find((f) => f.type === "company") || activeFields.find((f) => f.type === "company_name")
-    const v = field ? fieldValues[field.key] : null
+    const field =
+      activeFields.find((f) => f.type === "company") ||
+      activeFields.find((f) => f.type === "companies" && (fieldValues[f.key] || []).length) ||
+      activeFields.find((f) => f.type === "company_name")
+    const raw = field ? fieldValues[field.key] : null
+    const v = field?.type === "companies" ? raw[0] : raw
     if (!v || !String(v.input || "").trim()) return
     const name = v.state === "registered" ? v.name : v.input.trim()
     setFormValues((prev) => (prev.company_name === name ? prev : { ...prev, company_name: name }))
@@ -713,20 +858,21 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
         service_fields: textFields.map((f) => {
           const item = { label: fieldTitle(f), type: f.type, value: fieldAnswer(f), services: f.services }
           const v = fieldValues[f.key]
-          if (f.type === "company" && v && ["registered", "not_registered"].includes(v.state)) {
-            item.company = {
-              registered: v.state === "registered",
-              name: v.state === "registered" ? v.name : v.input.trim(),
-              number: v.state === "registered" ? v.number : "",
-              status: v.companyStatus || "",
-            }
-          }
+          if (f.type === "company" && companyForOrder(v)) item.company = companyForOrder(v)
+          if (f.type === "companies") item.companies = (Array.isArray(v) ? v : []).map(companyForOrder).filter(Boolean)
           if (f.type === "company_name" && v && String(v.input || "").trim()) {
             item.name_check = { name: v.input.trim(), available: v.state === "available", checked: ["available", "taken"].includes(v.state) }
           }
           return item
         }),
       },
+      // Every company picked or added on the form: found or created in the CRM and linked to the order
+      companies: textFields.flatMap((f) => {
+        const v = fieldValues[f.key]
+        if (f.type === "company") return [companyForOrder(v)].filter(Boolean)
+        if (f.type === "companies") return (Array.isArray(v) ? v : []).map(companyForOrder).filter(Boolean)
+        return []
+      }),
       uploaded_docs: {
         ...docMarks,
         ...Object.fromEntries(fileFields.map((f) => [fieldTitle(f), !!fieldFiles[f.key]])),
@@ -744,18 +890,28 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
     if (targetStep > 2 && selectedProducts.length < 1) return "Please select at least one product."
     if (targetStep > 3) {
       const lookups = textFields.filter((f) => f.type === "company" || f.type === "company_name")
-      if (lookups.some((f) => ["typing", "checking"].includes(fieldValues[f.key]?.state))) {
+      // Each "Add company" entry is checked like a Company field
+      const listEntries = textFields
+        .filter((f) => f.type === "companies")
+        .flatMap((f) => (Array.isArray(fieldValues[f.key]) ? fieldValues[f.key] : []).map((v, i) => ({ f, v, i })))
+      const busy = (v) => ["typing", "checking"].includes(v?.state) || v?.detailsState === "loading"
+      if (lookups.some((f) => busy(fieldValues[f.key])) || listEntries.some((e) => busy(e.v))) {
         return "Wait a moment, Companies House is still being checked."
       }
       // A company search that returned results needs a choice: one of the companies, or "not registered"
       const unpicked = lookups.filter((f) => f.type === "company" && fieldValues[f.key]?.state === "results")
       if (unpicked.length) return `Select the company for "${fieldTitle(unpicked[0])}" from the list.`
+      const unpickedEntry = listEntries.find((e) => e.v?.state === "results")
+      if (unpickedEntry) return `Select company ${unpickedEntry.i + 1} for "${fieldTitle(unpickedEntry.f)}" from the list.`
+      const emptyEntry = listEntries.find((e) => !String(e.v?.input || "").trim())
+      if (emptyEntry) return `Company ${emptyEntry.i + 1} in "${fieldTitle(emptyEntry.f)}" is empty. Type a name or number, or remove it.`
       const taken = lookups.filter((f) => f.type === "company_name" && fieldValues[f.key]?.state === "taken")
       if (taken.length) return `"${fieldValues[taken[0].key].input.trim()}" is already registered. Choose a different company name.`
       const missingText = textFields.filter((f) => {
         if (!f.required) return false
         if (f.type === "checkbox") return fieldValues[f.key] !== true
         if (f.type === "company" || f.type === "company_name") return !String(fieldValues[f.key]?.input || "").trim()
+        if (f.type === "companies") return !(Array.isArray(fieldValues[f.key]) && fieldValues[f.key].length)
         return !String(fieldValues[f.key] || "").trim()
       })
       if (missingText.length) return `Complete: ${missingText.map(fieldTitle).join(", ")}.`
@@ -926,7 +1082,9 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
     }
   }
 
-  const setFieldValue = (key, val) => setFieldValues((v) => ({ ...v, [key]: val }))
+  // `val` may be an updater (prev => next) so async lookups apply to the latest answer
+  const setFieldValue = (key, val) =>
+    setFieldValues((v) => ({ ...v, [key]: typeof val === "function" ? val(v[key]) : val }))
   const setFieldFile = (key, file) =>
     setFieldFiles((v) => {
       const next = { ...v }
@@ -1340,7 +1498,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
                           <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
                             {label}
                           </div>
-                          <div className="font-medium mt-0.5 break-words">{value || "—"}</div>
+                          <div className="font-medium mt-0.5 break-words whitespace-pre-line">{value || "—"}</div>
                         </div>
                       ))}
                     </div>

@@ -30,7 +30,6 @@ import { toastUndoableDelete } from '@/lib/toastActions'
 import { Card, CardContent } from '@/components/ui/card'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
 import { isAdminRole } from '@/lib/permissions'
-import { Alert, AlertTitle, AlertDescription, AlertAction } from '@/components/ui/alert'
 import { needsAttention } from './attention'
 import { apiRequest, getApiBase, toastApiEmpty } from '@/lib/api'
 
@@ -281,25 +280,6 @@ const Companies = () => {
           />
         </div>
       </div>
-
-      {/* Companies House attention banner */}
-      {!isLoading && attentionCompanies.length > 0 && activeTab !== 'attention' && (
-        <Alert variant="destructive" className="border-destructive/40">
-          <IconAlertTriangle />
-          <AlertTitle>
-            {attentionCompanies.length} {attentionCompanies.length === 1 ? 'company needs' : 'companies need'} attention at Companies House
-          </AlertTitle>
-          <AlertDescription>
-            {attentionCompanies.slice(0, 5).map((c) => c.name).join(', ')}
-            {attentionCompanies.length > 5 ? ` +${attentionCompanies.length - 5} more` : ''}.
-          </AlertDescription>
-          <AlertAction>
-            <Button size="sm" variant="outline" onClick={() => setActiveTab('attention')}>
-              View
-            </Button>
-          </AlertAction>
-        </Alert>
-      )}
 
       {activeTab === 'attention' && !isLoading && (
         <p className="text-sm text-muted-foreground -mt-2">
