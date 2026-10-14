@@ -59,6 +59,7 @@ import DeleteConfirmation from '@/components/DeleteConfirmation'
 import PromptDialog from '@/components/PromptDialog'
 import DocumentPreview from '@/components/DocumentPreview'
 import { downloadDocument } from '@/lib/documents'
+import { openInvoice, downloadInvoice } from '@/lib/invoices'
 
 const PAYMENT_MODES = [
   { value: 'PKR(Bank Transfer)', label: 'PKR (Bank Transfer)' },
@@ -1078,6 +1079,42 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
 
                     {/* ── TAB 3: PRODUCTS & PRICING ─────────────────────────────── */}
                     <TabsContent value="products" className="m-0 space-y-6 outline-none">
+                      {order?.invoice ? (
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/20 p-4">
+                          <div className="flex items-center gap-3">
+                            <IconFileText className="w-5 h-5 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-semibold">
+                                Invoice {order.invoice.invoice_number}
+                                <Badge className={`ml-2 text-[11px] ${
+                                  order.invoice.display_status === 'Paid' ? 'badge-green'
+                                    : order.invoice.display_status === 'Cancelled' ? 'bg-muted text-muted-foreground'
+                                    : order.invoice.display_status === 'Overdue' ? 'badge-red' : 'badge-amber'
+                                }`}>
+                                  {order.invoice.display_status || order.invoice.status}
+                                </Badge>
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Total £{Number(order.invoice.total || 0).toFixed(2)}
+                                {' · '}Paid £{Number(order.invoice.amount_paid || 0).toFixed(2)}
+                                {' · '}Due £{Number(order.invoice.amount_due || 0).toFixed(2)}
+                                {order.invoice.payment_timing ? ` · ${order.invoice.payment_timing}` : ''}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button type="button" size="sm" variant="outline" className="h-8 gap-1.5"
+                              onClick={() => openInvoice(order.invoice.id)}>
+                              <IconEye className="w-3.5 h-3.5" /> View invoice
+                            </Button>
+                            <Button type="button" size="sm" variant="ghost" className="h-8 gap-1.5"
+                              onClick={() => downloadInvoice(order.invoice.id, order.invoice.invoice_number)}>
+                              <IconDownload className="w-3.5 h-3.5" /> PDF
+                            </Button>
+                          </div>
+                        </div>
+                      ) : null}
+
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="text-sm font-bold text-foreground">Products on this Order</h4>

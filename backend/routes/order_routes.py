@@ -201,6 +201,8 @@ def _recalc_order_from_line_items(order_id):
     execute_db(
         "UPDATE orders SET service_name = ?, price = ?, total = ?, updated_at = datetime('now') WHERE id = ?;",
         (names, total, total, order_id))
+    from services.invoice_service import sync_invoice_with_order
+    sync_invoice_with_order(order_id)  # an unpaid invoice follows the new total
     return total
 
 
@@ -319,6 +321,15 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         data['timeline'] = [dict(e) for e in events]
         data['documents'] = [dict(d) for d in docs]
         data['line_items'] = [dict(li) for li in line_items]
+        # The order's invoice (team members in STAFF role have no access to invoices)
+        if not own_orders_only:
+            from services.invoice_service import enrich_invoice_row
+            inv = query_db("""
+                SELECT id, invoice_number, status, total, amount_paid, deposit_amount, payment_timing,
+                       payment_method, due_date, paid_at, created_at
+                FROM invoices WHERE order_id = ? ORDER BY id DESC LIMIT 1;
+            """, (order_id,), one=True)
+            data['invoice'] = enrich_invoice_row(dict(inv)) if inv else None
         if own_orders_only:
             data = strip_order_finance(data)
         if not is_staff:
@@ -372,6 +383,12 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
                                                own_orders_only=own_orders_only)
         if err:
             return error_response(start_response, err, status_code=400)
+        # Every placed order gets its invoice straight away (app.py ensure_invoice_for_order)
+        from services.invoice_service import ensure_invoice_for_order
+        invoice_id = ensure_invoice_for_order(result.get('order_id') or result.get('id'))
+        if invoice_id:
+            inv = query_db("SELECT id, invoice_number, status FROM invoices WHERE id = ?;", (invoice_id,), one=True)
+            result['invoice'] = dict(inv) if inv else None
         if not is_manual:  # manual CRM orders notify from inside create_manual_crm_order
             notify_staff(
                 'New order',
@@ -538,6 +555,9 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         if 'status' in body and body.get('status') != old_status:
             from services.client_mail import notify_order_status_changed
             notify_order_status_changed(order_id, old_status, triggered_by=user_id)
+        if any(k in body for k in ('price', 'total', 'status')):
+            from services.invoice_service import sync_invoice_with_order
+            sync_invoice_with_order(order_id)
 
         return success_response(start_response, message="Order updated successfully.")
 
@@ -558,6 +578,8 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         if new_status != old_status:
             from services.client_mail import notify_order_status_changed
             notify_order_status_changed(order_id, old_status, triggered_by=user_id)
+            from services.invoice_service import sync_invoice_with_order
+            sync_invoice_with_order(order_id)
         if str(new_status).strip().lower() == 'completed':
             done = query_db("SELECT order_number, service_name FROM orders WHERE id = ?;", (order_id,), one=True) or {}
             notify_staff(

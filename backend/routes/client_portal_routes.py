@@ -216,6 +216,16 @@ def handle_client_portal_routes(environ, start_response, path, method, user, bod
         key = 'payments' if path.endswith('payments') else 'invoices'
         return success_response(start_response, data={key: invoices, 'invoices': invoices})
 
+    # ── Invoice PDF (own invoices only) ──────────────────────────────────
+    m = re.match(r'^/api/client/invoices/(\d+)/document$', path)
+    if m and method == 'GET':
+        inv_id = int(m.group(1))
+        if not query_db("SELECT id FROM invoices WHERE id = ? AND user_id = ?;", (inv_id, uid), one=True):
+            return error_response(start_response, "Invoice not found", status_code=404)
+        from services.invoice_document import pdf_response
+        download = (query.get('download') or [''])[0] in ('1', 'true')
+        return pdf_response(start_response, inv_id, inline=not download)
+
     # ── Documents ────────────────────────────────────────────────────────
     if path == '/api/client/documents' and method == 'GET':
         rows = query_db(_client_documents_sql(), (uid,)) or []

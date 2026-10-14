@@ -19,9 +19,12 @@ import {
   IconLoader2,
   IconRefresh,
   IconTrash,
+  IconFileText,
+  IconDownload,
 } from "@tabler/icons-react"
 import DeleteConfirmation from "@/components/DeleteConfirmation"
 import { isAdminRole } from "@/lib/permissions"
+import { openInvoice, downloadInvoice } from "@/lib/invoices"
 import { createColumnHelper } from "@tanstack/react-table"
 import { DataTable } from "../../Layout/DataTable"
 import { SectionCards } from "../../Layout/StatsCard"
@@ -607,6 +610,25 @@ export default function Payments() {
         const paid = inv.money.status === 'Paid'
         return (
           <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-sm gap-1"
+              onClick={() => openInvoice(inv.id)}
+              title="Open the invoice PDF"
+            >
+              <IconFileText className="w-3.5 h-3.5" />
+              View
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => downloadInvoice(inv.id, inv.invoice_number)}
+              aria-label="Download invoice PDF"
+              title="Download PDF"
+            >
+              <IconDownload className="w-3.5 h-3.5" />
+            </Button>
             {inv.status !== 'Cancelled' && (
               <Button
                 variant="outline"
@@ -972,6 +994,15 @@ export default function Payments() {
           <DialogFooter className="gap-2 flex-wrap">
             <Button variant="outline" onClick={() => setEditInvoice(null)} disabled={isSavingInvoice}>
               Cancel
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => editInvoice && openInvoice(editInvoice.id)}
+              title="Shows the saved invoice; save first to see your changes"
+            >
+              <IconFileText className="w-4 h-4" />
+              View PDF
             </Button>
             <Button
               variant="outline"

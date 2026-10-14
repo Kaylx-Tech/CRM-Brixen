@@ -1,9 +1,9 @@
 """Invoices & Billing Routes (/api/invoices) — aligned with app.py admin invoices."""
 import re
-import secrets
 from db import query_db, execute_db
 from utils.response import json_response, success_response, error_response
-from services.invoice_service import enrich_invoice_row, load_invoice_for_staff, update_admin_invoice
+from services.invoice_service import (enrich_invoice_row, load_invoice_for_staff, update_admin_invoice,
+                                      backfill_invoices_from_orders, next_invoice_number)
 from services.invoice_mail import send_invoice_email
 from services.notification_service import notify_staff
 
@@ -26,6 +26,8 @@ def handle_invoice_routes(environ, start_response, path, method, user, body, que
     # Normalize admin alias → same handlers
     # ── GET /api/invoices | /api/admin/invoices (List) ─────────────────────
     if path in ('/api/invoices', '/api/admin/invoices') and method == 'GET':
+        if is_staff:
+            backfill_invoices_from_orders()  # orders placed without an invoice get one (app.py parity)
         search = (query.get('search') or [''])[0].strip()
         status_filter = (query.get('status') or [''])[0].strip()
         limit = min(int((query.get('limit') or ['200'])[0]), 500)
@@ -113,6 +115,19 @@ def handle_invoice_routes(environ, start_response, path, method, user, body, que
         return success_response(start_response, data={"id": inv_id},
                                 message=f"Invoice {inv.get('invoice_number')} deleted")
 
+    # ── GET /api/invoices/<id>/document (PDF: ?download=1 to save instead of view) ──
+    match_doc = re.match(r'^/api/(?:admin/)?invoices/(\d+)/document$', path)
+    if match_doc and method == 'GET':
+        inv_id = int(match_doc.group(1))
+        owner = query_db("SELECT user_id FROM invoices WHERE id = ?;", (inv_id,), one=True)
+        if not owner:
+            return error_response(start_response, "Invoice not found", status_code=404)
+        if not is_staff and owner['user_id'] != user_id:
+            return error_response(start_response, "Access denied", status_code=403)
+        from services.invoice_document import pdf_response
+        download = (query.get('download') or [''])[0] in ('1', 'true')
+        return pdf_response(start_response, inv_id, inline=not download)
+
     # ── GET /api/invoices/<id> ─────────────────────────────────────────────
     match_detail = re.match(r'^/api/(?:admin/)?invoices/(\d+)$', path)
     if match_detail and method == 'GET':
@@ -143,7 +158,7 @@ def handle_invoice_routes(environ, start_response, path, method, user, body, que
         if not due_date:
             return error_response(start_response, "Due date is required", status_code=400)
 
-        inv_num = f"INV-{secrets.randbelow(900000) + 100000}"
+        inv_num = next_invoice_number()
         inv_id = execute_db("""
             INSERT INTO invoices (
                 invoice_number, user_id, order_id, amount, tax, total,

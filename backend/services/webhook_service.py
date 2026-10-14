@@ -211,6 +211,17 @@ def process_woocommerce_order(payload):
         except Exception as e:
             print(f"[Webhook] line items sync error: {e}")
 
+    # 5. Invoice (app.py): a website order paid at checkout (WooCommerce processing / completed, or a payment
+    #    date) gets a Paid invoice; otherwise a Pending one
+    try:
+        from services.invoice_service import ensure_invoice_for_order, sync_invoice_with_order
+        wc_status = str(payload.get('status') or '').strip().lower()
+        paid = wc_status in ('processing', 'completed') or bool(payload.get('date_paid') or payload.get('date_paid_gmt'))
+        ensure_invoice_for_order(order_id, paid=paid)
+        sync_invoice_with_order(order_id)
+    except Exception as e:
+        print(f"[Webhook] invoice sync error: {e}")
+
     return {
         "success": True,
         "order_id": order_id,

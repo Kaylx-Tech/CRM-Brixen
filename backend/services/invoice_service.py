@@ -243,6 +243,91 @@ def update_admin_invoice(invoice_id, data, *, actor=None):
     return updated, None, mail
 
 
+# ── Invoices follow their orders (app.py ensure_invoice_for_order / backfill_invoices_from_orders) ──
+
+def invoice_prefix_value():
+    row = query_db("SELECT value FROM settings WHERE key = 'invoice_prefix';", one=True)
+    return str((row or {}).get('value') or 'INV-').strip() or 'INV-'
+
+
+def next_invoice_number():
+    """Next number in the Settings prefix series: INV-0033 -> INV-0034."""
+    import re
+    prefix = invoice_prefix_value()
+    highest = 0
+    for row in query_db("SELECT invoice_number FROM invoices;") or []:
+        number = str(row.get('invoice_number') or '').strip()
+        tail = number[len(prefix):] if number.startswith(prefix) else ''
+        match = re.search(r'(\d+)$', number)
+        digits = tail if tail.isdigit() else (match.group(1) if match else '')
+        if digits.isdigit():
+            highest = max(highest, int(digits))
+    return f"{prefix}{highest + 1:04d}"
+
+
+def ensure_invoice_for_order(order_id, paid=False):
+    """Every placed order has an invoice. Returns the invoice id (None for drafts / missing orders)."""
+    try:
+        order_id = int(order_id)
+    except (TypeError, ValueError):
+        return None
+    order = query_db("SELECT * FROM orders WHERE id = ?;", (order_id,), one=True)
+    if not order or int(order.get('is_draft') or 0):
+        return None
+    existing = query_db("SELECT id, status, total FROM invoices WHERE order_id = ? ORDER BY id DESC LIMIT 1;",
+                        (order_id,), one=True)
+    if existing:
+        if paid and existing.get('status') != 'Paid':
+            update_admin_invoice(existing['id'], {'status': 'Paid'})
+        return existing['id']
+    status = 'Paid' if paid else ('Cancelled' if order.get('status') in ('Cancelled', 'Refunded') else 'Pending')
+    method = str(order.get('payment_mode') or '').strip() or None
+    timing = 'Advance' if (paid or method == 'Website Charge') else 'After work'
+    total = float(order.get('total') or 0)
+    for _ in range(8):
+        try:
+            return execute_db("""
+                INSERT INTO invoices (invoice_number, order_id, user_id, amount, tax, total, status, due_date, paid_at,
+                                      payment_method, payment_timing, deposit_amount, amount_paid, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, date('now', '+30 days'),
+                        CASE WHEN ? = 'Paid' THEN datetime('now') END, ?, ?, 0, ?, datetime('now'));
+            """, (next_invoice_number(), order_id, order['user_id'], float(order.get('price') or total),
+                  float(order.get('vat') or 0), total, status, status, method, timing,
+                  total if status == 'Paid' else 0))
+        except Exception as exc:
+            if 'unique' not in str(exc).lower():
+                raise
+    return None
+
+
+def sync_invoice_with_order(order_id):
+    """Keep the invoice in step with its order: create it if missing, follow the order total while nothing has
+    been paid, and cancel it when the order is cancelled."""
+    invoice_id = ensure_invoice_for_order(order_id)
+    if not invoice_id:
+        return None
+    order = query_db("SELECT status, price, vat, total FROM orders WHERE id = ?;", (order_id,), one=True) or {}
+    invoice = query_db("SELECT status, total, amount_paid FROM invoices WHERE id = ?;", (invoice_id,), one=True) or {}
+    if order.get('status') in ('Cancelled', 'Refunded') and invoice.get('status') not in ('Paid', 'Cancelled'):
+        execute_db("UPDATE invoices SET status = 'Cancelled' WHERE id = ?;", (invoice_id,))
+    elif (invoice.get('status') in ('Pending', 'Overdue') and float(invoice.get('amount_paid') or 0) <= 0.004
+          and abs(float(invoice.get('total') or 0) - float(order.get('total') or 0)) > 0.004):
+        execute_db("UPDATE invoices SET amount = ?, tax = ?, total = ? WHERE id = ?;",
+                   (float(order.get('price') or 0), float(order.get('vat') or 0), float(order.get('total') or 0),
+                    invoice_id))
+    return invoice_id
+
+
+def backfill_invoices_from_orders():
+    """Invoices for placed orders that do not have one yet (run when the invoice list opens)."""
+    rows = query_db("""
+        SELECT o.id FROM orders o
+        WHERE COALESCE(o.is_draft, 0) = 0 AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.order_id = o.id)
+        ORDER BY o.id;
+    """) or []
+    return sum(1 for r in rows if ensure_invoice_for_order(r['id']))
+
+
 def estimate_order_catalog_cost(order_row):
     """Best-effort catalog cost from services by service_name (first product)."""
     if not order_row:

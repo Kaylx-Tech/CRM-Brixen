@@ -2,6 +2,9 @@ import React, { useMemo, useState } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SectionCards } from "@/Layout/StatsCard"
+import { Button } from "@/components/ui/button"
+import { IconFileText, IconDownload } from "@tabler/icons-react"
+import { openInvoice, downloadInvoice } from "@/lib/invoices"
 import { usePortalData, PageHeader, PageState, StatusBadge, money, formatDate } from "./portalShared"
 
 export default function PortalInvoices() {
@@ -49,6 +52,7 @@ export default function PortalInvoices() {
                 <TableHead className="text-right">Paid</TableHead>
                 <TableHead className="text-right">Due</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="w-0" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -66,6 +70,17 @@ export default function PortalInvoices() {
                     {money(i.amount_due)}
                   </TableCell>
                   <TableCell><StatusBadge status={i.display_status || i.status} /></TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button variant="outline" size="sm" className="h-7 gap-1" onClick={() => openInvoice(i.id, { client: true })}>
+                        <IconFileText className="size-3.5" /> View
+                      </Button>
+                      <Button variant="ghost" size="icon-sm" aria-label="Download invoice PDF"
+                        onClick={() => downloadInvoice(i.id, i.invoice_number, { client: true })}>
+                        <IconDownload className="size-3.5" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
