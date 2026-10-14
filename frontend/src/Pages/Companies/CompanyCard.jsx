@@ -4,8 +4,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { IconDotsVertical, IconTrash, IconShieldCheck } from '@tabler/icons-react'
+import { IconDotsVertical, IconTrash, IconShieldCheck, IconAlertTriangle } from '@tabler/icons-react'
 import ViewCompany from './ViewCompany'
+import { needsAttention, attentionSummary } from './attention'
 
 const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh }) => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
@@ -18,10 +19,11 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
   const countryName = company?.countryName || "UK";
   const status = company?.status || "Active";
   const deadlineText = company?.deadlineText || "No upcoming deadlines";
+  const hasAttention = company?.isRegistered !== false && needsAttention(company);
 
   return (
     <>
-      <Card className={`w-full flex flex-col h-full relative transition-all duration-200 ${isSelected ? 'border-primary ring-1 ring-primary/40 bg-accent/20' : 'hover:border-border'}`}>
+      <Card className={`w-full flex flex-col h-full relative transition-all duration-200 ${isSelected ? 'border-primary ring-1 ring-primary/40 bg-accent/20' : hasAttention ? 'border-destructive/50' : 'hover:border-border'}`}>
         <CardHeader className="flex flex-row items-start justify-between gap-3">
           <div className="flex items-start gap-3 overflow-hidden flex-1">
             <div className="pt-0.5">
@@ -93,6 +95,12 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
                   Genuine
                 </span>
               )}
+              {hasAttention && (
+                <Badge variant="destructive" className="gap-1">
+                  <IconAlertTriangle className="w-3 h-3" />
+                  Attention
+                </Badge>
+              )}
               <Badge className={
                 status === 'Active' ? 'badge-green' :
                 status === 'Dissolved' ? 'badge-red' :
@@ -103,8 +111,8 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
             </div>
           </div>
 
-          <div className="text-[11px] text-muted-foreground border-t pt-2">
-            {deadlineText}
+          <div className={`text-[11px] border-t pt-2 ${hasAttention ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+            {hasAttention ? attentionSummary(company) : deadlineText}
           </div>
         </CardContent>
         

@@ -30,7 +30,9 @@ import {
 } from '@/components/ui/select'
 import { IconBuilding, IconCheck, IconFileText, IconShoppingBag, IconAlertCircle, IconShieldCheck, IconLoader2, IconDeviceFloppy, IconShieldCheckFilled, IconClock, IconAlertTriangle, IconUpload, IconEye, IconDownload } from '@tabler/icons-react'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { apiRequest } from '@/lib/api'
+import { attentionIssues, formatUkDate } from './attention'
 import { openDocument, downloadDocument } from '@/lib/documents'
 import { toast } from 'sonner'
 
@@ -214,6 +216,9 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
   const utrNumber = d.utr_number || d.utr || raw.utr_number || ''
   const sicCodes = d.sic_codes || raw.sic_codes || d.sic_description || raw.sic_description || 'Standard commercial trading'
 
+  const isRegistered = (d.is_registered ?? company.isRegistered) !== false
+  const attention = isRegistered ? attentionIssues(Array.isArray(d.attention) ? d : company) : []
+
   const directorsList = Array.isArray(d.directors) && d.directors.length > 0 
     ? d.directors 
     : [{ name: director, role: 'Director' }]
@@ -254,6 +259,23 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
               </DialogDescription>
             </div>
           </DialogHeader>
+          {attention.length > 0 && (
+            <Alert variant="destructive" className="mt-4 border-destructive/40">
+              <IconAlertTriangle />
+              <AlertTitle>Attention required at Companies House</AlertTitle>
+              <AlertDescription>
+                <ul className="list-disc pl-4 space-y-0.5">
+                  {attention.map((item) => (
+                    <li key={item.code}>
+                      <span className="font-medium">{item.title || item.code}</span>
+                      {item.due ? ` — due ${formatUkDate(item.due)}` : ''}
+                      {item.detail && !item.due ? ` — ${item.detail}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         {/* Tabs Section */}

@@ -30,6 +30,8 @@ import { toastUndoableDelete } from '@/lib/toastActions'
 import { Card, CardContent } from '@/components/ui/card'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
 import { isAdminRole } from '@/lib/permissions'
+import { Alert, AlertTitle, AlertDescription, AlertAction } from '@/components/ui/alert'
+import { needsAttention } from './attention'
 import { apiRequest, getApiBase, toastApiEmpty } from '@/lib/api'
 
 const Companies = () => {
@@ -75,7 +77,11 @@ const Companies = () => {
             incDate: c.incorporation_date || c.inc_date || null,
             countryFlag: '🇬🇧',
             countryName: 'UK',
-            deadlineText: c.accounts_next_due ? `Accounts due: ${c.accounts_next_due}` : 'No upcoming deadlines',
+            deadlineText: c.deadlineText || (c.accounts_next_due ? `Accounts due: ${c.accounts_next_due}` : 'No upcoming deadlines'),
+            isRegistered: c.is_registered !== false,
+            attention: Array.isArray(c.attention) ? c.attention : [],
+            is_genuine: c.is_genuine,
+            data_locked: c.data_locked,
             raw: c,
           }))
         )
@@ -105,6 +111,8 @@ const Companies = () => {
     fetchCompanies()
   }, [])
 
+  const attentionCompanies = companies.filter((c) => c.isRegistered && needsAttention(c))
+
   const filteredCompanies = companies.filter((company) => {
     const term = searchTerm.toLowerCase()
     const matchesSearch =
@@ -115,7 +123,7 @@ const Companies = () => {
     if (!matchesSearch) return false
 
     if (activeTab === 'attention') {
-      return company.status === 'Overdue' || company.status === 'Inactive'
+      return company.isRegistered && needsAttention(company)
     }
     if (activeTab === 'not-registered') {
       return company.status === 'Pending' || company.status === 'Draft'
@@ -252,6 +260,9 @@ const Companies = () => {
               className="py-2 data-[state=active]:bg-destructive/10 data-[state=active]:text-destructive text-destructive"
             >
               Attention
+              <span className={`ml-2 px-1.5 py-0.5 rounded-full text-sm min-w-[20px] text-center inline-flex items-center justify-center ${attentionCompanies.length ? 'bg-destructive text-white' : 'bg-muted-foreground/20'}`}>
+                {isLoading ? <Skeleton className="h-3 w-4 rounded-xs" /> : attentionCompanies.length}
+              </span>
             </TabsTrigger>
             <TabsTrigger value="not-registered" className="py-2">
               Draft / Pending
@@ -270,6 +281,31 @@ const Companies = () => {
           />
         </div>
       </div>
+
+      {/* Companies House attention banner */}
+      {!isLoading && attentionCompanies.length > 0 && activeTab !== 'attention' && (
+        <Alert variant="destructive" className="border-destructive/40">
+          <IconAlertTriangle />
+          <AlertTitle>
+            {attentionCompanies.length} {attentionCompanies.length === 1 ? 'company needs' : 'companies need'} attention at Companies House
+          </AlertTitle>
+          <AlertDescription>
+            {attentionCompanies.slice(0, 5).map((c) => c.name).join(', ')}
+            {attentionCompanies.length > 5 ? ` +${attentionCompanies.length - 5} more` : ''}.
+          </AlertDescription>
+          <AlertAction>
+            <Button size="sm" variant="outline" onClick={() => setActiveTab('attention')}>
+              View
+            </Button>
+          </AlertAction>
+        </Alert>
+      )}
+
+      {activeTab === 'attention' && !isLoading && (
+        <p className="text-sm text-muted-foreground -mt-2">
+          Accounts overdue, confirmation statement pending, default Companies House address, or strike-off.
+        </p>
+      )}
 
       {/* Bulk Action Bar when items selected */}
       {selectedIds.length > 0 && (
@@ -331,7 +367,9 @@ const Companies = () => {
           <p className="text-sm text-muted-foreground max-w-sm mt-1 mb-4">
             {searchTerm
               ? `No records found matching "${searchTerm}". Try searching by a different name or number.`
-              : 'No registered company records available for the selected view.'}
+              : activeTab === 'attention'
+                ? 'No Companies House attention items right now.'
+                : 'No registered company records available for the selected view.'}
           </p>
           {searchTerm && (
             <Button variant="outline" size="sm" onClick={() => setSearchTerm('')}>

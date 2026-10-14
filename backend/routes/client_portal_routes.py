@@ -41,7 +41,11 @@ def public_order(row):
 
 
 def public_company(row):
-    return {k: row.get(k) for k in COMPANY_FIELDS if k in row}
+    from services.ch_attention import company_attention_issues
+    data = {k: row.get(k) for k in COMPANY_FIELDS if k in row}
+    data['attention'] = company_attention_issues(dict(row))
+    data['needs_attention'] = bool(data['attention'])
+    return data
 
 
 def _client_documents_sql(extra_where='', limit=None):

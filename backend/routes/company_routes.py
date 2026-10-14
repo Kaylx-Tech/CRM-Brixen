@@ -3,6 +3,7 @@ Matches original app.py build_companies_payload and Companies House live sync wi
 """
 import re
 import os
+import json
 import time
 import datetime
 import threading
@@ -14,6 +15,7 @@ from services.companies_house_service import (
     search_companies_house,
     get_ch_api_key,
 )
+from services.ch_attention import company_attention_issues, issues_from_profile
 from services.data_protection import (
     looks_like_official_company_number,
     is_pending_placeholder_number,
@@ -80,6 +82,7 @@ def public_client_company(row, for_staff=True):
 
     reg_addr = registered_address_from_company_row(src) or src.get('reg_office') or 'United Kingdom'
     deadline_str = format_deadline_text(src)
+    attention = company_attention_issues(src)
 
     return {
         'id': src.get('id'),
@@ -122,6 +125,9 @@ def public_client_company(row, for_staff=True):
         'confirmation_next_due': src.get('confirmation_next_due'),
         'confirmation_overdue': int(src.get('confirmation_overdue') or 0),
         'deadlineText': deadline_str,
+        'attention': attention,
+        'needs_attention': bool(attention),
+        'ch_checked_at': src.get('ch_checked_at'),
         'raw': src,
     }
 
@@ -171,14 +177,15 @@ def schedule_portfolio_ch_sync(user_id=None):
             if not api_key:
                 return
 
-            # Refresh up to 5 companies needing update
+            # Refresh up to 5 companies needing update (never-checked attention first, then oldest)
             sql = """
                 SELECT id, company_number, name, inc_date, status
                 FROM companies
                 WHERE length(trim(company_number)) >= 6
                   AND company_number NOT LIKE 'REG-%'
-                  AND (ch_checked_at IS NULL OR datetime(ch_checked_at) < datetime('now', '-24 hours'))
-                ORDER BY ch_checked_at ASC LIMIT 5;
+                  AND (ch_attention_json IS NULL OR ch_checked_at IS NULL
+                       OR datetime(ch_checked_at) < datetime('now', '-12 hours'))
+                ORDER BY (ch_attention_json IS NULL) DESC, ch_checked_at ASC LIMIT 5;
             """
             due_comps = query_db(sql) or []
             for comp in due_comps:
@@ -196,15 +203,26 @@ def schedule_portfolio_ch_sync(user_id=None):
                     conf_data = d.get('confirmation_statement', {})
                     conf_next_due = conf_data.get('next_due')
                     conf_overdue = 1 if conf_data.get('overdue') else 0
+                    attention = issues_from_profile(d)
 
                     execute_db("""
                         UPDATE companies
                         SET status = ?, inc_date = COALESCE(?, inc_date),
                             accounts_next_due = ?, accounts_overdue = ?,
                             confirmation_next_due = ?, confirmation_overdue = ?,
+                            ch_attention_json = ?,
                             ch_checked_at = datetime('now')
                         WHERE id = ?;
-                    """, (status, inc_date, acc_next_due, acc_overdue, conf_next_due, conf_overdue, comp['id']))
+                    """, (status, inc_date, acc_next_due, acc_overdue, conf_next_due, conf_overdue,
+                          json.dumps(attention), comp['id']))
+                else:
+                    # Lookup failed: mark checked so one bad number doesn't block the queue
+                    # (retried after 12 hours; stored due dates still drive attention meanwhile)
+                    execute_db("""
+                        UPDATE companies SET ch_checked_at = datetime('now'),
+                            ch_attention_json = COALESCE(ch_attention_json, '[]')
+                        WHERE id = ?;
+                    """, (comp['id'],))
         except Exception as exc:
             print(f"[CH sync error] {exc}")
 
@@ -217,7 +235,7 @@ COMPANY_STAFF_SELECT = (
     "c.created_at, c.user_id, c.utr_number, c.authentication_code, c.activation_code, "
     "c.identity_verified, c.psc_verified, c.sic_codes, c.registered_email, c.whatsapp_number, "
     "c.accounts_next_due, c.accounts_overdue, c.confirmation_next_due, c.confirmation_overdue, "
-    "c.b2b_id, c.client_type, c.data_locked, "
+    "c.ch_attention_json, c.ch_checked_at, c.b2b_id, c.client_type, c.data_locked, "
     "u.full_name as client_name, u.email as client_email"
 )
 

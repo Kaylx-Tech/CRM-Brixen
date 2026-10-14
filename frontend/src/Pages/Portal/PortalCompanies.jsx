@@ -1,11 +1,35 @@
 import React, { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { IconBuilding, IconLoader2, IconFileText } from "@tabler/icons-react"
+import { IconBuilding, IconLoader2, IconFileText, IconAlertTriangle } from "@tabler/icons-react"
 import { toast } from "sonner"
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { apiRequest } from "@/lib/api"
 import { openDocument } from "@/lib/documents"
 import { usePortalData, PageHeader, PageState, StatusBadge, ProgressBar, formatDate } from "./portalShared"
 import { OrderDetailDialog } from "./PortalOrders"
+import { attentionIssues, needsAttention, attentionSummary } from "../Companies/attention"
+
+function AttentionBox({ company }) {
+  const issues = attentionIssues(company)
+  if (!issues.length) return null
+  return (
+    <Alert variant="destructive" className="border-destructive/40">
+      <IconAlertTriangle />
+      <AlertTitle>Action needed at Companies House</AlertTitle>
+      <AlertDescription>
+        <ul className="list-disc space-y-0.5 pl-4">
+          {issues.map((item) => (
+            <li key={item.code}>
+              <span className="font-medium">{item.title || item.code}</span>
+              {item.due ? ` — due ${formatDate(item.due)}` : item.detail ? ` — ${item.detail}` : ""}
+            </li>
+          ))}
+        </ul>
+      </AlertDescription>
+    </Alert>
+  )
+}
 
 function Detail({ label, value }) {
   return (
@@ -52,6 +76,7 @@ function CompanyDialog({ companyId, onClose }) {
             </div>
           ) : (
             <div className="flex max-h-[70vh] flex-col gap-5 overflow-y-auto pr-1">
+              <AttentionBox company={c} />
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <div><p className="text-xs text-muted-foreground">Status</p><StatusBadge status={c.status} /></div>
                 <Detail label="Incorporated" value={formatDate(c.inc_date)} />
@@ -131,15 +156,23 @@ export default function PortalCompanies() {
               key={c.id}
               type="button"
               onClick={() => setOpenId(c.id)}
-              className="flex cursor-pointer flex-col gap-3 rounded-2xl border bg-card p-4 text-left transition-colors hover:bg-muted/40"
+              className={`flex cursor-pointer flex-col gap-3 rounded-2xl border bg-card p-4 text-left transition-colors hover:bg-muted/40 ${needsAttention(c) ? "border-destructive/50" : ""}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
                   <IconBuilding className="size-4 shrink-0 text-muted-foreground" />
                   <span className="truncate font-semibold">{c.name}</span>
                 </div>
-                <StatusBadge status={c.status} />
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {needsAttention(c) && (
+                    <Badge variant="destructive" className="gap-1"><IconAlertTriangle className="size-3" />Attention</Badge>
+                  )}
+                  <StatusBadge status={c.status} />
+                </div>
               </div>
+              {needsAttention(c) && (
+                <p className="text-xs font-medium text-destructive">{attentionSummary(c)}</p>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <Detail label="Company number" value={c.company_number || "Pending"} />
                 <Detail label="Incorporated" value={formatDate(c.inc_date)} />

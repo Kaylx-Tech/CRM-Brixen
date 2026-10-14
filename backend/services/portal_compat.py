@@ -60,24 +60,11 @@ def resolve_client_user(user_id):
 
 
 def company_attention_issues(company):
-    """Minimal attention issues from stored company fields (no live CH invent)."""
-    issues = []
+    """Companies House attention (stored sync result + stored due dates) plus KYC / PSC issues."""
+    from services.ch_attention import company_attention_issues as ch_issues
     if not company:
-        return issues
-    if int(company.get('accounts_overdue') or 0) == 1:
-        issues.append({
-            'code': 'accounts_overdue',
-            'title': 'Accounts overdue at Companies House',
-            'detail': 'Annual accounts appear overdue.',
-            'due': company.get('accounts_next_due') or '',
-        })
-    if int(company.get('confirmation_overdue') or 0) == 1:
-        issues.append({
-            'code': 'confirmation_overdue',
-            'title': 'Confirmation statement overdue',
-            'detail': 'Confirmation statement appears overdue.',
-            'due': company.get('confirmation_next_due') or '',
-        })
+        return []
+    issues = list(ch_issues(dict(company)))
     identity = str(company.get('identity_verified') or '').strip()
     if identity == 'Failed':
         issues.append({
@@ -92,18 +79,6 @@ def company_attention_issues(company):
             'title': 'PSC verification requires attention',
             'detail': f'PSC status is {psc}.',
         })
-    # Stored CH attention JSON if present
-    raw = company.get('ch_attention_json')
-    if raw:
-        try:
-            import json
-            data = json.loads(raw) if isinstance(raw, str) else raw
-            if isinstance(data, list):
-                for item in data:
-                    if isinstance(item, dict) and item.get('code'):
-                        issues.append(item)
-        except Exception:
-            pass
     return issues
 
 
