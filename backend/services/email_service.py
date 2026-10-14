@@ -37,6 +37,16 @@ def _smtp_config():
     return host, port, user, password, from_email
 
 
+def emails_enabled():
+    """Settings key emails_enabled (kept from the old portal). Missing = on; false / 0 / off / no = off."""
+    try:
+        from services.settings_service import get_setting
+        value = str(get_setting('emails_enabled', 'true') or 'true').strip().lower()
+    except Exception:
+        return True
+    return value not in ('false', '0', 'off', 'no')
+
+
 def _log_email(recipient, subject, html_content, text_content, status, error, meta):
     """Record every email attempt in email_outbox (the Email log page). Never raises."""
     try:
@@ -65,7 +75,12 @@ def send_email(recipient, subject, html_content, text_content=None, *, category=
     """
     meta = {'category': category, 'user_id': user_id, 'order_id': order_id, 'company_id': company_id,
             'triggered_by': triggered_by}
-    ok, status, error = _deliver(recipient, subject, html_content, text_content)
+    # Master switch (Settings > Email: "Send emails"): when off, nothing goes out except password resets,
+    # and the email is logged as suppressed so it can be sent later from the Email log
+    if category != 'SECURITY' and not emails_enabled():
+        ok, status, error = False, 'suppressed', 'Emails are turned off in Settings > Email'
+    else:
+        ok, status, error = _deliver(recipient, subject, html_content, text_content)
     if log:
         _log_email((recipient or '').strip(), subject,
                    html_content if store_body else None, text_content if store_body else None,

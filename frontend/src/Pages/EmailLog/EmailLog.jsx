@@ -22,6 +22,7 @@ const STATUS = {
   failed: { label: 'Failed', className: 'badge-red' },
   not_configured: { label: 'SMTP not set', className: 'badge-amber' },
   invalid_recipient: { label: 'No address', className: 'badge-amber' },
+  suppressed: { label: 'Suppressed (emails off)', className: 'badge-amber' },
   queued: { label: 'Queued (old portal)', className: 'bg-muted text-muted-foreground' },
 }
 
@@ -276,6 +277,7 @@ export default function EmailLog() {
             {' · '}
             <span className="text-emerald-600">{counts.sent || 0} sent</span>
             {failed ? <span className="text-destructive"> · {failed} not delivered</span> : null}
+            {counts.suppressed ? <span className="text-amber-600"> · {counts.suppressed} held (emails off)</span> : null}
           </p>
         </div>
         <Button variant="outline" onClick={load} disabled={isLoading}>

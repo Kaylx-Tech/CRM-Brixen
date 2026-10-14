@@ -57,6 +57,7 @@ const EMPTY_FORM = {
   wordpress_url: '',
   wordpress_webhook_secret: '',
   compliance_alerts_enabled: false,
+  emails_enabled: true,
   compliance_alerts_verified_only: false,
   compliance_alerts_whatsapp_enabled: true,
   compliance_alerts_test_mode: false,
@@ -214,6 +215,7 @@ export default function Settings() {
         wordpress_url: webhooks.wordpress_url || '',
         wordpress_webhook_secret: '',
         compliance_alerts_enabled: asBool(compliance.compliance_alerts_enabled, false),
+        emails_enabled: asBool(flat.emails_enabled, true),
         compliance_alerts_verified_only: asBool(flat.compliance_alerts_verified_only, false),
         compliance_alerts_whatsapp_enabled: asBool(flat.compliance_alerts_whatsapp_enabled, true),
         compliance_alerts_test_mode: asBool(flat.compliance_alerts_test_mode, false),
@@ -341,6 +343,7 @@ export default function Settings() {
         google_drive_root_folder: form.google_drive_root_folder.trim(),
         wordpress_url: form.wordpress_url.trim(),
         compliance_alerts_enabled: form.compliance_alerts_enabled ? '1' : '0',
+        emails_enabled: form.emails_enabled ? 'true' : 'false',
         compliance_alerts_verified_only: form.compliance_alerts_verified_only ? '1' : '0',
         compliance_alerts_whatsapp_enabled: form.compliance_alerts_whatsapp_enabled ? '1' : '0',
         compliance_alerts_test_mode: form.compliance_alerts_test_mode ? '1' : '0',
@@ -603,6 +606,25 @@ export default function Settings() {
           </TabsContent>
 
           <TabsContent value="email" className="mt-0 space-y-4">
+            <Section
+              title="Sending"
+              description="Master switch for every email to customers and the team (password resets always go out)."
+            >
+              <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox
+                  checked={!!form.emails_enabled}
+                  onCheckedChange={(v) => setField('emails_enabled', !!v)}
+                  disabled={isLoading}
+                />
+                <span className="font-medium">Send emails</span>
+              </label>
+              <p className={`text-xs ${form.emails_enabled ? 'text-muted-foreground' : 'text-amber-600'}`}>
+                {form.emails_enabled
+                  ? 'On: order, document, compliance, invoice and team emails are sent.'
+                  : 'Off: emails are not sent; they are kept in the Email Log as "Suppressed" and can be sent from there.'}
+              </p>
+            </Section>
+
             <Section
               title="Customer email (SMTP)"
               description={
