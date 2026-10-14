@@ -127,10 +127,19 @@ def parse_attention_json(raw):
     return issues
 
 
+CLOSED_STATUSES = ('dissolved', 'liquidation', 'closed', 'removed', 'converted closed', 'insolvency proceedings')
+
+
+def is_closed_company(status):
+    text = str(status or '').strip().lower().replace('-', ' ')
+    return any(s in text for s in CLOSED_STATUSES)
+
+
 def company_attention_issues(company):
-    """Stored issues from the last Companies House sync, plus anything the stored dates now show."""
+    """Stored issues from the last Companies House sync, plus anything the stored dates now show.
+    Closed companies (dissolved, in liquidation...) have nothing the client can file, so they never need attention."""
     src = company if isinstance(company, dict) else {}
-    if _is_pending_number(src.get('company_number')):
+    if _is_pending_number(src.get('company_number')) or is_closed_company(src.get('status')):
         return []
     issues = list(parse_attention_json(src.get('ch_attention_json')) or [])
     seen = {item.get('code') for item in issues}

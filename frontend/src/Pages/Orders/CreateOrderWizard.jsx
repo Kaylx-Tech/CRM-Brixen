@@ -1100,7 +1100,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
           if (!v) handleAttemptClose()
         }}
       >
-      <DrawerContent className="max-w-4xl mx-auto h-[88vh] max-h-[92vh] p-0 overflow-hidden gap-0 flex flex-col">
+      <DrawerContent className="max-w-4xl mx-auto h-[88vh] max-h-[92vh] p-0 overflow-clip gap-0 flex flex-col">
         <DrawerHeader className="px-6 pt-3 pb-4 border-b text-left space-y-3 shrink-0">
           <div>
             <DrawerTitle className="text-xl font-extrabold tracking-tight">Create New Order</DrawerTitle>

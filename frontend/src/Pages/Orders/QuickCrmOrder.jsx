@@ -347,7 +347,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
   return (
     <>
       <Drawer open={open} onOpenChange={(v) => { if (!v) handleAttemptClose() }}>
-        <DrawerContent className="max-w-4xl mx-auto h-[90vh] max-h-[94vh] p-0 overflow-hidden gap-0 flex flex-col">
+        <DrawerContent className="max-w-4xl mx-auto h-[90vh] max-h-[94vh] p-0 overflow-clip gap-0 flex flex-col">
           <DrawerHeader className="px-6 pt-3 pb-3 border-b text-left space-y-1 shrink-0">
           <DrawerTitle className="text-xl font-extrabold tracking-tight">
             Create Manual Order &amp; Company Registration

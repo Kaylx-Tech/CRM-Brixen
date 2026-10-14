@@ -81,7 +81,7 @@ def _orders_cost(where_sql, params):
     rows = query_db(
         f"""
         SELECT id, service_id, service_name, total, status, cost_price
-        FROM orders WHERE {where_sql} AND status NOT IN ('Cancelled', 'Refunded');
+        FROM orders WHERE COALESCE(is_draft, 0) = 0 AND {where_sql} AND status NOT IN ('Cancelled', 'Refunded');
         """,
         params,
     ) or []
@@ -172,12 +172,12 @@ def _build_admin_dashboard(user, month_param):
         _count("SELECT COUNT(*) AS c FROM services WHERE COALESCE(status, 'Active') = 'Active';")
         if _has_table('services') else 0)
     status_in = ','.join('?' for _ in ACTIVE_ORDER_STATUSES)
-    tot_orders = _count(f"SELECT COUNT(*) AS c FROM orders WHERE {month_clause};", month_params)
+    tot_orders = _count(f"SELECT COUNT(*) AS c FROM orders WHERE COALESCE(is_draft, 0) = 0 AND {month_clause};", month_params)
     pending_orders = _count(
-        f"SELECT COUNT(*) AS c FROM orders WHERE {month_clause} AND status IN ({status_in});",
+        f"SELECT COUNT(*) AS c FROM orders WHERE COALESCE(is_draft, 0) = 0 AND {month_clause} AND status IN ({status_in});",
         month_params + ACTIVE_ORDER_STATUSES)
     completed_orders = _count(
-        f"SELECT COUNT(*) AS c FROM orders WHERE {month_clause} AND status = 'Completed';", month_params)
+        f"SELECT COUNT(*) AS c FROM orders WHERE COALESCE(is_draft, 0) = 0 AND {month_clause} AND status = 'Completed';", month_params)
     open_tickets = (
         _count("SELECT COUNT(*) AS c FROM support_tickets WHERE status IN ('Open', 'In Progress');")
         if _has_table('support_tickets') else 0)
@@ -187,12 +187,12 @@ def _build_admin_dashboard(user, month_param):
         "OR overall_status IN ('REVIEW_REQUIRED', 'PENDING');")
     staff_count = _count(
         "SELECT COUNT(*) AS c FROM users WHERE role IN ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF');")
-    today_orders = _count("SELECT COUNT(*) AS c FROM orders WHERE date(created_at) = date('now', 'localtime');")
+    today_orders = _count("SELECT COUNT(*) AS c FROM orders WHERE COALESCE(is_draft, 0) = 0 AND date(created_at) = date('now', 'localtime');")
     today_customers = _count(
         "SELECT COUNT(*) AS c FROM users WHERE role = 'CLIENT' AND date(created_at) = date('now', 'localtime');")
 
     if prev_clause:
-        prev_orders = _count(f"SELECT COUNT(*) AS c FROM orders WHERE {prev_clause};", prev_params)
+        prev_orders = _count(f"SELECT COUNT(*) AS c FROM orders WHERE COALESCE(is_draft, 0) = 0 AND {prev_clause};", prev_params)
         new_customers = _count(
             f"SELECT COUNT(*) AS c FROM users WHERE role = 'CLIENT' AND {month_clause};", month_params)
         prev_new_customers = _count(
@@ -227,10 +227,10 @@ def _build_admin_dashboard(user, month_param):
     # ── Money (only SUPER_ADMIN / ADMIN) ───────────────────────
     if can_revenue:
         completed_revenue = _sum(
-            f"SELECT COALESCE(SUM(total), 0) AS s FROM orders WHERE {month_clause} AND status = 'Completed';",
+            f"SELECT COALESCE(SUM(total), 0) AS s FROM orders WHERE COALESCE(is_draft, 0) = 0 AND {month_clause} AND status = 'Completed';",
             month_params)
         turnover = _sum(
-            f"SELECT COALESCE(SUM(total), 0) AS s FROM orders WHERE {month_clause} "
+            f"SELECT COALESCE(SUM(total), 0) AS s FROM orders WHERE COALESCE(is_draft, 0) = 0 AND {month_clause} "
             "AND status NOT IN ('Cancelled', 'Refunded');", month_params)
         total_cost = _orders_cost(month_clause, month_params)
         net_profit = round(turnover - total_cost, 2)
@@ -238,10 +238,10 @@ def _build_admin_dashboard(user, month_param):
 
         if prev_clause:
             prev_rev = _sum(
-                f"SELECT COALESCE(SUM(total), 0) AS s FROM orders WHERE {prev_clause} AND status = 'Completed';",
+                f"SELECT COALESCE(SUM(total), 0) AS s FROM orders WHERE COALESCE(is_draft, 0) = 0 AND {prev_clause} AND status = 'Completed';",
                 prev_params)
             prev_turnover = _sum(
-                f"SELECT COALESCE(SUM(total), 0) AS s FROM orders WHERE {prev_clause} "
+                f"SELECT COALESCE(SUM(total), 0) AS s FROM orders WHERE COALESCE(is_draft, 0) = 0 AND {prev_clause} "
                 "AND status NOT IN ('Cancelled', 'Refunded');", prev_params)
             prev_profit = round(prev_turnover - _orders_cost(prev_clause, prev_params), 2)
             stats['revenue_trend'] = _calc_trend(completed_revenue, prev_rev)
@@ -268,7 +268,7 @@ def _build_admin_dashboard(user, month_param):
     if not is_all_time:
         rows = query_db(
             f"""SELECT CAST(strftime('%d', created_at) AS INTEGER) AS day_n, COUNT(*) AS cnt, {rev_expr} AS rev
-                FROM orders WHERE {month_clause} GROUP BY strftime('%d', created_at) ORDER BY day_n;""",
+                FROM orders WHERE COALESCE(is_draft, 0) = 0 AND {month_clause} GROUP BY strftime('%d', created_at) ORDER BY day_n;""",
             month_params) or []
         by_day = {int(r['day_n']): r for r in rows if r.get('day_n')}
         if year == today.year and month == today.month:
@@ -282,7 +282,7 @@ def _build_admin_dashboard(user, month_param):
     else:
         rows = query_db(
             f"""SELECT date(created_at) AS d, COUNT(*) AS cnt, {rev_expr} AS rev FROM orders
-                WHERE date(created_at) >= date('now', 'localtime', '-29 days')
+                WHERE COALESCE(is_draft, 0) = 0 AND date(created_at) >= date('now', 'localtime', '-29 days')
                 GROUP BY date(created_at) ORDER BY d;""") or []
         by_d = {str(r['d']): r for r in rows if r.get('d')}
         for off in range(29, -1, -1):
@@ -293,7 +293,7 @@ def _build_admin_dashboard(user, month_param):
 
     rows = query_db(
         f"""SELECT date(created_at) AS d, COUNT(*) AS cnt, {rev_expr} AS rev FROM orders
-            WHERE date(created_at) >= date('now', 'localtime', '-6 days')
+            WHERE COALESCE(is_draft, 0) = 0 AND date(created_at) >= date('now', 'localtime', '-6 days')
             GROUP BY date(created_at) ORDER BY d;""") or []
     by_d = {str(r['d']): r for r in rows if r.get('d')}
     for off in range(6, -1, -1):
@@ -304,7 +304,7 @@ def _build_admin_dashboard(user, month_param):
 
     rows = query_db(
         f"""SELECT strftime('%Y-%m', created_at) AS month, COUNT(*) AS cnt, {rev_expr} AS rev
-            FROM orders GROUP BY strftime('%Y-%m', created_at);""") or []
+            FROM orders WHERE COALESCE(is_draft, 0) = 0 GROUP BY strftime('%Y-%m', created_at);""") or []
     by_m = {str(r['month']): r for r in rows if r.get('month')}
     for off in range(11, -1, -1):
         y, m = _shift_month(year, month, -off)
@@ -328,7 +328,7 @@ def _build_admin_dashboard(user, month_param):
         end_d = today - datetime.timedelta(days=off * 7)
         start_d = end_d - datetime.timedelta(days=6)
         base = ("SELECT COUNT(*) AS cnt, COALESCE(SUM(total), 0) AS rev FROM orders "
-                "WHERE date(created_at) >= date(?) AND date(created_at) <= date(?) "
+                "WHERE COALESCE(is_draft, 0) = 0 AND date(created_at) >= date(?) AND date(created_at) <= date(?) "
                 "AND status NOT IN ('Cancelled', 'Refunded') AND ")
         args = (start_d.isoformat(), end_d.isoformat())
         on = query_db(base + online_sql, args, one=True) or {}
@@ -342,7 +342,7 @@ def _build_admin_dashboard(user, month_param):
 
     mix = query_db(
         f"""SELECT COALESCE(NULLIF(trim(service_name), ''), 'Other') AS label, COUNT(*) AS cnt FROM orders
-            WHERE {month_clause} AND status NOT IN ('Cancelled', 'Refunded')
+            WHERE COALESCE(is_draft, 0) = 0 AND {month_clause} AND status NOT IN ('Cancelled', 'Refunded')
             GROUP BY COALESCE(NULLIF(trim(service_name), ''), 'Other') ORDER BY cnt DESC LIMIT 5;""",
         month_params) or []
     charts['sales_mix'] = [{'label': str(r['label']), 'cnt': int(r['cnt'] or 0)} for r in mix]
@@ -378,7 +378,7 @@ def _build_admin_dashboard(user, month_param):
     activity = []
     for r in query_db(
         """SELECT o.id, o.order_number, o.service_name, o.status, o.created_at, u.full_name AS client_name
-           FROM orders o LEFT JOIN users u ON u.id = o.user_id ORDER BY o.created_at DESC LIMIT 4;""") or []:
+           FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE COALESCE(o.is_draft, 0) = 0 ORDER BY o.created_at DESC LIMIT 4;""") or []:
         activity.append({
             'kind': 'order', 'title': r.get('service_name') or 'New order',
             'subtitle': f"Order {r.get('order_number') or r.get('id')} · {r.get('status') or 'Pending'}",
@@ -399,7 +399,7 @@ def _build_admin_dashboard(user, month_param):
     recent_orders = query_db(
         """SELECT o.id, o.order_number, o.service_name, o.total AS amount, o.status, o.created_at,
                   u.full_name AS client_name
-           FROM orders o LEFT JOIN users u ON o.user_id = u.id ORDER BY o.created_at DESC LIMIT 5;""") or []
+           FROM orders o LEFT JOIN users u ON o.user_id = u.id WHERE COALESCE(o.is_draft, 0) = 0 ORDER BY o.created_at DESC LIMIT 5;""") or []
     if not can_revenue:
         for r in recent_orders:
             r.pop('amount', None)
@@ -449,11 +449,11 @@ def handle_stats_routes(environ, start_response, path, method, user, body, query
 
         # Client dashboard metrics
         total_companies = _count("SELECT COUNT(*) AS c FROM companies WHERE user_id = ?;", (user_id,))
-        my_orders = _count("SELECT COUNT(*) AS c FROM orders WHERE user_id = ?;", (user_id,))
+        my_orders = _count("SELECT COUNT(*) AS c FROM orders WHERE COALESCE(is_draft, 0) = 0 AND user_id = ?;", (user_id,))
         my_invoices = _count("SELECT COUNT(*) AS c FROM invoices WHERE user_id = ?;", (user_id,))
         recent_orders = query_db(
             """SELECT id, order_number, service_name, total AS amount, status, created_at
-               FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 5;""", (user_id,))
+               FROM orders WHERE COALESCE(is_draft, 0) = 0 AND user_id = ? ORDER BY created_at DESC LIMIT 5;""", (user_id,))
         counts = {"total_companies": total_companies, "total_orders": my_orders, "total_invoices": my_invoices}
         return success_response(start_response, data={
             "status": "success", "success": True, "metrics": counts, "stats": counts,

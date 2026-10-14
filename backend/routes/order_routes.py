@@ -40,6 +40,8 @@ def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False):
 
     if not is_staff:
         client_id = user_id
+    elif not query_db("SELECT 1 FROM users WHERE id = ? LIMIT 1;", (client_id,), one=True):
+        return None, 'Selected customer not found'
 
     if not service_name:
         return None, 'Service name is required'
@@ -80,7 +82,12 @@ def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False):
     is_draft = 1 if as_draft else 0
 
     if draft_id:
-        existing = query_db("SELECT id, order_number FROM orders WHERE id = ? LIMIT 1;", (draft_id,), one=True)
+        # Only a saved draft can be continued (never a placed order); customers only their own
+        existing = query_db(
+            "SELECT id, order_number, user_id FROM orders WHERE id = ? AND COALESCE(is_draft, 0) = 1 LIMIT 1;",
+            (draft_id,), one=True)
+        if existing and not is_staff and int(existing.get('user_id') or 0) != int(user_id or 0):
+            existing = None
         if existing:
             execute_db("""
                 UPDATE orders SET
@@ -233,7 +240,7 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         limit = min(int((query.get('limit') or ['50'])[0]), 100)
         offset = max(int((query.get('offset') or ['0'])[0]), 0)
         params = [user_id]
-        conditions = ["o.user_id = ?"]
+        conditions = ["o.user_id = ?", "COALESCE(o.is_draft, 0) = 0"]
         if search:
             conditions.append("(o.order_number LIKE ? OR o.service_name LIKE ?)")
             params.extend([f"%{search}%", f"%{search}%"])
