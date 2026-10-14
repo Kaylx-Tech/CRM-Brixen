@@ -477,6 +477,14 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
             params.append(body['access_email_password'])
         if 'checkout_form' in body:
             cf = body['checkout_form']
+            # Wizard orders keep a dict here (form values, uploads, line items): edited fields go under "fields"
+            current = query_db("SELECT checkout_form_json FROM orders WHERE id = ?;", (order_id,), one=True) or {}
+            try:
+                existing_cf = json.loads(current.get('checkout_form_json') or 'null')
+            except (TypeError, ValueError):
+                existing_cf = None
+            if isinstance(existing_cf, dict) and isinstance(cf, list):
+                cf = {**existing_cf, 'fields': cf}
             cf_json = json.dumps(cf) if isinstance(cf, (list, dict)) else str(cf or '')
             updates.append("checkout_form_json = ?")
             params.append(cf_json)

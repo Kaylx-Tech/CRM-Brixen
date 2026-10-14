@@ -347,46 +347,6 @@ function companyForOrder(v) {
 }
 
 /**
- * "Add company" field: a list of companies, each checked at Companies House like the Company field.
- * Value: array of Company-field values.
- */
-function CompaniesListField({ id, value, onChange, placeholder }) {
-  const list = Array.isArray(value) ? value : []
-  const setItem = (i, upd) =>
-    onChange((prev) => (Array.isArray(prev) ? prev : []).map((x, j) => (j === i ? (typeof upd === "function" ? upd(x) : upd) : x)))
-  return (
-    <div className="space-y-3">
-      {list.map((item, i) => (
-        <div key={i} className="space-y-2 rounded-lg border bg-background p-3">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold text-muted-foreground">Company {i + 1}</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="text-destructive hover:text-destructive"
-              onClick={() => onChange((prev) => (Array.isArray(prev) ? prev : []).filter((_, j) => j !== i))}
-            >
-              Remove
-            </Button>
-          </div>
-          <CompanyCheckField id={i === 0 ? id : `${id}-${i}`} value={item} onChange={(upd) => setItem(i, upd)} placeholder={placeholder} />
-        </div>
-      ))}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => onChange((prev) => [...(Array.isArray(prev) ? prev : []), { input: "", state: "idle" }])}
-        disabled={list.length >= 20}
-      >
-        <IconBuilding /> Add company
-      </Button>
-    </div>
-  )
-}
-
-/**
  * "Company name availability" field: checks if a new name can be registered at Companies House.
  * Value: { input, state: idle|typing|checking|available|taken|error, conflicts, similar, warnings }.
  */
@@ -510,13 +470,11 @@ function ServiceFieldInput({ field, value, onChange, hint }) {
   const id = `svc-field-${field.key.replace(/[^a-z0-9]+/gi, "-")}`
   return (
     <div className="space-y-2">
-      <Label htmlFor={["text", "company", "company_name", "companies"].includes(field.type) ? id : undefined} className="text-sm font-semibold">
+      <Label htmlFor={["text", "company", "company_name"].includes(field.type) ? id : undefined} className="text-sm font-semibold">
         {field.label}
         {field.required ? <span className="text-destructive ml-1">*</span> : null}
       </Label>
-      {field.type === "companies" ? (
-        <CompaniesListField id={id} value={value} onChange={onChange} placeholder={field.placeholder} />
-      ) : field.type === "company_name" ? (
+      {field.type === "company_name" ? (
         <CompanyNameAvailabilityField id={id} value={value} onChange={onChange} placeholder={field.placeholder} />
       ) : field.type === "company" ? (
         <CompanyCheckField id={id} value={value} onChange={onChange} placeholder={field.placeholder} />
@@ -814,9 +772,6 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
     const v = fieldValues[f.key]
     if (f.type === "checkbox") return v === true ? "Yes" : "No"
     if (f.type === "company") return companyAnswer(v)
-    if (f.type === "companies") {
-      return (Array.isArray(v) ? v : []).map(companyAnswer).filter(Boolean).map((a, i) => `${i + 1}. ${a}`).join("\n")
-    }
     if (f.type === "company_name") {
       if (!v || !String(v.input || "").trim()) return ""
       if (v.state === "available") return `${v.input.trim()} · Available`
@@ -829,12 +784,8 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
   // The first company field decides the order's company name (official name if registered, else proposed)
   // (falls back to the first "Company name availability" field when there is no company field)
   useEffect(() => {
-    const field =
-      activeFields.find((f) => f.type === "company") ||
-      activeFields.find((f) => f.type === "companies" && (fieldValues[f.key] || []).length) ||
-      activeFields.find((f) => f.type === "company_name")
-    const raw = field ? fieldValues[field.key] : null
-    const v = field?.type === "companies" ? raw[0] : raw
+    const field = activeFields.find((f) => f.type === "company") || activeFields.find((f) => f.type === "company_name")
+    const v = field ? fieldValues[field.key] : null
     if (!v || !String(v.input || "").trim()) return
     const name = v.state === "registered" ? v.name : v.input.trim()
     setFormValues((prev) => (prev.company_name === name ? prev : { ...prev, company_name: name }))
@@ -859,20 +810,17 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
           const item = { label: fieldTitle(f), type: f.type, value: fieldAnswer(f), services: f.services }
           const v = fieldValues[f.key]
           if (f.type === "company" && companyForOrder(v)) item.company = companyForOrder(v)
-          if (f.type === "companies") item.companies = (Array.isArray(v) ? v : []).map(companyForOrder).filter(Boolean)
           if (f.type === "company_name" && v && String(v.input || "").trim()) {
             item.name_check = { name: v.input.trim(), available: v.state === "available", checked: ["available", "taken"].includes(v.state) }
           }
           return item
         }),
       },
-      // Every company picked or added on the form: found or created in the CRM and linked to the order
-      companies: textFields.flatMap((f) => {
-        const v = fieldValues[f.key]
-        if (f.type === "company") return [companyForOrder(v)].filter(Boolean)
-        if (f.type === "companies") return (Array.isArray(v) ? v : []).map(companyForOrder).filter(Boolean)
-        return []
-      }),
+      // Every company picked on the form: found or created in the CRM and linked to the order
+      companies: textFields
+        .filter((f) => f.type === "company")
+        .map((f) => companyForOrder(fieldValues[f.key]))
+        .filter(Boolean),
       uploaded_docs: {
         ...docMarks,
         ...Object.fromEntries(fileFields.map((f) => [fieldTitle(f), !!fieldFiles[f.key]])),
@@ -890,28 +838,19 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
     if (targetStep > 2 && selectedProducts.length < 1) return "Please select at least one product."
     if (targetStep > 3) {
       const lookups = textFields.filter((f) => f.type === "company" || f.type === "company_name")
-      // Each "Add company" entry is checked like a Company field
-      const listEntries = textFields
-        .filter((f) => f.type === "companies")
-        .flatMap((f) => (Array.isArray(fieldValues[f.key]) ? fieldValues[f.key] : []).map((v, i) => ({ f, v, i })))
       const busy = (v) => ["typing", "checking"].includes(v?.state) || v?.detailsState === "loading"
-      if (lookups.some((f) => busy(fieldValues[f.key])) || listEntries.some((e) => busy(e.v))) {
+      if (lookups.some((f) => busy(fieldValues[f.key]))) {
         return "Wait a moment, Companies House is still being checked."
       }
       // A company search that returned results needs a choice: one of the companies, or "not registered"
       const unpicked = lookups.filter((f) => f.type === "company" && fieldValues[f.key]?.state === "results")
       if (unpicked.length) return `Select the company for "${fieldTitle(unpicked[0])}" from the list.`
-      const unpickedEntry = listEntries.find((e) => e.v?.state === "results")
-      if (unpickedEntry) return `Select company ${unpickedEntry.i + 1} for "${fieldTitle(unpickedEntry.f)}" from the list.`
-      const emptyEntry = listEntries.find((e) => !String(e.v?.input || "").trim())
-      if (emptyEntry) return `Company ${emptyEntry.i + 1} in "${fieldTitle(emptyEntry.f)}" is empty. Type a name or number, or remove it.`
       const taken = lookups.filter((f) => f.type === "company_name" && fieldValues[f.key]?.state === "taken")
       if (taken.length) return `"${fieldValues[taken[0].key].input.trim()}" is already registered. Choose a different company name.`
       const missingText = textFields.filter((f) => {
         if (!f.required) return false
         if (f.type === "checkbox") return fieldValues[f.key] !== true
         if (f.type === "company" || f.type === "company_name") return !String(fieldValues[f.key]?.input || "").trim()
-        if (f.type === "companies") return !(Array.isArray(fieldValues[f.key]) && fieldValues[f.key].length)
         return !String(fieldValues[f.key] || "").trim()
       })
       if (missingText.length) return `Complete: ${missingText.map(fieldTitle).join(", ")}.`

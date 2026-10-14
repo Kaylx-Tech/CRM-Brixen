@@ -106,6 +106,114 @@ function isWideField(label) {
   return /address|description|activity|activities|proof|source of funds/i.test(label || '')
 }
 
+function formatUkDate(value) {
+  const m = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/)
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : String(value || '')
+}
+
+/** A company picked on the service form: Companies House details as captured when the order was placed. */
+function CompanyAnswer({ company }) {
+  if (!company.registered) {
+    return (
+      <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm">
+        <p className="font-semibold">{company.name}</p>
+        <p className="text-xs text-muted-foreground">Not registered yet (proposed company name)</p>
+      </div>
+    )
+  }
+  return (
+    <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm space-y-1.5">
+      <p className="font-semibold">
+        {company.name} · {company.number}
+        {company.status ? <span className="font-normal text-muted-foreground"> · {company.status}</span> : null}
+      </p>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[13px]">
+        <dt className="text-muted-foreground">Incorporated</dt>
+        <dd>{company.incorporated ? formatUkDate(company.incorporated) : '—'}</dd>
+        <dt className="text-muted-foreground">Registered office</dt>
+        <dd className="break-words">{company.address || '—'}</dd>
+        <dt className="text-muted-foreground">Directors</dt>
+        <dd>
+          {(company.directors || []).length ? (
+            <ul className="space-y-0.5">
+              {company.directors.map((d) => (
+                <li key={`${d.name}-${d.appointed}`}>
+                  <span className="font-medium">{d.name}</span>
+                  {d.dob ? ` · born ${d.dob}` : ''}
+                  {d.nationality ? ` · ${d.nationality}` : ''}
+                  {d.appointed ? ` · appointed ${formatUkDate(d.appointed)}` : ''}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            '—'
+          )}
+        </dd>
+      </dl>
+    </div>
+  )
+}
+
+/** Answers to the services' own order form (Create Order wizard), read-only. */
+function ServiceFormAnswers({ answers, linked, uploads }) {
+  if (!answers.length && !linked.length && !uploads.length) return null
+  return (
+    <div className="space-y-3">
+      <h4 className="text-sm uppercase tracking-wider font-semibold text-muted-foreground">Service Form</h4>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
+        {answers.map((f, idx) => {
+          const wide = f.company || isWideField(f.label) || String(f.value || '').length > 60
+          return (
+            <div key={`${f.label}-${idx}`} className={`flex flex-col gap-1 ${wide ? 'md:col-span-2' : ''}`}>
+              <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">{f.label}</span>
+              {f.company ? (
+                <CompanyAnswer company={f.company} />
+              ) : (
+                <span className="font-semibold text-foreground text-sm break-words whitespace-pre-line">
+                  {String(f.value || '').trim() || '—'}
+                </span>
+              )}
+              {(f.services || []).length > 1 ? (
+                <span className="text-[11px] text-muted-foreground">For {f.services.join(', ')}</span>
+              ) : null}
+            </div>
+          )
+        })}
+        {uploads.length ? (
+          <div className="flex flex-col gap-1 md:col-span-2">
+            <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Form uploads</span>
+            <ul className="text-sm space-y-0.5">
+              {uploads.map(([label, done]) => (
+                <li key={label} className="flex items-center gap-2">
+                  {done ? <IconCheck className="w-4 h-4 text-emerald-600" /> : <IconX className="w-4 h-4 text-muted-foreground" />}
+                  <span className="font-semibold">{label}</span>
+                  <span className="text-muted-foreground">{done ? 'uploaded (see Documents)' : 'not uploaded'}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {linked.length ? (
+          <div className="flex flex-col gap-1 md:col-span-2">
+            <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Linked companies</span>
+            <ul className="text-sm space-y-0.5">
+              {linked.map((c) => (
+                <li key={c.company_id} className="flex items-center gap-2">
+                  <IconBuilding className="w-4 h-4 text-muted-foreground" />
+                  <span className="font-semibold">{c.name}</span>
+                  <span className="text-muted-foreground">
+                    {c.number || 'not registered'}{c.created ? ' · added to CRM' : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
 export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) {
   const [activeTab, setActiveTab] = useState('overview')
   const [order, setOrder] = useState(null)
@@ -115,6 +223,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
   // Edit details mode
   const [isEditingDetails, setIsEditingDetails] = useState(false)
   const [formFields, setFormFields] = useState([])
+  const [serviceForm, setServiceForm] = useState({ answers: [], linked: [], uploads: [] })
   const [isSavingDetails, setIsSavingDetails] = useState(false)
 
   // Edit credentials mode
@@ -241,8 +350,10 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
 
     // Resolve checkout form fields
     let fields = []
-    if (Array.isArray(o.checkout_form) && o.checkout_form.length > 0) {
-      fields = o.checkout_form.map((f) => ({
+    // Wizard orders store a dict; fields edited with "Edit Details" are kept under checkout_form.fields
+    const savedList = Array.isArray(o.checkout_form) ? o.checkout_form : o.checkout_form?.fields
+    if (Array.isArray(savedList) && savedList.length > 0) {
+      fields = savedList.map((f) => ({
         label: f.label || f.name || '',
         value: f.value != null ? String(f.value) : '',
       }))
@@ -274,25 +385,21 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
       if (o.trading_proof) fields.push({ label: 'Trading proof', value: o.trading_proof })
     }
 
-    // Answers to the services' own order-form questions (Create Order wizard)
-    const serviceAnswers = o.order_form_values?.service_fields
-    if (Array.isArray(serviceAnswers)) {
-      serviceAnswers
-        .filter((f) => f && f.label && String(f.value || '').trim())
-        .forEach((f) => fields.push({ label: f.label, value: String(f.value) }))
-    }
-    // Companies from the form that were found / created in the CRM and linked to this order
-    const linked = o.order_form_values?.linked_companies
-    if (Array.isArray(linked) && linked.length) {
-      fields.push({
-        label: 'Linked companies',
-        value: linked
-          .map((c) => `${c.name}${c.number ? ` (${c.number})` : ' (not registered)'}${c.created ? ' · added to CRM' : ''}`)
-          .join('\n'),
-      })
-    }
-
     setFormFields(fields)
+
+    // The services' own order form (Create Order wizard), shown read-only in its own section
+    const ofv = o.order_form_values || {}
+    const checkout = o.checkout_form && !Array.isArray(o.checkout_form) ? o.checkout_form : {}
+    const answers = Array.isArray(ofv.service_fields)
+      ? ofv.service_fields.filter((f) => f && f.label && (f.company || String(f.value || '').trim()))
+      : []
+    const uploaded = checkout.uploaded_docs && typeof checkout.uploaded_docs === 'object' ? checkout.uploaded_docs : {}
+    setServiceForm({
+      answers,
+      linked: Array.isArray(ofv.linked_companies) ? ofv.linked_companies.filter((c) => c && c.company_id) : [],
+      // Only the form's own upload fields, not the wizard's standard document checklist
+      uploads: Object.entries(uploaded).filter(([label]) => !['passport', 'proof_of_address', 'other'].includes(label)),
+    })
   }
 
   useEffect(() => {
@@ -731,6 +838,13 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                           })}
                         </div>
                       )}
+
+                      {serviceForm.answers.length || serviceForm.linked.length || serviceForm.uploads.length ? (
+                        <>
+                          <Separator />
+                          <ServiceFormAnswers {...serviceForm} />
+                        </>
+                      ) : null}
 
                       <Separator />
 
