@@ -29,6 +29,7 @@ import {
   IconUserCheck,
 } from "@tabler/icons-react"
 import { getRole } from "@/lib/permissions"
+import { PageTransition } from "@/lib/motion"
 
 /** Customer portal pages (same pages as the old portal, one flat list). */
 const NAV_ITEMS = [
@@ -71,9 +72,11 @@ export default function ClientLayout() {
       <SidebarInset className="p-2 bg-sidebar h-svh overflow-hidden relative">
         <ScrollArea className="h-full w-full rounded-xl border bg-background shadow-sm">
           <SiteHeader homeHref="/portal/dashboard" />
-          <main className="flex flex-col gap-4 p-2 lg:p-6 pb-20">
-            <Outlet />
-          </main>
+          <PageTransition>
+            <main className="flex flex-col gap-4 p-2 lg:p-6 pb-20">
+              <Outlet />
+            </main>
+          </PageTransition>
         </ScrollArea>
       </SidebarInset>
     </SidebarProvider>

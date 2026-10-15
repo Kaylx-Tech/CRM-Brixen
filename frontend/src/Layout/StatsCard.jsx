@@ -11,6 +11,10 @@ import {
 } from "@/components/ui/card"
 import { IconTrendingUp, IconTrendingDown } from "@tabler/icons-react"
 import { cn } from "cn"
+import { m, fadeUp, staggerContainer, snappySpring } from "@/lib/motion"
+
+// The Card itself animates (the grid styles target the card as a direct child)
+const MotionCard = m.create(Card)
 
 /* Inline shimmer bar — replaces Skeleton without changing card dimensions */
 function Shimmer({ className }) {
@@ -41,7 +45,9 @@ export function StatCard({
   const interactive = typeof onClick === "function"
 
   return (
-    <Card
+    <MotionCard
+      variants={fadeUp}
+      whileTap={interactive ? { scale: 0.98, transition: snappySpring } : undefined}
       size={compact ? "sm" : "default"}
       className={cn(
         "@container/card",
@@ -122,7 +128,7 @@ export function StatCard({
           )}
         </CardFooter>
       )}
-    </Card>
+    </MotionCard>
   )
 }
 
@@ -141,7 +147,12 @@ export function SectionCards({ stats = [], isLoading = false, compact = false })
         : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
 
   return (
-    <div
+    // Placeholders sit still; when the numbers arrive the cards come in one after another
+    <m.div
+      key={isLoading ? "loading" : "ready"}
+      variants={staggerContainer(0.06, 0.02)}
+      initial={isLoading ? false : "hidden"}
+      animate="show"
       className={cn(
         "grid gap-3 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs dark:*:data-[slot=card]:bg-card",
         gridCols
@@ -150,6 +161,6 @@ export function SectionCards({ stats = [], isLoading = false, compact = false })
       {items.map((stat, index) => (
         <StatCard key={stat.title || index} {...stat} compact={compact} isLoading={isLoading} />
       ))}
-    </div>
+    </m.div>
   )
 }

@@ -31,6 +31,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
 import { isAdminRole } from '@/lib/permissions'
 import { needsAttention } from './attention'
+import { m, spring } from '@/lib/motion'
 import { apiRequest, getApiBase, toastApiEmpty } from '@/lib/api'
 
 const Companies = () => {
@@ -360,17 +361,25 @@ const Companies = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 pb-8">
           {filteredCompanies.map((company, i) => (
-            <CompanyCard
+            // Cards come in one after another (first rows only, so long lists stay instant)
+            <m.div
               key={company.id || i}
-              company={company}
-              isSelected={selectedIds.includes(company.id)}
-              onToggleSelect={handleToggleSelect}
-              onRefresh={fetchCompanies}
-              onDelete={isAdminRole() ? (id) => {
-                setSingleDeleteId(id)
-                setDeleteConfirmOpen(true)
-              } : undefined}
-            />
+              className="h-full"
+              initial={i < 12 ? { opacity: 0, y: 14, scale: 0.985 } : false}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ ...spring, delay: Math.min(i, 12) * 0.035 }}
+            >
+              <CompanyCard
+                company={company}
+                isSelected={selectedIds.includes(company.id)}
+                onToggleSelect={handleToggleSelect}
+                onRefresh={fetchCompanies}
+                onDelete={isAdminRole() ? (id) => {
+                  setSingleDeleteId(id)
+                  setDeleteConfirmOpen(true)
+                } : undefined}
+              />
+            </m.div>
           ))}
         </div>
       )}

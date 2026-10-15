@@ -23,6 +23,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { m, fadeUp } from "@/lib/motion"
+
+// Bars / areas / slices grow in smoothly (shorter and softer than the Recharts default)
+const CHART_ANIMATION = { isAnimationActive: true, animationBegin: 120, animationDuration: 850, animationEasing: "ease-out" }
+
+// Chart cards lift in with the same spring as the stat cards
+const MotionCard = m.create(Card)
+const cardMotion = { variants: fadeUp, initial: "hidden", animate: "show" }
 
 const barChartConfig = {
   revenue: {
@@ -44,7 +52,7 @@ export function ChartBarMultiple({
   const displayData = data && data.length > 0 ? data : []
 
   return (
-    <Card className="flex flex-col chart-revenue-privacy relative">
+    <MotionCard {...cardMotion} className="flex flex-col chart-revenue-privacy relative">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="space-y-1">
           <CardTitle>Sales Revenue</CardTitle>
@@ -97,11 +105,11 @@ export function ChartBarMultiple({
                 />
               }
             />
-            <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 4, 4]} barSize={40} />
+            <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 4, 4]} barSize={40} {...CHART_ANIMATION} />
           </BarChart>
         </ChartContainer>
       </CardContent>
-    </Card>
+    </MotionCard>
   )
 }
 
@@ -122,7 +130,7 @@ export function ChartPieSeparatorNone({ data = [], isLoading = false }) {
   const total = pieData.reduce((acc, curr) => acc + (curr.value || 0), 0)
 
   return (
-    <Card className="flex flex-col h-full">
+    <MotionCard {...cardMotion} className="flex flex-col h-full">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="space-y-1">
           <CardTitle>Portfolio Distribution</CardTitle>
@@ -144,6 +152,7 @@ export function ChartPieSeparatorNone({ data = [], isLoading = false }) {
                 dataKey="value"
                 nameKey="category"
                 stroke="0"
+                {...CHART_ANIMATION}
               />
             </PieChart>
           </ChartContainer>
@@ -160,7 +169,7 @@ export function ChartPieSeparatorNone({ data = [], isLoading = false }) {
           })}
         </div>
       </div>
-    </Card>
+    </MotionCard>
   )
 }
 
@@ -183,7 +192,7 @@ export function ChartAreaSalesTrend({ data = [], isLoading = false }) {
   const displayData = data && data.length > 0 ? data : []
 
   return (
-    <Card className="flex flex-col chart-revenue-privacy relative">
+    <MotionCard {...cardMotion} className="flex flex-col chart-revenue-privacy relative">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Sales Trend</CardTitle>
@@ -233,6 +242,7 @@ export function ChartAreaSalesTrend({ data = [], isLoading = false }) {
               strokeWidth={2}
               dot={false}
               activeDot={false}
+              {...CHART_ANIMATION}
             />
             <Area
               dataKey="offline"
@@ -243,11 +253,12 @@ export function ChartAreaSalesTrend({ data = [], isLoading = false }) {
               strokeWidth={2}
               dot={false}
               activeDot={false}
+              {...CHART_ANIMATION}
             />
           </AreaChart>
         </ChartContainer>
       </CardContent>
-    </Card>
+    </MotionCard>
   )
 }
 
@@ -266,7 +277,7 @@ export function ChartTopPerformer({ data = [], isLoading = false }) {
   const displayData = data && data.length > 0 ? data : []
 
   return (
-    <Card className="flex flex-col">
+    <MotionCard {...cardMotion} className="flex flex-col">
       <CardHeader>
         <CardTitle>Completion & Operations</CardTitle>
       </CardHeader>
@@ -291,13 +302,13 @@ export function ChartTopPerformer({ data = [], isLoading = false }) {
             />
             <XAxis type="number" hide={true} />
             <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-            <Bar dataKey="score" fill="var(--color-score)" radius={6} barSize={28}>
+            <Bar dataKey="score" fill="var(--color-score)" radius={6} barSize={28} {...CHART_ANIMATION}>
               <LabelList dataKey="team" position="insideLeft" fill="var(--background)" offset={12} fontSize={14} />
               <LabelList dataKey="score" position="right" fill="var(--foreground)" offset={12} fontSize={14} />
             </Bar>
           </BarChart>
         </ChartContainer>
       </CardContent>
-    </Card>
+    </MotionCard>
   )
 }

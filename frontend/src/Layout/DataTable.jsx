@@ -25,6 +25,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { m, spring } from "@/lib/motion"
+
+const MotionRow = m.create(TableRow)
+const ROW_STAGGER_LIMIT = 14
 import { IconAdjustmentsHorizontal, IconSearch, IconX, IconMoodEmpty, IconTrash } from "@tabler/icons-react"
 import { features } from "./data-table-features"
 
@@ -268,9 +272,14 @@ export const DataTable = ({
                 </TableRow>
               ))
             ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
+              table.getRowModel().rows.map((row, index) => (
+                <MotionRow
                   key={row.id}
+                  // Rows slide in one after another (first rows only, so big pages never lag);
+                  // a row that is already on screen does not animate again
+                  initial={index < ROW_STAGGER_LIMIT ? { opacity: 0, y: 8 } : false}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ ...spring, delay: Math.min(index, ROW_STAGGER_LIMIT) * 0.025 }}
                   data-state={row.getIsSelected() && "selected"}
                   className="min-h-[52px] h-auto"
                 >
@@ -279,7 +288,7 @@ export const DataTable = ({
                       <table.FlexRender cell={cell} />
                     </TableCell>
                   ))}
-                </TableRow>
+                </MotionRow>
               ))
             ) : (
               <TableRow>

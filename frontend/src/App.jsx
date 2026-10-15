@@ -43,6 +43,7 @@ function DashboardHome() {
 }
 import ToastPlayground from './Pages/ToastPlayground'
 import { TooltipProvider } from './components/ui/tooltip'
+import { MotionRoot } from './lib/motion'
 import { ThemeProvider } from './hooks/theme-provider'
 import { PrivacyProvider } from './context/PrivacyContext'
 import { Toaster } from './components/ui/sonner'
@@ -52,6 +53,7 @@ const App = () => {
     <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
       <PrivacyProvider>
         <TooltipProvider>
+          <MotionRoot>
           <BrowserRouter>
             <Routes>
             <Route path="/" element={<HomeRedirect />} />
@@ -122,6 +124,7 @@ const App = () => {
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </BrowserRouter>
+          </MotionRoot>
         <Toaster position="top-center" />
         </TooltipProvider>
       </PrivacyProvider>

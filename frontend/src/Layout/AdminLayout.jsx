@@ -7,6 +7,7 @@ import { Navigate, Outlet } from "react-router-dom"
 import { getRole } from "@/lib/permissions"
 import AiInput from "@/components/ai-input"
 import { authHeaders } from "@/lib/api"
+import { PageTransition } from "@/lib/motion"
 
 const AdminLayout = () => {
   const [aiMessages, setAiMessages] = useState([])
@@ -62,9 +63,11 @@ const AdminLayout = () => {
       <SidebarInset className="p-2 bg-sidebar h-svh overflow-hidden relative">
         <ScrollArea className="h-full w-full rounded-xl border bg-background shadow-sm">
           <SiteHeader />
-          <main className="flex flex-col gap-4 p-2 lg:p-6 pb-20">
-            <Outlet />
-          </main>
+          <PageTransition>
+            <main className="flex flex-col gap-4 p-2 lg:p-6 pb-20">
+              <Outlet />
+            </main>
+          </PageTransition>
         </ScrollArea>
 
         <AiInput

@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, motion } from "motion/react"
 import { IconArrowUp } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import AiOrb from "@/components/Ai-orb"
