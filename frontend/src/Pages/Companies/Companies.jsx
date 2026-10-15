@@ -20,7 +20,9 @@ import {
   IconAlertTriangle,
   IconLoader2,
   IconCheck,
+  IconCalendarDue,
 } from '@tabler/icons-react'
+import { SectionCards } from '../../Layout/StatsCard'
 import CompanyCard from './CompanyCard'
 import AddCompany from './AddCompany'
 import ImportWebfilingModal from './ImportWebfilingModal'
@@ -112,6 +114,24 @@ const Companies = () => {
   }, [])
 
   const attentionCompanies = companies.filter((c) => c.isRegistered && needsAttention(c))
+
+  // Headline numbers; Attention and Not registered switch the tab below
+  const pendingCount = companies.filter((c) => c.status === 'Pending' || c.status === 'Draft').length
+  const activeCount = companies.filter((c) => String(c.status).toLowerCase() === 'active').length
+  const closedCount = companies.filter((c) => /dissolved|liquidation|closed|removed|struck/i.test(String(c.status))).length
+  const dueSoonCount = companies.filter((c) => {
+    const due = c.raw?.accounts_next_due ? new Date(c.raw.accounts_next_due) : null
+    if (!due || Number.isNaN(due.getTime())) return false
+    const days = (due.getTime() - Date.now()) / 86400000
+    return days >= 0 && days <= 30
+  }).length
+  const companyStats = [
+    { title: 'Total Companies', hero: true, value: String(companies.length), footerSubText: 'Show all', onClick: () => setActiveTab('all'), active: activeTab === 'all' },
+    { title: 'Active', tone: 'emerald', value: String(activeCount), footerSubText: 'Trading on Companies House' },
+    { title: 'Needs Attention', tone: 'rose', value: String(attentionCompanies.length), footerSubText: 'Overdue, pending or at risk', onClick: () => setActiveTab('attention'), active: activeTab === 'attention' },
+    { title: 'Accounts Due Soon', tone: 'amber', icon: IconCalendarDue, value: String(dueSoonCount), footerSubText: 'Within the next 30 days' },
+    { title: 'Not Registered', tone: 'violet', icon: IconBuildingPlus, value: String(pendingCount), footerSubText: `${closedCount} closed or dissolved`, onClick: () => setActiveTab('not-registered'), active: activeTab === 'not-registered' },
+  ]
 
   const filteredCompanies = companies.filter((company) => {
     const term = searchTerm.toLowerCase()
@@ -237,6 +257,7 @@ const Companies = () => {
         </div>
       </div>
 
+      <SectionCards stats={companyStats} isLoading={isLoading} compact />
 
       {/* Stats/Tabs & Search */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

@@ -9,7 +9,25 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { IconTrendingUp, IconTrendingDown } from "@tabler/icons-react"
+import {
+  IconAlertTriangle,
+  IconBuildingSkyscraper,
+  IconCalendarEvent,
+  IconChecklist,
+  IconCircleCheck,
+  IconClockHour4,
+  IconCurrencyPound,
+  IconFileDescription,
+  IconMail,
+  IconPackage,
+  IconReportMoney,
+  IconShoppingCart,
+  IconSparkles,
+  IconTicket,
+  IconTrendingDown,
+  IconTrendingUp,
+  IconUsers,
+} from "@tabler/icons-react"
 import { cn } from "cn"
 import { m, fadeUp, staggerContainer, snappySpring } from "@/lib/motion"
 
@@ -27,6 +45,42 @@ const TONES = {
   amber: { card: "from-amber-500/14 via-card to-card", glow: "bg-amber-500/25", chip: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
   sky: { card: "from-sky-500/12 via-card to-card", glow: "bg-sky-500/25", chip: "bg-sky-500/15 text-sky-600 dark:text-sky-400" },
 }
+
+// Cards without their own tone take these in order
+const TONE_ORDER = ["blue", "emerald", "violet", "orange", "teal", "rose", "amber", "sky"]
+
+// Cards without their own icon get one from words in the title
+const TITLE_ICONS = [
+  [/overdue|attention|fail|error|bounce|reject|cancel/i, IconAlertTriangle],
+  [/pending|waiting|due|progress|processing|queued/i, IconClockHour4],
+  [/paid|complete|done|verified|sent|resolved|closed|active/i, IconCircleCheck],
+  [/revenue|turnover|profit|amount|value|price|£|payment|invoice|spent|outstanding/i, IconCurrencyPound],
+  [/customer|client|user|staff|team|member|director/i, IconUsers],
+  [/compan/i, IconBuildingSkyscraper],
+  [/order|sale/i, IconShoppingCart],
+  [/document|file|upload/i, IconFileDescription],
+  [/ticket|support/i, IconTicket],
+  [/task/i, IconChecklist],
+  [/email|mail/i, IconMail],
+  [/service|product|catalog/i, IconPackage],
+  [/account|filing|return|tax|vat/i, IconReportMoney],
+  [/today|month|week|year|new/i, IconCalendarEvent],
+]
+
+// Meaning first (overdue red, pending amber, done green…), then the order above
+const TITLE_TONES = [
+  [/overdue|issue|fail|owe|reject|quarantine|cancel|not deliver/i, "rose"],
+  [/pending|due|waiting|part paid|review/i, "amber"],
+  [/progress|processing/i, "violet"],
+  [/complete|paid|received|filed|deliver|posted|resolved|profit/i, "emerald"],
+  [/cost/i, "orange"],
+  [/revenue|sell|billed|turnover/i, "sky"],
+]
+
+const toneFor = (title = "", index = 0) =>
+  TITLE_TONES.find(([re]) => re.test(title))?.[1] ?? TONE_ORDER[index % TONE_ORDER.length]
+
+const iconForTitle = (title = "") => TITLE_ICONS.find(([re]) => re.test(title))?.[1] ?? IconSparkles
 
 // The headline card: solid brand gradient with white text
 const HERO = {
@@ -212,7 +266,14 @@ export function SectionCards({ stats = [], isLoading = false, compact = false })
       )}
     >
       {items.map((stat, index) => (
-        <StatCard key={stat.title || index} {...stat} compact={compact} isLoading={isLoading} />
+        <StatCard
+          key={stat.title || index}
+          {...stat}
+          tone={stat.tone ?? (stat.hero ? undefined : toneFor(stat.title, index))}
+          icon={stat.icon ?? (stat.title ? iconForTitle(stat.title) : undefined)}
+          compact={compact}
+          isLoading={isLoading}
+        />
       ))}
     </m.div>
   )

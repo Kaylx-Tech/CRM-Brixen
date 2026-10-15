@@ -284,6 +284,7 @@ export default function Payments() {
     return [
       {
         title: 'Orders',
+        hero: true,
         value: String(orders.length),
         footerSubText: 'Click to show all',
         onClick: () => setRevenueFilter('all'),
@@ -318,6 +319,7 @@ export default function Payments() {
   const invoiceStatCards = useMemo(() => [
     {
       title: 'Total billed',
+      hero: true,
       value: `£${collectionStats.billed.toFixed(2)}`,
       footerSubText: 'Click to show all',
       onClick: () => setPayFilter('all'),

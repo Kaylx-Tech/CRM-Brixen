@@ -317,7 +317,7 @@ export default function Orders() {
   }
 
   const statCards = useMemo(() => [
-    { title: 'Total Orders', value: String(stats.total_orders ?? 0), footerSubText: 'Matching filters' },
+    { title: 'Total Orders', hero: true, value: String(stats.total_orders ?? 0), footerSubText: 'Matching filters' },
     { title: 'Pending', value: String(stats.pending ?? 0), footerSubText: 'Pending / verification' },
     { title: 'In Progress', value: String(stats.in_progress ?? 0), footerSubText: 'Processing + in progress' },
     { title: 'Completed', value: String(stats.completed ?? 0), footerSubText: 'Finished orders' },

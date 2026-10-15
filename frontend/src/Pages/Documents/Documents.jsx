@@ -24,7 +24,11 @@ import {
   IconClipboardCheck,
   IconExternalLink,
   IconFileText,
+  IconCloudUpload,
+  IconEyeCheck,
+  IconShieldX,
 } from "@tabler/icons-react"
+import { SectionCards } from "../../Layout/StatsCard"
 import { createColumnHelper } from "@tanstack/react-table"
 import { DataTable } from "../../Layout/DataTable"
 import UploadDocumentModal from "./UploadDocumentModal"
@@ -55,6 +59,16 @@ const LIFECYCLE_TABS = [
   { key: 'POSTED_DOCUMENTS', label: 'Posted Documents' },
   { key: 'QUARANTINE', label: 'Quarantine' },
 ]
+
+// Colour and icon of each stage card
+const STAGE_LOOK = {
+  CUSTOMER_UPLOADS: { tone: 'blue', icon: IconCloudUpload },
+  PROCESSING: { tone: 'violet', icon: IconLoader2 },
+  REVIEW_REQUIRED: { tone: 'amber', icon: IconEyeCheck },
+  READY_FOR_APPROVAL: { tone: 'sky', icon: IconClipboardCheck },
+  POSTED_DOCUMENTS: { tone: 'emerald', icon: IconCheck },
+  QUARANTINE: { tone: 'rose', icon: IconShieldX },
+}
 
 function confidenceTone(value) {
   const n = Number(value)
@@ -505,6 +519,19 @@ export default function Documents() {
           </Button>
         </div>
       </div>
+
+      {/* One card per stage; clicking a card opens that stage */}
+      <SectionCards
+        compact
+        isLoading={isLoading && Object.keys(counts).length === 0}
+        stats={LIFECYCLE_TABS.map((tab) => ({
+          title: tab.label,
+          value: String(counts[tab.key] ?? 0),
+          ...STAGE_LOOK[tab.key],
+          onClick: () => setStage(tab.key),
+          active: stage === tab.key,
+        }))}
+      />
 
       <Tabs value={stage} onValueChange={setStage} className="w-full">
         <TabsList className="h-auto flex-wrap bg-background gap-1 p-1">

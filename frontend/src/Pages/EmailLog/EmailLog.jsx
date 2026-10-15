@@ -10,7 +10,8 @@ import {
 } from '@/components/ui/dialog'
 import { createColumnHelper } from '@tanstack/react-table'
 import { DataTable } from '../../Layout/DataTable'
-import { IconRefresh, IconEye, IconSend, IconLoader2 } from '@tabler/icons-react'
+import { IconRefresh, IconEye, IconSend, IconLoader2, IconMailCheck, IconMailX, IconMailPause } from '@tabler/icons-react'
+import { SectionCards } from '../../Layout/StatsCard'
 import { apiRequest } from '@/lib/api'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import { OverflowTooltip } from '@/components/OverflowTooltip'
@@ -286,6 +287,17 @@ export default function EmailLog() {
           Refresh
         </Button>
       </div>
+
+      <SectionCards
+        compact
+        isLoading={isLoading && total === 0}
+        stats={[
+          { title: 'Total Emails', hero: true, value: String(total), footerSubText: 'Sent or attempted' },
+          { title: 'Delivered', tone: 'emerald', icon: IconMailCheck, value: String(counts.sent || 0), footerSubText: total ? `${Math.round(((counts.sent || 0) / total) * 100)}% of all emails` : 'Nothing yet' },
+          { title: 'Not Delivered', tone: 'rose', icon: IconMailX, value: String(failed), footerSubText: 'Failed, bad address or no SMTP' },
+          { title: 'Held (emails off)', tone: 'amber', icon: IconMailPause, value: String(counts.suppressed || 0), footerSubText: 'Send emails is switched off' },
+        ]}
+      />
 
       {loadError && (
         <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-2 text-sm text-destructive">

@@ -15,7 +15,10 @@ import {
   IconArrowLeft,
   IconMailCheck,
   IconMailOff,
+  IconCircleDot,
+  IconMessageCircleExclamation,
 } from '@tabler/icons-react'
+import { SectionCards } from '../../Layout/StatsCard'
 import { apiRequest } from '@/lib/api'
 import { toast } from 'sonner'
 
@@ -291,7 +294,19 @@ export default function Tickets() {
         </Button>
       </div>
 
-      <div className="grid h-[calc(100vh-220px)] min-h-[480px] grid-cols-1 gap-4 md:grid-cols-[340px_1fr]">
+      <SectionCards
+        compact
+        isLoading={isLoading && Object.keys(counts).length === 0}
+        stats={[
+          { title: 'Active Tickets', hero: true, value: String(activeCount), footerSubText: 'Open and in progress', onClick: () => setFilter('active'), active: filter === 'active' },
+          { title: 'Waiting for Reply', tone: 'orange', icon: IconMessageCircleExclamation, value: String(waiting), footerSubText: 'Customer wrote last' },
+          { title: 'Open', tone: 'blue', icon: IconCircleDot, value: String(counts.Open || 0), onClick: () => setFilter('Open'), active: filter === 'Open' },
+          { title: 'In Progress', tone: 'amber', value: String(counts['In Progress'] || 0), onClick: () => setFilter('In Progress'), active: filter === 'In Progress' },
+          { title: 'Resolved', tone: 'emerald', value: String((counts.Resolved || 0) + (counts.Closed || 0)), footerSubText: `${counts.Closed || 0} closed`, onClick: () => setFilter('Resolved'), active: filter === 'Resolved' },
+        ]}
+      />
+
+      <div className="grid h-[calc(100vh-340px)] min-h-[480px] grid-cols-1 gap-4 md:grid-cols-[340px_1fr]">
         <div className={`flex min-h-0 flex-col gap-3 ${openId ? 'hidden md:flex' : 'flex'}`}>
           <Tabs value={filter} onValueChange={setFilter}>
             <TabsList className="h-auto flex-wrap justify-start">

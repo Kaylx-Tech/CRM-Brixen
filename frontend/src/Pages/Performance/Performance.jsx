@@ -94,7 +94,7 @@ export function MyPerformance() {
   const m = data?.metrics || {}
   const tasks = data?.my_tasks || []
   const stats = [
-    { title: 'Incentive grade', value: m.grade ? `Grade ${m.grade}` : '—', footerSubText: m.grade_label || 'This month' },
+    { title: 'Incentive grade', hero: true, value: m.grade ? `Grade ${m.grade}` : '—', footerSubText: m.grade_label || 'This month' },
     { title: 'Open', value: String(m.open_count ?? 0), footerSubText: 'Waiting to start' },
     { title: 'In progress', value: String(m.in_progress_count ?? 0), footerSubText: 'Active work' },
     {

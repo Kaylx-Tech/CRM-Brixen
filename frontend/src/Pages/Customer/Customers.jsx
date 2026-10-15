@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { createColumnHelper } from "@tanstack/react-table"
 import { DataTable } from "../../Layout/DataTable"
-import { IconDotsVertical, IconArrowsSort, IconUserPlus, IconKey, IconTrash, IconEye, IconAlertTriangle, IconLock } from "@tabler/icons-react"
+import { IconDotsVertical, IconArrowsSort, IconUserPlus, IconKey, IconTrash, IconEye, IconAlertTriangle, IconLock, IconUser, IconBriefcase, IconBuildingStore, IconSparkles } from "@tabler/icons-react"
+import { SectionCards } from "../../Layout/StatsCard"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -108,6 +109,19 @@ const Customers = () => {
   useEffect(() => {
     loadCustomers()
   }, [])
+
+  // Headline numbers; the type cards switch the tab below
+  const customerStats = useMemo(() => {
+    const count = (type) => customers.filter((c) => c.type === type).length
+    const tab = (value) => ({ onClick: () => setActiveTypeTab(value), active: activeTypeTab === value })
+    return [
+      { title: "Total Customers", hero: true, value: String(customers.length), footerSubText: `${customers.filter((c) => c.orders > 0).length} have ordered`, ...tab('All') },
+      { title: "Individual", tone: "violet", icon: IconUser, value: String(count('Individual')), footerSubText: "Website accounts", ...tab('Individual') },
+      { title: "Business", tone: "orange", icon: IconBriefcase, value: String(count('Business')), footerSubText: "Website accounts", ...tab('Business') },
+      { title: "B2B Partners", tone: "emerald", icon: IconBuildingStore, value: String(count('B2B')), footerSubText: `${customers.filter((c) => c.access === 'Needs portal password').length} need a portal password`, ...tab('B2B') },
+      { title: "New This Week", tone: "rose", icon: IconSparkles, value: String(customers.filter((c) => c.isNew).length), footerSubText: "Signed up in the last 7 days" },
+    ]
+  }, [customers, activeTypeTab])
 
   // Handler: Single Customer Delete (optimistic + Undo)
   const confirmSingleDelete = () => {
@@ -414,6 +428,8 @@ const Customers = () => {
           Create Customer
         </Button>
       </div>
+
+      <SectionCards stats={customerStats} isLoading={isLoading} compact />
 
       <Tabs
         value={activeTypeTab}

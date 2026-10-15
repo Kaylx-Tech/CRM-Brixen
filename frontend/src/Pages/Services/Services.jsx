@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { IconPlus, IconDotsVertical, IconLoader2 } from "@tabler/icons-react"
+import { IconPlus, IconDotsVertical, IconLoader2, IconTag, IconCrown } from "@tabler/icons-react"
+import { SectionCards } from "../../Layout/StatsCard"
 import { toast } from "sonner"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 import { toastUndoableDelete, toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
@@ -93,6 +94,27 @@ const Services = () => {
   useEffect(() => {
     fetchServices()
   }, [])
+
+  // Headline numbers; cost and profit only for admins
+  const serviceStats = useMemo(() => {
+    const money = (n) => `£${n.toLocaleString('en-GB', { maximumFractionDigits: 2 })}`
+    const prices = data.map((s) => Number(s.price) || 0)
+    const avg = prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : 0
+    const categories = new Set(data.map((s) => s.category).filter(Boolean))
+    const active = data.filter((s) => (s.status || 'Active') === 'Active').length
+    const stats = [
+      { title: 'Total Services', hero: true, value: String(data.length), footerSubText: `${categories.size} categories` },
+      { title: 'Active', tone: 'emerald', value: String(active), footerSubText: `${data.length - active} inactive` },
+      { title: 'Average Price', tone: 'violet', icon: IconTag, value: money(avg), footerSubText: 'Sell price' },
+      { title: 'Top Price', tone: 'orange', icon: IconCrown, value: money(prices.length ? Math.max(...prices) : 0), footerSubText: 'Most expensive service' },
+    ]
+    if (canManageCatalog) {
+      const profits = data.map((s) => (Number(s.price) || 0) - (Number(s.cost_price ?? s.originalPrice) || 0))
+      const avgProfit = profits.length ? profits.reduce((a, b) => a + b, 0) / profits.length : 0
+      stats.push({ title: 'Average Profit', tone: 'teal', value: money(avgProfit), footerSubText: 'Per service sold' })
+    }
+    return stats
+  }, [data, canManageCatalog])
 
   // ── Open Edit Dialog ──
   const openEditDialog = (service) => {
@@ -365,6 +387,7 @@ const Services = () => {
         />
       </div>
 
+      <SectionCards stats={serviceStats} isLoading={isLoading} compact />
 
       <DataTable
         columns={columns}
