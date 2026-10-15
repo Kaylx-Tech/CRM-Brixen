@@ -13,10 +13,117 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { IconCalendarWeek, IconPlus, IconRefresh, IconShoppingBag, IconUserCheck, IconSparkles } from "@tabler/icons-react"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { IconCalendarWeek, IconLayoutDashboard, IconRefresh, IconShoppingBag, IconUserCheck, IconSparkles } from "@tabler/icons-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { apiRequest, getApiBase } from "@/lib/api"
+import { canViewRevenue, getCurrentUser } from "@/lib/permissions"
+
+// ==========================================
+// Dashboard layout: which cards each user wants to see
+// ==========================================
+
+const MAIN_CARDS = [
+  { key: "Number of Sales" },
+  { key: "Sales Revenue", money: true },
+  { key: "Total Customers" },
+  { key: "Total Turnover", money: true },
+  { key: "Net Profit", money: true },
+]
+
+const WORK_CARDS = [
+  { key: "Today's Orders" },
+  { key: "Open Tickets" },
+  { key: "Documents Pending" },
+  { key: "Total Products" },
+  { key: "Pending Payments", money: true },
+]
+
+const SECTIONS = [
+  { key: "chart:sales", label: "Sales Revenue chart" },
+  { key: "chart:portfolio", label: "Portfolio chart" },
+  { key: "chart:trend", label: "Sales Trend chart" },
+  { key: "chart:operations", label: "Operations chart" },
+  { key: "section:top-performer", label: "Top Performer" },
+  { key: "section:activity", label: "Recent Live Activity" },
+]
+
+// Saved per user in this browser
+const layoutKey = () => `brixen.dashboard.hidden.${getCurrentUser()?.id || "me"}`
+
+function loadHidden() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(layoutKey()) || "[]")
+    return new Set(Array.isArray(saved) ? saved : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function saveHidden(hidden) {
+  try {
+    localStorage.setItem(layoutKey(), JSON.stringify([...hidden]))
+  } catch {
+    /* storage blocked: the choice lasts until reload */
+  }
+}
+
+function CustomizeDashboard({ hidden, onToggle, onReset }) {
+  const money = canViewRevenue()
+  const visible = (list) => list.filter((c) => money || !c.money)
+  const hiddenCount = [...visible(MAIN_CARDS), ...visible(WORK_CARDS), ...SECTIONS]
+    .filter((c) => hidden.has(c.key)).length
+
+  const group = (label, items) => (
+    <DropdownMenuGroup>
+      <DropdownMenuLabel className="py-1.5 text-xs">{label}</DropdownMenuLabel>
+      {items.map((c) => (
+        <DropdownMenuCheckboxItem
+          key={c.key}
+          checked={!hidden.has(c.key)}
+          onCheckedChange={() => onToggle(c.key)}
+        >
+          {c.label || c.key}
+        </DropdownMenuCheckboxItem>
+      ))}
+    </DropdownMenuGroup>
+  )
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button variant="outline" />}>
+        <IconLayoutDashboard className="w-4 h-4" />
+        Customize
+        {hiddenCount > 0 && (
+          <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-[10px]">
+            {hiddenCount} hidden
+          </Badge>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        {group("Main cards", visible(MAIN_CARDS))}
+        <DropdownMenuSeparator />
+        {group("Work cards", visible(WORK_CARDS))}
+        <DropdownMenuSeparator />
+        {group("Charts & sections", SECTIONS)}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onReset} disabled={hiddenCount === 0}>
+          Show all
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
 
 // ==========================================
 // Helper Functions for Data Formatting
@@ -137,6 +244,25 @@ const Dashboard = () => {
   const [barTimeFilter, setBarTimeFilter] = useState("This Year")
   const [dashboardData, setDashboardData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [hidden, setHidden] = useState(loadHidden)
+
+  const toggleCard = useCallback((key) => {
+    setHidden((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      saveHidden(next)
+      return next
+    })
+  }, [])
+
+  const showAll = useCallback(() => {
+    const next = new Set()
+    saveHidden(next)
+    setHidden(next)
+  }, [])
+
+  const shown = (key) => !hidden.has(key)
 
   // Compute month options dynamically (last 14 months + current + all time)
   const getMonthOptions = () => {
@@ -259,6 +385,20 @@ const Dashboard = () => {
     ]
   }, [dashboardData, navigate])
 
+  // Only the cards this user keeps on; placeholders follow the same choice while loading
+  const mainCards = useMemo(() => {
+    if (formattedStats.length || !isLoading) return formattedStats.filter((c) => !hidden.has(c.title))
+    const money = canViewRevenue()
+    return MAIN_CARDS.filter((c) => (money || !c.money) && !hidden.has(c.key)).map((c) => ({ title: c.key }))
+  }, [formattedStats, hidden, isLoading])
+  const workCards = useMemo(() => {
+    if (extraStats.length || !isLoading) return extraStats.filter((c) => !hidden.has(c.title))
+    const money = canViewRevenue()
+    return WORK_CARDS.filter((c) => (money || !c.money) && !hidden.has(c.key)).map((c) => ({ title: c.key }))
+  }, [extraStats, hidden, isLoading])
+
+  const chartsShown = ["chart:sales", "chart:portfolio", "chart:trend", "chart:operations"].filter(shown).length
+
   const topPerformers = dashboardData?.top_performers || []
 
   // 2. Memoized Bar Chart Data
@@ -321,40 +461,52 @@ const Dashboard = () => {
             <IconRefresh className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+
+          <CustomizeDashboard hidden={hidden} onToggle={toggleCard} onReset={showAll} />
         </div>
       </div>
 
       {/* Top 5 KPI Metric Cards via Skeleton/Props */}
-      <SectionCards stats={formattedStats} isLoading={isLoading} />
-      <SectionCards stats={extraStats} isLoading={isLoading} compact />
+      {mainCards.length > 0 && <SectionCards stats={mainCards} isLoading={isLoading} />}
+      {workCards.length > 0 && <SectionCards stats={workCards} isLoading={isLoading} compact />}
 
       {/* Charts Grid - All Fed Through Props with Skeleton Loaders */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ChartBarMultiple 
-          data={barChartData}
-          timeFilter={barTimeFilter}
-          onTimeFilterChange={setBarTimeFilter}
-          isLoading={isLoading}
-        />
+      {chartsShown > 0 && (
+        <div className={`grid grid-cols-1 gap-6 ${chartsShown > 1 ? "lg:grid-cols-2" : ""}`}>
+          {shown("chart:sales") && (
+            <ChartBarMultiple
+              data={barChartData}
+              timeFilter={barTimeFilter}
+              onTimeFilterChange={setBarTimeFilter}
+              isLoading={isLoading}
+            />
+          )}
 
-        <ChartPieSeparatorNone 
-          data={portfolioPieData}
-          isLoading={isLoading}
-        />
+          {shown("chart:portfolio") && (
+            <ChartPieSeparatorNone
+              data={portfolioPieData}
+              isLoading={isLoading}
+            />
+          )}
 
-        <ChartAreaSalesTrend 
-          data={salesTrendData}
-          isLoading={isLoading}
-        />
+          {shown("chart:trend") && (
+            <ChartAreaSalesTrend
+              data={salesTrendData}
+              isLoading={isLoading}
+            />
+          )}
 
-        <ChartTopPerformer 
-          data={operationsData}
-          isLoading={isLoading}
-        />
-      </div>
+          {shown("chart:operations") && (
+            <ChartTopPerformer
+              data={operationsData}
+              isLoading={isLoading}
+            />
+          )}
+        </div>
+      )}
 
       {/* Top Performers (staff incentive grades) */}
-      {!isLoading && (
+      {!isLoading && shown("section:top-performer") && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">Top Performer</CardTitle>
@@ -382,7 +534,7 @@ const Dashboard = () => {
       )}
 
       {/* Recent Activity Feed */}
-      {isLoading ? (
+      {!shown("section:activity") ? null : isLoading ? (
         <Skeleton className="w-full h-[150px] rounded-xl" />
       ) : dashboardData?.activity && dashboardData.activity.length > 0 ? (
         <Card>
