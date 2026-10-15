@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Area, AreaChart, LabelList, Pie, PieChart } from "recharts"
+import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis, Area, AreaChart, Label, LabelList, Pie, PieChart } from "recharts"
 
 import {
   Card,
@@ -35,8 +35,13 @@ const cardMotion = { variants: fadeUp, initial: "hidden", animate: "show" }
 const barChartConfig = {
   revenue: {
     label: "Sales Revenue",
-    color: "var(--chart-3)",
+    color: "var(--viz-1)",
   },
+}
+
+// Small coloured square that sits before each chart title
+function TitleDot({ className }) {
+  return <span className={`inline-block size-2.5 rounded-full ${className}`} />
 }
 
 export function ChartBarMultiple({
@@ -50,12 +55,14 @@ export function ChartBarMultiple({
   }
 
   const displayData = data && data.length > 0 ? data : []
+  // The best period gets the full gradient, the rest stay lighter
+  const peak = displayData.reduce((best, d, i) => (d.revenue > (displayData[best]?.revenue ?? -1) ? i : best), -1)
 
   return (
     <MotionCard {...cardMotion} className="flex flex-col chart-revenue-privacy relative">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="space-y-1">
-          <CardTitle>Sales Revenue</CardTitle>
+          <CardTitle className="flex items-center gap-2"><TitleDot className="bg-(--viz-1)" />Sales Revenue</CardTitle>
         </div>
         {onTimeFilterChange && (
           <Select value={timeFilter} onValueChange={onTimeFilterChange}>
@@ -75,7 +82,17 @@ export function ChartBarMultiple({
       <CardContent className="flex-1">
         <ChartContainer config={barChartConfig}>
           <BarChart accessibilityLayer data={displayData} margin={{ top: 20, right: 10, left: 10, bottom: 0 }}>
-            <CartesianGrid vertical={false} stroke="var(--border)" />
+            <defs>
+              <linearGradient id="revenueBar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#7c3aed" />
+                <stop offset="100%" stopColor="var(--viz-1)" />
+              </linearGradient>
+              <linearGradient id="revenueBarSoft" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--viz-1)" stopOpacity={0.55} />
+                <stop offset="100%" stopColor="var(--viz-1)" stopOpacity={0.18} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="4 4" />
             <XAxis
               dataKey="month"
               tickLine={false}
@@ -91,7 +108,7 @@ export function ChartBarMultiple({
               tickFormatter={(val) => `£${val >= 1000 ? `${(val / 1000).toFixed(val % 1000 === 0 ? 0 : 1)}k` : val}`}
             />
             <ChartTooltip
-              cursor={false}
+              cursor={{ fill: "var(--muted)", opacity: 0.5, radius: 8 }}
               content={
                 <ChartTooltipContent
                   formatter={(value) => (
@@ -105,7 +122,11 @@ export function ChartBarMultiple({
                 />
               }
             />
-            <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 4, 4]} barSize={40} {...CHART_ANIMATION} />
+            <Bar dataKey="revenue" fill="url(#revenueBarSoft)" radius={[8, 8, 4, 4]} maxBarSize={40} {...CHART_ANIMATION}>
+              {displayData.map((d, i) => (
+                <Cell key={d.month ?? i} fill={i === peak ? "url(#revenueBar)" : "url(#revenueBarSoft)"} />
+              ))}
+            </Bar>
           </BarChart>
         </ChartContainer>
       </CardContent>
@@ -133,14 +154,14 @@ export function ChartPieSeparatorNone({ data = [], isLoading = false }) {
     <MotionCard {...cardMotion} className="flex flex-col h-full">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="space-y-1">
-          <CardTitle>Portfolio Distribution</CardTitle>
+          <CardTitle className="flex items-center gap-2"><TitleDot className="bg-(--viz-2)" />Portfolio Distribution</CardTitle>
         </div>
       </CardHeader>
       <div className="flex flex-col sm:flex-row items-center justify-center flex-1">
         <CardContent className="flex-[3] w-full">
           <ChartContainer
             config={pieChartConfig}
-            className="mx-auto aspect-square max-h-[280px]"
+            className="mx-auto aspect-square w-full max-w-[280px]"
           >
             <PieChart>
               <ChartTooltip
@@ -151,9 +172,29 @@ export function ChartPieSeparatorNone({ data = [], isLoading = false }) {
                 data={pieData}
                 dataKey="value"
                 nameKey="category"
-                stroke="0"
+                innerRadius="58%"
+                outerRadius="92%"
+                paddingAngle={2}
+                cornerRadius={6}
+                stroke="var(--card)"
+                strokeWidth={2}
                 {...CHART_ANIMATION}
-              />
+              >
+                <Label
+                  content={({ viewBox }) =>
+                    viewBox?.cx != null ? (
+                      <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                        <tspan x={viewBox.cx} y={viewBox.cy - 6} className="fill-foreground text-2xl font-bold">
+                          {total.toLocaleString("en-GB")}
+                        </tspan>
+                        <tspan x={viewBox.cx} y={viewBox.cy + 16} className="fill-muted-foreground text-xs">
+                          Total
+                        </tspan>
+                      </text>
+                    ) : null
+                  }
+                />
+              </Pie>
             </PieChart>
           </ChartContainer>
         </CardContent>
@@ -161,9 +202,10 @@ export function ChartPieSeparatorNone({ data = [], isLoading = false }) {
           {pieData.map((item, index) => {
             const pct = item.pct ?? (total > 0 ? Math.round((item.value / total) * 100) : 0)
             return (
-              <div key={index} className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.fill }}></span>
-                <span className="text-foreground font-medium">{item.label} ({pct}%)</span>
+              <div key={index} className="flex w-full max-w-56 items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted/50">
+                <span className="w-2.5 h-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.fill }}></span>
+                <span className="text-foreground font-medium truncate">{item.label}</span>
+                <span className="ml-auto text-muted-foreground tabular-nums">{pct}%</span>
               </div>
             )
           })}
@@ -176,11 +218,11 @@ export function ChartPieSeparatorNone({ data = [], isLoading = false }) {
 const areaChartConfig = {
   online: {
     label: "Online Activity",
-    color: "var(--chart-1)",
+    color: "var(--viz-1)",
   },
   offline: {
     label: "Direct Intakes",
-    color: "var(--chart-2)",
+    color: "var(--viz-2)",
   },
 }
 
@@ -195,13 +237,13 @@ export function ChartAreaSalesTrend({ data = [], isLoading = false }) {
     <MotionCard {...cardMotion} className="flex flex-col chart-revenue-privacy relative">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Sales Trend</CardTitle>
+          <CardTitle className="flex items-center gap-2"><TitleDot className="bg-(--viz-3)" />Sales Trend</CardTitle>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-primary"></span> Online Activity
+              <span className="w-2 h-2 rounded-full bg-(--viz-1)"></span> Online Activity
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-muted-foreground/30"></span> Direct Intake
+              <span className="w-2 h-2 rounded-full bg-(--viz-2)"></span> Direct Intake
             </span>
           </div>
         </div>
@@ -218,7 +260,17 @@ export function ChartAreaSalesTrend({ data = [], isLoading = false }) {
               bottom: 0
             }}
           >
-            <CartesianGrid vertical={false} stroke="var(--border)" />
+            <defs>
+              <linearGradient id="trendOnline" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="var(--color-online)" stopOpacity={0.45} />
+                <stop offset="95%" stopColor="var(--color-online)" stopOpacity={0.02} />
+              </linearGradient>
+              <linearGradient id="trendOffline" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="var(--color-offline)" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="var(--color-offline)" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="4 4" />
             <XAxis
               dataKey="week"
               tickLine={false}
@@ -232,27 +284,25 @@ export function ChartAreaSalesTrend({ data = [], isLoading = false }) {
               tickMargin={8}
               tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
             />
-            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+            <ChartTooltip cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "4 4" }} content={<ChartTooltipContent />} />
             <Area
               dataKey="online"
               type="natural"
-              fill="var(--color-online)"
-              fillOpacity={0.2}
+              fill="url(#trendOnline)"
               stroke="var(--color-online)"
               strokeWidth={2}
               dot={false}
-              activeDot={false}
+              activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--card)" }}
               {...CHART_ANIMATION}
             />
             <Area
               dataKey="offline"
               type="natural"
-              fill="var(--color-offline)"
-              fillOpacity={0.4}
+              fill="url(#trendOffline)"
               stroke="var(--color-offline)"
               strokeWidth={2}
               dot={false}
-              activeDot={false}
+              activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--card)" }}
               {...CHART_ANIMATION}
             />
           </AreaChart>
@@ -279,7 +329,7 @@ export function ChartTopPerformer({ data = [], isLoading = false }) {
   return (
     <MotionCard {...cardMotion} className="flex flex-col">
       <CardHeader>
-        <CardTitle>Completion & Operations</CardTitle>
+        <CardTitle className="flex items-center gap-2"><TitleDot className="bg-(--viz-4)" />Completion & Operations</CardTitle>
       </CardHeader>
       <CardContent className="flex-1 min-h-[250px] pt-4 px-2 sm:px-6">
         <ChartContainer config={topPerformerConfig} className="w-full h-full min-h-[250px]">
@@ -292,7 +342,6 @@ export function ChartTopPerformer({ data = [], isLoading = false }) {
               right: 32,
             }}
           >
-            <CartesianGrid horizontal={false} vertical={true} stroke="var(--border)" />
             <YAxis
               dataKey="team"
               type="category"
@@ -302,8 +351,11 @@ export function ChartTopPerformer({ data = [], isLoading = false }) {
             />
             <XAxis type="number" hide={true} />
             <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-            <Bar dataKey="score" fill="var(--color-score)" radius={6} barSize={28} {...CHART_ANIMATION}>
-              <LabelList dataKey="team" position="insideLeft" fill="var(--background)" offset={12} fontSize={14} />
+            <Bar dataKey="score" fill="var(--color-score)" radius={8} barSize={28} background={{ fill: "var(--muted)", radius: 8 }} {...CHART_ANIMATION}>
+              {displayData.map((d, i) => (
+                <Cell key={d.team ?? i} fill={`var(--viz-${(i % 5) + 1})`} />
+              ))}
+              <LabelList dataKey="team" position="insideLeft" fill="#ffffff" offset={12} fontSize={14} />
               <LabelList dataKey="score" position="right" fill="var(--foreground)" offset={12} fontSize={14} />
             </Bar>
           </BarChart>

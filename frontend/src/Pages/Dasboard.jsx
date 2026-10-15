@@ -23,7 +23,24 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { IconCalendarWeek, IconLayoutDashboard, IconRefresh, IconShoppingBag, IconUserCheck, IconSparkles } from "@tabler/icons-react"
+import {
+  IconCalendarEvent,
+  IconCalendarWeek,
+  IconCash,
+  IconChartLine,
+  IconCurrencyPound,
+  IconFileDescription,
+  IconLayoutDashboard,
+  IconPackage,
+  IconPigMoney,
+  IconRefresh,
+  IconShoppingBag,
+  IconShoppingCart,
+  IconSparkles,
+  IconTicket,
+  IconUserCheck,
+  IconUsers,
+} from "@tabler/icons-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { apiRequest, getApiBase } from "@/lib/api"
@@ -57,6 +74,22 @@ const SECTIONS = [
   { key: "section:top-performer", label: "Top Performer" },
   { key: "section:activity", label: "Recent Live Activity" },
 ]
+
+// Grade badge gradient: A green, B blue, C amber, anything lower rose
+const gradeColor = (grade = "") => {
+  const g = String(grade).toUpperCase()
+  if (g.startsWith("A")) return "from-emerald-500 to-teal-500"
+  if (g.startsWith("B")) return "from-blue-500 to-indigo-500"
+  if (g.startsWith("C")) return "from-amber-500 to-orange-500"
+  return "from-rose-500 to-pink-500"
+}
+
+const activityColor = (kind) =>
+  kind === "order"
+    ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
+    : kind === "customer"
+      ? "bg-violet-500/15 text-violet-600 dark:text-violet-400"
+      : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
 
 // Saved per user in this browser
 const layoutKey = () => `brixen.dashboard.hidden.${getCurrentUser()?.id || "me"}`
@@ -194,7 +227,7 @@ const formatPortfolioPieData = (breakdown) => {
     label: b.label,
     value: b.value || 0,
     pct: b.pct,
-    fill: `var(--chart-${(idx % 4) + 1})`
+    fill: `var(--viz-${(idx % 5) + 1})`
   }))
 }
 
@@ -337,18 +370,24 @@ const Dashboard = () => {
     return [
       {
         title: "Number of Sales",
+        hero: true,
+        icon: IconShoppingCart,
         value: String(s.total_orders ?? s.month_orders ?? 0),
         trendValue: salesTrend.trendValue,
         trendDirection: salesTrend.trendDirection,
       },
       ...(showMoney ? [{
         title: "Sales Revenue",
+        tone: "emerald",
+        icon: IconCurrencyPound,
         value: formatCurrency(s.total_revenue_raw, s.total_revenue),
         trendValue: revTrend.trendValue,
         trendDirection: revTrend.trendDirection,
       }] : []),
       {
         title: "Total Customers",
+        tone: "violet",
+        icon: IconUsers,
         value: String(s.total_customers ?? 0),
         trendValue: custTrend.trendValue,
         trendDirection: custTrend.trendDirection,
@@ -356,12 +395,16 @@ const Dashboard = () => {
       ...(showMoney ? [
         {
           title: "Total Turnover",
+          tone: "orange",
+          icon: IconChartLine,
           value: formatCurrency(s.total_turnover, s.total_turnover_display),
           trendValue: turnoverTrend.trendValue,
           trendDirection: turnoverTrend.trendDirection,
         },
         {
           title: "Net Profit",
+          tone: "teal",
+          icon: IconPigMoney,
           value: formatCurrency(s.net_profit, s.net_profit_display),
           trendValue: profitTrend.trendValue,
           trendDirection: profitTrend.trendDirection,
@@ -375,12 +418,12 @@ const Dashboard = () => {
     const s = dashboardData?.stats
     if (!s) return []
     return [
-      { title: "Today's Orders", value: String(s.today_orders ?? 0), footerSubText: `${s.today_customers ?? 0} new customers today`, onClick: () => navigate('/admin/orders') },
-      { title: "Open Tickets", value: String(s.open_tickets ?? 0) },
-      { title: "Documents Pending", value: String(s.pending_documents ?? 0), footerSubText: `of ${s.total_documents ?? 0} documents`, onClick: () => navigate('/admin/documents') },
-      { title: "Total Products", value: String(s.total_products ?? 0), onClick: () => navigate('/admin/services') },
+      { title: "Today's Orders", tone: "blue", icon: IconCalendarEvent, value: String(s.today_orders ?? 0), footerSubText: `${s.today_customers ?? 0} new customers today`, onClick: () => navigate('/admin/orders') },
+      { title: "Open Tickets", tone: "rose", icon: IconTicket, value: String(s.open_tickets ?? 0) },
+      { title: "Documents Pending", tone: "amber", icon: IconFileDescription, value: String(s.pending_documents ?? 0), footerSubText: `of ${s.total_documents ?? 0} documents`, onClick: () => navigate('/admin/documents') },
+      { title: "Total Products", tone: "violet", icon: IconPackage, value: String(s.total_products ?? 0), onClick: () => navigate('/admin/services') },
       ...(s.pending_payments !== undefined
-        ? [{ title: "Pending Payments", value: formatCurrency(null, s.pending_payments), onClick: () => navigate('/admin/payments') }]
+        ? [{ title: "Pending Payments", tone: "sky", icon: IconCash, value: formatCurrency(null, s.pending_payments), onClick: () => navigate('/admin/payments') }]
         : []),
     ]
   }, [dashboardData, navigate])
@@ -518,7 +561,7 @@ const Dashboard = () => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {topPerformers.map((p) => (
                   <div key={p.id} className="flex items-center gap-3 p-3.5 rounded-xl border bg-muted/20">
-                    <Badge className="h-8 w-10 justify-center text-sm">{p.grade}</Badge>
+                    <Badge className={`h-8 w-10 justify-center text-sm border-0 text-white bg-linear-to-br ${gradeColor(p.grade)}`}>{p.grade}</Badge>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold truncate">{p.full_name}</p>
                       <p className="text-sm text-muted-foreground truncate">
@@ -548,7 +591,7 @@ const Dashboard = () => {
                   key={idx} 
                   className="flex items-start gap-3 p-3.5 rounded-xl border bg-muted/20 hover:bg-muted/40 transition-colors"
                 >
-                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                  <div className={`p-2 rounded-lg ${activityColor(item.kind)}`}>
                     {item.kind === 'order' ? (
                       <IconShoppingBag className="w-4 h-4" />
                     ) : item.kind === 'customer' ? (

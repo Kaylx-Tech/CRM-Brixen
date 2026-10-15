@@ -16,6 +16,25 @@ import { m, fadeUp, staggerContainer, snappySpring } from "@/lib/motion"
 // The Card itself animates (the grid styles target the card as a direct child)
 const MotionCard = m.create(Card)
 
+// Colour per card: soft tinted surface, a glow in the corner and a coloured icon chip
+const TONES = {
+  blue: { card: "from-blue-500/12 via-card to-card", glow: "bg-blue-500/25", chip: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
+  emerald: { card: "from-emerald-500/12 via-card to-card", glow: "bg-emerald-500/25", chip: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
+  violet: { card: "from-violet-500/12 via-card to-card", glow: "bg-violet-500/25", chip: "bg-violet-500/15 text-violet-600 dark:text-violet-400" },
+  orange: { card: "from-orange-500/12 via-card to-card", glow: "bg-orange-500/25", chip: "bg-orange-500/15 text-orange-600 dark:text-orange-400" },
+  teal: { card: "from-teal-500/12 via-card to-card", glow: "bg-teal-500/25", chip: "bg-teal-500/15 text-teal-600 dark:text-teal-400" },
+  rose: { card: "from-rose-500/12 via-card to-card", glow: "bg-rose-500/25", chip: "bg-rose-500/15 text-rose-600 dark:text-rose-400" },
+  amber: { card: "from-amber-500/14 via-card to-card", glow: "bg-amber-500/25", chip: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
+  sky: { card: "from-sky-500/12 via-card to-card", glow: "bg-sky-500/25", chip: "bg-sky-500/15 text-sky-600 dark:text-sky-400" },
+}
+
+// The headline card: solid brand gradient with white text
+const HERO = {
+  card: "border-transparent ring-0 from-[#1A69F8] via-[#3b5bff] to-[#7c3aed] text-white shadow-lg shadow-blue-500/25",
+  glow: "bg-white/25",
+  chip: "bg-white/20 text-white",
+}
+
 /* Inline shimmer bar — replaces Skeleton without changing card dimensions */
 function Shimmer({ className }) {
   return (
@@ -39,19 +58,25 @@ export function StatCard({
   compact = false,
   onClick,
   active = false,
+  tone,
+  hero = false,
+  icon: Icon,
 }) {
   const isDown = trendDirection === "down"
   const TrendIcon = isDown ? IconTrendingDown : IconTrendingUp
   const interactive = typeof onClick === "function"
+  const look = hero && !isLoading ? HERO : TONES[tone]
 
   return (
     <MotionCard
       variants={fadeUp}
+      whileHover={{ y: -3, transition: snappySpring }}
       whileTap={interactive ? { scale: 0.98, transition: snappySpring } : undefined}
       size={compact ? "sm" : "default"}
       className={cn(
-        "@container/card",
-        interactive && "cursor-pointer transition-colors hover:bg-muted/30",
+        "@container/card relative overflow-hidden shadow-xs",
+        look ? cn("bg-linear-to-br", look.card) : "bg-linear-to-t from-primary/5 to-card",
+        interactive && "cursor-pointer",
         active && "ring-1 ring-primary/40 border-primary/30"
       )}
       onClick={interactive ? onClick : undefined}
@@ -68,8 +93,34 @@ export function StatCard({
           : undefined
       }
     >
-      <CardHeader className={compact ? "gap-0.5" : undefined}>
-        <CardDescription className={compact ? "text-[11px]" : undefined}>
+      {look && (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none absolute -top-10 -right-10 rounded-full blur-2xl",
+            compact ? "size-24" : "size-32",
+            look.glow
+          )}
+        />
+      )}
+      <CardHeader className={cn("relative", compact ? "gap-0.5" : undefined)}>
+        <CardDescription
+          className={cn(
+            compact ? "flex items-center gap-2 text-[11px]" : "flex flex-col items-start gap-2.5",
+            hero && !isLoading && "text-white/85"
+          )}
+        >
+          {Icon && !isLoading && (
+            <span
+              className={cn(
+                "flex shrink-0 items-center justify-center rounded-lg",
+                compact ? "size-6" : "size-9 rounded-xl",
+                look?.chip
+              )}
+            >
+              <Icon className={compact ? "size-3.5" : "size-5"} />
+            </span>
+          )}
           {isLoading ? <Shimmer className="h-3 w-20" /> : title}
         </CardDescription>
         <CardTitle
@@ -93,7 +144,9 @@ export function StatCard({
                 className={cn(
                   "gap-1 font-medium",
                   compact && "px-1.5 py-0 text-[10px]",
-                  isDown
+                  hero
+                    ? "text-white border-white/30 bg-white/15"
+                    : isDown
                     ? "text-rose-600 border-rose-200 dark:border-rose-900/50 bg-rose-50/50 dark:bg-rose-950/20"
                     : "text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20"
                 )}
@@ -122,7 +175,7 @@ export function StatCard({
                 </div>
               )}
               {footerSubText && (
-                <div className="text-muted-foreground line-clamp-1">{footerSubText}</div>
+                <div className={cn("line-clamp-1", hero ? "text-white/80" : "text-muted-foreground")}>{footerSubText}</div>
               )}
             </>
           )}
@@ -154,7 +207,7 @@ export function SectionCards({ stats = [], isLoading = false, compact = false })
       initial={isLoading ? false : "hidden"}
       animate="show"
       className={cn(
-        "grid gap-3 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs dark:*:data-[slot=card]:bg-card",
+        "grid gap-3",
         gridCols
       )}
     >
