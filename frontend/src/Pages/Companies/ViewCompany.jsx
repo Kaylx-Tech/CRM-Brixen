@@ -74,6 +74,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
     status: 'Active',
     utr_number: '',
     authentication_code: '',
+    activation_code: '',
     accounts_next_due: '',
     confirmation_next_due: '',
   })
@@ -159,6 +160,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
       status: src.status || 'Active',
       utr_number: src.utr_number || '',
       authentication_code: src.authentication_code || src.auth_code || '',
+      activation_code: src.activation_code || '',
       accounts_next_due: src.accounts_next_due ? String(src.accounts_next_due).slice(0, 10) : '',
       confirmation_next_due: (src.confirmation_next_due || src.confirmation_statement_next_due) ? String(src.confirmation_next_due || src.confirmation_statement_next_due).slice(0, 10) : '',
     })
@@ -168,16 +170,24 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
     if (!company?.id) return
     setIsSaving(true)
     try {
+      // Only the fields on this tab (sending hidden ones could blank dates or the company status)
+      const payload = {
+        utr_number: (formData.utr_number || '').trim(),
+        authentication_code: (formData.authentication_code || '').trim(),
+        activation_code: (formData.activation_code || '').trim(),
+        identity_verified: formData.identity_verified,
+        psc_verified: formData.psc_verified,
+      }
       const res = await apiRequest(`/admin/companies/${company.id}`, {
         method: 'PUT',
-        body: formData,
+        body: payload,
         label: 'Update Company Compliance',
       })
       if (res.ok) {
         toast.success('Company compliance & status updated successfully')
         const updatedData = res.data?.data || res.data || {}
-        setDetail((prev) => ({ ...(prev || {}), ...formData, ...updatedData }))
-        if (onUpdate) onUpdate({ ...(company || {}), ...formData, ...updatedData })
+        setDetail((prev) => ({ ...(prev || {}), ...payload, ...updatedData }))
+        if (onUpdate) onUpdate({ ...(company || {}), ...payload, ...updatedData })
       } else {
         toast.error(res.reason || 'Failed to update compliance status')
       }
@@ -461,15 +471,15 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                         <SelectTrigger className="w-full h-10 text-sm">
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
-                        <SelectGroup>
-                          <SelectContent className="overflow-hidden p-0">
+                        <SelectContent>
+                          <SelectGroup>
                             {['Not started', 'In progress', 'Verified', 'Failed'].map((st) => (
                               <SelectItem key={st} value={st}>
                                 {st}
                               </SelectItem>
-                          ))}
+                            ))}
+                          </SelectGroup>
                         </SelectContent>
-                        </SelectGroup>
                       </Select>
                     </div>
 
@@ -484,15 +494,15 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                         <SelectTrigger className="w-full h-10 text-sm">
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
-                        <SelectGroup>
-                        <SelectContent className="overflow-hidden p-0">
-                          {['Not started', 'In progress', 'Verified', 'Update required'].map((st) => (
-                            <SelectItem key={st} value={st}>
-                              {st}
-                            </SelectItem>
-                          ))}
+                        <SelectContent>
+                          <SelectGroup>
+                            {['Not started', 'In progress', 'Verified', 'Update required'].map((st) => (
+                              <SelectItem key={st} value={st}>
+                                {st}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
                         </SelectContent>
-                        </SelectGroup>
                       </Select>
                     </div>
                   </div>

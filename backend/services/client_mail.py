@@ -58,10 +58,10 @@ def _is_b2b(client):
     return bool(client) and (int(client.get('is_b2b') or 0) == 1 or str(client.get('client_type') or '').upper() == 'B2B')
 
 
-def resolve_recipient(client, *, company=None, order=None, email_to=None):
-    """Who gets the email (see module docstring)."""
+def resolve_recipient(client, *, company=None, order=None, email_to=None, account_owner=False):
+    """Who gets the email (see module docstring). account_owner=True always uses the account holder."""
     owner = _usable(client.get('notification_email')) or _usable(client.get('email'))
-    if _is_b2b(client) or (order or {}).get('b2b_client_id'):
+    if account_owner or _is_b2b(client) or (order or {}).get('b2b_client_id'):
         return owner
     explicit = _usable(email_to)
     if explicit:
@@ -139,7 +139,7 @@ def compose_client_email(*, subject, headline, greeting, message, points=None, d
 
 def notify_client(user_id, *, title, message, ntype='info', link=None, email=True, subject=None, headline=None,
                   points=None, details=None, cta_label='Open your client panel', cta_url=None, category='ORDER',
-                  company=None, order=None, email_to=None, triggered_by=None):
+                  company=None, order=None, email_to=None, triggered_by=None, account_owner=False):
     """In-app notification + email for a client. Returns {notification_created, email_sent, email_status, email_to}."""
     result = {'notification_created': False, 'email_sent': False, 'email_status': 'Not sent'}
     try:
@@ -151,7 +151,8 @@ def notify_client(user_id, *, title, message, ntype='info', link=None, email=Tru
         if not email:
             result['email_status'] = 'In-app only'
             return result
-        recipient = resolve_recipient(client, company=company, order=order, email_to=email_to)
+        recipient = resolve_recipient(client, company=company, order=order, email_to=email_to,
+                                      account_owner=account_owner)
         if not recipient:
             result['email_status'] = 'No email address'
             return result
@@ -320,7 +321,7 @@ def notify_order_status_changed(order_id, old_status, triggered_by=None):
             message='Good news — this order is now Completed.', ntype='order_complete', link='/orders',
             subject=f'{service} is complete — {brand}', points=product_completion_points(order),
             details=[('Order', number)], cta_label='View in your client panel', category='ORDER',
-            company=company, order=order, triggered_by=triggered_by)
+            company=company, order=order, triggered_by=triggered_by, account_owner=True)
     progress = order.get('progress_percent')
     status_text = f"{status} ({progress}% complete)" if progress not in (None, '') else status
     return notify_client(
@@ -328,7 +329,8 @@ def notify_order_status_changed(order_id, old_status, triggered_by=None):
         message=f"Order {number} status changed to '{status}'.", ntype='order_update', link='/orders',
         subject=f'Order update — {number} — {brand}', headline='Your order status has changed',
         points=[f'✅ {service}', f'📦 Order {number}'], details=[('Status', status_text)],
-        cta_label='Track your order', category='ORDER', company=company, order=order, triggered_by=triggered_by)
+        cta_label='Track your order', category='ORDER', company=company, order=order, triggered_by=triggered_by,
+        account_owner=True)
 
 
 def notify_document_available(document_id, client_message=None, triggered_by=None):
