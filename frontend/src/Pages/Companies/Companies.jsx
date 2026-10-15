@@ -44,6 +44,7 @@ const Companies = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [activeTab, setActiveTab] = useState('all')
+  const [pageOpenedAt] = useState(() => Date.now())
 
   // Selection & Bulk delete state
   const [selectedIds, setSelectedIds] = useState([])
@@ -122,7 +123,7 @@ const Companies = () => {
   const dueSoonCount = companies.filter((c) => {
     const due = c.raw?.accounts_next_due ? new Date(c.raw.accounts_next_due) : null
     if (!due || Number.isNaN(due.getTime())) return false
-    const days = (due.getTime() - Date.now()) / 86400000
+    const days = (due.getTime() - pageOpenedAt) / 86400000
     return days >= 0 && days <= 30
   }).length
   const companyStats = [
