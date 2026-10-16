@@ -62,6 +62,8 @@ function formatOrderNumberDisplay(raw) {
   const tail = s.match(/(\d+)\s*$/)
   const digits = tail ? tail[1] : s.replace(/\D/g, '')
   if (!digits) return s
+  // Only bare website numbers (#15312) get the #GB letters; GB-OCT-2326001 and #GB15353 show as stored
+  if (!/^#?\d+$/.test(s)) return s
   return `#GB${String(parseInt(digits, 10))}`
 }
 

@@ -26,6 +26,9 @@ import {
 } from '@tabler/icons-react'
 
 const PAGE_SIZE = 9
+
+// Not registered yet: no real Companies House number (REG- / PENDING placeholder), whatever its status says
+const isNotRegistered = (c) => c.isRegistered === false || c.status === 'Pending' || c.status === 'Draft'
 import { SectionCards } from '../../Layout/StatsCard'
 import CompanyCard from './CompanyCard'
 import AddCompany from './AddCompany'
@@ -121,8 +124,8 @@ const Companies = () => {
   const attentionCompanies = companies.filter((c) => c.isRegistered && needsAttention(c))
 
   // Headline numbers; Attention and Not registered switch the tab below
-  const pendingCount = companies.filter((c) => c.status === 'Pending' || c.status === 'Draft').length
-  const activeCount = companies.filter((c) => String(c.status).toLowerCase() === 'active').length
+  const pendingCount = companies.filter(isNotRegistered).length
+  const activeCount = companies.filter((c) => !isNotRegistered(c) && String(c.status).toLowerCase() === 'active').length
   const closedCount = companies.filter((c) => /dissolved|liquidation|closed|removed|struck/i.test(String(c.status))).length
   const dueSoonCount = companies.filter((c) => {
     const due = c.raw?.accounts_next_due ? new Date(c.raw.accounts_next_due) : null
@@ -151,7 +154,7 @@ const Companies = () => {
       return company.isRegistered && needsAttention(company)
     }
     if (activeTab === 'not-registered') {
-      return company.status === 'Pending' || company.status === 'Draft'
+      return isNotRegistered(company)
     }
     return true
   })
@@ -309,6 +312,9 @@ const Companies = () => {
             </TabsTrigger>
             <TabsTrigger value="not-registered" className="py-2">
               Draft / Pending
+              <span className="ml-2 bg-muted-foreground/20 px-1.5 py-0.5 rounded-full text-sm min-w-[20px] text-center inline-flex items-center justify-center">
+                {isLoading ? <Skeleton className="h-3 w-4 rounded-xs" /> : pendingCount}
+              </span>
             </TabsTrigger>
           </TabsList>
         </Tabs>

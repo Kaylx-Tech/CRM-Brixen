@@ -14,6 +14,7 @@ import {
   IconFileInvoice,
   IconFileCheck,
   IconMessageCircle,
+  IconLink,
   IconBrain,
   IconHistory,
   IconMail,
@@ -59,6 +60,7 @@ const commandGroups = [
       { title: "Payment/Invoices", url: "/admin/payments", icon: IconFileInvoice },
       { title: "Documents Review", url: "/admin/documents", icon: IconFileCheck },
       { title: "Support Tickets", url: "/admin/tickets", icon: IconMessageCircle },
+      { title: "Smart Operations", url: "/admin/smart-operations", icon: IconLink },
     ],
   },
   {

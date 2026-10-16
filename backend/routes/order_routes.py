@@ -123,7 +123,10 @@ def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False, own_orders_
             order_id = int(draft_id)
             order_num = existing.get('order_number')
             # A draft takes its number in the order series only when it is placed
-            if not as_draft and not re.match(r'^#?[A-Za-z]*\d+$', str(order_num or '')):
+            from services.order_numbers import is_draft_number
+            # (older drafts carry a random #GB-123456 placeholder)
+            if not as_draft and (is_draft_number(order_num) or not order_num
+                                 or re.match(r'^#GB-\d{6}$', str(order_num))):
                 from services.order_numbers import next_order_number
                 order_num = next_order_number()
                 execute_db("UPDATE orders SET order_number = ? WHERE id = ?;", (order_num, order_id))
@@ -567,6 +570,49 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
             ofv_json = json.dumps(ofv) if isinstance(ofv, (list, dict)) else str(ofv or '')
             updates.append("order_form_values_json = ?")
             params.append(ofv_json)
+
+        # Edit Details in the order popup: the order's own details
+        for key in ('owner_name', 'owner_form_email', 'service_name'):
+            if key in body:
+                value = str(body.get(key) or '').strip()[:300]
+                if key == 'service_name' and not value:
+                    return error_response(start_response, "Service name cannot be empty", status_code=400)
+                updates.append(f"{key} = ?")
+                params.append(value or None)
+        if body.get('order_date'):
+            if not re.match(r'^\d{4}-\d{2}-\d{2}$', str(body['order_date'])):
+                return error_response(start_response, "Order date must be YYYY-MM-DD", status_code=400)
+            # Keep the time of day, change only the date
+            updates.append("created_at = ? || substr(COALESCE(created_at, datetime('now')), 11)")
+            params.append(str(body['order_date']))
+        if 'company_id' in body:
+            cid = body.get('company_id')
+            if cid in (None, '', 0, '0'):
+                updates.append("company_id = NULL")
+            else:
+                if not query_db("SELECT 1 FROM companies WHERE id = ? LIMIT 1;", (cid,), one=True):
+                    return error_response(start_response, "Company not found", status_code=400)
+                updates.append("company_id = ?")
+                params.append(int(cid))
+        # Answers to the services' own form: [{index, value}] replaces those answers' values
+        if isinstance(body.get('service_fields'), list) and 'order_form_values_json' not in body:
+            row = query_db("SELECT order_form_values_json FROM orders WHERE id = ?;", (order_id,), one=True) or {}
+            try:
+                values = json.loads(row.get('order_form_values_json') or '{}')
+            except (TypeError, ValueError):
+                values = {}
+            values = values if isinstance(values, dict) else {}
+            fields = values.get('service_fields') if isinstance(values.get('service_fields'), list) else []
+            for change in body['service_fields']:
+                try:
+                    idx = int((change or {}).get('index'))
+                except (TypeError, ValueError):
+                    continue
+                if 0 <= idx < len(fields) and isinstance(fields[idx], dict) and not fields[idx].get('company'):
+                    fields[idx]['value'] = str((change or {}).get('value') or '')[:5000]
+            values['service_fields'] = fields
+            updates.append("order_form_values_json = ?")
+            params.append(json.dumps(values))
 
         old_status = (query_db("SELECT status FROM orders WHERE id = ?;", (order_id,), one=True) or {}).get('status')
         if updates:

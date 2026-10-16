@@ -17,6 +17,7 @@ import Intake from './Pages/Intake/Intake'
 import AuditLogs from './Pages/AuditLogs/AuditLogs'
 import EmailLog from './Pages/EmailLog/EmailLog'
 import Tickets from './Pages/Tickets/Tickets'
+import SmartOperations from './Pages/SmartOperations/SmartOperations'
 import Sso from './Pages/Sso'
 import Settings from './Pages/Settings/Settings'
 import NotificationsPage from './Pages/Notifications/Notifications'
@@ -110,6 +111,7 @@ const App = () => {
                 <Route path="logs" element={<PageGuard page="logs"><AuditLogs /></PageGuard>} />
                 <Route path="email-log" element={<PageGuard page="email-log"><EmailLog /></PageGuard>} />
                 <Route path="tickets" element={<PageGuard page="tickets"><Tickets /></PageGuard>} />
+                <Route path="smart-operations" element={<PageGuard page="smart-operations"><SmartOperations /></PageGuard>} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="profile" element={<Navigate to="/admin/settings?tab=profile" replace />} />

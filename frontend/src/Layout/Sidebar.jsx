@@ -21,6 +21,7 @@ import {
   IconFileInvoice,
   IconFileCheck,
   IconMessageCircle,
+  IconLink,
   IconBrain,
   IconHistory,
   IconSettings,
@@ -49,6 +50,7 @@ const data = {
     { title: "Payment/Invoices", url: "/admin/payments", icon: <IconFileInvoice /> },
     { title: "Documents Review", url: "/admin/documents", icon: <IconFileCheck /> },
     { title: "Support Tickets", url: "/admin/tickets", icon: <IconMessageCircle /> },
+    { title: "Smart Operations", url: "/admin/smart-operations", icon: <IconLink /> },
     { title: "Performance", url: "/admin/performance", icon: <IconTrophy /> },
   ],
 }

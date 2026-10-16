@@ -17,7 +17,8 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
   const address = company?.address || "United Kingdom";
   const countryFlag = company?.countryFlag || "🇬🇧";
   const countryName = company?.countryName || "UK";
-  const status = company?.status || "Active";
+  // A company without a real Companies House number is not live yet, whatever its stored status says
+  const status = company?.isRegistered === false ? "Not registered" : (company?.status || "Active");
   const deadlineText = company?.deadlineText || "No upcoming deadlines";
   const hasAttention = company?.isRegistered !== false && needsAttention(company);
 
@@ -102,7 +103,7 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
               <Badge className={
                 status === 'Active' ? 'badge-green' :
                 status === 'Dissolved' ? 'badge-red' :
-                status === 'Inactive' ? 'badge-amber' : 'badge-blue'
+                status === 'Inactive' || status === 'Not registered' ? 'badge-amber' : 'badge-blue'
               }>
                 {status}
               </Badge>

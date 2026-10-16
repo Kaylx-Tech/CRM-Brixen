@@ -665,6 +665,18 @@ def ensure_schema():
         );
         CREATE INDEX IF NOT EXISTS idx_email_outbox_status
             ON email_outbox(status, created_at);
+        CREATE TABLE IF NOT EXISTS smart_links (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT NOT NULL,
+            title TEXT NOT NULL,
+            url TEXT NOT NULL,
+            note TEXT,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_by INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_smart_links_category ON smart_links(category, sort_order);
         CREATE TABLE IF NOT EXISTS roles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE NOT NULL,

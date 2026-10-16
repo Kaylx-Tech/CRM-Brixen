@@ -21,6 +21,7 @@ from .client_portal_routes import handle_client_portal_routes
 from .email_log_routes import handle_email_log_routes
 from .ticket_routes import handle_ticket_routes
 from .website_routes import handle_website_routes
+from .smart_link_routes import handle_smart_link_routes
 
 
 # Accounts file integration
@@ -119,6 +120,11 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
 
     # 14b. Email log (admins)
     res = handle_email_log_routes(environ, start_response, path, method, user, body, query)
+    if res is not None:
+        return res
+
+    # 14c. Smart Operations quick links (team)
+    res = handle_smart_link_routes(environ, start_response, path, method, user, body, query)
     if res is not None:
         return res
 

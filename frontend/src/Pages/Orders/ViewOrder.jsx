@@ -83,6 +83,8 @@ function formatOrderNumberDisplay(raw) {
   const tail = s.match(/(\d+)\s*$/)
   const digits = tail ? tail[1] : s.replace(/\D/g, '')
   if (!digits) return s
+  // Only bare website numbers (#15312) get the #GB letters; GB-OCT-2326001 and #GB15353 show as stored
+  if (!/^#?\d+$/.test(s)) return s
   return `#GB${String(parseInt(digits, 10))}`
 }
 
@@ -226,6 +228,11 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
   const [formFields, setFormFields] = useState([])
   const [serviceForm, setServiceForm] = useState({ answers: [], linked: [], uploads: [] })
   const [isSavingDetails, setIsSavingDetails] = useState(false)
+  // Everything else Edit Details can change: the order's own details and the service form answers
+  const [orderInfo, setOrderInfo] = useState({ owner_name: '', owner_form_email: '', service_name: '', order_date: '', company_id: '' })
+  const [editableAnswers, setEditableAnswers] = useState([])
+  const [answerEdits, setAnswerEdits] = useState({})
+  const [companyOptions, setCompanyOptions] = useState([])
 
   // Edit credentials mode
   const [isEditingCreds, setIsEditingCreds] = useState(false)
@@ -391,9 +398,20 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
     // The services' own order form (Create Order wizard), shown read-only in its own section
     const ofv = o.order_form_values || {}
     const checkout = o.checkout_form && !Array.isArray(o.checkout_form) ? o.checkout_form : {}
-    const answers = Array.isArray(ofv.service_fields)
-      ? ofv.service_fields.filter((f) => f && f.label && (f.company || String(f.value || '').trim()))
+    // _index = the answer's place in service_fields (used when saving an edited answer)
+    const allAnswers = Array.isArray(ofv.service_fields)
+      ? ofv.service_fields.map((f, i) => (f && typeof f === 'object' ? { ...f, _index: i } : null)).filter((f) => f && f.label)
       : []
+    const answers = allAnswers.filter((f) => f.company || String(f.value || '').trim())
+    setAnswerEdits(Object.fromEntries(allAnswers.filter((f) => !f.company).map((f) => [f._index, String(f.value ?? '')])))
+    setEditableAnswers(allAnswers.filter((f) => !f.company))
+    setOrderInfo({
+      owner_name: o.owner_name || '',
+      owner_form_email: o.owner_form_email || '',
+      service_name: o.service_name || '',
+      order_date: o.created_at ? String(o.created_at).slice(0, 10) : '',
+      company_id: o.company_id ? String(o.company_id) : '',
+    })
     const uploaded = checkout.uploaded_docs && typeof checkout.uploaded_docs === 'object' ? checkout.uploaded_docs : {}
     setServiceForm({
       answers,
@@ -413,6 +431,21 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
       fetchOrderDetails()
     }
   }, [isOpen, orderId, fetchOrderDetails])
+
+  // Companies to link the order to (the customer's own first), loaded when Edit Details opens
+  useEffect(() => {
+    if (!isEditingDetails || companyOptions.length) return
+    apiRequest('/admin/companies?limit=500', { label: 'Companies', silent: true }).then((res) => {
+      if (!res.ok) return
+      const list = res.data?.companies || res.data?.data?.companies || (Array.isArray(res.data?.data) ? res.data.data : [])
+      const owner = Number(order?.user_id || 0)
+      const mine = list.filter((c) => Number(c.user_id || c.client_id || 0) === owner)
+      setCompanyOptions((mine.length ? mine : list).map((c) => ({
+        id: String(c.id),
+        label: `${c.company_name || c.name || 'Company'}${c.company_number && !/^REG-|^PENDING/i.test(c.company_number) ? ` · ${c.company_number}` : ' · not registered'}`,
+      })))
+    })
+  }, [isEditingDetails, companyOptions.length, order?.user_id])
 
   // Fetch catalog services
   useEffect(() => {
@@ -448,6 +481,12 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
         method: 'PUT',
         body: JSON.stringify({
           checkout_form: formFields,
+          owner_name: orderInfo.owner_name,
+          owner_form_email: orderInfo.owner_form_email,
+          service_name: orderInfo.service_name,
+          ...(orderInfo.order_date ? { order_date: orderInfo.order_date } : {}),
+          company_id: orderInfo.company_id || null,
+          service_fields: editableAnswers.map((f) => ({ index: f._index, value: answerEdits[f._index] ?? '' })),
         }),
         label: 'Save order details',
         silent: true,
@@ -808,6 +847,71 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                         </div>
                       ) : (
                         <div className="space-y-4">
+                          {/* The order itself */}
+                          <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+                            <p className="text-sm font-semibold">Order</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">Service</Label>
+                                <Input
+                                  value={orderInfo.service_name}
+                                  onChange={(e) => setOrderInfo((p) => ({ ...p, service_name: e.target.value }))}
+                                  className="h-8 text-sm bg-background"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">Order date</Label>
+                                <Input
+                                  type="date"
+                                  value={orderInfo.order_date}
+                                  onChange={(e) => setOrderInfo((p) => ({ ...p, order_date: e.target.value }))}
+                                  className="h-8 text-sm bg-background"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">Owner name (on the form)</Label>
+                                <Input
+                                  value={orderInfo.owner_name}
+                                  onChange={(e) => setOrderInfo((p) => ({ ...p, owner_name: e.target.value }))}
+                                  className="h-8 text-sm bg-background"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">Owner email (order emails)</Label>
+                                <Input
+                                  type="email"
+                                  value={orderInfo.owner_form_email}
+                                  onChange={(e) => setOrderInfo((p) => ({ ...p, owner_form_email: e.target.value }))}
+                                  className="h-8 text-sm bg-background"
+                                />
+                              </div>
+                              <div className="space-y-1.5 md:col-span-2">
+                                <Label className="text-xs text-muted-foreground">Company</Label>
+                                <Select
+                                  value={orderInfo.company_id || 'none'}
+                                  onValueChange={(v) => setOrderInfo((p) => ({ ...p, company_id: v === 'none' ? '' : v }))}
+                                >
+                                  <SelectTrigger className="h-8 text-sm w-full bg-background">
+                                    <SelectValue placeholder="Company">
+                                      {orderInfo.company_id
+                                        ? companyOptions.find((c) => c.id === orderInfo.company_id)?.label || order?.company_name || `Company #${orderInfo.company_id}`
+                                        : 'No company'}
+                                    </SelectValue>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectGroup>
+                                      <SelectItem value="none" className="text-sm">No company</SelectItem>
+                                      {companyOptions.map((c) => (
+                                        <SelectItem key={c.id} value={c.id} className="text-sm">{c.label}</SelectItem>
+                                      ))}
+                                    </SelectGroup>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          </div>
+
+                          {formFields.length > 0 && <p className="text-sm font-semibold pt-1">Checkout fields</p>}
                           {formFields.map((field, idx) => {
                             const wide = isWideField(field.label)
                             return (
@@ -843,10 +947,40 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               </div>
                             )
                           })}
+
+                          {/* The services' own form answers (company lookups stay as picked) */}
+                          {editableAnswers.length > 0 && (
+                            <>
+                              <p className="text-sm font-semibold pt-1">Service form</p>
+                              {editableAnswers.map((f) => {
+                                const long = isWideField(f.label) || String(answerEdits[f._index] || '').length > 60
+                                const setValue = (v) => setAnswerEdits((p) => ({ ...p, [f._index]: v }))
+                                return (
+                                  <div key={f._index} className="space-y-1.5 p-3 rounded-lg border bg-muted/20">
+                                    <Label className="text-sm font-semibold text-foreground">{f.label}</Label>
+                                    {long ? (
+                                      <Textarea
+                                        rows={2}
+                                        value={answerEdits[f._index] ?? ''}
+                                        onChange={(e) => setValue(e.target.value)}
+                                        className="text-sm bg-background resize-none"
+                                      />
+                                    ) : (
+                                      <Input
+                                        value={answerEdits[f._index] ?? ''}
+                                        onChange={(e) => setValue(e.target.value)}
+                                        className="h-8 text-sm bg-background"
+                                      />
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </>
+                          )}
                         </div>
                       )}
 
-                      {serviceForm.answers.length || serviceForm.linked.length || serviceForm.uploads.length ? (
+                      {!isEditingDetails && (serviceForm.answers.length || serviceForm.linked.length || serviceForm.uploads.length) ? (
                         <>
                           <Separator />
                           <ServiceFormAnswers {...serviceForm} />

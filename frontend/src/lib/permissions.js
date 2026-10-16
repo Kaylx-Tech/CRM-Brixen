@@ -72,6 +72,7 @@ const PAGE_ACCESS = {
   logs: { roles: ["SUPER_ADMIN", "ADMIN"] },
   "email-log": { roles: ["SUPER_ADMIN", "ADMIN"] },
   tickets: { roles: "internal", departments: ["Support"] },
+  "smart-operations": { roles: "internal" },
   // The Settings page also holds "Profile & Password"; it shows only that tab to non-admins
   settings: { roles: "internal" },
 }
