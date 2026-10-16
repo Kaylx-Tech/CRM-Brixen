@@ -112,7 +112,7 @@ export const DataTable = ({
         <div className="flex items-center gap-2 flex-wrap flex-1">
           {!hideSearch && (
             <div className="relative">
-              <IconSearch className="absolute left-2.5 top-1.5 h-3.5 w-3.5 text-muted-foreground" />
+              <IconSearch className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder={searchPlaceholder}
                 value={searchDisplay}
