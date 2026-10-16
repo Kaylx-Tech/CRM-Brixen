@@ -12,7 +12,6 @@ import ViewService from "./ViewService"
 import DeleteConfirmation from "../../components/DeleteConfirmation"
 import { isAdminRole } from "@/lib/permissions"
 import FormFieldsBuilder, { formFieldsError } from "./FormFieldsBuilder"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { 
   Dialog, 
   DialogContent, 
@@ -406,7 +405,7 @@ const Services = () => {
               Update the service details below.
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="-mx-6 h-0 min-h-0 flex-1 overflow-hidden">
+          <div className="-mx-6 min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="grid gap-4 px-6 py-4">
             <div className="grid gap-2">
               <Label htmlFor="edit-name">Name *</Label>
@@ -498,7 +497,7 @@ const Services = () => {
               disabled={isEditing}
             />
           </div>
-          </ScrollArea>
+          </div>
           <DialogFooter className="gap-3 shrink-0">
             <Button variant="outline" onClick={() => setEditService(null)} disabled={isEditing}>Cancel</Button>
             <Button onClick={handleEditSubmit} disabled={isEditing}>
