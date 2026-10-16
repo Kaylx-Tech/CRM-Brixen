@@ -115,15 +115,15 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleAttemptClose() }}>
-        <DialogContent className="sm:max-w-[560px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[560px] max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <DialogTitle>Add Service</DialogTitle>
             <DialogDescription>
               Add a new service to the database.
             </DialogDescription>
           </DialogHeader>
           {/* Header and buttons stay put; only the form scrolls */}
-          <ScrollArea className="-mx-6" viewportClassName="max-h-[60vh]">
+          <ScrollArea className="-mx-6 min-h-0 flex-1">
           <div className="grid gap-4 px-6 py-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Name *</Label>
@@ -201,7 +201,7 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
             />
           </div>
           </ScrollArea>
-          <DialogFooter className="gap-3">
+          <DialogFooter className="gap-3 shrink-0">
             <Button variant="outline" onClick={handleAttemptClose} disabled={isSubmitting}>Cancel</Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting && <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />}

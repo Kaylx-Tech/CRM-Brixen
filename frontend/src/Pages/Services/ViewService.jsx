@@ -157,10 +157,10 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[720px] p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-180 p-0 max-h-[90vh] flex flex-col overflow-hidden">
         
         {/* Header Section */}
-        <div className="p-6 border-b bg-muted/20">
+        <div className="p-6 border-b bg-muted/20 shrink-0">
           <DialogHeader className="flex-row items-center gap-4 space-y-0 text-left">
           
             <div className="flex-1 min-w-0">
@@ -181,8 +181,8 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
         </div>
 
         {/* Tabs Section */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col">
-          <div className="px-6 py-2 border-b bg-background">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex min-h-0 flex-1 flex-col">
+          <div className="px-6 py-2 border-b bg-background shrink-0">
             <TabsList className="flex w-full justify-start overflow-x-auto h-auto py-1">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               {showFinance ? <TabsTrigger value="pricing">Financials & Margin</TabsTrigger> : null}
@@ -193,7 +193,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
             </TabsList>
           </div>
 
-          <ScrollArea className="h-[52vh] min-h-[350px] w-full">
+          <ScrollArea className="min-h-0 flex-1 w-full">
             <div className="p-6 space-y-6">
             
               {/* Overview Tab */}
@@ -411,7 +411,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
         </Tabs>
 
         {/* Footer Section */}
-        <div className="p-4 border-t bg-muted/10 flex items-center justify-between">
+        <div className="p-4 border-t bg-muted/10 flex items-center justify-between shrink-0">
           <div className="text-sm text-muted-foreground">
             ID: <span className="font-mono">{serviceId}</span>
           </div>
