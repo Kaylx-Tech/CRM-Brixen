@@ -182,7 +182,7 @@ export function StatCard({
             "font-semibold tabular-nums",
             typeof value === "string" && /[£$€]/.test(value) && "privacy-currency-mask",
             compact
-              ? "text-xl @[250px]/card:text-2xl"
+              ? "text-2xl @[250px]/card:text-3xl"
               : "text-2xl @[250px]/card:text-3xl"
           )}
         >
@@ -269,7 +269,8 @@ export function SectionCards({ stats = [], isLoading = false, compact = false })
         <StatCard
           key={stat.title || index}
           {...stat}
-          tone={stat.tone ?? (stat.hero ? undefined : toneFor(stat.title, index))}
+          hero={false}
+          tone={stat.tone ?? toneFor(stat.title, index)}
           icon={stat.icon ?? (stat.title ? iconForTitle(stat.title) : undefined)}
           compact={compact}
           isLoading={isLoading}

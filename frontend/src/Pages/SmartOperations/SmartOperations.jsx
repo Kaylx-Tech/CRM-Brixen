@@ -29,7 +29,6 @@ import {
 } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
-import { SectionCards } from '../../Layout/StatsCard'
 import { m, spring } from '@/lib/motion'
 import { apiRequest } from '@/lib/api'
 
@@ -216,18 +215,6 @@ export default function SmartOperations() {
     }
   }
 
-  const stats = [
-    { title: 'Total Links', hero: true, icon: IconLink, value: String(links.length), footerSubText: 'Portals, referral links and forms' },
-    { title: 'Companies', tone: 'violet', icon: IconBuildingBank, value: String(categories.length), footerSubText: 'Tide, TapTap, Wise …' },
-    {
-      title: 'Showing',
-      tone: 'emerald',
-      icon: IconFolders,
-      value: String(groups.reduce((n, [, l]) => n + l.length, 0)),
-      footerSubText: search.trim() ? `Matching "${search.trim()}"` : 'All links',
-    },
-  ]
-
   return (
     <div className="flex w-full flex-col gap-4 pb-10">
       <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
@@ -250,8 +237,6 @@ export default function SmartOperations() {
           )}
         </div>
       </div>
-
-      <SectionCards stats={stats} isLoading={isLoading && links.length === 0} compact />
 
       <div className="relative w-full md:max-w-sm">
         <IconSearch className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

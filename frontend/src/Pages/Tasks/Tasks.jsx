@@ -43,9 +43,7 @@ import {
   IconUserPlus,
   IconLoader2,
   IconAlertCircle,
-  IconCircleDot,
 } from '@tabler/icons-react'
-import { SectionCards } from '../../Layout/StatsCard'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { apiRequest, getApiBase, toastApiEmpty } from '@/lib/api'
@@ -528,23 +526,6 @@ const Tasks = () => {
     return { All: all, ...by }
   }, [tasks])
 
-  // Headline numbers; status cards switch the filter below
-  const taskStats = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10)
-    const overdue = tasks.filter(
-      (t) => t.due_date && String(t.due_date).slice(0, 10) < today && !['Completed', 'Cancelled'].includes(t.status)
-    ).length
-    const filter = (value) => ({ onClick: () => setStatusFilter(value), active: statusFilter === value })
-    const doneRate = counts.All ? Math.round((counts.Completed / counts.All) * 100) : 0
-    return [
-      { title: 'All Tasks', hero: true, value: String(counts.All), footerSubText: `${doneRate}% completed`, ...filter('All') },
-      { title: 'Open', tone: 'blue', icon: IconCircleDot, value: String(counts.Open), footerSubText: 'Not started yet', ...filter('Open') },
-      { title: 'In Progress', tone: 'amber', value: String(counts['In Progress']), footerSubText: 'Being worked on', ...filter('In Progress') },
-      { title: 'Completed', tone: 'emerald', value: String(counts.Completed), footerSubText: `${counts.Cancelled} cancelled`, ...filter('Completed') },
-      { title: 'Overdue', tone: 'rose', value: String(overdue), footerSubText: 'Past the due date' },
-    ]
-  }, [tasks, counts, statusFilter])
-
   const filteredTasks = useMemo(() => {
     if (statusFilter === 'All') return tasks
     return tasks.filter((t) => t.status === statusFilter)
@@ -811,7 +792,6 @@ const Tasks = () => {
 
       {activeTab === 'Tasks' ? (
         <div className="flex flex-col gap-4">
-          <SectionCards stats={taskStats} isLoading={isLoading} compact />
           <Tabs value={statusFilter} onValueChange={setStatusFilter}>
             <TabsList>
               {['All', ...STATUSES].map((s) => (
