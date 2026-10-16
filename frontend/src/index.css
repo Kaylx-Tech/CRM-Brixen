@@ -149,26 +149,26 @@ html.is-non-apple,
 
 .dark {
   /* Dark mode surfaces: deep indigo #100550, cards and popups a step lighter */
-  --background: #090235;
+  --background: #000000;
   --foreground: oklch(0.985 0 0);
-  --card: #080041;
+  --card: rgb(22, 22, 22);
   --card-foreground: oklch(0.985 0 0);
-  --popover: #1b1070;
+  --popover: #12111a;
   --popover-foreground: oklch(0.985 0 0);
   /* Dark mode accent: Brixen orange */
   --primary: #F77C07;
   --primary-foreground: #ffffff;
-  --secondary: #24187a;
+  --secondary: #111019;
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: #221677;
+  --muted: #0B0A10;
   --muted-foreground: #b4b0d8;
-  --accent: #261a80;
+  --accent: #110f19;
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
   --ring: #F77C07;
-  --chart-1: oklch(0.871 0.15 154.449);
+  --chart-1: oklch(66.668% 0.17074 294.177);
   --chart-2: oklch(0.723 0.219 149.579);
   --chart-3: oklch(0.627 0.194 149.214);
   --chart-4: oklch(0.527 0.154 150.069);
@@ -178,11 +178,11 @@ html.is-non-apple,
   --viz-3: #199e70;
   --viz-4: #c98500;
   --viz-5: #9085e9;
-  --sidebar: #0b033d;
+  --sidebar: #0b0b0b;
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: #F77C07;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1c1170;
+  --sidebar-accent: #1e1e1e;
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: #F77C07;
