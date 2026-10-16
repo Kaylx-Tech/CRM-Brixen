@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -23,9 +23,9 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
 
   return (
     <>
-      <Card className={`w-full flex flex-col h-full relative transition-all duration-200 ${isSelected ? 'border-primary ring-1 ring-primary/40 bg-accent/20' : hasAttention ? 'border-destructive/50' : 'hover:border-border'}`}>
-        <CardHeader className="flex flex-row items-start justify-between gap-3">
-          <div className="flex items-start gap-3 overflow-hidden flex-1">
+      <Card size="sm" className={`w-full flex flex-col h-full relative gap-2 transition-all duration-200 ${isSelected ? 'border-primary ring-1 ring-primary/40 bg-accent/20' : hasAttention ? 'border-destructive/50' : 'hover:border-border'}`}>
+        <CardHeader className="flex flex-row items-start justify-between gap-2">
+          <div className="flex items-start gap-2.5 overflow-hidden flex-1">
             <div className="pt-0.5">
               <Checkbox
                 checked={isSelected}
@@ -34,8 +34,8 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
                 aria-label={`Select ${name}`}
               />
             </div>
-            <div className="flex flex-col gap-1 overflow-hidden">
-              <h3 className="font-semibold text-base leading-tight truncate" title={name}>
+            <div className="flex flex-col gap-0.5 overflow-hidden">
+              <h3 className="font-semibold text-sm leading-tight truncate" title={name}>
                 <button
                   type="button"
                   onClick={() => setIsViewModalOpen(true)}
@@ -44,7 +44,7 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
                   {name}
                 </button>
               </h3>
-              <span className="text-sm text-muted-foreground">{number}</span>
+              <span className="text-xs text-muted-foreground">{number}</span>
             </div>
           </div>
           
@@ -73,18 +73,16 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
           </div>
         </CardHeader>
         
-        <CardContent className="pb-4 space-y-3 flex-1 text-sm">
-          <div>
+        <CardContent className="space-y-1.5 flex-1 text-xs">
+          <div className="truncate" title={director}>
             <span className="font-medium text-muted-foreground">Director · </span>
             <span className="text-foreground">{director}</span>
           </div>
-          
-          <div>
-            <p className="text-muted-foreground line-clamp-2">{address}</p>
-          </div>
-          
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+
+          <p className="text-muted-foreground truncate" title={address}>{address}</p>
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span>{countryFlag}</span>
               <span>{countryName}</span>
             </div>
@@ -111,16 +109,13 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
             </div>
           </div>
 
-          <div className={`text-[11px] border-t pt-2 ${hasAttention ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-            {hasAttention ? attentionSummary(company) : deadlineText}
+          <div className={`flex items-center justify-between gap-2 text-[11px] border-t pt-1.5 ${hasAttention ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+            <span className="truncate">{hasAttention ? attentionSummary(company) : deadlineText}</span>
+            <Button size="xs" variant="outline" className="h-6 shrink-0 px-2 text-[11px]" onClick={() => setIsViewModalOpen(true)}>
+              View
+            </Button>
           </div>
         </CardContent>
-        
-        <CardFooter className="pt-0">
-          <Button size="sm" className="w-full" onClick={() => setIsViewModalOpen(true)}>
-            View details
-          </Button>
-        </CardFooter>
       </Card>
       
       <ViewCompany

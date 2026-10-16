@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,7 @@ import {
   IconPencil,
   IconLoader2,
   IconRefresh,
+  IconCalendarWeek,
   IconTrash,
   IconFileText,
   IconDownload,
@@ -94,12 +95,22 @@ function buildMonthOptions(count = 12) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     const label = d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
-    options.push({ value, label })
+    options.push({ value, label: i === 0 ? `Current month (${label})` : label })
   }
   return options
 }
 
 const MONTH_OPTIONS = buildMonthOptions()
+const CURRENT_MONTH = MONTH_OPTIONS[1].value
+
+/** "2026-10" for an invoice / order date like "2026-10-15 10:00:00" (local month for ISO timestamps). */
+function monthKey(raw) {
+  const text = String(raw || '').trim()
+  if (!text) return ''
+  if (/^\d{4}-\d{2}/.test(text) && !/[TZ+]/.test(text.slice(10))) return text.slice(0, 7)
+  const d = new Date(text)
+  return Number.isNaN(d.getTime()) ? text.slice(0, 7) : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
 
 function statusBadgeClass(status) {
   if (status === 'Paid') return 'badge-green'
@@ -146,7 +157,8 @@ export default function Payments() {
   const [orders, setOrders] = useState([])
   const [isLoadingOrders, setIsLoadingOrders] = useState(false)
   const [ordersError, setOrdersError] = useState(null)
-  const [selectedMonth, setSelectedMonth] = useState('all')
+  // One month picker for both tabs (next to Refresh); opens on the current month
+  const [selectedMonth, setSelectedMonth] = useState(CURRENT_MONTH)
   const [revenueFilter, setRevenueFilter] = useState('all')
   const [costInputs, setCostInputs] = useState({})
   const [isSavingCost, setIsSavingCost] = useState(false)
@@ -213,9 +225,16 @@ export default function Payments() {
     if (activeTab === 'revenue') fetchOrders()
   }, [activeTab, fetchOrders])
 
+  // Invoices of the chosen month (stat cards and the invoice table); "Who still owes you" stays all-time
+  const monthInvoices = useMemo(
+    () => (selectedMonth === 'all' ? invoices : invoices.filter((inv) => monthKey(inv.created_at || inv.issue_date) === selectedMonth)),
+    [invoices, selectedMonth]
+  )
+  const monthLabel = MONTH_OPTIONS.find((m) => m.value === selectedMonth)?.label.replace(/^Current month \((.*)\)$/, '$1') || 'All months'
+
   const collectionStats = useMemo(() => {
     let billed = 0, paid = 0, owed = 0, pending = 0, partial = 0, overdue = 0
-    invoices.forEach((inv) => {
+    monthInvoices.forEach((inv) => {
       if (String(inv.status || '') === 'Cancelled') return
       const money = invoiceMoneyBits(inv)
       billed += money.total
@@ -226,10 +245,10 @@ export default function Payments() {
       if (money.status === 'Overdue') overdue += 1
     })
     return { billed, paid, owed, pending, partial, overdue }
-  }, [invoices])
+  }, [monthInvoices])
 
   const filteredInvoices = useMemo(() => {
-    return invoices.filter((inv) => {
+    return monthInvoices.filter((inv) => {
       const money = invoiceMoneyBits(inv)
       if (payFilter === 'outstanding') return money.due > 0.004 && money.status !== 'Cancelled'
       if (payFilter === 'paid') return money.status === 'Paid'
@@ -254,7 +273,7 @@ export default function Payments() {
         statusLabel: money.status,
       }
     })
-  }, [invoices, payFilter])
+  }, [monthInvoices, payFilter])
 
   const oweByClient = useMemo(() => {
     const byClient = new Map()
@@ -321,7 +340,10 @@ export default function Payments() {
       title: 'Total billed',
       hero: true,
       value: `£${collectionStats.billed.toFixed(2)}`,
-      footerSubText: 'Click to show all',
+      footerSubText: (() => {
+        const n = monthInvoices.filter((i) => String(i.status || '') !== 'Cancelled').length
+        return `${monthLabel} · ${n} invoice${n === 1 ? '' : 's'}`
+      })(),
       onClick: () => setPayFilter('all'),
       active: payFilter === 'all',
     },
@@ -360,7 +382,7 @@ export default function Payments() {
       onClick: () => setPayFilter('overdue'),
       active: payFilter === 'overdue',
     },
-  ], [collectionStats, payFilter])
+  ], [collectionStats, payFilter, monthLabel, monthInvoices])
 
   const costRows = useMemo(() => orders.map((o) => {
     const sell = parseMoney(o.total ?? o.amount ?? o.price)
@@ -794,11 +816,29 @@ export default function Payments() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Payment/Invoices</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Showing {monthLabel}</p>
         </div>
-        <Button variant="outline" onClick={refresh}>
-          <IconRefresh className="mr-2 h-4 w-4" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Select value={selectedMonth} onValueChange={(v) => setSelectedMonth(v || CURRENT_MONTH)}>
+            <SelectTrigger className="h-9 w-[220px] text-sm">
+              <IconCalendarWeek className="h-4 w-4 shrink-0" />
+              <SelectValue placeholder="Month">
+                {MONTH_OPTIONS.find((m) => m.value === selectedMonth)?.label || 'Month'}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {MONTH_OPTIONS.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" onClick={refresh}>
+            <IconRefresh className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -837,19 +877,6 @@ export default function Payments() {
 
       {activeTab === 'revenue' && (
         <>
-          <div className="flex items-center gap-2">
-            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-[180px] h-8 text-sm">
-                <SelectValue placeholder="Month" />
-              </SelectTrigger>
-              <SelectContent>
-                {MONTH_OPTIONS.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <SectionCards stats={revenueStats} isLoading={isLoadingOrders} compact />
 
           <p className="text-sm text-muted-foreground">

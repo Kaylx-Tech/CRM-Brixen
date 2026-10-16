@@ -21,7 +21,11 @@ import {
   IconLoader2,
   IconCheck,
   IconCalendarDue,
+  IconChevronLeft,
+  IconChevronRight,
 } from '@tabler/icons-react'
+
+const PAGE_SIZE = 9
 import { SectionCards } from '../../Layout/StatsCard'
 import CompanyCard from './CompanyCard'
 import AddCompany from './AddCompany'
@@ -151,6 +155,23 @@ const Companies = () => {
     }
     return true
   })
+
+  // Pages of 9 (3 x 3); a new search or tab starts again on page 1
+  const filterKey = `${activeTab}|${searchTerm}`
+  const [pageInfo, setPageInfo] = useState({ key: filterKey, page: 1 })
+  const totalPages = Math.max(1, Math.ceil(filteredCompanies.length / PAGE_SIZE))
+  const currentPage = Math.min(pageInfo.key === filterKey ? pageInfo.page : 1, totalPages)
+  const setPage = (p) => {
+    setPageInfo({ key: filterKey, page: p })
+    document.querySelector('main')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }
+  const pageCompanies = filteredCompanies.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+  // 1 … 4 5 6 … 18
+  const pageNumbers = []
+  for (let p = 1; p <= totalPages; p++) {
+    if (p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1) pageNumbers.push(p)
+    else if (pageNumbers[pageNumbers.length - 1] !== '…') pageNumbers.push('…')
+  }
 
   // Selection handlers
   const handleToggleSelect = (id) => {
@@ -356,9 +377,9 @@ const Companies = () => {
 
       {/* Grid / Skeletons */}
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 pb-8">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="w-full h-[270px] rounded-xl" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pb-8">
+          {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+            <Skeleton key={i} className="w-full h-[150px] rounded-xl" />
           ))}
         </div>
       ) : filteredCompanies.length === 0 ? (
@@ -381,8 +402,9 @@ const Companies = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 pb-8">
-          {filteredCompanies.map((company, i) => (
+        <div className="flex flex-col gap-4 pb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {pageCompanies.map((company, i) => (
             // Cards come in one after another (first rows only, so long lists stay instant)
             <m.div
               key={company.id || i}
@@ -403,6 +425,42 @@ const Companies = () => {
               />
             </m.div>
           ))}
+        </div>
+
+        {/* 9 companies a page */}
+        {totalPages > 1 && (
+          <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+            <p className="text-sm text-muted-foreground">
+              {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredCompanies.length)} of{' '}
+              {filteredCompanies.length} companies
+            </p>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>
+                <IconChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+              {pageNumbers.map((p, idx) =>
+                p === '…' ? (
+                  <span key={`gap-${idx}`} className="px-1.5 text-sm text-muted-foreground">…</span>
+                ) : (
+                  <Button
+                    key={p}
+                    variant={p === currentPage ? 'default' : 'ghost'}
+                    size="sm"
+                    className="min-w-8 tabular-nums"
+                    onClick={() => setPage(p)}
+                  >
+                    {p}
+                  </Button>
+                )
+              )}
+              <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setPage(currentPage + 1)}>
+                Next
+                <IconChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
         </div>
       )}
 

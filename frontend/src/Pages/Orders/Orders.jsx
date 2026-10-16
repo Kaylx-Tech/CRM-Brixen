@@ -75,14 +75,14 @@ function truncateWords(text, maxWords = 4) {
 
 function progressPercent(order) {
   const status = String(order?.status || '')
-  const active = Number(order?.line_item_active_count ?? order?.line_item_count ?? 0)
-  const done = Number(order?.line_items_completed || 0)
-  if (active >= 1) {
-    if (status === 'Cancelled' || status === 'Refunded') return 0
-    return Math.max(0, Math.min(100, Math.round((100 * done) / Math.max(active, 1))))
-  }
+  // The order status decides first: a Completed order is 100% even if its products were not ticked off
   if (status === 'Completed') return 100
   if (status === 'Cancelled' || status === 'Refunded') return 0
+  const active = Number(order?.line_item_active_count ?? order?.line_item_count ?? 0)
+  const done = Number(order?.line_items_completed || 0)
+  if (active >= 1 && done > 0) {
+    return Math.max(0, Math.min(100, Math.round((100 * done) / Math.max(active, 1))))
+  }
   const stored = Number(order?.progress_percent)
   if (Number.isFinite(stored)) return Math.max(0, Math.min(100, stored))
   if (status === 'In Progress') return 50
@@ -475,8 +475,9 @@ export default function Orders() {
         return (
           <Tooltip>
             <TooltipTrigger className="inline-flex">
-              <Badge className={`${statusTone(o, pct)} tabular-nums cursor-pointer`} onClick={() => handleOpenOrder(o.id)}>
-                {pct}%
+              <Badge className={`${statusTone(o, pct)} tabular-nums cursor-pointer whitespace-nowrap`} onClick={() => handleOpenOrder(o.id)}>
+                {o.status || 'Pending'}
+                {o.status !== 'Completed' && o.status !== 'Cancelled' && o.status !== 'Refunded' ? ` · ${pct}%` : ''}
               </Badge>
             </TooltipTrigger>
             <TooltipContent>{o.status || 'Pending'} · {pct}%</TooltipContent>
