@@ -9,6 +9,7 @@
 import calendar
 import datetime
 import json
+import re
 import secrets
 
 from db import query_db, execute_db
@@ -195,10 +196,19 @@ def is_formation_order(*names):
 def proposed_company_name(values, extra_name=''):
     """The new company's name from the order form: a name-availability field first, then the usual keys."""
     values = values if isinstance(values, dict) else {}
-    for item in values.get('service_fields') or []:
-        check = (item or {}).get('name_check') if isinstance(item, dict) else None
+    fields = [f for f in values.get('service_fields') or [] if isinstance(f, dict)]
+    for item in fields:
+        check = item.get('name_check')
         if isinstance(check, dict) and str(check.get('name') or '').strip():
             return str(check['name']).strip()[:200]
+    # A plain text question such as "Desired Company Name" / "Proposed company name"
+    for item in fields:
+        label = str(item.get('label') or '').lower()
+        value = str(item.get('value') or '').strip()
+        if item.get('type') in ('text', 'company_name') and value and re.search(
+                r'(desired|proposed|new|preferred)\s+(company\s+)?name|company\s+name', label) \
+                and not re.search(r'number|registered|house', label.split('›')[-1]):
+            return re.sub(r'\s+·\s+(Available|Not available|Availability not checked)$', '', value)[:200]
     for key in NAME_KEYS:
         if str(values.get(key) or '').strip():
             return str(values[key]).strip()[:200]
@@ -230,15 +240,24 @@ def website_company_name(payload):
 
 
 def ensure_formation_company(order_id, company_name=''):
-    """Give a formation order without a company a Pending company card. Returns the company id or None."""
+    """Give a formation order its Pending company card. Returns the company id or None.
+
+    No company on the order yet: the Pending company becomes the order's company. The order already has a
+    registered company (e.g. picked for a bank account in the same order) but the form names a different new
+    company to incorporate: that new company is still added as Pending and listed with the order's companies.
+    """
     order = query_db("""
         SELECT o.id, o.order_number, o.user_id, o.company_id, o.service_name, o.order_form_values_json,
-               COALESCE(o.is_draft, 0) AS is_draft, u.email
-        FROM orders o LEFT JOIN users u ON u.id = o.user_id
+               COALESCE(o.is_draft, 0) AS is_draft, u.email,
+               c.name AS company_name, c.company_number
+        FROM orders o LEFT JOIN users u ON u.id = o.user_id LEFT JOIN companies c ON c.id = o.company_id
         WHERE o.id = ?;
     """, (order_id,), one=True)
-    if not order or order.get('company_id') or order.get('is_draft') or not order.get('user_id'):
+    if not order or order.get('is_draft') or not order.get('user_id'):
         return None
+    linked_number = str(order.get('company_number') or '').upper()
+    if order.get('company_id') and (not linked_number or linked_number.startswith(('REG-', 'PENDING'))):
+        return None  # already linked to a not-registered company
     # Website orders from unknown emails sit on the shared guest account until staff verify them
     if str(order.get('email') or '').lower() == 'guest.unlinked@brixenconsultants.com':
         return None
@@ -250,7 +269,13 @@ def ensure_formation_company(order_id, company_name=''):
         values = json.loads(order.get('order_form_values_json') or '{}')
     except (TypeError, ValueError):
         values = {}
-    name = proposed_company_name(values, company_name) or f"New company (order {order.get('order_number') or order_id})"
+    values = values if isinstance(values, dict) else {}
+    proposed = proposed_company_name(values, company_name)
+    if order.get('company_id'):
+        # A registered company is on the order: only a differently named new company is added
+        if not proposed or proposed.strip().lower() == str(order.get('company_name') or '').strip().lower():
+            return None
+    name = proposed or f"New company (order {order.get('order_number') or order_id})"
 
     row = query_db("""
         SELECT id FROM companies
@@ -266,8 +291,35 @@ def ensure_formation_company(order_id, company_name=''):
                                    package, created_at)
             VALUES (?, ?, ?, 'Pending', DATE('now'), 'Director', 'United Kingdom', ?, datetime('now', 'localtime'));
         """, (order['user_id'], name, f"REG-{secrets.token_hex(4).upper()}", (order.get('service_name') or 'Formation')[:120]))
-    execute_db("UPDATE orders SET company_id = ? WHERE id = ? AND company_id IS NULL;", (company_id, order_id))
+    if not order.get('company_id'):
+        execute_db("UPDATE orders SET company_id = ? WHERE id = ? AND company_id IS NULL;", (company_id, order_id))
+    # Listed with the order's companies (order popup "Linked companies")
+    linked = values.get('linked_companies') if isinstance(values.get('linked_companies'), list) else []
+    if not any(isinstance(c, dict) and c.get('company_id') == company_id for c in linked):
+        linked.append({'company_id': company_id, 'name': name, 'number': '', 'created': not row})
+        values['linked_companies'] = linked
+        execute_db("UPDATE orders SET order_form_values_json = ? WHERE id = ?;", (json.dumps(values), order_id))
     return company_id
+
+
+def backfill_formation_companies():
+    """Every placed formation order gets its Pending company (orders from before this was automatic).
+
+    Returns [{order_id, order_number, company_id}] for the orders that got one.
+    """
+    done = []
+    rows = query_db("""
+        SELECT o.id, o.order_number FROM orders o
+        WHERE COALESCE(o.is_draft, 0) = 0 AND o.status NOT IN ('Cancelled', 'Refunded')
+        ORDER BY o.id;
+    """) or []
+    for row in rows:
+        before = query_db("SELECT COUNT(*) AS n FROM companies;", one=True)['n']
+        company_id = ensure_formation_company(row['id'])
+        after = query_db("SELECT COUNT(*) AS n FROM companies;", one=True)['n']
+        if company_id and after > before:
+            done.append({'order_id': row['id'], 'order_number': row['order_number'], 'company_id': company_id})
+    return done
 
 
 def register_pending_company(company_id, number):

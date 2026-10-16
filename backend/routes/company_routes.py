@@ -569,6 +569,17 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
 
         return success_response(start_response, data=data)
 
+    # ── POST /api/admin/companies/backfill-formations (older formation orders get their Pending company) ─
+    if path in ('/api/admin/companies/backfill-formations', '/api/companies/backfill-formations') and method == 'POST':
+        if user_role not in ('SUPER_ADMIN', 'ADMIN', 'MANAGER'):
+            return error_response(start_response, "Only admins and managers can do this", status_code=403)
+        from services.order_companies import backfill_formation_companies
+        done = backfill_formation_companies()
+        return success_response(
+            start_response, data={'created': done},
+            message=(f"{len(done)} formation order(s) now have a Pending company." if done
+                     else "Every formation order already has its company."))
+
     # ── POST /api/admin/companies/<id>/register (a Pending company is now registered) ─
     # Body {company_number}: the card takes the official Companies House details and goes live,
     # keeping its customer and linked orders.

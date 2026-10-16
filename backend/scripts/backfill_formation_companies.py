@@ -56,8 +56,9 @@ def main():
     if not args.apply:
         print(f"\n{len(todo)} order(s) would get a Pending company. Run again with --apply to create them.")
         return
-    made = sum(1 for row, _ in todo if ensure_formation_company(row['id']))
-    print(f"\nDone: {made} order(s) linked to a Pending company.")
+    from services.order_companies import backfill_formation_companies
+    made = backfill_formation_companies()
+    print(f"\nDone: {len(made)} order(s) linked to a Pending company.")
 
 
 if __name__ == '__main__':
