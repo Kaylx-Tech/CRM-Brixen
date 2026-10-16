@@ -31,6 +31,7 @@ import {
   IconCircleCheck,
   IconInfoCircle,
   IconAlertCircle,
+  IconUpload,
 } from "@tabler/icons-react"
 
 const STEPS = [
@@ -47,13 +48,41 @@ const DEFAULT_DOCS = [
   { key: "other", label: "Supporting document", required: false },
 ]
 
+// A service's own upload field already asks for this standard document (so it is not asked twice)
+const DEFAULT_DOC_MATCH = {
+  passport: /passport|photo id|\bid\b|identity|identification|driving licen/i,
+  proof_of_address: /address|utility|bank statement|council tax/i,
+  other: /supporting|other document|additional document/i,
+}
+
+/** Standard documents not already covered by an upload field on the services' own forms. */
+function uncoveredDefaultDocs(fileFields) {
+  return DEFAULT_DOCS.filter((d) => !fileFields.some((f) => DEFAULT_DOC_MATCH[d.key]?.test(String(f.label || ""))))
+}
+
+// Filler words that do not change what a question asks ("Your full name" = "Full name" = "Name")
+const LABEL_FILLER = new Set(["the", "your", "a", "an", "please", "enter", "provide", "upload", "copy", "scan", "of", "full", "here"])
+
+/** Comparable form of a label: lower case, no punctuation / possessive / filler words / plural "s". */
+function normalizeLabel(label) {
+  return String(label || "")
+    .toLowerCase()
+    .replace(/['’]s\b/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .split(" ")
+    .filter((w) => w && !LABEL_FILLER.has(w))
+    .map((w) => (w.length > 3 && w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w))
+    .join(" ")
+}
+
 /**
- * Order-form fields from every selected service, merged so the same question (same label + type) is asked
- * once even when several services need it. Each keeps the names of the services that asked for it.
+ * Order-form fields from every selected service, merged so the same question is asked once even when several
+ * services need it ("Director's Name" and "director name" are one field). Each keeps the names of the services
+ * that asked for it.
  */
 function mergeFieldList(list, fields, serviceName, parentKey) {
   for (const f of Array.isArray(fields) ? fields : []) {
-    const key = `${parentKey ? `${parentKey}>` : ""}${f.type}:${String(f.label || "").trim().toLowerCase()}`
+    const key = `${parentKey ? `${parentKey}>` : ""}${f.type}:${normalizeLabel(f.label) || String(f.label || "").trim().toLowerCase()}`
     let node = list.find((n) => n.key === key)
     if (node) {
       node.required = node.required || !!f.required
@@ -768,6 +797,11 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
   // Everything answered on the Details step (text, question, checkbox) vs. uploads on the Documents step
   const textFields = activeFields.filter((f) => f.type !== "file")
   const fileFields = activeFields.filter((f) => f.type === "file")
+  // Standard documents the services' own upload fields do not already ask for
+  const standardDocs = useMemo(
+    () => uncoveredDefaultDocs(activeFields.filter((f) => f.type === "file")),
+    [activeFields]
+  )
   const fieldAnswer = (f) => {
     const v = fieldValues[f.key]
     if (f.type === "checkbox") return v === true ? "Yes" : "No"
@@ -854,11 +888,12 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
         return !String(fieldValues[f.key] || "").trim()
       })
       if (missingText.length) return `Complete: ${missingText.map(fieldTitle).join(", ")}.`
-      const missingFiles = fileFields.filter((f) => f.required && !fieldFiles[f.key])
-      if (missingFiles.length) return `Upload: ${missingFiles.map(fieldTitle).join(", ")}.`
     }
     if (targetStep > 4) {
-      const missing = DEFAULT_DOCS.filter((d) => d.required && !docMarks[d.key])
+      // Uploads are asked on the Documents step, so they are checked when leaving it
+      const missingFiles = fileFields.filter((f) => f.required && !fieldFiles[f.key])
+      if (missingFiles.length) return `Upload: ${missingFiles.map(fieldTitle).join(", ")}.`
+      const missing = standardDocs.filter((d) => d.required && !docMarks[d.key])
       if (missing.length) return `Mark required documents: ${missing.map((d) => d.label).join(", ")}.`
     }
     return ""
@@ -1031,8 +1066,8 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
       else delete next[key]
       return next
     })
-  // The whole service form (uploads included) is shown on the Details step, in the order it was built
-  const detailServiceFields = serviceFields
+  // Details step: the service form's questions only; every upload field moves to the Documents step
+  const detailServiceFields = serviceFields.filter((f) => f.type !== "file")
   const renderField = (f, hint) =>
     f.type === "file" ? (
       <ServiceFileInput field={f} file={fieldFiles[f.key]} onFile={(file) => setFieldFile(f.key, file)} hint={hint} />
@@ -1052,11 +1087,20 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
       <div className="space-y-4">
         {detailServiceFields.map((f) => {
           const hint = selectedProducts.length > 1 ? `For ${f.services.join(", ")}` : ""
-          const opened = openedChildren(f, fieldValues)
+          const openedAll = openedChildren(f, fieldValues)
+          const opened = openedAll.filter((c) => c.type !== "file")
+          const openedUploads = openedAll.length - opened.length
           // Fields opened by a ticked checkbox or the chosen radio answer, indented under it
-          const subForm = opened.length > 0 ? (
+          // (their uploads are asked on the Documents step)
+          const subForm = openedAll.length > 0 ? (
             <div className="mt-3 space-y-4 border-l-2 border-primary/30 pl-4">
               {opened.map((c) => <div key={c.key}>{renderField(c)}</div>)}
+              {openedUploads > 0 ? (
+                <p className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                  <IconUpload className="h-3.5 w-3.5" />
+                  {openedUploads} document{openedUploads === 1 ? "" : "s"} for this on the Documents step
+                </p>
+              ) : null}
             </div>
           ) : null
 
@@ -1090,7 +1134,11 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
       {selectedProducts.length === 1 ? `"${selectedProducts[0].name}" has` : "The selected services have"} no order form yet.
       Add one in Services Catalog → Edit → Order form, and it will appear here.
     </p>
-  ) : null
+  ) : (
+    <p className="rounded-xl border border-dashed px-4 py-3 text-[12px] text-muted-foreground">
+      No questions to answer here. The service form only asks for documents, on the next step.
+    </p>
+  )
 
   return (
     <>
@@ -1340,8 +1388,37 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
                     If you selected several products, requirements are merged and asked only once.
                   </p>
                 </div>
+
+                {/* Upload fields from the services' own forms (moved here from the Details step) */}
+                {fileFields.length > 0 && (
+                  <div className="rounded-xl border border-primary/30 bg-primary/[0.03] p-4 space-y-4">
+                    <div>
+                      <h5 className="text-sm font-bold">
+                        {selectedProducts.length === 1 ? `${selectedProducts[0].name} documents` : "Service documents"}
+                      </h5>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Asked by the selected {selectedProducts.length === 1 ? "service" : "services"}. A document shared by several services is asked once.
+                      </p>
+                    </div>
+                    {fileFields.map((f) => (
+                      <div key={f.key}>
+                        {renderField(
+                          f,
+                          [
+                            f.parentLabel ? `For "${f.parentLabel}"` : "",
+                            selectedProducts.length > 1 ? `For ${f.services.join(", ")}` : "",
+                          ].filter(Boolean).join(" · ")
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {standardDocs.length > 0 && fileFields.length > 0 && (
+                  <p className="text-sm font-semibold pt-1">Other documents</p>
+                )}
                 <div className="space-y-2">
-                  {DEFAULT_DOCS.map((doc) => (
+                  {standardDocs.map((doc) => (
                     <label
                       key={doc.key}
                       className="flex items-start gap-3 rounded-xl border bg-card p-4 cursor-pointer hover:border-primary/40"
@@ -1368,12 +1445,6 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
                   ))}
                 </div>
 
-                {fileFields.length > 0 && (
-                  <p className="rounded-xl border bg-muted/20 px-4 py-3 text-[12px] text-muted-foreground">
-                    Service documents chosen on the Details step:{" "}
-                    {fileFields.map((f) => `${fieldTitle(f)} ${fieldFiles[f.key] ? "✓" : "(not added)"}`).join(", ")}
-                  </p>
-                )}
               </section>
             )}
 
@@ -1414,8 +1485,9 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
                     <div className="rounded-xl border bg-card p-3">
                       <div className="text-sm font-semibold">Required documents</div>
                       <div className="text-[11px] text-muted-foreground mt-0.5">
-                        {DEFAULT_DOCS.filter((d) => d.required && docMarks[d.key]).length} of{" "}
-                        {DEFAULT_DOCS.filter((d) => d.required).length} required marked
+                        {fileFields.filter((f) => f.required && fieldFiles[f.key]).length +
+                          standardDocs.filter((d) => d.required && docMarks[d.key]).length} of{" "}
+                        {fileFields.filter((f) => f.required).length + standardDocs.filter((d) => d.required).length} required added
                       </div>
                     </div>
                   </div>
