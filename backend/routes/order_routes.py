@@ -175,6 +175,14 @@ def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False, own_orders_
         except Exception as exc:
             print(f"[order companies] order {order_id}: {exc}")
 
+    # A company formation order with no company yet: its proposed company goes in as Pending (not registered)
+    if not as_draft:
+        from services.order_companies import ensure_formation_company
+        try:
+            ensure_formation_company(order_id)
+        except Exception as exc:
+            print(f"[formation company] order {order_id}: {exc}")
+
     return {
         'id': order_id,
         'order_id': order_id,

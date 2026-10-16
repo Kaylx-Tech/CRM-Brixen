@@ -66,6 +66,9 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
   const [docVisible, setDocVisible] = useState(true)
   const [isUploadingDoc, setIsUploadingDoc] = useState(false)
   const [fileInputKey, setFileInputKey] = useState(0)
+  // "Mark as registered" for a Pending (not yet registered) company
+  const [regNumber, setRegNumber] = useState('')
+  const [isRegistering, setIsRegistering] = useState(false)
 
   const [formData, setFormData] = useState({
     identity_verified: 'Not started',
@@ -198,6 +201,42 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
     }
   }
 
+  // A Pending company is now registered at Companies House: the card takes the official details
+  const markRegistered = async () => {
+    const companyNumber = regNumber.trim()
+    if (!company?.id || !companyNumber || isRegistering) return
+    setIsRegistering(true)
+    try {
+      const res = await apiRequest(`/admin/companies/${company.id}/register`, {
+        method: 'POST',
+        body: { company_number: companyNumber },
+        label: 'Mark as registered',
+        silent: true,
+      })
+      if (!res.ok) {
+        toast.error(res.reason || 'Could not register this company')
+        return
+      }
+      const updated = res.data?.data || {}
+      toast.success(res.data?.message || 'Company registered')
+      setRegNumber('')
+      setDetail((prev) => ({ ...(prev || {}), ...updated }))
+      setRefreshKey((k) => k + 1)
+      if (onUpdate) {
+        onUpdate({
+          ...(company || {}),
+          name: updated.company_name || updated.name || company.name,
+          number: updated.company_number || companyNumber,
+          status: updated.status || 'Active',
+          isRegistered: true,
+          raw: { ...(company.raw || {}), ...updated },
+        })
+      }
+    } finally {
+      setIsRegistering(false)
+    }
+  }
+
   if (!company) return null
 
   const raw = company.raw || {}
@@ -285,6 +324,29 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                 </ul>
               </AlertDescription>
             </Alert>
+          )}
+          {!isRegistered && (
+            <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50/60 p-4 dark:border-violet-900/50 dark:bg-violet-950/20">
+              <p className="text-sm font-semibold text-violet-800 dark:text-violet-300">Not registered yet</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Once Companies House registers it, enter the company number. The official name, office,
+                directors and deadlines come in and the company goes live (its customer and orders stay linked).
+              </p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <Input
+                  value={regNumber}
+                  onChange={(e) => setRegNumber(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => { if (e.key === 'Enter') markRegistered() }}
+                  placeholder="Company number, e.g. 16692812"
+                  maxLength={12}
+                  className="bg-background sm:max-w-64"
+                />
+                <Button onClick={markRegistered} disabled={isRegistering || !regNumber.trim()}>
+                  {isRegistering ? <IconLoader2 className="h-4 w-4 animate-spin" /> : <IconCheck className="h-4 w-4" />}
+                  Mark as registered
+                </Button>
+              </div>
+            </div>
           )}
         </div>
 

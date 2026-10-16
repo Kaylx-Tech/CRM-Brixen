@@ -211,7 +211,14 @@ def process_woocommerce_order(payload):
         except Exception as e:
             print(f"[Webhook] line items sync error: {e}")
 
-    # 5. Invoice (app.py): a website order paid at checkout (WooCommerce processing / completed, or a payment
+    # 5. Company formation bought on the website: its proposed company goes in as Pending (not registered)
+    try:
+        from services.order_companies import ensure_formation_company, website_company_name
+        ensure_formation_company(order_id, website_company_name(payload))
+    except Exception as e:
+        print(f"[Webhook] formation company error: {e}")
+
+    # 6. Invoice (app.py): a website order paid at checkout (WooCommerce processing / completed, or a payment
     #    date) gets a Paid invoice; otherwise a Pending one
     try:
         from services.invoice_service import ensure_invoice_for_order, sync_invoice_with_order

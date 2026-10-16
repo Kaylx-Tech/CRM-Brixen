@@ -172,3 +172,142 @@ def _link_one(client_id, name, number):
                 datetime('now', 'localtime'));
     """, (client_id, name, f"REG-{secrets.token_hex(4).upper()}"))
     return {'company_id': company_id, 'name': name, 'number': '', 'created': True}
+
+
+# ── Company formation orders ─────────────────────────────────────────────────
+# A formation (incorporation) order gets a Pending company card straight away, so the team sees it under
+# Companies > Not registered until it is registered; "Mark as registered" then turns it into the live company.
+
+FORMATION_HINTS = (
+    'formation', 'incorporat', 'company registration', 'register company', 'register a company',
+    'company register', 'new company', 'set up a company', 'setup company', 'company set up', 'company setup',
+    'company package', 'digital package', 'professional package', 'all inclusive package',
+)
+
+NAME_KEYS = ('proposed_company_name', 'desired_company_name', 'company_name', 'new_company_name', 'proposed_name')
+
+
+def is_formation_order(*names):
+    text = ' '.join(str(n or '') for n in names).lower()
+    return any(hint in text for hint in FORMATION_HINTS)
+
+
+def proposed_company_name(values, extra_name=''):
+    """The new company's name from the order form: a name-availability field first, then the usual keys."""
+    values = values if isinstance(values, dict) else {}
+    for item in values.get('service_fields') or []:
+        check = (item or {}).get('name_check') if isinstance(item, dict) else None
+        if isinstance(check, dict) and str(check.get('name') or '').strip():
+            return str(check['name']).strip()[:200]
+    for key in NAME_KEYS:
+        if str(values.get(key) or '').strip():
+            return str(values[key]).strip()[:200]
+    return str(extra_name or '').strip()[:200]
+
+
+def website_company_name(payload):
+    """Proposed company name on a WooCommerce order (checkout fields, order meta or line item meta; app.py)."""
+    payload = payload if isinstance(payload, dict) else {}
+    preferred = ('_cfs_company_name', 'proposed_company_name', 'company_name', 'billing_company', '_billing_company')
+    meta = payload.get('meta_data') or payload.get('meta') or []
+    if isinstance(meta, dict):
+        meta = [{'key': k, 'value': v} for k, v in meta.items()]
+    for key in preferred:
+        for item in meta if isinstance(meta, list) else []:
+            if isinstance(item, dict) and str(item.get('key') or '') == key and str(item.get('value') or '').strip():
+                return str(item['value']).strip()[:200]
+    billing = payload.get('billing') or {}
+    for value in (payload.get('proposed_company_name'), payload.get('company_name'), billing.get('company')):
+        if str(value or '').strip():
+            return str(value).strip()[:200]
+    for line in payload.get('line_items') or []:
+        for item in (line or {}).get('meta_data') or [] if isinstance(line, dict) else []:
+            key = str((item or {}).get('key') or '').lower() if isinstance(item, dict) else ''
+            value = item.get('value') if isinstance(item, dict) else None
+            if isinstance(value, str) and value.strip() and ('company' in key or 'proposed' in key):
+                return value.strip()[:200]
+    return ''
+
+
+def ensure_formation_company(order_id, company_name=''):
+    """Give a formation order without a company a Pending company card. Returns the company id or None."""
+    order = query_db("""
+        SELECT o.id, o.order_number, o.user_id, o.company_id, o.service_name, o.order_form_values_json,
+               COALESCE(o.is_draft, 0) AS is_draft, u.email
+        FROM orders o LEFT JOIN users u ON u.id = o.user_id
+        WHERE o.id = ?;
+    """, (order_id,), one=True)
+    if not order or order.get('company_id') or order.get('is_draft') or not order.get('user_id'):
+        return None
+    # Website orders from unknown emails sit on the shared guest account until staff verify them
+    if str(order.get('email') or '').lower() == 'guest.unlinked@brixenconsultants.com':
+        return None
+    items = query_db("SELECT product_name, category_name FROM order_line_items WHERE order_id = ?;", (order_id,))
+    if not is_formation_order(order.get('service_name'),
+                              *[f"{i.get('product_name') or ''} {i.get('category_name') or ''}" for i in items]):
+        return None
+    try:
+        values = json.loads(order.get('order_form_values_json') or '{}')
+    except (TypeError, ValueError):
+        values = {}
+    name = proposed_company_name(values, company_name) or f"New company (order {order.get('order_number') or order_id})"
+
+    row = query_db("""
+        SELECT id FROM companies
+        WHERE user_id = ? AND LOWER(TRIM(name)) = LOWER(?)
+          AND (company_number IS NULL OR company_number = '' OR company_number LIKE 'REG-%' OR company_number LIKE 'PENDING%')
+        LIMIT 1;
+    """, (order['user_id'], name), one=True)
+    if row:
+        company_id = row['id']
+    else:
+        company_id = execute_db("""
+            INSERT INTO companies (user_id, name, company_number, status, inc_date, director, reg_office,
+                                   package, created_at)
+            VALUES (?, ?, ?, 'Pending', DATE('now'), 'Director', 'United Kingdom', ?, datetime('now', 'localtime'));
+        """, (order['user_id'], name, f"REG-{secrets.token_hex(4).upper()}", (order.get('service_name') or 'Formation')[:120]))
+    execute_db("UPDATE orders SET company_id = ? WHERE id = ? AND company_id IS NULL;", (company_id, order_id))
+    return company_id
+
+
+def register_pending_company(company_id, number):
+    """Turn a Pending company card into the registered company from Companies House.
+
+    Returns (company_id, None) or (None, error). The card keeps its id, customer and linked orders.
+    """
+    comp = query_db("SELECT id, name, company_number, user_id FROM companies WHERE id = ?;", (company_id,), one=True)
+    if not comp:
+        return None, 'Company not found'
+    current = str(comp.get('company_number') or '').strip().upper()
+    if current and not (current.startswith('REG-') or current.startswith('PENDING')):
+        return None, 'This company is already registered'
+    number = canonical_company_number(number)
+    if not number:
+        return None, 'Enter the company number from Companies House'
+    clash = _in_crm(number)
+    if clash and clash['id'] != comp['id']:
+        return None, (f"{number} is already in the CRM as {clash['name']} (company #{clash['id']}). "
+                      f"Open that company instead.")
+    details, error = company_ch_details(number)
+    if error or not details:
+        return None, error or 'Company not found at Companies House'
+
+    first_director = (details.get('directors') or [{}])[0].get('name') or 'Director'
+    execute_db("""
+        UPDATE companies SET name = ?, company_number = ?, status = ?, inc_date = ?, director = ?, reg_office = ?,
+               sic_codes = ?, accounts_next_due = ?, confirmation_next_due = ?, account_status = 'Good Standing',
+               data_locked = 1
+        WHERE id = ?;
+    """, (details['name'] or comp['name'], details['number'], details.get('status') or 'Active',
+          details.get('incorporated') or datetime.date.today().isoformat(), first_director,
+          details.get('address') or 'United Kingdom', details.get('sic_codes') or None,
+          details.get('accounts_next_due') or None, details.get('confirmation_next_due') or None, comp['id']))
+    if details.get('directors') and not query_db(
+            "SELECT 1 FROM company_directors WHERE company_id = ? LIMIT 1;", (comp['id'],), one=True):
+        for d in details['directors']:
+            execute_db("""
+                INSERT INTO company_directors (company_id, name, role, nationality, appointed_date)
+                VALUES (?, ?, ?, ?, ?);
+            """, (comp['id'], d['name'], d.get('role') or 'Director', d.get('nationality') or None,
+                  d.get('appointed') or None))
+    return comp['id'], None

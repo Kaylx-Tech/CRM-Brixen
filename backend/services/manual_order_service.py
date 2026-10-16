@@ -74,11 +74,17 @@ def _ensure_company(client_id, data, service_name, client):
     sic = str(data.get('sic_code') or '').strip() or None
     company_type = str(data.get('company_type') or '').strip() or None
 
+    # With a real company number it is a registered company; without one it is a new (proposed) company,
+    # kept Pending with a REG- placeholder until "Mark as registered" (these columns are NOT NULL)
+    from services.webfiling_import import canonical_company_number
+    number = canonical_company_number(data.get('company_number')) if data.get('company_number') else ''
     new_id = execute_db("""
         INSERT INTO companies (
-            user_id, name, status, director, reg_office, package, sic_codes, created_at
-        ) VALUES (?, ?, 'Active', ?, ?, ?, ?, datetime('now'));
-    """, (client_id, company_name, director, reg_office or None, package or None, sic))
+            user_id, name, company_number, status, inc_date, director, reg_office, package, sic_codes, created_at
+        ) VALUES (?, ?, ?, ?, DATE('now'), ?, ?, ?, ?, datetime('now'));
+    """, (client_id, company_name, number or f"REG-{secrets.token_hex(4).upper()}",
+          'Active' if number else 'Pending', director or 'Director', reg_office or 'United Kingdom',
+          package or None, sic))
 
     # Best-effort optional columns
     try:

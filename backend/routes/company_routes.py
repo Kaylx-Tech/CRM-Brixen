@@ -569,6 +569,29 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
 
         return success_response(start_response, data=data)
 
+    # ── POST /api/admin/companies/<id>/register (a Pending company is now registered) ─
+    # Body {company_number}: the card takes the official Companies House details and goes live,
+    # keeping its customer and linked orders.
+    match_register = re.match(r'^/api/(?:admin/)?companies/(\d+)/register$', path)
+    if match_register and method == 'POST':
+        if not is_staff:
+            return error_response(start_response, "Insufficient permissions", status_code=403)
+        if not get_ch_api_key():
+            return error_response(start_response, "Companies House API key is not set (Settings > Integrations).",
+                                  status_code=503)
+        from services.order_companies import register_pending_company
+        comp_id, error = register_pending_company(int(match_register.group(1)),
+                                                  str((body or {}).get('company_number') or '').strip()[:12])
+        if error:
+            return error_response(start_response, error, status_code=409 if 'already' in error else 400)
+        row = query_db(f"""
+            SELECT {COMPANY_STAFF_SELECT}
+            FROM companies c LEFT JOIN users u ON c.user_id = u.id
+            WHERE c.id = ? LIMIT 1;
+        """, (comp_id,), one=True)
+        return success_response(start_response, data=public_client_company(row, for_staff=True),
+                                message=f"{row['name']} is registered and now live.")
+
     # ── PUT / PATCH /api/companies/<id> (Update Company & Compliance Statuses) ─
     match_update = re.match(r'^/api/(?:admin/)?companies/(\d+)$', path)
     if match_update and method in ('PUT', 'PATCH'):
