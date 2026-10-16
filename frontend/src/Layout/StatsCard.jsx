@@ -84,7 +84,7 @@ const iconForTitle = (title = "") => TITLE_ICONS.find(([re]) => re.test(title))?
 
 // The headline card: solid brand gradient with white text
 const HERO = {
-  card: "border-transparent ring-0 from-[#1A69F8] via-[#3b5bff] to-[#7c3aed] text-white shadow-lg shadow-blue-500/25",
+  card: "border-transparent ring-0 from-[#1A69F8] via-[#3b5bff] to-[#7c3aed] text-white shadow-lg shadow-blue-500/25 dark:from-[#F77C07] dark:via-[#f06a0a] dark:to-[#d9480f] dark:shadow-orange-500/20",
   glow: "bg-white/25",
   chip: "bg-white/20 text-white",
 }
