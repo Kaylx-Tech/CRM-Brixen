@@ -399,14 +399,14 @@ const Services = () => {
 
       {/* ── Edit Service Dialog ── */}
       <Dialog open={!!editService} onOpenChange={(open) => !open && setEditService(null)}>
-        <DialogContent className="sm:max-w-[560px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-140 max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <DialogTitle>Edit Service</DialogTitle>
             <DialogDescription>
               Update the service details below.
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="-mx-6" viewportClassName="max-h-[60vh]">
+          <ScrollArea className="-mx-6 min-h-0 flex-1">
           <div className="grid gap-4 px-6 py-4">
             <div className="grid gap-2">
               <Label htmlFor="edit-name">Name *</Label>
@@ -443,7 +443,7 @@ const Services = () => {
               <Label htmlFor="edit-description">Description</Label>
               <Textarea
                 id="edit-description"
-                className="min-h-[80px]"
+                className="min-h-20"
                 value={editForm.description}
                 onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
                 disabled={isEditing}
@@ -499,7 +499,7 @@ const Services = () => {
             />
           </div>
           </ScrollArea>
-          <DialogFooter className="gap-3">
+          <DialogFooter className="gap-3 shrink-0">
             <Button variant="outline" onClick={() => setEditService(null)} disabled={isEditing}>Cancel</Button>
             <Button onClick={handleEditSubmit} disabled={isEditing}>
               {isEditing && <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />}
