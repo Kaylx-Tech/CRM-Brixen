@@ -406,7 +406,7 @@ const Services = () => {
               Update the service details below.
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="-mx-6 min-h-0 flex-1">
+          <ScrollArea className="-mx-6 h-0 min-h-0 flex-1 overflow-hidden">
           <div className="grid gap-4 px-6 py-4">
             <div className="grid gap-2">
               <Label htmlFor="edit-name">Name *</Label>

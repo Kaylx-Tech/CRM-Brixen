@@ -193,7 +193,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
             </TabsList>
           </div>
 
-          <ScrollArea className="min-h-0 flex-1 w-full">
+          <ScrollArea className="h-0 min-h-0 flex-1 w-full overflow-hidden">
             <div className="p-6 space-y-6">
             
               {/* Overview Tab */}

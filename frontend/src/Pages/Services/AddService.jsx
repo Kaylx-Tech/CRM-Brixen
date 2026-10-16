@@ -115,7 +115,7 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleAttemptClose() }}>
-        <DialogContent className="sm:max-w-[560px] max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogContent className="sm:max-w-140 max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader className="shrink-0">
             <DialogTitle>Add Service</DialogTitle>
             <DialogDescription>
@@ -123,7 +123,7 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
             </DialogDescription>
           </DialogHeader>
           {/* Header and buttons stay put; only the form scrolls */}
-          <ScrollArea className="-mx-6 min-h-0 flex-1">
+          <ScrollArea className="-mx-6 h-0 min-h-0 flex-1 overflow-hidden">
           <div className="grid gap-4 px-6 py-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Name *</Label>
@@ -163,7 +163,7 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
               <Textarea 
                 id="description" 
                 placeholder="Optional service description" 
-                className="min-h-[80px]" 
+                className="min-h-20" 
                 value={formData.description}
                 onChange={handleChange}
                 disabled={isSubmitting}
