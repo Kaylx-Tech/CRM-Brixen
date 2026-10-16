@@ -122,11 +122,21 @@ def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False, own_orders_
             execute_db("DELETE FROM order_line_items WHERE order_id = ?;", (draft_id,))
             order_id = int(draft_id)
             order_num = existing.get('order_number')
+            # A draft takes its number in the order series only when it is placed
+            if not as_draft and not re.match(r'^#?[A-Za-z]*\d+$', str(order_num or '')):
+                from services.order_numbers import next_order_number
+                order_num = next_order_number()
+                execute_db("UPDATE orders SET order_number = ? WHERE id = ?;", (order_num, order_id))
         else:
             draft_id = None
 
     if not draft_id:
-        order_num = f"#GB-{secrets.randbelow(900000) + 100000}"
+        # Placed orders continue the running series (#GB15354); drafts get a placeholder until placed
+        if as_draft:
+            order_num = f"DRAFT-{secrets.token_hex(3).upper()}"
+        else:
+            from services.order_numbers import next_order_number
+            order_num = next_order_number()
         order_id = execute_db("""
             INSERT INTO orders (
                 order_number, user_id, company_id, service_id, service_name,

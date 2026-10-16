@@ -89,7 +89,8 @@ def process_woocommerce_order(payload):
     if order_num and not order_num.startswith('#'):
         order_num = f"#GB{order_num}" if str(order_num).isdigit() else f"#{order_num}"
     if not order_num:
-        order_num = f"#GB-{secrets.randbelow(900000) + 100000}"
+        from services.order_numbers import next_order_number
+        order_num = next_order_number()
 
     if not email:
         return {"success": False, "error": "Order payload missing client email"}
@@ -143,11 +144,17 @@ def process_woocommerce_order(payload):
             one=True,
         )
     if not existing:
-        existing = query_db(
-            "SELECT id, order_number FROM orders WHERE order_number = ? LIMIT 1;",
-            (order_num,),
-            one=True,
-        )
+        # Same number without a WooCommerce id: only an earlier copy of this website order may be reused.
+        # A CRM order holding the number (CRM and website share the #GB series) is never overwritten.
+        existing = query_db("""
+            SELECT id, order_number FROM orders
+            WHERE order_number = ? AND COALESCE(woocommerce_order_id, '') = ''
+              AND created_by_id IS NULL AND payment_mode = 'Website Charge'
+            LIMIT 1;
+        """, (order_num,), one=True)
+    if not existing and query_db("SELECT 1 FROM orders WHERE order_number = ? LIMIT 1;", (order_num,), one=True):
+        # The number is taken by a CRM order: the website order keeps its number with a -W mark
+        order_num = f"{order_num}-W"
 
     if existing:
         order_id = existing['id']

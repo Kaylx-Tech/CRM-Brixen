@@ -182,7 +182,8 @@ def create_manual_crm_order(data, actor=None):
         'notes': notes,
     }
     checkout_json = json.dumps(checkout_payload)
-    order_num = f"#GB-{secrets.randbelow(900000) + 100000}"
+    from services.order_numbers import next_order_number
+    order_num = next_order_number()  # the running series (#GB15354)
 
     order_id = execute_db("""
         INSERT INTO orders (
