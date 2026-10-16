@@ -41,6 +41,7 @@ const EMPTY_FORM = {
   team_notification_emails: '',
   currency: '£',
   order_prefix: '#GB',
+  order_number_prefix: 'BRX',
   invoice_prefix: 'INV-2026-',
   portal_url: '',
   frontend_url: '',
@@ -101,6 +102,12 @@ function Section({ title, description, children }) {
     </div>
   )
 }
+
+// "OCT26" for this month (example in the Order prefix hint)
+const MONTH_TAG = (() => {
+  const d = new Date()
+  return `${d.toLocaleString('en-GB', { month: 'short' }).toUpperCase().slice(0, 3)}${String(d.getFullYear()).slice(-2)}`
+})()
 
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -199,6 +206,7 @@ export default function Settings() {
         team_notification_emails: flat.team_notification_emails || '',
         currency: brand.currency || flat.currency || '£',
         order_prefix: brand.order_prefix || flat.order_prefix || '#GB',
+        order_number_prefix: brand.order_number_prefix || flat.order_number_prefix || 'BRX',
         invoice_prefix: brand.invoice_prefix || flat.invoice_prefix || 'INV-2026-',
         portal_url: brand.portal_url || flat.portal_url || '',
         frontend_url: brand.frontend_url || flat.frontend_url || '',
@@ -332,6 +340,7 @@ export default function Settings() {
         team_notification_emails: form.team_notification_emails.trim(),
         currency: form.currency.trim() || '£',
         order_prefix: form.order_prefix.trim(),
+        order_number_prefix: (form.order_number_prefix || '').trim() || 'BRX',
         invoice_prefix: form.invoice_prefix.trim(),
         portal_url: form.portal_url.trim(),
         frontend_url: form.frontend_url.trim(),
@@ -556,11 +565,16 @@ export default function Settings() {
                     disabled={isLoading}
                   />
                 </Field>
-                <Field id="order_prefix" label="Order prefix">
+                <Field
+                  id="order_number_prefix"
+                  label="Order prefix"
+                  hint={`New CRM orders: ${form.order_number_prefix || 'BRX'}-1001-${MONTH_TAG}. Letters and numbers only; the count carries on.`}
+                >
                   <Input
-                    id="order_prefix"
-                    value={form.order_prefix}
-                    onChange={(e) => setField('order_prefix', e.target.value)}
+                    id="order_number_prefix"
+                    value={form.order_number_prefix}
+                    maxLength={8}
+                    onChange={(e) => setField('order_number_prefix', e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
                     disabled={isLoading}
                   />
                 </Field>

@@ -38,10 +38,12 @@ DEFAULT_SETTINGS = {
     'currency': '£',
     'vat_rate': '0.00',
     'order_prefix': '#GB',
+    # Letters of new CRM order numbers: BRX-1001-OCT26 (order_prefix above was the old #GB15353 series)
+    'order_number_prefix': 'BRX',
     'invoice_prefix': 'INV-2026-',
     'portal_url': 'https://portal.brixenconsultants.com',
     'frontend_url': 'https://admin.brixenconsultants.com',
-    
+
     # ── SMTP Transactional Email ──────────────────────────
     'smtp_host': 'smtp.hostinger.com',
     'smtp_port': '587',
@@ -142,6 +144,7 @@ def get_all_settings(raw: bool = False):
             'currency': merged.get('currency', '£'),
             'vat_rate': merged.get('vat_rate', '0.00'),
             'order_prefix': merged.get('order_prefix', '#GB'),
+            'order_number_prefix': merged.get('order_number_prefix', 'BRX'),
             'invoice_prefix': merged.get('invoice_prefix', 'INV-2026-'),
             'portal_url': merged.get('portal_url', 'https://portal.brixenconsultants.com'),
             'frontend_url': merged.get('frontend_url', 'https://admin.brixenconsultants.com'),
