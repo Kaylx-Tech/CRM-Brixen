@@ -407,6 +407,9 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         if invoice_id:
             inv = query_db("SELECT id, invoice_number, status FROM invoices WHERE id = ?;", (invoice_id,), one=True)
             result['invoice'] = dict(inv) if inv else None
+        # Thank-you email to the customer with the order number and next steps (respects the Send emails switch)
+        from services.client_mail import notify_order_received
+        notify_order_received(result.get('order_id') or result.get('id'), triggered_by=user_id)
         if not is_manual:  # manual CRM orders notify from inside create_manual_crm_order
             notify_staff(
                 'New order',

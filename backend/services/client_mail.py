@@ -306,6 +306,49 @@ def _order_context(order_id):
     return order, company
 
 
+def _order_next_steps(order):
+    """What happens next, per kind of service (shown on the order-received email)."""
+    from services.order_companies import is_formation_order
+    kind = 'formation' if is_formation_order(order.get('service_name')) else _classify(order.get('service_name'))
+    return {
+        'formation': ['📝 We check your details and the proposed company name',
+                      '🏛️ We file your company with Companies House',
+                      '📄 Your company documents arrive in your client panel'],
+        'office': ['📝 We set up your registered office', '📬 We start handling your mail'],
+        'accounts': ['📝 We review your company details and records',
+                     '📅 We prepare and file before the deadline'],
+        'vat': ['📝 We prepare your VAT registration', '🧾 HMRC confirms your VAT number'],
+        'bank': ['📝 We prepare your business bank application', '🏦 We keep you updated until it opens'],
+        'identity': ['📝 We check your identity documents', '🪪 We confirm it with Companies House'],
+        'psc': ['📝 We check the people with significant control', '👥 We confirm them with Companies House'],
+    }.get(kind, ['📝 Our team reviews your order', '📬 We email you as it moves forward'])
+
+
+def notify_order_received(order_id, triggered_by=None):
+    """Order placed in the CRM (wizard or quick order): thank-you email with the order number and next steps.
+
+    Not for website orders: WooCommerce already sends its own order confirmation.
+    """
+    order, company = _order_context(order_id)
+    if not order or int(order.get('is_draft') or 0) or not order.get('user_id'):
+        return None
+    client = _client(order['user_id'])
+    if not client or str(client.get('email') or '').lower() == 'guest.unlinked@brixenconsultants.com':
+        return None
+    number = order.get('order_number') or f"#{order_id}"
+    service = str(order.get('service_name') or 'Your order').strip()
+    brand = brand_settings().get('company_name') or 'Brixen Consultants'
+    details = [('Order', number), ('Service', service)]
+    if order.get('company_name'):
+        details.append(('Company', order['company_name']))
+    return notify_client(
+        order['user_id'], title='Order received', headline='Thank you — we have your order',
+        message=f"Your order {number} for {service} is in. Here is what happens next.",
+        ntype='order_update', link='/orders', subject=f'Order received — {number} — {brand}',
+        points=_order_next_steps(order), details=details, cta_label='Track your order', category='ORDER',
+        company=company, order=order, triggered_by=triggered_by, account_owner=True)
+
+
 def notify_order_status_changed(order_id, old_status, triggered_by=None):
     """Order status changed by the team: 'complete' email when Completed, otherwise a status update."""
     order, company = _order_context(order_id)

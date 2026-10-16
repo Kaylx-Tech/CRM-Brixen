@@ -231,8 +231,21 @@ def process_woocommerce_order(payload):
         from services.invoice_service import ensure_invoice_for_order, sync_invoice_with_order
         wc_status = str(payload.get('status') or '').strip().lower()
         paid = wc_status in ('processing', 'completed') or bool(payload.get('date_paid') or payload.get('date_paid_gmt'))
+        before = query_db("SELECT status FROM invoices WHERE order_id = ? ORDER BY id DESC LIMIT 1;",
+                          (order_id,), one=True)
         ensure_invoice_for_order(order_id, paid=paid)
         sync_invoice_with_order(order_id)
+        # Paid at checkout: "Payment received" email once, when the invoice first turns Paid (app.py);
+        # never for the shared guest account
+        if paid and (before or {}).get('status') != 'Paid' and status != 'Pending Verification':
+            from services.invoice_mail import send_payment_received
+            invoice = query_db("SELECT * FROM invoices WHERE order_id = ? ORDER BY id DESC LIMIT 1;",
+                               (order_id,), one=True)
+            order_row = query_db("""
+                SELECT o.*, u.email, u.full_name FROM orders o JOIN users u ON u.id = o.user_id WHERE o.id = ?;
+            """, (order_id,), one=True)
+            if invoice and order_row and invoice.get('status') == 'Paid':
+                send_payment_received(dict(invoice), dict(order_row))
     except Exception as e:
         print(f"[Webhook] invoice sync error: {e}")
 
