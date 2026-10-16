@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime
+import re
 from db import query_db, execute_db
 from services.invoice_mail import send_invoice_email
 
@@ -245,24 +246,27 @@ def update_admin_invoice(invoice_id, data, *, actor=None):
 
 # ── Invoices follow their orders (app.py ensure_invoice_for_order / backfill_invoices_from_orders) ──
 
-def invoice_prefix_value():
-    row = query_db("SELECT value FROM settings WHERE key = 'invoice_prefix';", one=True)
-    return str((row or {}).get('value') or 'INV-').strip() or 'INV-'
+def invoice_number_for_order(order_number):
+    """Use the order number's running number and date suffix with an INV prefix."""
+    value = str(order_number or '').strip()
+    match = re.match(r'^[^-]+-(\d+)-([A-Z]{3}\d{2})$', value, re.IGNORECASE)
+    if match:
+        return f"INV-{match.group(1)}-{match.group(2).upper()}"
+
+    digits = re.search(r'(\d+)$', value)
+    return f"INV-{digits.group(1)}" if digits else None
 
 
 def next_invoice_number():
-    """Next number in the Settings prefix series: INV-0033 -> INV-0034."""
-    import re
-    prefix = invoice_prefix_value()
+    """Fallback number for invoices whose order has no usable order number."""
     highest = 0
     for row in query_db("SELECT invoice_number FROM invoices;") or []:
         number = str(row.get('invoice_number') or '').strip()
-        tail = number[len(prefix):] if number.startswith(prefix) else ''
-        match = re.search(r'(\d+)$', number)
-        digits = tail if tail.isdigit() else (match.group(1) if match else '')
+        match = re.match(r'^INV-(\d+)$', number, re.IGNORECASE)
+        digits = match.group(1) if match else ''
         if digits.isdigit():
             highest = max(highest, int(digits))
-    return f"{prefix}{highest + 1:04d}"
+    return f"INV-{highest + 1:04d}"
 
 
 def ensure_invoice_for_order(order_id, paid=False):
@@ -284,6 +288,7 @@ def ensure_invoice_for_order(order_id, paid=False):
     method = str(order.get('payment_mode') or '').strip() or None
     timing = 'Advance' if (paid or method == 'Website Charge') else 'After work'
     total = float(order.get('total') or 0)
+    invoice_number = invoice_number_for_order(order.get('order_number')) or next_invoice_number()
     for _ in range(8):
         try:
             return execute_db("""
@@ -291,7 +296,7 @@ def ensure_invoice_for_order(order_id, paid=False):
                                       payment_method, payment_timing, deposit_amount, amount_paid, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, date('now', '+30 days'),
                         CASE WHEN ? = 'Paid' THEN datetime('now') END, ?, ?, 0, ?, datetime('now'));
-            """, (next_invoice_number(), order_id, order['user_id'], float(order.get('price') or total),
+            """, (invoice_number, order_id, order['user_id'], float(order.get('price') or total),
                   float(order.get('vat') or 0), total, status, status, method, timing,
                   total if status == 'Paid' else 0))
         except Exception as exc:

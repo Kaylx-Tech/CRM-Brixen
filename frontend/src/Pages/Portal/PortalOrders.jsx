@@ -63,7 +63,10 @@ export function OrderDetailDialog({ orderId, onClose }) {
                   {items.map((li) => (
                     <li key={li.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                       <span className="truncate">{li.product_name}</span>
-                      <span className="tabular-nums text-muted-foreground">{money(li.line_total ?? li.unit_price)}</span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <StatusBadge status={li.fulfillment_status || "Pending"} />
+                        <span className="tabular-nums text-muted-foreground">{money(li.line_total ?? li.unit_price)}</span>
+                      </span>
                     </li>
                   ))}
                 </ul>

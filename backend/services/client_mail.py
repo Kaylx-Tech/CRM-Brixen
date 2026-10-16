@@ -349,6 +349,30 @@ def notify_order_received(order_id, triggered_by=None):
         company=company, order=order, triggered_by=triggered_by, account_owner=True)
 
 
+def notify_product_status_changed(order_id, line_item_id, triggered_by=None):
+    """Email the customer only about the product whose fulfillment status changed."""
+    order, company = _order_context(order_id)
+    item = query_db(
+        "SELECT product_name, fulfillment_status FROM order_line_items WHERE id = ? AND order_id = ? LIMIT 1;",
+        (line_item_id, order_id), one=True)
+    if not order or not item or int(order.get('is_draft') or 0) or not order.get('user_id'):
+        return None
+
+    product = str(item.get('product_name') or 'Your product').strip()
+    status = str(item.get('fulfillment_status') or 'Pending').strip()
+    number = order.get('order_number') or f"#{order_id}"
+    brand = brand_settings().get('company_name') or 'Brixen Consultants'
+    return notify_client(
+        order['user_id'], title=f'{product} status updated',
+        headline=f'Your {product} order is {status.lower()}',
+        message=f'The status of your product has changed to {status}.',
+        ntype='order_update', link='/orders', subject=f'{product} — {status} — {brand}',
+        points=[f'✅ {product}'],
+        details=[('Product', product), ('Status', status), ('Order', number)],
+        cta_label='Track your order', category='ORDER', company=company, order=order,
+        triggered_by=triggered_by, account_owner=True)
+
+
 def notify_order_status_changed(order_id, old_status, triggered_by=None):
     """Order status changed by the team: 'complete' email when Completed, otherwise a status update."""
     order, company = _order_context(order_id)

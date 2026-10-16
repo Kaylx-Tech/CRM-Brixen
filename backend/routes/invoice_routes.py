@@ -3,7 +3,7 @@ import re
 from db import query_db, execute_db
 from utils.response import json_response, success_response, error_response
 from services.invoice_service import (enrich_invoice_row, load_invoice_for_staff, update_admin_invoice,
-                                      backfill_invoices_from_orders, next_invoice_number)
+                                      backfill_invoices_from_orders, invoice_number_for_order, next_invoice_number)
 from services.invoice_mail import send_invoice_email
 from services.notification_service import notify_staff
 
@@ -158,7 +158,8 @@ def handle_invoice_routes(environ, start_response, path, method, user, body, que
         if not due_date:
             return error_response(start_response, "Due date is required", status_code=400)
 
-        inv_num = next_invoice_number()
+        order = query_db("SELECT order_number FROM orders WHERE id = ?;", (order_id,), one=True)
+        inv_num = invoice_number_for_order((order or {}).get('order_number')) or next_invoice_number()
         inv_id = execute_db("""
             INSERT INTO invoices (
                 invoice_number, user_id, order_id, amount, tax, total,

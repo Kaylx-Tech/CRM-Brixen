@@ -147,22 +147,13 @@ def _section_html(title, rows):
 
 
 def _build_sections(invoice, order, *, include_bank):
-    total = _money(invoice.get('total') or invoice.get('amount'))
-    paid = _money(invoice.get('amount_paid'))
-    due = max(total - paid, 0.0)
     invoice_number = str(invoice.get('invoice_number') or '').strip()
     service = str(order.get('service_name') or 'Your order').strip()
     number = str(order.get('order_number') or '').strip()
 
     summary = []
-    if include_bank or due > 0.004:
-        summary.append(('Amount due', _format_gbp(due if due > 0.004 else total)))
-    else:
-        summary.append(('Amount', _format_gbp(total)))
     if invoice_number:
-        summary.append(('Invoice', f"{invoice_number} — {_format_gbp(total)}"))
-    if (not include_bank) and paid > 0.004:
-        summary.append(('Paid', _format_gbp(paid)))
+        summary.append(('Invoice', invoice_number))
     if service:
         summary.append(('Service', service))
     if number:

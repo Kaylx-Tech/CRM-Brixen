@@ -13,6 +13,7 @@ from services.notification_service import notify_staff
 
 
 ORDER_FINANCE_FIELDS = ('cost_price', 'catalog_cost', 'manual_cost', 'resolved_cost', 'cost_source', 'profit')
+LINE_ITEM_STATUS_OPTIONS = ('Pending', 'Processing', 'In Progress', 'Completed', 'Cancelled')
 
 
 def strip_order_finance(order):
@@ -465,6 +466,7 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
             first = query_db("SELECT id FROM order_line_items WHERE order_id = ? ORDER BY sort_order ASC, id ASC LIMIT 1;", (order_id,), one=True)
             li_id = first['id'] if first else None
 
+        product_status_changed = False
         if method == 'POST' and li_id is None:
             service_id = body.get('service_id')
             svc = query_db("SELECT id, name, category, price FROM services WHERE id = ?;", (int(service_id),), one=True) if service_id else None
@@ -502,9 +504,18 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
                     return error_response(start_response, "Invalid price or quantity", status_code=400)
                 if unit < 0:
                     return error_response(start_response, "Price cannot be negative", status_code=400)
-                execute_db("UPDATE order_line_items SET quantity = ?, unit_price = ?, line_total = ? WHERE id = ?;",
-                           (qty, unit, round(unit * qty, 2), li_id))
-                action = f"Changed price of {item.get('product_name')} to {unit:.2f}"
+                old_item_status = str(item.get('fulfillment_status') or 'Pending').strip()
+                status = str(body.get('fulfillment_status') or old_item_status).strip()
+                if status not in LINE_ITEM_STATUS_OPTIONS:
+                    return error_response(start_response, "Invalid product status", status_code=400)
+                execute_db(
+                    "UPDATE order_line_items SET quantity = ?, unit_price = ?, line_total = ?, fulfillment_status = ? WHERE id = ?;",
+                    (qty, unit, round(unit * qty, 2), status, li_id))
+                product_status_changed = status != old_item_status
+                if product_status_changed:
+                    action = f"Changed status of {item.get('product_name')} to {status}"
+                else:
+                    action = f"Changed price of {item.get('product_name')} to {unit:.2f}"
 
         total = _recalc_order_from_line_items(order_id)
         try:
@@ -513,6 +524,9 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
             log_order_timeline(order_id, 'Completed', action)
         except Exception:
             pass
+        if product_status_changed:
+            from services.client_mail import notify_product_status_changed
+            notify_product_status_changed(order_id, li_id, triggered_by=user_id)
         fresh = query_db("SELECT * FROM order_line_items WHERE order_id = ? ORDER BY sort_order ASC, id ASC;", (order_id,)) or []
         return success_response(start_response, message=action, data={"line_items": [dict(r) for r in fresh], "total": total})
 
@@ -619,9 +633,6 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
             updates.append("updated_at = datetime('now')")
             params.append(order_id)
             execute_db(f"UPDATE orders SET {', '.join(updates)} WHERE id = ?;", params)
-        if 'status' in body and body.get('status') != old_status:
-            from services.client_mail import notify_order_status_changed
-            notify_order_status_changed(order_id, old_status, triggered_by=user_id)
         if any(k in body for k in ('price', 'total', 'status')):
             from services.invoice_service import sync_invoice_with_order
             sync_invoice_with_order(order_id)
@@ -643,8 +654,6 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         old_status = (query_db("SELECT status FROM orders WHERE id = ?;", (order_id,), one=True) or {}).get('status')
         execute_db("UPDATE orders SET status = ? WHERE id = ?;", (new_status, order_id))
         if new_status != old_status:
-            from services.client_mail import notify_order_status_changed
-            notify_order_status_changed(order_id, old_status, triggered_by=user_id)
             from services.invoice_service import sync_invoice_with_order
             sync_invoice_with_order(order_id)
         if str(new_status).strip().lower() == 'completed':

@@ -612,6 +612,22 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
     }
   }
 
+  const handleSaveItemStatus = async (item, status) => {
+    if (!status || status === (item.fulfillment_status || 'Pending')) return
+    const res = await apiRequest(`/orders/${orderId}/line-items/${item.id}`, {
+      method: 'PATCH',
+      body: { fulfillment_status: status },
+      label: 'Update product status',
+      silent: true,
+    })
+    if (res.ok) {
+      toast.success(`${item.product_name} marked ${status}`)
+      applyLineItemResult(res)
+    } else {
+      toast.error(res.reason || 'Could not update product status')
+    }
+  }
+
   const handleRemoveItem = async (item) => {
     setIsRemovingItem(true)
     const res = await apiRequest(`/orders/${orderId}/line-items/${item.id}`, {
@@ -1318,7 +1334,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                       <div className="rounded-lg border overflow-hidden">
                         <div className="p-3 bg-muted/30 border-b flex items-center justify-between text-sm font-semibold text-muted-foreground">
                           <span>Product / Service</span>
-                          <span>Price</span>
+                          <span>Status / Price</span>
                         </div>
                         {orderItems.map((item) => (
                           <div key={item.id} className="p-4 flex items-center justify-between gap-3 text-sm border-b last:border-b-0">
@@ -1330,6 +1346,21 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               </span>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
+                              <Select
+                                value={item.fulfillment_status || 'Pending'}
+                                onValueChange={(status) => handleSaveItemStatus(item, status)}
+                              >
+                                <SelectTrigger className="h-8 w-32 text-sm" aria-label={`Status for ${item.product_name}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectGroup>
+                                    {['Pending', 'Processing', 'In Progress', 'Completed', 'Cancelled'].map((status) => (
+                                      <SelectItem key={status} value={status}>{status}</SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                </SelectContent>
+                              </Select>
                               <span className="text-sm text-muted-foreground">£</span>
                               <Input
                                 key={`${item.id}-${item.unit_price}`}

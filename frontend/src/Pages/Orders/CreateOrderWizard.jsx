@@ -65,7 +65,7 @@ const LABEL_FILLER = new Set(["the", "your", "a", "an", "please", "enter", "prov
 
 /** Comparable form of a label: lower case, no punctuation / possessive / filler words / plural "s". */
 function normalizeLabel(label) {
-  return String(label || "")
+  const normalized = String(label || "")
     .toLowerCase()
     .replace(/['’]s\b/g, "")
     .replace(/[^a-z0-9]+/g, " ")
@@ -73,6 +73,29 @@ function normalizeLabel(label) {
     .filter((w) => w && !LABEL_FILLER.has(w))
     .map((w) => (w.length > 3 && w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w))
     .join(" ")
+
+  const aliases = {
+    "email address": "email",
+    "email id": "email",
+    "e mail": "email",
+    "email field": "email",
+    "mobile number": "phone",
+    mobile: "phone",
+    "phone number": "phone",
+    "telephone number": "phone",
+    telephone: "phone",
+    "contact number": "phone",
+    "date birth": "date of birth",
+    "birth date": "date of birth",
+    dob: "date of birth",
+    "company name": "company name",
+    "business name": "company name",
+    "business legal name": "company name",
+    postcode: "postal code",
+    "zip code": "postal code",
+    "postal/zip code": "postal code",
+  }
+  return aliases[normalized] || normalized
 }
 
 /**
