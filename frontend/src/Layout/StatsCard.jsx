@@ -179,11 +179,12 @@ export function StatCard({
         </CardDescription>
         <CardTitle
           className={cn(
-            "font-semibold tabular-nums",
+            // "!" so the card's own small-size title rule (group-data-[size=sm]:text-sm) cannot shrink the number
+            "font-bold tabular-nums leading-tight tracking-tight",
             typeof value === "string" && /[£$€]/.test(value) && "privacy-currency-mask",
             compact
-              ? "text-2xl @[250px]/card:text-3xl"
-              : "text-2xl @[250px]/card:text-3xl"
+              ? "mt-1 text-2xl! @[250px]/card:text-3xl!"
+              : "mt-1 text-3xl! @[250px]/card:text-4xl!"
           )}
         >
           {isLoading ? <Shimmer className={compact ? "h-6 w-16 mt-0.5" : "h-8 w-20 mt-1"} /> : value}
