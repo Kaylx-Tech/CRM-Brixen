@@ -38,7 +38,7 @@ import { toast } from 'sonner'
 import { toastUndoableDelete } from '@/lib/toastActions'
 import { Card, CardContent } from '@/components/ui/card'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
-import { isAdminRole } from '@/lib/permissions'
+import { isAdminRole, isManagerOrAbove } from '@/lib/permissions'
 import { needsAttention } from './attention'
 import { m, spring } from '@/lib/motion'
 import { apiRequest, getApiBase, toastApiEmpty } from '@/lib/api'
@@ -52,6 +52,22 @@ const Companies = () => {
   const [loadError, setLoadError] = useState(null)
   const [activeTab, setActiveTab] = useState('all')
   const [pageOpenedAt] = useState(() => Date.now())
+  const [isBackfilling, setIsBackfilling] = useState(false)
+
+  const backfillFormations = async () => {
+    setIsBackfilling(true)
+    try {
+      const res = await apiRequest('/admin/companies/backfill-formations', { method: 'POST', label: 'Formation orders', silent: true })
+      if (!res.ok) {
+        toast.error(res.reason || 'Could not check the formation orders')
+        return
+      }
+      toast.success(res.data?.message || 'Formation orders checked')
+      if ((res.data?.data?.created || []).length) fetchCompanies()
+    } finally {
+      setIsBackfilling(false)
+    }
+  }
 
   // Selection & Bulk delete state
   const [selectedIds, setSelectedIds] = useState([])
@@ -283,6 +299,20 @@ const Companies = () => {
       </div>
 
       <SectionCards stats={companyStats} isLoading={isLoading} compact />
+
+      {/* Older formation orders (before Pending companies were automatic) can be picked up here */}
+      {activeTab === 'not-registered' && isManagerOrAbove() && (
+        <div className="flex flex-col gap-2 rounded-xl border border-violet-200 bg-violet-50/60 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between dark:border-violet-900/50 dark:bg-violet-950/20">
+          <span className="text-muted-foreground">
+            Formation orders (Incorporation, packages …) add their new company here as Pending. Check older orders
+            that came in before this was automatic.
+          </span>
+          <Button size="sm" variant="outline" className="shrink-0" disabled={isBackfilling} onClick={backfillFormations}>
+            {isBackfilling ? <IconLoader2 className="h-4 w-4 animate-spin" /> : <IconRefresh className="h-4 w-4" />}
+            Check formation orders
+          </Button>
+        </div>
+      )}
 
       {/* Stats/Tabs & Search */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
