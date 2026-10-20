@@ -10,6 +10,7 @@ from db import query_db, execute_db, verify_password, hash_password
 from utils.response import json_response, success_response, error_response
 from services.email_service import send_email
 from config import FRONTEND_URL, COOKIE_SECURE, SESSION_COOKIE_MAX_AGE
+from tenancy import new_session_token
 
 MIN_PASSWORD_LEN = 8
 STAFF_MIN_PASSWORD_LEN = 10
@@ -188,8 +189,8 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
                 return error_response(start_response, WEBSITE_ONLY_MESSAGE, status_code=403,
                                       details={'login_target': 'website', 'website_url': website_login_url()})
 
-        # Generate new DB session token (30 days validity)
-        session_token = str(uuid.uuid4())
+        # Generate new DB session token (30 days validity); its prefix names the workspace
+        session_token = new_session_token()
         execute_db("""
             INSERT INTO user_sessions (session_token, user_id, expires_at, last_activity_at)
             VALUES (?, ?, datetime('now', '+30 days'), datetime('now'));
@@ -244,7 +245,7 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
         target = query_db("SELECT * FROM users WHERE id = ? LIMIT 1;", ((body or {}).get('user_id'),), one=True)
         if not target or not _can_switch_to(user, target):
             return error_response(start_response, "You cannot switch to that user.", status_code=403)
-        token = str(uuid.uuid4())
+        token = new_session_token()
         execute_db("""
             INSERT INTO user_sessions (session_token, user_id, expires_at, last_activity_at, impersonator_token)
             VALUES (?, ?, datetime('now', '+8 hours'), datetime('now'), ?);

@@ -52,7 +52,7 @@ LOCKED_MESSAGE = (
 def database_path():
     try:
         import db as db_mod
-        return str(getattr(db_mod, 'DB_PATH', '') or '')
+        return str(db_mod.current_db_path() or '')
     except Exception:
         return os.environ.get('DATABASE_URL') or ''
 

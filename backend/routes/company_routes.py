@@ -8,6 +8,7 @@ import time
 import datetime
 import threading
 from db import query_db, execute_db, unusable_password_hash
+from tenancy import run_in_thread
 from utils.response import json_response, success_response, error_response
 from services.companies_house_service import (
     fetch_company_profile,
@@ -227,8 +228,8 @@ def schedule_portfolio_ch_sync(user_id=None):
         except Exception as exc:
             print(f"[CH sync error] {exc}")
 
-    t = threading.Thread(target=_job, daemon=True)
-    t.start()
+    # Keeps the request's workspace database inside the thread
+    run_in_thread(_job)
     return True
 
 COMPANY_STATUSES = (

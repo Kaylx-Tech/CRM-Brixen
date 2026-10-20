@@ -160,29 +160,59 @@ def _configure_connection(conn):
     return conn
 
 
-def _open_db():
-    conn = sqlite3.connect(DB_PATH, timeout=30.0)
+class TenantRequiredError(RuntimeError):
+    """Raised when a request needs a workspace database but none was chosen (Finstap multi-tenancy)."""
+
+
+# Marks "no workspace picked" for this thread; get_db() then refuses instead of opening a stray file
+NO_TENANT_DB = object()
+_db_route = threading.local()
+
+
+def set_db_path(path):
+    """Point this thread's get_db() at a workspace database (None = default DB_PATH)."""
+    _db_route.path = path
+
+
+def current_db_path():
+    path = getattr(_db_route, 'path', None)
+    if path is NO_TENANT_DB:
+        raise TenantRequiredError("Workspace is required for this request")
+    return path or DB_PATH
+
+
+def _open_db(path=None):
+    conn = sqlite3.connect(path or current_db_path(), timeout=30.0)
     return _configure_connection(conn)
 
 
 def get_db():
-    conn = getattr(_thread_local, 'conn', None)
+    # One cached connection per thread per database file, so each workspace keeps its own
+    path = current_db_path()
+    conns = getattr(_thread_local, 'conns', None)
+    if conns is None:
+        conns = _thread_local.conns = {}
+    conn = conns.get(path)
     if conn is not None:
         return conn
-    conn = _open_db()
-    _thread_local.conn = conn
+    conn = _open_db(path)
+    conns[path] = conn
     return conn
 
 
 def close_db():
-    conn = getattr(_thread_local, 'conn', None)
+    conns = getattr(_thread_local, 'conns', None) or {}
+    try:
+        path = current_db_path()
+    except TenantRequiredError:
+        return
+    conn = conns.pop(path, None)
     if conn is None:
         return
     try:
         conn.close()
     except Exception:
         pass
-    _thread_local.conn = None
 
 
 def ensure_performance_indexes(conn=None):

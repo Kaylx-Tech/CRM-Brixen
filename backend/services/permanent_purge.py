@@ -455,7 +455,8 @@ def enforce_live_database(db_path=None):
     """Re-apply permanent purges to the live DB (blocks accidental restore)."""
     try:
         import db as db_mod
-        path = db_path or getattr(db_mod, 'DB_PATH', None) or os.path.join(_base_dir(), 'hypetex.db')
+        # The active workspace's database (Finstap), else the default one
+        path = db_path or db_mod.current_db_path() or os.path.join(_base_dir(), 'hypetex.db')
     except Exception:
         path = db_path or os.path.join(_base_dir(), 'hypetex.db')
     if not os.path.isfile(path):

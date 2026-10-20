@@ -10,11 +10,13 @@ from wsgiref.simple_server import make_server, WSGIServer
 from socketserver import ThreadingMixIn
 
 from config import HOST, PORT, ALLOWED_CORS_ORIGINS
-from db import ensure_schema
+from db import ensure_schema, TenantRequiredError
 from middleware.cors import handle_cors_headers, handle_options_preflight
-from middleware.auth_guard import get_authenticated_user
+from middleware.auth_guard import get_authenticated_user, extract_session_token
 from utils.response import json_response, error_response
 from routes import dispatch_api_routes
+from routes.platform_routes import handle_platform_routes
+from tenancy import activate, deactivate, ensure_platform, for_each_tenant, resolve_request_tenant
 
 
 class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
@@ -117,34 +119,55 @@ def app(environ, start_response):
         except Exception:
             body = {}
 
-    # 4. Authenticate User
-    user = get_authenticated_user(environ)
+    # 4. Pick the workspace database (Finstap: one database per company)
+    tenant, tenant_error = resolve_request_tenant(environ, query_params, extract_session_token(environ))
+    activate(tenant)
 
-    # 5. Dispatch Modular Routes
     try:
+        # Signup and workspace lookup work without a workspace
+        response = handle_platform_routes(environ, custom_start_response, path, method, body, query_params)
+        if response is not None:
+            return response
+        if tenant_error:
+            return error_response(custom_start_response, tenant_error, status_code=404)
+
+        # 5. Authenticate User
+        user = get_authenticated_user(environ) if tenant else None
+
+        # 6. Dispatch Modular Routes
         response = dispatch_api_routes(environ, custom_start_response, path, method, user, body, query_params)
         if response is not None:
             return response
+    except TenantRequiredError:
+        return error_response(custom_start_response, "Workspace is required", status_code=400)
     except Exception as exc:
         print(f"[API Server Error] Path: {path} Method: {method} Error: {exc}")
         import traceback
         traceback.print_exc()
         # Do not leak exception details to clients
         return error_response(custom_start_response, "Internal Server Error", status_code=500)
+    finally:
+        deactivate()
 
-    # 6. Fallback 404
+    # 7. Fallback 404
     return error_response(custom_start_response, f"Endpoint not found: {method} {path}", status_code=404)
 
 
 def run_server():
     """Start the multi-threaded WSGI server (Waitress in production)."""
-    ensure_schema()
-    try:
-        from services.permanent_purge import enforce_live_database
-        enforce_live_database()
-        print("[PermanentPurge] Live database enforcement complete")
-    except Exception as exc:
-        print(f"[PermanentPurge] Startup enforce skipped: {exc}")
+    # Bring every workspace database up to date (Brixen's existing one is adopted on first run)
+    ensure_platform()
+
+    def _startup(tenant):
+        ensure_schema()
+        try:
+            from services.permanent_purge import enforce_live_database
+            enforce_live_database()
+            print(f"[PermanentPurge] {tenant['slug']}: live database enforcement complete")
+        except Exception as exc:
+            print(f"[PermanentPurge] {tenant['slug']}: startup enforce skipped: {exc}")
+
+    for_each_tenant(_startup)
 
     print("=" * 60)
     print("Brixen CRM Modular API Server Started")
