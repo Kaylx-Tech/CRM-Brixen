@@ -12,6 +12,10 @@ COPY . .
 # VITE_PRODUCT=finstap builds the Finstap app (signup + workspace login); empty = Brixen
 ARG VITE_API_URL
 ARG VITE_PRODUCT
+# A Finstap build without its API address would fall back to "/api" and fail in confusing ways: stop here
+RUN if [ -z "$VITE_API_URL" ] && grep -q '^VITE_PRODUCT=finstap' .env.production 2>/dev/null; then \
+      echo "ERROR: set VITE_API_URL as a Build Variable in Coolify (e.g. https://api.finstap.com/api)"; exit 1; \
+    fi
 RUN if [ -n "$VITE_API_URL" ]; then export VITE_API_URL="$VITE_API_URL"; fi && \
     if [ -n "$VITE_PRODUCT" ]; then export VITE_PRODUCT="$VITE_PRODUCT"; fi && npm run build
 
