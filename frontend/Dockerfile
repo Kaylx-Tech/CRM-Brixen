@@ -9,8 +9,11 @@ COPY . .
 # Coolify passes env vars as build args. Set VITE_API_URL there to test against another API
 # (e.g. a temporary sslip.io backend); when it is not set the production API URL from
 # .env.production is used.
+# VITE_PRODUCT=finstap builds the Finstap app (signup + workspace login); empty = Brixen
 ARG VITE_API_URL
-RUN if [ -n "$VITE_API_URL" ]; then export VITE_API_URL="$VITE_API_URL"; fi && npm run build
+ARG VITE_PRODUCT
+RUN if [ -n "$VITE_API_URL" ]; then export VITE_API_URL="$VITE_API_URL"; fi && \
+    if [ -n "$VITE_PRODUCT" ]; then export VITE_PRODUCT="$VITE_PRODUCT"; fi && npm run build
 
 # Stage 2: Production Nginx Server
 FROM nginx:alpine

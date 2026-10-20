@@ -2,6 +2,8 @@ import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Login from './Pages/Login'
 import ForgotPassword from './Pages/ForgotPassword'
+import FinstapSignup from './Pages/FinstapSignup'
+import { IS_FINSTAP } from './lib/workspace'
 import ResetPassword from './Pages/ResetPassword'
 // import SignUp from './Pages/SignUp'
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute'
@@ -85,9 +87,19 @@ const App = () => {
             {/* Sign-in handed over from the Brixen website (B2B accounts) */}
             <Route path="/sso" element={<Sso />} />
 
-            {/* SignUp disabled for now */}
-            {/* <Route path="/signup" element={<SignUp />} /> */}
-            <Route path="/signup" element={<Navigate to="/login" replace />} />
+            {/* Finstap: companies create their own workspace; the Brixen build has no signup */}
+            <Route
+              path="/signup"
+              element={
+                IS_FINSTAP ? (
+                  <PublicRoute>
+                    <FinstapSignup />
+                  </PublicRoute>
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
 
             {/* Protected Admin Routes (Requires Login) */}
             <Route element={<ProtectedRoute />}>

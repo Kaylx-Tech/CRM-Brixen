@@ -2,6 +2,7 @@
  * Shared API helpers — clear toast reasons when backend data fails to load.
  */
 import { toast } from "@/components/ui/toast"
+import { workspaceHeaders } from "@/lib/workspace"
 
 export function getApiBase() {
   return String(import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "")
@@ -11,6 +12,8 @@ export function authHeaders(extra = {}) {
   const token = localStorage.getItem("token")
   return {
     "Content-Type": "application/json",
+    // Finstap workspace (only set in the Finstap app); the token prefix wins once signed in
+    ...workspaceHeaders(),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...extra,
   }

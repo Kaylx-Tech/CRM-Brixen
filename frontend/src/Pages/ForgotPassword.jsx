@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
+import { IS_FINSTAP, getWorkspace, normalizeSlug, workspaceHeaders } from "@/lib/workspace"
 import { IconAlertCircle, IconMailCheck } from "@tabler/icons-react"
 import { AuthLayout } from "@/components/auth-layout"
 import { Button } from "@/components/ui/button"
@@ -10,6 +11,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 const apiUrl = import.meta.env.VITE_API_URL || "/api"
 
 export default function ForgotPassword() {
+  const [params] = useSearchParams()
+  // Finstap: the reset is for one workspace (from the login page link, or remembered)
+  const [workspace, setWorkspaceInput] = useState(() => normalizeSlug(params.get("workspace")) || getWorkspace())
   const [email, setEmail] = useState("")
   const [error, setError] = useState("")
   const [sentTo, setSentTo] = useState("")
@@ -22,7 +26,7 @@ export default function ForgotPassword() {
     try {
       const res = await fetch(`${apiUrl}/auth/forgot-password`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...workspaceHeaders(normalizeSlug(workspace)) },
         credentials: "include",
         body: JSON.stringify({ email }),
       })
@@ -73,6 +77,20 @@ export default function ForgotPassword() {
               <IconAlertCircle className="size-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
+          )}
+          {IS_FINSTAP && (
+            <Field>
+              <FieldLabel htmlFor="workspace">Workspace</FieldLabel>
+              <Input
+                id="workspace"
+                placeholder="your-company"
+                autoCapitalize="none"
+                required
+                value={workspace}
+                onChange={(e) => setWorkspaceInput(e.target.value)}
+                disabled={isLoading}
+              />
+            </Field>
           )}
           <Field>
             <FieldLabel htmlFor="email">Email</FieldLabel>

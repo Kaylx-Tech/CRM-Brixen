@@ -26,7 +26,7 @@ def handle_cors_headers(environ):
         headers.append(('Access-Control-Allow-Origin', origin))
         headers.append(('Access-Control-Allow-Credentials', 'true'))
         headers.append(('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS'))
-        headers.append(('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Session-Token, Accept, Origin'))
+        headers.append(('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Session-Token, X-Tenant, Accept, Origin'))
         headers.append(('Access-Control-Max-Age', '86400'))
 
     return headers

@@ -7,15 +7,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { getWorkspace, normalizeSlug, setWorkspace, workspaceHeaders } from "@/lib/workspace"
 
 const apiUrl = import.meta.env.VITE_API_URL || "/api"
 const MIN_PASSWORD_LEN = 8
 
-// Opened from the emailed link: /reset-password?token=...
+// Opened from the emailed link: /reset-password?token=... (&workspace=acme on Finstap)
 export default function ResetPassword() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const token = params.get("token") || ""
+  const workspace = normalizeSlug(params.get("workspace")) || getWorkspace()
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
   const [error, setError] = useState("")
@@ -38,14 +40,15 @@ export default function ResetPassword() {
     try {
       const res = await fetch(`${apiUrl}/auth/reset-password`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...workspaceHeaders(workspace) },
         credentials: "include",
         body: JSON.stringify({ token, password, confirm_password: confirm }),
       })
       const data = await res.json().catch(() => ({}))
       if (res.ok) {
         toast.success("Password updated. You can now sign in.")
-        navigate("/login", { replace: true })
+        if (workspace) setWorkspace(workspace)
+        navigate(workspace ? `/login?workspace=${encodeURIComponent(workspace)}` : "/login", { replace: true })
         return
       }
       setError(data.message || data.error || "Could not reset the password. Please try again.")

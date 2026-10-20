@@ -10,7 +10,7 @@ from db import query_db, execute_db, verify_password, hash_password
 from utils.response import json_response, success_response, error_response
 from services.email_service import send_email
 from config import FRONTEND_URL, COOKIE_SECURE, SESSION_COOKIE_MAX_AGE
-from tenancy import new_session_token
+from tenancy import new_session_token, current_tenant
 
 MIN_PASSWORD_LEN = 8
 STAFF_MIN_PASSWORD_LEN = 10
@@ -389,6 +389,10 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
 
             try:
                 reset_link = f"{_frontend_base_url()}/reset-password?token={urllib.parse.quote(raw_token)}"
+                # The link must reopen the same workspace (Finstap), which the token alone cannot tell
+                tenant = current_tenant()
+                if tenant:
+                    reset_link += f"&workspace={urllib.parse.quote(tenant['slug'])}"
                 send_email(
                     recipient=email,
                     subject="Brixen CRM - Password Reset Request",

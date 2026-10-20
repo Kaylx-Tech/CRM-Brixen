@@ -3,7 +3,11 @@ import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/inter'
 import './index.css'
 import App from './App.jsx'
+import { IS_FINSTAP } from './lib/workspace'
 import Trace from '@react-trace/kit'
+
+// The Finstap build names its own tab (index.html carries the Brixen title)
+if (IS_FINSTAP) document.title = 'Finstap — Practice management CRM'
 
 // Detect Apple devices (macOS, iOS, iPadOS) and set root class
 if (typeof window !== 'undefined') {
