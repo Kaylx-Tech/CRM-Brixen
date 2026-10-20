@@ -5,10 +5,10 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SectionCards } from "@/Layout/StatsCard"
-import { IconSearch, IconMessagePlus } from "@tabler/icons-react"
+import { IconSearch, IconMessagePlus, IconShoppingCartPlus } from "@tabler/icons-react"
 import { usePortalData, PageHeader, PageState, StatusBadge, money, formatDate } from "./portalShared"
 
-/** Service catalog: customers ask for a service through a support request (old portal "Services"). */
+/** Service catalog: customers order a service (order wizard) or ask about it through a support request. */
 export function PortalServices() {
   const navigate = useNavigate()
   const { data, isLoading, error, reload } = usePortalData("/client/services")
@@ -54,9 +54,14 @@ export function PortalServices() {
                       {s.duration ? <Badge className="bg-muted text-muted-foreground">{s.duration}</Badge> : null}
                       {s.estimated_delivery_time ? <Badge className="bg-muted text-muted-foreground">{s.estimated_delivery_time}</Badge> : null}
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => navigate(`/portal/support?subject=${encodeURIComponent(`Service request: ${s.name}`)}`)}>
-                      <IconMessagePlus className="size-4" /> Request
-                    </Button>
+                    <div className="flex gap-1.5">
+                      <Button size="sm" variant="outline" onClick={() => navigate(`/portal/support?subject=${encodeURIComponent(`Service request: ${s.name}`)}`)}>
+                        <IconMessagePlus className="size-4" /> Ask
+                      </Button>
+                      <Button size="sm" onClick={() => navigate("/portal/orders?new=1")}>
+                        <IconShoppingCartPlus className="size-4" /> Order
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}

@@ -113,8 +113,10 @@ def _create_registered_company(client_id, details):
     return company_id
 
 
-def link_order_companies(order_id, client_id, entries):
-    """Find or create each company and link it to the order. Returns [{company_id, name, number, created}]."""
+def link_order_companies(order_id, client_id, entries, own_only=False):
+    """Find or create each company and link it to the order. Returns [{company_id, name, number, created}].
+
+    own_only (orders a customer places): a company already in the CRM under another customer is not linked."""
     linked, seen = [], set()
     for entry in entries if isinstance(entries, list) else []:
         if not isinstance(entry, dict):
@@ -126,7 +128,7 @@ def link_order_companies(order_id, client_id, entries):
             continue
         seen.add(key)
         try:
-            linked.append(_link_one(client_id, name, number))
+            linked.append(_link_one(client_id, name, number, own_only=own_only))
         except Exception as exc:  # one bad company must not stop the others
             print(f"[order companies] {name or number}: {exc}")
             linked.append({'company_id': None, 'name': name, 'number': number, 'error': str(exc)})
@@ -146,10 +148,13 @@ def link_order_companies(order_id, client_id, entries):
     return linked
 
 
-def _link_one(client_id, name, number):
+def _link_one(client_id, name, number, own_only=False):
     """Find or create one company. Returns {company_id, name, number, created} (company_id None + error on failure)."""
     if number:
         found = _in_crm(number)
+        if found and own_only and found.get('user_id') and int(found['user_id']) != int(client_id or 0):
+            # Held by another customer: the answer stays on the order form, the team links it by hand
+            return {'company_id': None, 'name': name, 'number': number, 'created': False}
         if found:
             if not found.get('user_id') and client_id:
                 execute_db("UPDATE companies SET user_id = ? WHERE id = ?;", (client_id, found['id']))

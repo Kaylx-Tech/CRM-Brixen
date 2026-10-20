@@ -278,9 +278,8 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
 
     # ── GET /api/companies/ch-details?number= (order form: details of the selected company) ──
     # Official profile + active directors (month/year of birth, nationality, appointed) from Companies House.
+    # Public register data, so B2B customers can use it on their own order form too
     if path in ('/api/companies/ch-details', '/api/admin/companies/ch-details') and method == 'GET':
-        if not is_staff:
-            return error_response(start_response, "Insufficient permissions", status_code=403)
         if not get_ch_api_key():
             return error_response(start_response, "Companies House API key is not set (Settings > Integrations).",
                                   status_code=503)
