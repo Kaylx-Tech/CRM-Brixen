@@ -84,7 +84,7 @@ export function ChartBarMultiple({
           <BarChart accessibilityLayer data={displayData} margin={{ top: 20, right: 10, left: 10, bottom: 0 }}>
             <defs>
               <linearGradient id="revenueBar" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#7c3aed" />
+                <stop offset="0%" stopColor="var(--viz-3)" />
                 <stop offset="100%" stopColor="var(--viz-1)" />
               </linearGradient>
               <linearGradient id="revenueBarSoft" x1="0" y1="0" x2="0" y2="1">
@@ -353,7 +353,8 @@ export function ChartTopPerformer({ data = [], isLoading = false }) {
             <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
             <Bar dataKey="score" fill="var(--color-score)" radius={8} barSize={28} background={{ fill: "var(--muted)", radius: 8 }} {...CHART_ANIMATION}>
               {displayData.map((d, i) => (
-                <Cell key={d.team ?? i} fill={`var(--viz-${(i % 5) + 1})`} />
+                // Only the deep blues (1, 3, 5): the team name sits inside the bar in white
+                <Cell key={d.team ?? i} fill={`var(--viz-${[1, 3, 5][i % 3]})`} />
               ))}
               <LabelList dataKey="team" position="insideLeft" fill="#ffffff" offset={12} fontSize={14} />
               <LabelList dataKey="score" position="right" fill="var(--foreground)" offset={12} fontSize={14} />

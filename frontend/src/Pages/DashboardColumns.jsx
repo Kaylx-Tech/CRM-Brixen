@@ -76,8 +76,8 @@ const chartData = [
 ]
 
 const chartConfig = {
-  desktop: { label: "Desktop", color: "var(--primary)" },
-  mobile: { label: "Mobile", color: "var(--primary)" }
+  desktop: { label: "Desktop", color: "var(--viz-1)" },
+  mobile: { label: "Mobile", color: "var(--viz-4)" }
 }
 
 function TableCellViewer({ item }) {
