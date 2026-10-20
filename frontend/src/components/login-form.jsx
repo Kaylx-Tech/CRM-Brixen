@@ -2,7 +2,6 @@ import { cn } from "cn"
 import whiteLogo from "../assets/white-logo.webp"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import {
   Field,
   FieldDescription,
@@ -90,11 +89,10 @@ export function LoginForm({
   }
 
   return (
-    <div className={cn("flex flex-col gap-6 w-full max-w-sm md:max-w-3xl", className)} {...props}>
-      <Card className="overflow-hidden p-0">
-        <CardContent className="grid p-0 md:grid-cols-2">
-           <div className="relative hidden md:flex flex-col justify-center p-10 bg-linear-to-br from-slate-900 via-blue-900 to-blue-950 text-white">
-            <div className="max-w-[420px] space-y-4">
+    // Full screen split: brand panel fills the left half, the form sits in the right half
+    <div className={cn("grid min-h-screen w-full md:grid-cols-2", className)} {...props}>
+           <div className="relative hidden md:flex flex-col justify-center p-12 lg:p-16 bg-linear-to-br from-slate-900 via-blue-900 to-blue-950 text-white">
+            <div className="max-w-[480px] space-y-4">
               <img src={whiteLogo} alt="Brixen Logo" className="h-10 w-auto mb-6" />
               <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-[1.2]">
                 Grow your practice with<br />the Brixen portal
@@ -104,7 +102,8 @@ export function LoginForm({
               </p>
             </div>
           </div>
-          <form className="p-6 md:p-8" onSubmit={handleSubmit}>
+        <div className="flex flex-col items-center justify-center gap-6 p-6 md:p-10">
+          <form className="w-full max-w-sm" onSubmit={handleSubmit}>
             <FieldGroup>
               <div className="flex flex-col py-8 items-center gap-2 text-center">
                 <h1 className="text-2xl font-bold">Welcome back</h1>
@@ -169,11 +168,10 @@ export function LoginForm({
               </FieldDescription> */}
             </FieldGroup>
           </form>
-        </CardContent>
-      </Card>
-      <FieldDescription className="px-6 text-center">
-       © 2026 Brixen Consultants Ltd. All rights reserved.
-      </FieldDescription>
+          <FieldDescription className="px-6 text-center">
+           © 2026 Brixen Consultants Ltd. All rights reserved.
+          </FieldDescription>
+        </div>
     </div>
   )
 }
