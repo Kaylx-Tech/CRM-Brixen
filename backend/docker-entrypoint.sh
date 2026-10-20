@@ -11,6 +11,17 @@ echo "[entrypoint] STORAGE_PATH=${STORAGE_DIR}"
 
 mkdir -p "$(dirname "$DB_FILE")" "$STORAGE_DIR/clients" /app/seed 2>/dev/null || true
 
+# Finstap (FINSTAP_DATA_DIR set): every workspace has its own database, created at signup and
+# migrated by main.py on start. The single-database setup below (bundled/seed copy) must not run.
+if [ -n "${FINSTAP_DATA_DIR:-}" ]; then
+    mkdir -p "$FINSTAP_DATA_DIR" 2>/dev/null || true
+    echo "[entrypoint] Finstap mode: workspaces in ${FINSTAP_DATA_DIR}"
+    PORT="${PORT:-5050}"
+    HOST="${HOST:-0.0.0.0}"
+    echo "[entrypoint] Starting Finstap API on ${HOST}:${PORT} (CRM_ENV=${CRM_ENV:-production})"
+    exec python main.py
+fi
+
 # Docker file-mount pitfall: if host path was missing, Docker may create a directory
 if [ -d "$DB_FILE" ]; then
     echo "[entrypoint] ERROR: ${DB_FILE} is a directory (bad file mount)."

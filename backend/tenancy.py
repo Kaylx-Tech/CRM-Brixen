@@ -95,7 +95,10 @@ def _has_crm_data(path):
     try:
         conn = sqlite3.connect(Path(path).resolve().as_uri() + "?mode=ro", uri=True, timeout=10)
         try:
-            return bool(conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='users';").fetchone())
+            if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='users';").fetchone():
+                return False
+            # An empty schema (e.g. made by an old entrypoint) is not a CRM to adopt
+            return bool(conn.execute("SELECT 1 FROM users LIMIT 1;").fetchone())
         finally:
             conn.close()
     except sqlite3.Error:

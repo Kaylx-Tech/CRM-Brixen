@@ -20,7 +20,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Modular application
-COPY config.py db.py main.py schema.sql ./
+COPY config.py db.py main.py tenancy.py schema.sql ./
 COPY middleware/ middleware/
 COPY routes/ routes/
 COPY services/ services/
