@@ -1,6 +1,8 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Login from './Pages/Login'
+import ForgotPassword from './Pages/ForgotPassword'
+import ResetPassword from './Pages/ResetPassword'
 // import SignUp from './Pages/SignUp'
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute'
 import AdminLayout from './Layout/AdminLayout'
@@ -69,6 +71,17 @@ const App = () => {
               }
             />
             
+            {/* Password reset: request a link, then set a new password from the emailed link */}
+            <Route
+              path="/forgot-password"
+              element={
+                <PublicRoute>
+                  <ForgotPassword />
+                </PublicRoute>
+              }
+            />
+            <Route path="/reset-password" element={<ResetPassword />} />
+
             {/* Sign-in handed over from the Brixen website (B2B accounts) */}
             <Route path="/sso" element={<Sso />} />
 
