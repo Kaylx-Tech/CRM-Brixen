@@ -217,7 +217,7 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
                     <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Customer Type</span>
                     {canEditType ? (
                       <Select value={type} onValueChange={(val) => val !== type && setPendingType(val)}>
-                        <SelectTrigger className="h-8 w-44 text-sm">
+                        <SelectTrigger className="w-44 text-sm">
                           <SelectValue placeholder="Type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -275,7 +275,7 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
                   <div className="flex items-center gap-3">
                     <Input
                       placeholder="Leave blank to use primary login email"
-                      className="max-w-md h-9"
+                      className="max-w-md"
                       value={notificationEmail}
                       onChange={(e) => setNotificationEmail(e.target.value)}
                     />

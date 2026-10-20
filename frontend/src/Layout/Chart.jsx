@@ -66,7 +66,7 @@ export function ChartBarMultiple({
         </div>
         {onTimeFilterChange && (
           <Select value={timeFilter} onValueChange={onTimeFilterChange}>
-            <SelectTrigger className="w-[120px] h-8 text-sm">
+            <SelectTrigger className="w-[120px] text-sm">
               <SelectValue placeholder="Filter" />
             </SelectTrigger>
             <SelectContent>

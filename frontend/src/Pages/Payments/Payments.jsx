@@ -820,7 +820,7 @@ export default function Payments() {
         </div>
         <div className="flex items-center gap-2">
           <Select value={selectedMonth} onValueChange={(v) => setSelectedMonth(v || CURRENT_MONTH)}>
-            <SelectTrigger className="h-9 w-[220px] text-sm">
+            <SelectTrigger className="w-[220px] text-sm">
               <IconCalendarWeek className="h-4 w-4 shrink-0" />
               <SelectValue placeholder="Month">
                 {MONTH_OPTIONS.find((m) => m.value === selectedMonth)?.label || 'Month'}

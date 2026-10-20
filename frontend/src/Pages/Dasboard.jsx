@@ -478,7 +478,7 @@ const Dashboard = () => {
         </div>
         <div className="flex items-center gap-2">
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-47.5 hidden sm:flex h-9">
+            <SelectTrigger className="w-47.5 hidden sm:flex">
               <IconCalendarWeek className="w-4 h-4 mr-1.5 shrink-0" />
               <SelectValue placeholder="Select period">
                 {monthOptions.find(o => o.value === selectedMonth)?.label || "Select period"}
@@ -510,7 +510,7 @@ const Dashboard = () => {
       </div>
 
       {/* Top 5 KPI Metric Cards via Skeleton/Props */}
-      {mainCards.length > 0 && <SectionCards stats={mainCards} isLoading={isLoading} />}
+      {mainCards.length > 0 && <SectionCards stats={mainCards} isLoading={isLoading} compact />}
       {workCards.length > 0 && <SectionCards stats={workCards} isLoading={isLoading} compact />}
 
       {/* Charts Grid - All Fed Through Props with Skeleton Loaders */}

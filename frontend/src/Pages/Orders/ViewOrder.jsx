@@ -872,7 +872,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                 <Input
                                   value={orderInfo.service_name}
                                   onChange={(e) => setOrderInfo((p) => ({ ...p, service_name: e.target.value }))}
-                                  className="h-8 text-sm bg-background"
+                                  className="text-sm bg-background"
                                 />
                               </div>
                               <div className="space-y-1.5">
@@ -881,7 +881,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                   type="date"
                                   value={orderInfo.order_date}
                                   onChange={(e) => setOrderInfo((p) => ({ ...p, order_date: e.target.value }))}
-                                  className="h-8 text-sm bg-background"
+                                  className="text-sm bg-background"
                                 />
                               </div>
                               <div className="space-y-1.5">
@@ -889,7 +889,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                 <Input
                                   value={orderInfo.owner_name}
                                   onChange={(e) => setOrderInfo((p) => ({ ...p, owner_name: e.target.value }))}
-                                  className="h-8 text-sm bg-background"
+                                  className="text-sm bg-background"
                                 />
                               </div>
                               <div className="space-y-1.5">
@@ -898,7 +898,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                   type="email"
                                   value={orderInfo.owner_form_email}
                                   onChange={(e) => setOrderInfo((p) => ({ ...p, owner_form_email: e.target.value }))}
-                                  className="h-8 text-sm bg-background"
+                                  className="text-sm bg-background"
                                 />
                               </div>
                               <div className="space-y-1.5 md:col-span-2">
@@ -907,7 +907,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                   value={orderInfo.company_id || 'none'}
                                   onValueChange={(v) => setOrderInfo((p) => ({ ...p, company_id: v === 'none' ? '' : v }))}
                                 >
-                                  <SelectTrigger className="h-8 text-sm w-full bg-background">
+                                  <SelectTrigger className="text-sm w-full bg-background">
                                     <SelectValue placeholder="Company">
                                       {orderInfo.company_id
                                         ? companyOptions.find((c) => c.id === orderInfo.company_id)?.label || order?.company_name || `Company #${orderInfo.company_id}`
@@ -957,7 +957,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                   <Input
                                     value={field.value}
                                     onChange={(e) => handleFieldValueChange(idx, e.target.value)}
-                                    className="h-8 text-sm bg-background"
+                                    className="text-sm bg-background"
                                   />
                                 )}
                               </div>
@@ -985,7 +985,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                       <Input
                                         value={answerEdits[f._index] ?? ''}
                                         onChange={(e) => setValue(e.target.value)}
-                                        className="h-8 text-sm bg-background"
+                                        className="text-sm bg-background"
                                       />
                                     )}
                                   </div>
@@ -1021,7 +1021,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               }}
                               disabled={isSavingMeta}
                             >
-                              <SelectTrigger className="h-8 text-sm w-full">
+                              <SelectTrigger className="text-sm w-full">
                                 <SelectValue placeholder="Status" />
                               </SelectTrigger>
                               <SelectContent>
@@ -1047,7 +1047,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               }}
                               disabled={isSavingMeta}
                             >
-                              <SelectTrigger className="h-8 text-sm w-full">
+                              <SelectTrigger className="text-sm w-full">
                                 <SelectValue placeholder="Payment Mode" />
                               </SelectTrigger>
                               <SelectContent>
@@ -1210,7 +1210,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               placeholder="e.g. info@clientcompany.co.uk"
                               value={accessEmail}
                               onChange={(e) => setAccessEmail(e.target.value)}
-                              className="h-8 text-sm"
+                              className="text-sm"
                             />
                           </div>
                           <div className="space-y-1.5">
@@ -1220,7 +1220,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               placeholder="Enter access code"
                               value={accessPassword}
                               onChange={(e) => setAccessPassword(e.target.value)}
-                              className="h-8 text-sm font-mono"
+                              className="text-sm font-mono"
                             />
                           </div>
                         </div>
@@ -1305,7 +1305,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               placeholder="Search catalog..."
                               value={productSearch}
                               onChange={(e) => setProductSearch(e.target.value)}
-                              className="pl-9 h-8 text-sm"
+                              className="pl-9 text-sm"
                             />
                           </div>
                           <div className="max-h-40 overflow-y-auto space-y-1 rounded border bg-background p-1">
@@ -1350,7 +1350,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                 value={item.fulfillment_status || 'Pending'}
                                 onValueChange={(status) => handleSaveItemStatus(item, status)}
                               >
-                                <SelectTrigger className="h-8 w-32 text-sm" aria-label={`Status for ${item.product_name}`}>
+                                <SelectTrigger className="w-32 text-sm" aria-label={`Status for ${item.product_name}`}>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1368,7 +1368,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                 min="0"
                                 step="0.01"
                                 defaultValue={Number(item.unit_price || 0).toFixed(2)}
-                                className="h-8 w-28 text-right font-bold"
+                                className="w-28 text-right font-bold"
                                 aria-label={`Price for ${item.product_name}`}
                                 onBlur={(e) => handleSaveItemPrice(item, e.target.value)}
                                 onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}

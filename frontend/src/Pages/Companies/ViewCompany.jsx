@@ -530,7 +530,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                         value={formData.identity_verified}
                         onValueChange={(val) => setFormData((prev) => ({ ...prev, identity_verified: val }))}
                       >
-                        <SelectTrigger className="w-full h-10 text-sm">
+                        <SelectTrigger className="w-full text-sm">
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                         <SelectContent>
@@ -553,7 +553,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                         value={formData.psc_verified}
                         onValueChange={(val) => setFormData((prev) => ({ ...prev, psc_verified: val }))}
                       >
-                        <SelectTrigger className="w-full h-10 text-sm">
+                        <SelectTrigger className="w-full text-sm">
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                         <SelectContent>

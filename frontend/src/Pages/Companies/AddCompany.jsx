@@ -389,7 +389,7 @@ const AddCompany = ({ isOpen, onClose }) => {
                           onValueChange={setSelectedClientId}
                           disabled={isSubmitting || isLoadingClients}
                         >
-                          <SelectTrigger className="w-full h-8 text-sm">
+                          <SelectTrigger className="w-full text-sm">
                             <SelectValue placeholder={isLoadingClients ? 'Loading clients...' : 'Select client...'}>
                               {selectedClient ? (selectedClient.name || selectedClient.full_name || 'Customer') : undefined}
                             </SelectValue>
@@ -512,7 +512,7 @@ const AddCompany = ({ isOpen, onClose }) => {
                 <div className="space-y-1">
                   <Label className="text-sm font-normal">Status</Label>
                   <Select value={status} onValueChange={setStatus} disabled={isSubmitting}>
-                    <SelectTrigger className="w-full h-8 text-sm">
+                    <SelectTrigger className="w-full text-sm">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>

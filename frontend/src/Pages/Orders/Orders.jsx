@@ -641,7 +641,7 @@ export default function Orders() {
           <div className="text-sm font-semibold">Select a B2B client</div>
           <p className="text-sm text-muted-foreground">Open a B2B account first, then their orders appear below.</p>
           <Select value={b2bClientId} onValueChange={setB2bClientId}>
-            <SelectTrigger className="max-w-md h-8 text-sm">
+            <SelectTrigger className="max-w-md text-sm">
               <SelectValue placeholder="Choose B2B client" />
             </SelectTrigger>
             <SelectContent>

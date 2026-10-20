@@ -56,7 +56,7 @@ export default function ToastPlayground() {
             <div className="grid grid-cols-2 gap-2.5">
               <Button
                 variant="outline"
-                className="gap-2 text-sm h-9 justify-start border-emerald-500/20 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                className="gap-2 text-sm justify-start border-emerald-500/20 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
                 onClick={() => toast.success('Order #GB15339 updated successfully!')}
               >
                 <IconCheck className="w-4 h-4" />
@@ -65,7 +65,7 @@ export default function ToastPlayground() {
 
               <Button
                 variant="outline"
-                className="gap-2 text-sm h-9 justify-start border-destructive/20 hover:bg-destructive/10 text-destructive"
+                className="gap-2 text-sm justify-start border-destructive/20 hover:bg-destructive/10 text-destructive"
                 onClick={() => toast.error('Failed to update company. Please try again.')}
               >
                 <IconAlertOctagon className="w-4 h-4" />
@@ -74,7 +74,7 @@ export default function ToastPlayground() {
 
               <Button
                 variant="outline"
-                className="gap-2 text-sm h-9 justify-start border-amber-500/20 hover:bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                className="gap-2 text-sm justify-start border-amber-500/20 hover:bg-amber-500/10 text-amber-700 dark:text-amber-400"
                 onClick={() => toast.warning('Accounts filing deadline is approaching (7 days left).')}
               >
                 <IconAlertTriangle className="w-4 h-4" />
@@ -83,7 +83,7 @@ export default function ToastPlayground() {
 
               <Button
                 variant="outline"
-                className="gap-2 text-sm h-9 justify-start border-primary/20 hover:bg-primary/10 text-primary"
+                className="gap-2 text-sm justify-start border-primary/20 hover:bg-primary/10 text-primary"
                 onClick={() => toast.info('New KYC document uploaded to company vault.')}
               >
                 <IconInfoCircle className="w-4 h-4" />
@@ -92,7 +92,7 @@ export default function ToastPlayground() {
 
               <Button
                 variant="outline"
-                className="gap-2 text-sm h-9 justify-start"
+                className="gap-2 text-sm justify-start"
                 onClick={() => {
                   const id = toast.loading('Uploading company documents...')
                   setTimeout(() => {
@@ -107,7 +107,7 @@ export default function ToastPlayground() {
 
               <Button
                 variant="outline"
-                className="gap-2 text-sm h-9 justify-start"
+                className="gap-2 text-sm justify-start"
                 onClick={() => {
                   const id = 'playground-undo-demo'
                   toast.success('Document deleted from vault', {
@@ -140,7 +140,7 @@ export default function ToastPlayground() {
                 <Input
                   value={customMsg}
                   onChange={(e) => setCustomMsg(e.target.value)}
-                  className="text-sm h-8"
+                  className="text-sm"
                   placeholder="Type any message..."
                 />
                 <Button
@@ -170,7 +170,7 @@ export default function ToastPlayground() {
 
             <div className="flex flex-wrap gap-2 pt-2">
               <Button
-                className="gap-2 text-sm h-9"
+                className="gap-2 text-sm"
                 onClick={() => {
                   setSaveToastState('initial')
                   setShowSaveToast(true)
@@ -182,7 +182,7 @@ export default function ToastPlayground() {
 
               <Button
                 variant="ghost"
-                className="text-sm h-9"
+                className="text-sm"
                 onClick={() => setShowSaveToast(false)}
               >
                 Hide Confirmation

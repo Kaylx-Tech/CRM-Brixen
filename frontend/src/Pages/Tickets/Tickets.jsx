@@ -163,7 +163,7 @@ function Conversation({ ticketId, onBack, onChanged }) {
           </p>
         </div>
         <Select value={t.status} onValueChange={(v) => v && v !== t.status && setStatus(v)}>
-          <SelectTrigger className="h-8 w-[140px] shrink-0" aria-label="Ticket status">
+          <SelectTrigger className="w-[140px] shrink-0" aria-label="Ticket status">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -214,7 +214,7 @@ function Conversation({ ticketId, onBack, onChanged }) {
         />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Select value={replyStatus} onValueChange={(v) => v && setReplyStatus(v)}>
-            <SelectTrigger className="h-8 w-[220px]" aria-label="Status after reply">
+            <SelectTrigger className="w-[220px]" aria-label="Status after reply">
               <SelectValue>
                 {replyStatus === 'auto' ? 'Keep status (Open → In progress)' : `Mark as ${replyStatus}`}
               </SelectValue>
