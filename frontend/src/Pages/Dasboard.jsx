@@ -28,7 +28,6 @@ import {
   IconCalendarWeek,
   IconCash,
   IconChartLine,
-  IconCoins,
   IconCurrencyPound,
   IconFileDescription,
   IconLayoutDashboard,
@@ -40,6 +39,7 @@ import {
   IconTicket,
   IconUserCheck,
   IconUsers,
+  IconWallet,
 } from "@tabler/icons-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
@@ -404,7 +404,7 @@ const Dashboard = () => {
         {
           title: "Net Profit",
           tone: "teal",
-          icon: IconCoins,
+          icon: IconWallet,
           value: formatCurrency(s.net_profit, s.net_profit_display),
           trendValue: profitTrend.trendValue,
           trendDirection: profitTrend.trendDirection,
