@@ -24,8 +24,6 @@ import {
   IconRefresh,
   IconSearch,
   IconTrash,
-  IconBuildingBank,
-  IconFolders,
 } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
@@ -268,12 +266,14 @@ export default function SmartOperations() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
+        // Masonry: each company card drops into the shortest column, so no gaps open under short cards
+        <div className="columns-1 gap-3 md:columns-2 xl:columns-3">
           {groups.map(([category, items], i) => {
             const tone = toneFor(category)
             return (
               <m.div
                 key={category}
+                className="mb-3 break-inside-avoid"
                 initial={i < 9 ? { opacity: 0, y: 14, scale: 0.985 } : false}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ ...spring, delay: Math.min(i, 9) * 0.04 }}
