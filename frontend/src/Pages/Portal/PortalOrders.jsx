@@ -1,15 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { IconLoader2, IconSearch, IconFileText, IconCircleCheck, IconCircle } from "@tabler/icons-react"
+import { IconLoader2, IconSearch, IconFileText, IconCircleCheck, IconCircle, IconPlus } from "@tabler/icons-react"
 import { toast } from "sonner"
 import { apiRequest } from "@/lib/api"
 import { openDocument } from "@/lib/documents"
 import { usePortalData, PageHeader, PageState, StatusBadge, money, formatDate } from "./portalShared"
+import CreateOrderWizard from "@/Pages/Orders/CreateOrderWizard"
 
 /** One order's progress, products and shared documents (customer-safe fields only). */
 export function OrderDetailDialog({ orderId, onClose }) {
@@ -138,9 +139,16 @@ const FILTERS = [
 
 export default function PortalOrders() {
   const { data, isLoading, error, reload } = usePortalData("/client/orders?limit=100")
+  const [params, setParams] = useSearchParams()
   const [filter, setFilter] = useState("all")
   const [search, setSearch] = useState("")
   const [openOrderId, setOpenOrderId] = useState(null)
+  // /portal/orders?new=1 (e.g. from the Services page) opens the order wizard straight away
+  const [wizardOpen, setWizardOpen] = useState(params.get("new") === "1")
+  const closeWizard = () => {
+    setWizardOpen(false)
+    if (params.has("new")) setParams({}, { replace: true })
+  }
   const orders = data?.orders || []
 
   const visible = useMemo(() => {
@@ -157,7 +165,20 @@ export default function PortalOrders() {
 
   return (
     <div className="flex flex-col gap-6 w-full pb-10">
-      <PageHeader title="Orders" description={`${orders.length} orders · ${money(spent)} total`} onRefresh={reload} isLoading={isLoading} />
+      <PageHeader title="Orders" description={`${orders.length} orders · ${money(spent)} total`} onRefresh={reload} isLoading={isLoading}>
+        <Button onClick={() => setWizardOpen(true)}>
+          <IconPlus className="size-4" /> New Order
+        </Button>
+      </PageHeader>
+      <CreateOrderWizard
+        portal
+        open={wizardOpen}
+        onClose={closeWizard}
+        onCreated={() => {
+          closeWizard()
+          reload()
+        }}
+      />
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <Tabs value={filter} onValueChange={setFilter}>
           <TabsList>

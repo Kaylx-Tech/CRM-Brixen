@@ -28,6 +28,33 @@ def _wizard_line_items(body):
     return []
 
 
+def _price_customer_order(body, user):
+    """Customers never set their own prices. B2B orders start at 0 (the team prices them, as the staff
+    wizard does for B2B); any other customer pays the catalogue price of each product."""
+    from services.b2b_service import client_is_b2b
+    b2b = client_is_b2b(user)
+    body = dict(body or {})
+    items = []
+    total = 0.0
+    for raw in _wizard_line_items(body):
+        item = dict(raw) if isinstance(raw, dict) else {}
+        price = 0.0
+        if not b2b:
+            svc = query_db("SELECT price FROM services WHERE name = ? AND status = 'Active' LIMIT 1;",
+                           (str(item.get('product_name') or item.get('name') or '').strip(),), one=True)
+            price = float((svc or {}).get('price') or 0)
+        for key in ('unit_price', 'line_total'):
+            item.pop(key, None)
+        item['price'] = price
+        total += price
+        items.append(item)
+    body['line_items'] = items
+    body.pop('price', None)
+    body['amount'] = body['total'] = round(total, 2)
+    body['vat'] = 0
+    return body
+
+
 def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False, own_orders_only=False):
     """Create or update an order from the universal order wizard payload."""
     service_name = (body.get('service_name') or '').strip()
@@ -49,6 +76,10 @@ def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False, own_orders_
 
     if not is_staff:
         client_id = user_id
+        # A customer can only attach one of their own companies
+        if company_id and not query_db("SELECT 1 FROM companies WHERE id = ? AND user_id = ? LIMIT 1;",
+                                       (company_id, user_id), one=True):
+            company_id = None
     elif not query_db("SELECT 1 FROM users WHERE id = ? LIMIT 1;", (client_id,), one=True):
         return None, 'Selected customer not found'
 
@@ -181,11 +212,13 @@ def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False, own_orders_
         ))
 
     # Companies picked or added on the service form are found / created in the CRM and linked to the order
+    # (a customer's own order only links companies under their own account)
     linked_companies = []
-    if not as_draft and is_staff and isinstance(body.get('companies'), list) and client_id:
+    if not as_draft and isinstance(body.get('companies'), list) and client_id:
         from services.order_companies import link_order_companies
         try:
-            linked_companies = link_order_companies(order_id, client_id, body['companies'][:20])
+            linked_companies = link_order_companies(order_id, client_id, body['companies'][:20],
+                                                    own_only=not is_staff)
         except Exception as exc:
             print(f"[order companies] order {order_id}: {exc}")
 
@@ -375,6 +408,8 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
 
     # ── POST /api/orders/draft (Wizard draft save) ─────────────────────────
     if path in ('/api/orders/draft', '/api/admin/orders/draft', '/api/client/orders/draft') and method == 'POST':
+        if not is_staff:
+            body = _price_customer_order(body, user)
         result, err = _upsert_wizard_order(body=body or {}, user_id=user_id, is_staff=is_staff, as_draft=True,
                                            own_orders_only=own_orders_only)
         if err:
@@ -388,10 +423,13 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
     # ── POST /api/orders (Create Order / Wizard submit / Manual CRM) ───────
     if path in ('/api/orders', '/api/admin/orders', '/api/client/orders') and method == 'POST':
         payload = body or {}
+        # Customers (B2B portal) order through the wizard only, at prices the server sets
+        if not is_staff:
+            payload = _price_customer_order(payload, user)
         # The order wizard sends its answers in form_values (and the customer's email as company_email);
         # it must take the wizard path, which saves those answers and finalises a saved draft.
         is_wizard = isinstance(payload.get('form_values'), dict)
-        is_manual = not is_wizard and bool(
+        is_manual = is_staff and not is_wizard and bool(
             payload.get('client_mode')
             or payload.get('new_client_email')
             or payload.get('company_email')

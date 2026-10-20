@@ -246,13 +246,10 @@ export function SectionCards({ stats = [], isLoading = false, compact = false })
     ? Array.from({ length: stats.length || 4 }).map(() => ({}))
     : stats
 
-  const count = items.length
-  const gridCols =
-    count >= 6
-      ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
-      : count === 5
-        ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
-        : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+  // Auto-fit: however many cards are shown, they stretch to fill the row (no empty space on the right)
+  const gridCols = compact
+    ? "grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] sm:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]"
+    : "grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))]"
 
   return (
     // Placeholders sit still; when the numbers arrive the cards come in one after another

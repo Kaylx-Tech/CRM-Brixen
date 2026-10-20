@@ -629,8 +629,12 @@ function StepPill({ step, current, onClick }) {
   )
 }
 
-export default function CreateOrderWizard({ open, onClose, onCreated }) {
-  const [step, setStep] = useState(1)
+// portal: a signed-in (B2B) customer orders for themselves, so the Customer step is skipped and
+// every request goes to the /client API
+export default function CreateOrderWizard({ open, onClose, onCreated, portal = false }) {
+  const firstStep = portal ? 2 : 1
+  const steps = portal ? STEPS.filter((s) => s.id !== 1) : STEPS
+  const [step, setStep] = useState(firstStep)
   const [error, setError] = useState("")
   const [loadingCustomers, setLoadingCustomers] = useState(false)
   const [loadingProducts, setLoadingProducts] = useState(false)
@@ -664,7 +668,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
   const [toastSaveState, setToastSaveState] = useState("initial")
 
   const isDirty = Boolean(
-    selectedCustomer ||
+    (!portal && selectedCustomer) ||
     selectedProducts.length > 0 ||
     notes.trim() ||
     Object.keys(docMarks).length > 0 ||
@@ -674,7 +678,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
   )
 
   const resetState = useCallback(() => {
-    setStep(1)
+    setStep(firstStep)
     setError("")
     setCustomerSearch("")
     setCustomerType("All")
@@ -695,11 +699,17 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
     setFieldFiles({})
     setNotes("")
     setDraftOrderId(null)
-  }, [])
+  }, [firstStep])
 
   const loadCustomers = useCallback(async () => {
     setLoadingCustomers(true)
     try {
+      if (portal) {
+        // The customer is the signed-in account
+        const me = await apiRequest("/auth/me", { label: "Account", silent: true })
+        setSelectedCustomer(me.data?.data?.user || me.data?.user || null)
+        return
+      }
       const res = await apiRequest("/admin/customers?limit=500", {
         label: "Customers",
         silent: true,
@@ -708,7 +718,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
     } finally {
       setLoadingCustomers(false)
     }
-  }, [])
+  }, [portal])
 
   const loadProducts = useCallback(async () => {
     setLoadingProducts(true)
@@ -939,7 +949,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
 
   const handleBack = () => {
     setError("")
-    setStep((s) => Math.max(1, s - 1))
+    setStep((s) => Math.max(firstStep, s - 1))
   }
 
   const toggleProduct = (product) => {
@@ -960,12 +970,17 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
     setError("")
     const toastId = toastProcessing("Saving draft…")
     try {
-      const res = await apiRequest("/orders/draft", {
+      const res = await apiRequest(portal ? "/client/orders/draft" : "/orders/draft", {
         method: "POST",
         body: JSON.stringify(buildPayload(step)),
         label: "Save draft",
         silent: true,
       })
+      if (!res.ok && portal) {
+        setError(res.reason || "Could not save draft.")
+        toastFail(toastId, res.reason || "Could not save draft.")
+        return
+      }
       if (!res.ok) {
         const res2 = await apiRequest("/admin/orders/draft", {
           method: "POST",
@@ -1001,14 +1016,14 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
     setError("")
     const toastId = toastProcessing("Submitting order…")
     try {
-      const res = await apiRequest("/admin/orders", {
+      const res = await apiRequest(portal ? "/client/orders" : "/admin/orders", {
         method: "POST",
         body: JSON.stringify(buildPayload(5)),
         label: "Create order",
         silent: true,
       })
       let final = res
-      if (!res.ok) {
+      if (!res.ok && !portal) {
         final = await apiRequest("/orders", {
           method: "POST",
           body: JSON.stringify(buildPayload(5)),
@@ -1031,7 +1046,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
         const file = fieldFiles[f.key]
         if (!file || !orderId) continue
         try {
-          const up = await apiRequest("/admin/documents/upload", {
+          const up = await apiRequest(portal ? "/client/documents/upload" : "/admin/documents/upload", {
             method: "POST",
             body: {
               order_id: orderId,
@@ -1041,7 +1056,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
               file_content_base64: await readFileAsBase64(file),
               mime_type: file.type || "application/octet-stream",
               category: f.label,
-              client_visible: 0,
+              ...(portal ? {} : { client_visible: 0 }),
             },
             label: "Order document",
             silent: true,
@@ -1174,15 +1189,19 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
       <DrawerContent className="max-w-4xl mx-auto h-[88vh] max-h-[92vh] p-0 overflow-clip gap-0 flex flex-col">
         <DrawerHeader className="px-6 pt-3 pb-4 border-b text-left space-y-3 shrink-0">
           <div>
-            <DrawerTitle className="text-xl font-extrabold tracking-tight">Create New Order</DrawerTitle>
+            <DrawerTitle className="text-xl font-extrabold tracking-tight">
+              {portal ? "New Order" : "Create New Order"}
+            </DrawerTitle>
             <DrawerDescription className="text-sm mt-1">
-              {selectedCustomer
-                ? `Customer: ${selectedCustomer.full_name || selectedCustomer.email}`
-                : "5-step staff order wizard — customer, products, details, documents, review."}
+              {portal
+                ? "Choose the services, answer a few questions, add documents and submit."
+                : selectedCustomer
+                  ? `Customer: ${selectedCustomer.full_name || selectedCustomer.email}`
+                  : "5-step staff order wizard — customer, products, details, documents, review."}
             </DrawerDescription>
           </div>
-          <div className="grid grid-cols-5 gap-2 w-full pt-1">
-            {STEPS.map((s) => (
+          <div className={`grid gap-2 w-full pt-1 ${portal ? "grid-cols-4" : "grid-cols-5"}`}>
+            {steps.map((s) => (
               <StepPill key={s.id} step={s} current={step} onClick={() => goTo(s.id)} />
             ))}
           </div>
@@ -1543,7 +1562,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
                     <Textarea
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Add any special instructions or staff notes..."
+                      placeholder={portal ? "Anything our team should know about this order..." : "Add any special instructions or staff notes..."}
                       rows={3}
                       className="text-sm"
                     />
@@ -1566,7 +1585,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated }) {
             Save Draft
           </Button>
           <div className="flex gap-2">
-            {step > 1 ? (
+            {step > firstStep ? (
               <Button type="button" variant="outline" size="sm" disabled={saving} onClick={handleBack}>
                 Back
               </Button>

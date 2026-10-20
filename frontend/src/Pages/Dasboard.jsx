@@ -509,9 +509,17 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Top 5 KPI Metric Cards via Skeleton/Props */}
-      {mainCards.length > 0 && <SectionCards stats={mainCards} isLoading={isLoading} compact />}
-      {workCards.length > 0 && <SectionCards stats={workCards} isLoading={isLoading} compact />}
+      {/* KPI cards: when cards are hidden and both rows fit on one line, they share a single row */}
+      {mainCards.length + workCards.length <= 6 ? (
+        mainCards.length + workCards.length > 0 && (
+          <SectionCards stats={[...mainCards, ...workCards]} isLoading={isLoading} compact />
+        )
+      ) : (
+        <>
+          {mainCards.length > 0 && <SectionCards stats={mainCards} isLoading={isLoading} compact />}
+          {workCards.length > 0 && <SectionCards stats={workCards} isLoading={isLoading} compact />}
+        </>
+      )}
 
       {/* Charts Grid - All Fed Through Props with Skeleton Loaders */}
       {chartsShown > 0 && (
