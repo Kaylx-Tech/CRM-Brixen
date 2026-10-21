@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { IconAlertCircle, IconArrowRight, IconCircleCheck, IconLoader2 } from "@tabler/icons-react"
+import { cn } from "cn"
+import {
+  IconAlertCircle,
+  IconArrowLeft,
+  IconArrowRight,
+  IconCheck,
+  IconCircleCheck,
+  IconLoader2,
+} from "@tabler/icons-react"
 import { AuthLayout } from "@/components/auth-layout"
 import { FINSTAP_CTA } from "@/components/finstap-auth-layout"
 import { Button } from "@/components/ui/button"
@@ -23,6 +31,49 @@ import {
 
 const MIN_PASSWORD_LEN = 8
 
+const STEPS = ["Company", "Your account"]
+
+/** "1 Company — 2 Your account" with the current step highlighted and finished steps ticked. */
+function SignupSteps({ step }) {
+  return (
+    <ol className="flex items-center gap-3">
+      {STEPS.map((label, i) => {
+        const n = i + 1
+        const done = step > n
+        const active = step === n
+        return (
+          <li key={label} className="flex flex-1 items-center gap-3">
+            <span
+              className={cn(
+                "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                active || done
+                  ? "bg-linear-to-r from-[#297bff] to-[#834aff] text-white"
+                  : "border bg-muted text-muted-foreground",
+              )}
+            >
+              {done ? <IconCheck className="size-4" /> : n}
+            </span>
+            <span
+              className={cn(
+                "text-sm",
+                active ? "font-semibold text-foreground" : "text-muted-foreground",
+              )}
+            >
+              {label}
+            </span>
+            {n < STEPS.length && (
+              <span
+                className={cn("h-px flex-1", done ? "bg-[#6559ff]" : "bg-border")}
+                aria-hidden
+              />
+            )}
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
 /** Finstap signup: a company creates its workspace and its owner account, then lands in the CRM. */
 export default function FinstapSignup() {
   const navigate = useNavigate()
@@ -39,6 +90,8 @@ export default function FinstapSignup() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  // Two steps: 1 = the company and its address, 2 = the owner's own account
+  const [step, setStep] = useState(1)
 
   // The workspace name (one word) follows the company name until the user types their own
   useEffect(() => {
@@ -56,11 +109,18 @@ export default function FinstapSignup() {
     const ctrl = new AbortController()
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`${getApiBase()}/platform/check-slug?slug=${encodeURIComponent(value)}`, {
-          signal: ctrl.signal,
-        })
+        const res = await fetch(
+          `${getApiBase()}/platform/check-slug?slug=${encodeURIComponent(value)}`,
+          {
+            signal: ctrl.signal,
+          },
+        )
         const data = (await res.json().catch(() => ({}))).data || {}
-        setSlugState(data.available ? { status: "available", error: "" } : { status: "taken", error: data.error || "Not available" })
+        setSlugState(
+          data.available
+            ? { status: "available", error: "" }
+            : { status: "taken", error: data.error || "Not available" },
+        )
       } catch (err) {
         if (err.name !== "AbortError") setSlugState({ status: "idle", error: "" })
       }
@@ -71,8 +131,34 @@ export default function FinstapSignup() {
     }
   }, [slug])
 
+  // Step 1 → 2 only with a company name and a free address
+  const goToAccount = () => {
+    if (!companyName.trim()) {
+      setError("Enter your company name.")
+      return
+    }
+    if (toWorkspaceName(slug).length < 3) {
+      setError("Choose your Finstap address: one word, 3-30 letters or numbers.")
+      return
+    }
+    if (slugState.status === "checking") {
+      setError("One moment, checking the address…")
+      return
+    }
+    if (slugState.status !== "available") {
+      setError(slugState.error || "This address is not available. Try another one.")
+      return
+    }
+    setError("")
+    setStep(2)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (step === 1) {
+      goToAccount()
+      return
+    }
     setError("")
     if (password.length < MIN_PASSWORD_LEN) {
       setError(`Password must be at least ${MIN_PASSWORD_LEN} characters.`)
@@ -102,7 +188,12 @@ export default function FinstapSignup() {
       if (res.ok && payload.token) {
         setWorkspace(payload.workspace?.slug)
         // Company subdomains: open acme.finstap.com, which signs in with the one-time code
-        const target = payload.handoff_code ? workspaceUrl(payload.workspace?.slug, `/welcome?code=${encodeURIComponent(payload.handoff_code)}`) : ""
+        const target = payload.handoff_code
+          ? workspaceUrl(
+              payload.workspace?.slug,
+              `/welcome?code=${encodeURIComponent(payload.handoff_code)}`,
+            )
+          : ""
         if (target) {
           toastDone(toastId, `Welcome to Finstap, ${payload.workspace?.name || companyName}`)
           window.location.assign(target)
@@ -116,6 +207,8 @@ export default function FinstapSignup() {
       }
       const msg = data.message || data.error || "Could not create the workspace. Please try again."
       setError(msg)
+      // A problem with the company or its address is fixed on step 1
+      if (/workspace|address|company/i.test(msg)) setStep(1)
       toastFail(toastId, msg)
     } catch {
       const msg = "Failed to connect to server. Please check your connection."
@@ -128,12 +221,15 @@ export default function FinstapSignup() {
 
   return (
     <AuthLayout
-      title="Create your workspace"
-      subtitle="Start your free trial. No card needed."
+      title={step === 1 ? "Create your workspace" : "Create your account"}
+      subtitle={step === 1 ? "Start your free trial." : "You'll sign in with these details."}
       footer={
         <>
           Already have an account?{" "}
-          <Link to="/login" className="font-semibold text-[#5f5cff] underline-offset-4 hover:underline dark:text-[#8b8aff]">
+          <Link
+            to="/login"
+            className="font-semibold text-[#5f5cff] underline-offset-4 hover:underline dark:text-[#8b8aff]"
+          >
             Login
           </Link>
         </>
@@ -141,111 +237,167 @@ export default function FinstapSignup() {
     >
       <form onSubmit={handleSubmit}>
         <FieldGroup>
+          <SignupSteps step={step} />
           {error && (
             <Alert variant="destructive">
               <IconAlertCircle className="size-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <Field>
-            <FieldLabel htmlFor="company">Company name</FieldLabel>
-            <Input
-              id="company"
-              placeholder="Acme Accountants Ltd"
-              required
-              autoFocus
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              disabled={isLoading}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="slug">Your Finstap address</FieldLabel>
-            {/* One word only: anything but letters and numbers is dropped while typing */}
-            <div className="relative">
-              <Input
-                id="slug"
-                className="pr-28"
-                placeholder="acme"
-                autoCapitalize="none"
-                autoCorrect="off"
-                maxLength={30}
-                required
-                value={slug}
-                onChange={(e) => {
-                  setSlugEdited(true)
-                  setSlug(toWorkspaceName(e.target.value))
-                }}
-                disabled={isLoading}
-              />
-              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                .{TENANT_DOMAIN || "finstap.com"}
-              </span>
-            </div>
-            <div className="rounded-xl border bg-muted/40 px-3 py-2 text-sm">
-              Your company's address will be{" "}
-              <span className="font-semibold text-foreground">https://{workspaceHost(toWorkspaceName(slug))}</span>
-            </div>
-            {slugState.status === "checking" ? (
-              <FieldDescription className="flex items-center gap-1.5">
-                <IconLoader2 className="size-4 animate-spin" /> Checking…
-              </FieldDescription>
-            ) : slugState.status === "available" ? (
-              <FieldDescription className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                <IconCircleCheck className="size-4" /> Available. Your team signs in at this address.
-              </FieldDescription>
-            ) : slugState.status === "taken" ? (
-              <FieldDescription className="text-destructive">{slugState.error}</FieldDescription>
-            ) : (
-              <FieldDescription>One word, 3-30 letters or numbers. No spaces or dashes.</FieldDescription>
-            )}
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="name">Your name</FieldLabel>
-            <Input
-              id="name"
-              autoComplete="name"
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              disabled={isLoading}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="email">Work email</FieldLabel>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@company.com"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={isLoading}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="password">Password</FieldLabel>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
-            />
-            <FieldDescription>At least {MIN_PASSWORD_LEN} characters.</FieldDescription>
-          </Field>
-          <Field>
-            <Button type="submit" disabled={isLoading || slugState.status === "taken"} className={FINSTAP_CTA}>
-              {isLoading ? "Creating workspace..." : "Create workspace"}
-              {!isLoading && <IconArrowRight className="size-4" />}
-            </Button>
-          </Field>
-          <p className="text-xs text-muted-foreground">
-            By creating an account, you agree to the Finstap Terms of Service and Privacy Policy.
-          </p>
+          {step === 1 ? (
+            <>
+              <Field>
+                <FieldLabel htmlFor="company">Company name</FieldLabel>
+                <Input
+                  id="company"
+                  placeholder="Acme Accountants Ltd"
+                  required
+                  autoFocus
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  disabled={isLoading}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="slug">Your Finstap address</FieldLabel>
+                {/* One word only: anything but letters and numbers is dropped while typing */}
+                <div className="relative">
+                  <Input
+                    id="slug"
+                    className="pr-28"
+                    placeholder="acme"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    maxLength={30}
+                    required
+                    value={slug}
+                    onChange={(e) => {
+                      setSlugEdited(true)
+                      setSlug(toWorkspaceName(e.target.value))
+                    }}
+                    disabled={isLoading}
+                  />
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    .{TENANT_DOMAIN || "finstap.com"}
+                  </span>
+                </div>
+                <div className="rounded-xl bg-muted/40 px-3 py-2 text-sm">
+                  <span className="font-semibold text-foreground">
+                    https://{workspaceHost(toWorkspaceName(slug))}
+                  </span>
+                </div>
+                {slugState.status === "checking" ? (
+                  <FieldDescription className="flex items-center gap-1.5">
+                    <IconLoader2 className="size-4 animate-spin" /> Checking…
+                  </FieldDescription>
+                ) : slugState.status === "available" ? (
+                  <FieldDescription className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                    <IconCircleCheck className="size-4" /> Available. Your team signs in at this
+                    address.
+                  </FieldDescription>
+                ) : slugState.status === "taken" ? (
+                  <FieldDescription className="text-destructive">
+                    {slugState.error}
+                  </FieldDescription>
+                ) : (
+                  <FieldDescription>
+                    One word, 3-30 letters or numbers. No spaces or dashes.
+                  </FieldDescription>
+                )}
+              </Field>
+              <Field>
+                <Button type="submit" className={FINSTAP_CTA}>
+                  Continue <IconArrowRight className="size-4" />
+                </Button>
+              </Field>
+            </>
+          ) : (
+            <>
+              {/* What step 1 set up, with a way back to change it */}
+              <div className="flex items-center justify-between gap-3 rounded-xl border bg-muted/40 px-3 py-2 text-sm">
+                <div className="min-w-0">
+                  <div className="truncate font-semibold text-foreground">{companyName.trim()}</div>
+                  <div className="truncate text-muted-foreground">
+                    {workspaceHost(toWorkspaceName(slug))}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError("")
+                    setStep(1)
+                  }}
+                  className="shrink-0 font-medium text-[#5f5cff] underline-offset-4 hover:underline dark:text-[#8b8aff]"
+                  disabled={isLoading}
+                >
+                  Change
+                </button>
+              </div>
+              <Field>
+                <FieldLabel htmlFor="name">Your name</FieldLabel>
+                <Input
+                  id="name"
+                  autoComplete="name"
+                  autoFocus
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  disabled={isLoading}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="email">Work email</FieldLabel>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@company.com"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="password">Password</FieldLabel>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                />
+                <FieldDescription>At least {MIN_PASSWORD_LEN} characters.</FieldDescription>
+              </Field>
+              <Field orientation="horizontal" className="gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isLoading}
+                  onClick={() => {
+                    setError("")
+                    setStep(1)
+                  }}
+                >
+                  <IconArrowLeft className="size-4" /> Back
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isLoading || slugState.status === "taken"}
+                  className={cn("flex-1", FINSTAP_CTA)}
+                >
+                  {isLoading ? "Creating workspace..." : "Create workspace"}
+                  {!isLoading && <IconArrowRight className="size-4" />}
+                </Button>
+              </Field>
+              <p className="text-xs text-muted-foreground">
+                By creating an account, you agree to the Finstap Terms of Service and Privacy
+                Policy.
+              </p>
+            </>
+          )}
         </FieldGroup>
       </form>
     </AuthLayout>
