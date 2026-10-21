@@ -9,7 +9,16 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { homePath } from "@/lib/permissions"
 import { getApiBase } from "@/lib/api"
-import { normalizeSlug, setWorkspace, sharedUrl, subdomainWorkspace, workspaceUrl } from "@/lib/workspace"
+import {
+  TENANT_DOMAIN,
+  setWorkspace,
+  sharedUrl,
+  subdomainWorkspace,
+  suggestWorkspaceName,
+  toWorkspaceName,
+  workspaceHost,
+  workspaceUrl,
+} from "@/lib/workspace"
 
 const MIN_PASSWORD_LEN = 8
 
@@ -30,14 +39,14 @@ export default function FinstapSignup() {
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
-  // The workspace name follows the company name until the user types their own
+  // The workspace name (one word) follows the company name until the user types their own
   useEffect(() => {
-    if (!slugEdited) setSlug(normalizeSlug(companyName))
+    if (!slugEdited) setSlug(suggestWorkspaceName(companyName))
   }, [companyName, slugEdited])
 
   // Live "is this workspace name free?" check
   useEffect(() => {
-    const value = normalizeSlug(slug)
+    const value = toWorkspaceName(slug)
     if (value.length < 3) {
       setSlugState({ status: "idle", error: "" })
       return
@@ -81,7 +90,7 @@ export default function FinstapSignup() {
         credentials: "include",
         body: JSON.stringify({
           company_name: companyName,
-          slug: normalizeSlug(slug),
+          slug: toWorkspaceName(slug),
           full_name: fullName,
           email,
           password,
@@ -150,33 +159,44 @@ export default function FinstapSignup() {
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="slug">Workspace name</FieldLabel>
-            <Input
-              id="slug"
-              placeholder="acme-accountants"
-              autoCapitalize="none"
-              autoCorrect="off"
-              required
-              value={slug}
-              onChange={(e) => {
-                setSlugEdited(true)
-                setSlug(e.target.value.toLowerCase())
-              }}
-              onBlur={() => setSlug((v) => normalizeSlug(v))}
-              disabled={isLoading}
-            />
+            <FieldLabel htmlFor="slug">Your Finstap address</FieldLabel>
+            {/* One word only: anything but letters and numbers is dropped while typing */}
+            <div className="relative">
+              <Input
+                id="slug"
+                className="pr-28"
+                placeholder="acme"
+                autoCapitalize="none"
+                autoCorrect="off"
+                maxLength={30}
+                required
+                value={slug}
+                onChange={(e) => {
+                  setSlugEdited(true)
+                  setSlug(toWorkspaceName(e.target.value))
+                }}
+                disabled={isLoading}
+              />
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                .{TENANT_DOMAIN || "finstap.com"}
+              </span>
+            </div>
+            <div className="rounded-xl border bg-muted/40 px-3 py-2 text-sm">
+              Your company's address will be{" "}
+              <span className="font-semibold text-foreground">https://{workspaceHost(toWorkspaceName(slug))}</span>
+            </div>
             {slugState.status === "checking" ? (
               <FieldDescription className="flex items-center gap-1.5">
                 <IconLoader2 className="size-4 animate-spin" /> Checking…
               </FieldDescription>
             ) : slugState.status === "available" ? (
               <FieldDescription className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                <IconCircleCheck className="size-4" /> Available. Your team signs in with this name.
+                <IconCircleCheck className="size-4" /> Available. Your team signs in at this address.
               </FieldDescription>
             ) : slugState.status === "taken" ? (
               <FieldDescription className="text-destructive">{slugState.error}</FieldDescription>
             ) : (
-              <FieldDescription>Letters, numbers and dashes. Your team signs in with this name.</FieldDescription>
+              <FieldDescription>One word, 3-30 letters or numbers. No spaces or dashes.</FieldDescription>
             )}
           </Field>
           <Field>

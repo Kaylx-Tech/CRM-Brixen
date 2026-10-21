@@ -32,6 +32,8 @@ DEFAULT_TENANT = (os.environ.get('DEFAULT_TENANT') or 'brixen').strip().lower()
 TRIAL_DAYS = int(os.environ.get('TRIAL_DAYS') or 14)
 
 SLUG_RE = re.compile(r'^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$')
+# New workspaces: one word (acme.finstap.com), letters and numbers only. Older dashed names still resolve via SLUG_RE.
+NEW_SLUG_RE = re.compile(r'^[a-z0-9]{3,30}$')
 RESERVED_SLUGS = frozenset({
     'www', 'api', 'app', 'admin', 'portal', 'platform', 'finstap', 'mail', 'static',
     'assets', 'login', 'signup', 'support', 'help', 'billing', 'status', 'docs', 'blog',
@@ -326,14 +328,14 @@ def redeem_login_handoff(code):
 # ── signup: create a workspace ──────────────────────────────────────────────
 
 def normalize_slug(value):
-    slug = re.sub(r'[^a-z0-9-]+', '-', (value or '').strip().lower()).strip('-')
-    return re.sub(r'-{2,}', '-', slug)[:40].strip('-')
+    """A new workspace name: one lowercase word ("Acme Ltd" → "acmeltd")."""
+    return re.sub(r'[^a-z0-9]+', '', (value or '').strip().lower())[:30]
 
 
 def check_slug(slug):
     """Return an error message, or None when the slug can be used."""
-    if not SLUG_RE.match(slug or ''):
-        return "Workspace URL must be 3-40 letters, numbers or dashes"
+    if not NEW_SLUG_RE.match(slug or ''):
+        return "Workspace name must be one word: 3-30 letters or numbers (no spaces or dashes)"
     if slug in RESERVED_SLUGS:
         return "This workspace URL is reserved"
     if get_tenant(slug):

@@ -31,6 +31,28 @@ export function normalizeSlug(value) {
     .slice(0, 40)
 }
 
+/** A new workspace name: one lowercase word, letters and numbers only ("Acme-Co 1" → "acmeco1"). */
+export function toWorkspaceName(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 30)
+}
+
+// Words left out when suggesting a workspace name from the company name
+const NAME_FILLER = new Set(["the", "ltd", "limited", "llp", "plc", "co", "company", "inc", "group", "and", "uk"])
+
+/** Suggest a short one-word name from the company name: "The Acme Transport Ltd" → "acme". */
+export function suggestWorkspaceName(companyName) {
+  const words = String(companyName || "").toLowerCase().split(/[^a-z0-9]+/).filter((w) => w && !NAME_FILLER.has(w))
+  let name = words.shift() || ""
+  // Very short first words ("ab", "j") take the next word too: "AB Accounting" → "abaccounting"
+  while (name.length < 3 && words.length) name += words.shift()
+  return toWorkspaceName(name)
+}
+
+/** The address a workspace will have, for showing to people: "acme.finstap.com". */
+export function workspaceHost(slug) {
+  return `${slug || "yourcompany"}.${TENANT_DOMAIN || "finstap.com"}`
+}
+
 /** The workspace named by this page's address (acme.finstap.com → "acme"), else "". */
 export function subdomainWorkspace() {
   if (!TENANT_DOMAIN || typeof window === "undefined") return ""
