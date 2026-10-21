@@ -368,3 +368,143 @@ def register_pending_company(company_id, number):
             """, (comp['id'], d['name'], d.get('role') or 'Director', d.get('nationality') or None,
                   d.get('appointed') or None))
     return comp['id'], None
+
+
+# ── Pending companies registered automatically (app.py sync_pending_companies_from_companies_house) ──
+# A Pending company is looked up at Companies House by its name; once a company with that exact name is
+# incorporated, the card turns into it ("Mark as registered" done for the team) and the customer is emailed.
+
+PENDING_RECHECK_MINUTES = 2
+PENDING_SYNC_BATCH = 20
+PENDING_SYNC_INTERVAL_SECONDS = 300
+# A name match only counts for a company incorporated around or after the order (not an older company
+# that already had the name the customer asked for)
+INCORPORATED_GRACE_DAYS = 30
+NAME_SUFFIXES = ('limited', 'ltd', 'llp', 'plc', 'inc', 'incorporated', 'corp', 'corporation',
+                 'company', 'co', 'llc', 'cyf', 'ccc')
+
+
+def company_name_key(name):
+    """'Acme & Sons Ltd.' and 'ACME AND SONS LIMITED' compare equal (app.py normalize_company_name_key)."""
+    text = re.sub(r'[^a-z0-9]+', ' ', str(name or '').lower().replace('&', ' and ')).strip()
+    parts = re.sub(r'\band\b', ' ', text).split()
+    while parts and parts[-1] in NAME_SUFFIXES:
+        parts.pop()
+    return ' '.join(parts)
+
+
+def _name_match(name, items):
+    """The one Companies House search result that is this company (app.py companies_house_match_for_name)."""
+    needle = company_name_key(name)
+    if len(needle) < 4:
+        return None
+    hits = [i for i in items or [] if company_name_key(i.get('title') or i.get('company_name')) == needle]
+    if not hits:
+        return None
+    if company_name_key((items[0] or {}).get('title') or (items[0] or {}).get('company_name')) == needle:
+        return items[0]
+    if len(hits) == 1:
+        return hits[0]
+    active = [i for i in hits if str(i.get('company_status') or '').lower() == 'active']
+    return active[0] if len(active) == 1 else None
+
+
+def _incorporated_after_order(item, created_at):
+    created = str(created_at or '')[:10]
+    incorporated = str((item or {}).get('date_of_creation') or '')[:10]
+    if len(created) < 10 or len(incorporated) < 10:
+        return True
+    try:
+        earliest = datetime.date.fromisoformat(created) - datetime.timedelta(days=INCORPORATED_GRACE_DAYS)
+        return datetime.date.fromisoformat(incorporated) >= earliest
+    except ValueError:
+        return True
+
+
+def pending_companies_due(limit=PENDING_SYNC_BATCH, user_id=None, company_id=None):
+    sql = """
+        SELECT id, name, company_number, user_id, created_at FROM companies
+        WHERE (company_number IS NULL OR TRIM(company_number) = '' OR UPPER(company_number) LIKE 'REG-%'
+               OR UPPER(company_number) LIKE 'PENDING%')
+          AND (ch_checked_at IS NULL OR datetime(ch_checked_at) < datetime('now', ?))
+    """
+    params = [f'-{PENDING_RECHECK_MINUTES} minutes']
+    if user_id:
+        sql += " AND user_id = ?"
+        params.append(user_id)
+    if company_id:
+        sql += " AND id = ?"
+        params.append(company_id)
+    sql += " ORDER BY created_at DESC LIMIT ?;"
+    params.append(int(limit))
+    return query_db(sql, params) or []
+
+
+def auto_register_pending_company(company):
+    """Look one Pending company up by name. Returns (registered company_id or None, reason)."""
+    from services.companies_house_service import search_companies_house
+
+    execute_db("UPDATE companies SET ch_checked_at = datetime('now') WHERE id = ?;", (company['id'],))
+    if len(company_name_key(company.get('name'))) < 4:
+        return None, 'name_too_short'
+    found = search_companies_house(company.get('name'))
+    if not found.get('success'):
+        return None, found.get('error') or 'search_failed'
+    match = _name_match(company.get('name'), found.get('results'))
+    if not match or not _incorporated_after_order(match, company.get('created_at')):
+        return None, 'no_match'
+    number = canonical_company_number(match.get('company_number'))
+    clash = _in_crm(number) if number else None
+    if clash and clash['id'] != company['id']:
+        # Already a card for that number: the team decides which card to keep
+        return None, 'number_in_crm'
+    company_id, error = register_pending_company(company['id'], number)
+    if not company_id:
+        return None, error
+    from services.client_mail import notify_company_registered
+    notify_company_registered(company_id)
+    return company_id, None
+
+
+def auto_register_pending_companies(limit=PENDING_SYNC_BATCH, user_id=None, company_id=None):
+    """Check the Pending companies due a look-up. Returns the ids of those that are now registered."""
+    from services.companies_house_service import get_ch_api_key
+    if not get_ch_api_key():
+        return []
+    registered = []
+    for company in pending_companies_due(limit=limit, user_id=user_id, company_id=company_id):
+        try:
+            done, _reason = auto_register_pending_company(company)
+        except Exception as exc:
+            print(f"[Pending companies] #{company.get('id')}: {exc}")
+            continue
+        if done:
+            print(f"[Pending companies] #{done} {company.get('name')} is registered")
+            registered.append(done)
+    return registered
+
+
+_pending_worker_started = False
+
+
+def start_pending_registration_worker(run=None):
+    """Every 5 minutes, check Pending companies at Companies House. run(job) runs the job (per workspace)."""
+    global _pending_worker_started
+    import os
+    import threading
+    import time
+    if os.environ.get('CRM_TESTING') == '1' or _pending_worker_started:
+        return False
+    _pending_worker_started = True
+
+    def _loop():
+        while True:
+            try:
+                (run or (lambda job: job()))(auto_register_pending_companies)
+            except Exception as exc:
+                print(f"[Pending companies] Worker error: {exc}")
+            time.sleep(PENDING_SYNC_INTERVAL_SECONDS)
+
+    threading.Thread(target=_loop, name='pending-companies', daemon=True).start()
+    print('[Pending companies] Companies House check every 5 minutes started')
+    return True

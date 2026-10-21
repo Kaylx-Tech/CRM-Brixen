@@ -146,6 +146,10 @@ def run_server():
     except Exception as exc:
         print(f"[PermanentPurge] Startup enforce skipped: {exc}")
 
+    # Pending (not yet registered) companies are checked at Companies House every 5 minutes
+    from services.order_companies import start_pending_registration_worker
+    start_pending_registration_worker()
+
     print("=" * 60)
     print("Brixen CRM Modular API Server Started")
     print(f"Listening on http://{HOST}:{PORT}")

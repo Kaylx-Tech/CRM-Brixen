@@ -178,6 +178,10 @@ def schedule_portfolio_ch_sync(user_id=None):
             if not api_key:
                 return
 
+            # Pending companies registered since the last look are turned into the live company
+            from services.order_companies import auto_register_pending_companies
+            auto_register_pending_companies(limit=15, user_id=user_id)
+
             # Refresh up to 5 companies needing update (never-checked attention first, then oldest)
             sql = """
                 SELECT id, company_number, name, inc_date, status
