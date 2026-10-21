@@ -60,8 +60,6 @@ _cors = {
     'http://portal.brixenconsultants.com',
     'https://admin.brixenconsultants.com',
     'http://admin.brixenconsultants.com',
-    'https://ledger-frontend-eosin.vercel.app',
-    'http://cjpzactvouqmz48gsswjqgfi.191.215.45.157.sslip.io'
     'http://127.0.0.1:5050',
     'http://localhost:5050',
     'http://localhost:5173',

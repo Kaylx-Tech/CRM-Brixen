@@ -153,15 +153,15 @@ html.is-non-apple,
   --foreground: oklch(0.985 0 0);
   --card: rgb(22, 22, 22);
   --card-foreground: oklch(0.985 0 0);
-  --popover: #12111a;
+  --popover: #171717;
   --popover-foreground: oklch(0.985 0 0);
   /* Dark mode accent: Brixen orange */
   --primary: #F77C07;
   --primary-foreground: #ffffff;
   --secondary: #111019;
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: #0B0A10;
-  --muted-foreground: #b4b0d8;
+  --muted: #141414;
+  --muted-foreground: #d3d2d8;
   --accent: #110f19;
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);

@@ -169,6 +169,7 @@ export function LoginForm({ className, ...props }) {
         >
           Visit Our Website
         </a>
+
         <FieldDescription className="px-6 text-center">
           © 2026 Brixen Consultants Ltd. All rights reserved.
         </FieldDescription>

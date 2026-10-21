@@ -88,18 +88,7 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
               <span>{countryName}</span>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              {Boolean(company.is_genuine || company.data_locked) && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                  <IconShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                  Genuine
-                </span>
-              )}
-              {hasAttention && (
-                <Badge variant="destructive" className="gap-1">
-                  <IconAlertTriangle className="w-3 h-3" />
-                  Attention
-                </Badge>
-              )}
+              
               <Badge className={
                 status === 'Active' ? 'badge-green' :
                 status === 'Dissolved' ? 'badge-red' :
