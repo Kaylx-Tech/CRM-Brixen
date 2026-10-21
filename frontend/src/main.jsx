@@ -11,6 +11,17 @@ import Trace from '@react-trace/kit'
 if (IS_FINSTAP) {
   document.title = 'Finstap — Practice management CRM'
   document.documentElement.dataset.product = 'finstap'
+  // Finstap's own tab icons (index.html links the Brixen ones)
+  const icons = [
+    ['link[rel="icon"][sizes="32x32"]', '/finstap-favicon-32.png'],
+    ['link[rel="icon"][sizes="192x192"]', '/finstap-favicon-192.png'],
+    ['link[rel="shortcut icon"]', '/finstap-favicon.ico'],
+    ['link[rel="apple-touch-icon"]', '/finstap-apple-touch-icon.png'],
+  ]
+  for (const [selector, href] of icons) {
+    const link = document.querySelector(selector)
+    if (link) link.href = href
+  }
 }
 
 // Detect Apple devices (macOS, iOS, iPadOS) and set root class
