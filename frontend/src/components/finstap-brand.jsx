@@ -9,5 +9,11 @@ export const FINSTAP_GRADIENT = "bg-linear-to-br from-[#297bff] via-[#5f5cff] to
 /** Finstap logo: full wordmark (dark text, or white with `light`), or the symbol alone with `mark`. */
 export function FinstapLogo({ className, light = false, mark = false }) {
   const src = mark ? finstapMark : light ? finstapLogoLight : finstapLogo
-  return <img src={src} alt="Finstap" className={cn(mark ? "h-10 w-auto" : "h-9 w-auto", className)} />
+  return (
+    <img
+      src={src}
+      alt="Finstap"
+      className={cn(mark ? "h-10 w-auto" : "h-9 w-auto", className, "h-11")}
+    />
+  )
 }
