@@ -81,6 +81,40 @@ DEFAULT_SETTINGS = {
     'compliance_test_recipient': '',
 }
 
+# Finstap company workspaces never fall back to Brixen's own details: their gaps stay empty
+# (or a neutral value), and the platform's env (e.g. Finstap's SMTP) still fills them first.
+WORKSPACE_DEFAULT_OVERRIDES = {
+    'company_name': '',
+    'brand_name': '',
+    'logo_url': '',
+    'support_email': '',
+    'support_phone': '',
+    'order_prefix': '',
+    'order_number_prefix': 'ORD',
+    'invoice_prefix': 'INV-',
+    'portal_url': '',
+    'frontend_url': '',
+    'smtp_host': '',
+    'smtp_user': '',
+    'smtp_from': '',
+    'google_drive_root_folder': 'Finstap',
+    'wordpress_url': '',
+    'secret_key': '',
+}
+
+
+def _defaults():
+    """Brixen's defaults for its own database; neutral ones inside a Finstap company workspace."""
+    try:
+        from tenancy import current_tenant
+        tenant = current_tenant()
+    except ImportError:
+        tenant = None
+    if tenant and tenant.get('plan') != 'legacy':
+        return {**DEFAULT_SETTINGS, **WORKSPACE_DEFAULT_OVERRIDES}
+    return DEFAULT_SETTINGS
+
+
 def get_setting(key: str, default=None):
     """Retrieve setting value with precedence:
     1. Database `settings` table
@@ -102,7 +136,7 @@ def get_setting(key: str, default=None):
     if default is not None:
         return default
 
-    return DEFAULT_SETTINGS.get(key, '')
+    return _defaults().get(key, '')
 
 def mask_value(val: str) -> str:
     """Mask sensitive credentials for safe client display."""
@@ -121,7 +155,8 @@ def get_all_settings(raw: bool = False):
         pass
 
     # 2. Merge defaults, env, and DB
-    all_keys = set(DEFAULT_SETTINGS.keys()).union(db_settings.keys())
+    defaults = _defaults()
+    all_keys = set(defaults.keys()).union(db_settings.keys())
     merged = {}
     for k in all_keys:
         # DB first, then ENV, then default
@@ -129,7 +164,7 @@ def get_all_settings(raw: bool = False):
         if val is None or str(val).strip() == '':
             val = os.environ.get(k.upper()) or os.environ.get(k)
         if val is None or str(val).strip() == '':
-            val = DEFAULT_SETTINGS.get(k, '')
+            val = defaults.get(k, '')
         merged[k] = str(val)
 
     # 3. Build categorized dictionary

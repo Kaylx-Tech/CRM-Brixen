@@ -343,6 +343,56 @@ def check_slug(slug):
     return None
 
 
+_PREFIX_FILLER = {'the', 'ltd', 'limited', 'llp', 'plc', 'co', 'company', 'inc', 'group', 'and', 'uk'}
+
+
+def order_prefix_for(company_name):
+    """Three letters for order numbers: 'Acme Transport Ltd' → ACT, 'Globex' → GLO, 'Big Red Bus' → BRB."""
+    words = [w for w in re.split(r'[^A-Za-z0-9]+', (company_name or '').upper()) if w and w.lower() not in _PREFIX_FILLER]
+    if not words:
+        return 'ORD'
+    if len(words) == 1:
+        prefix = words[0][:3]
+    elif len(words) == 2:
+        prefix = words[0][:2] + words[1][:1]
+    else:
+        prefix = ''.join(w[0] for w in words[:3])
+    return (prefix + 'XXX')[:3] if len(prefix) < 3 else prefix
+
+
+def workspace_settings(tenant):
+    """The company's own starting settings (never Brixen's): name, contact, prefixes and addresses."""
+    url = workspace_url(tenant['slug'])
+    return {
+        'company_name': tenant['name'],
+        'brand_name': tenant['name'],
+        'support_email': tenant.get('owner_email') or '',
+        'order_number_prefix': order_prefix_for(tenant['name']),
+        'invoice_prefix': 'INV-',
+        'frontend_url': url,
+        'portal_url': url,
+        'google_drive_root_folder': f"Finstap-{tenant['slug']}",
+    }
+
+
+def seed_workspace_settings(tenant):
+    """Write the company's starting settings into its database. Only fills keys that are missing or
+    empty, so anything the company already changed is left alone. Brixen's database is never touched."""
+    if not tenant or tenant.get('plan') == 'legacy':
+        return 0
+    filled = 0
+    for key, value in workspace_settings(tenant).items():
+        if not value:
+            continue
+        row = db_mod.query_db("SELECT value FROM settings WHERE key = ?;", (key,), one=True)
+        if row and str(row.get('value') or '').strip():
+            continue
+        db_mod.execute_db("INSERT INTO settings (key, value) VALUES (?, ?) "
+                          "ON CONFLICT(key) DO UPDATE SET value = excluded.value;", (key, str(value)))
+        filled += 1
+    return filled
+
+
 def create_tenant(company_name, slug, owner_name, owner_email, password):
     """Create a workspace database with its first Super Admin. Returns (tenant, admin_user_id)."""
     company_name = (company_name or '').strip()
@@ -383,6 +433,7 @@ def create_tenant(company_name, slug, owner_name, owner_email, password):
                 INSERT INTO users (email, password_hash, full_name, role, status)
                 VALUES (?, ?, ?, 'SUPER_ADMIN', 'Active');
             """, (owner_email, hash_password(password), owner_name))
+            seed_workspace_settings(tenant)
     except Exception as exc:
         # Keep the file for inspection; the workspace just never goes Active
         _platform_execute("UPDATE tenants SET status = 'Failed', updated_at = datetime('now') WHERE id = ?;",

@@ -16,7 +16,9 @@ from middleware.auth_guard import get_authenticated_user, extract_session_token
 from utils.response import json_response, error_response
 from routes import dispatch_api_routes
 from routes.platform_routes import handle_platform_routes
-from tenancy import activate, deactivate, ensure_platform, for_each_tenant, resolve_request_tenant
+from tenancy import (
+    activate, deactivate, ensure_platform, for_each_tenant, resolve_request_tenant, seed_workspace_settings,
+)
 
 
 class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
@@ -160,6 +162,10 @@ def run_server():
 
     def _startup(tenant):
         ensure_schema()
+        # Company workspaces made before their own settings existed get them (empty keys only)
+        filled = seed_workspace_settings(tenant)
+        if filled:
+            print(f"[Tenancy] {tenant['slug']}: filled {filled} starting settings")
         try:
             from services.permanent_purge import enforce_live_database
             enforce_live_database()
