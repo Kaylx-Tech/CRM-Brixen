@@ -1,5 +1,7 @@
 import * as React from "react"
 import brixenLogo from "@/assets/white-logo.webp"
+import { FinstapLogo } from "@/components/finstap-brand"
+import { IS_FINSTAP } from "@/lib/workspace"
 import { NavMain } from "@/Layout/nav-main"
 import { NavUser } from "@/Layout/nav-user"
 import {
@@ -73,7 +75,12 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="w-full flex flex-col justify-center items-center">
-              <img src={brixenLogo} alt="Brixen" className="h-18 w-auto" />
+              {/* Finstap build: its own logo (white text on the dark sidebar) */}
+              {IS_FINSTAP ? (
+                <FinstapLogo light className="my-3 h-9" />
+              ) : (
+                <img src={brixenLogo} alt="Brixen" className="h-18 w-auto" />
+              )}
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
