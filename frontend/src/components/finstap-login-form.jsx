@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
-import { IconAlertCircle, IconBuildingStore, IconCircleCheck } from "@tabler/icons-react"
+import { IconAlertCircle, IconArrowRight, IconBuildingStore, IconCircleCheck } from "@tabler/icons-react"
 import { AuthLayout } from "@/components/auth-layout"
+import { FINSTAP_CTA } from "@/components/finstap-auth-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
@@ -119,13 +120,14 @@ export function FinstapLoginForm() {
   const slug = normalizeSlug(workspace)
 
   // Signup lives on the shared address; from a company subdomain it is a full page link
+  const linkClass = "font-semibold text-[#5f5cff] underline-offset-4 hover:underline dark:text-[#8b8aff]"
   const signupLink = fixedWorkspace ? (
-    <a href={sharedUrl("/signup")} className="font-semibold text-primary underline-offset-4 hover:underline">
-      Create your workspace
+    <a href={sharedUrl("/signup")} className={linkClass}>
+      Sign up
     </a>
   ) : (
-    <Link to="/signup" className="font-semibold text-primary underline-offset-4 hover:underline">
-      Create your workspace
+    <Link to="/signup" className={linkClass}>
+      Sign up
     </Link>
   )
 
@@ -134,8 +136,10 @@ export function FinstapLoginForm() {
     return (
       <AuthLayout title="Workspace not found" subtitle={`There is no Finstap workspace called "${fixedWorkspace}".`}>
         <FieldGroup>
-          <Button onClick={() => window.location.assign(sharedUrl("/login"))}>Find your workspace</Button>
-          <p className="text-center text-sm text-muted-foreground">New to Finstap? {signupLink}</p>
+          <Button className={FINSTAP_CTA} onClick={() => window.location.assign(sharedUrl("/login"))}>
+            Find your workspace
+          </Button>
+          <p className="text-center text-sm text-muted-foreground">Don&apos;t have an account? {signupLink}</p>
         </FieldGroup>
       </AuthLayout>
     )
@@ -143,15 +147,15 @@ export function FinstapLoginForm() {
 
   return (
     <AuthLayout
-      title={findMode ? "Find your workspace" : "Welcome back"}
+      title={findMode ? "Find your workspace" : "Welcome Back!"}
       subtitle={
         findMode
           ? "Enter your company's workspace name to sign in"
           : workspaceName
-            ? `Sign in to ${workspaceName}`
-            : "Sign in to your workspace"
+            ? `Please enter your details to sign in to ${workspaceName}`
+            : "Please enter your details"
       }
-      footer={<p className="text-sm text-muted-foreground">New to Finstap? {signupLink}</p>}
+      footer={<>Don&apos;t have an account? {signupLink}</>}
     >
       <form onSubmit={handleSubmit}>
         <FieldGroup>
@@ -192,7 +196,9 @@ export function FinstapLoginForm() {
           )}
           {findMode ? (
             <Field>
-              <Button type="submit">Continue</Button>
+              <Button type="submit" className={FINSTAP_CTA}>
+                Continue <IconArrowRight className="size-4" />
+              </Button>
             </Field>
           ) : (
           <>
@@ -230,8 +236,9 @@ export function FinstapLoginForm() {
             />
           </Field>
           <Field>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading} className={FINSTAP_CTA}>
               {isLoading ? "Logging in..." : "Login"}
+              {!isLoading && <IconArrowRight className="size-4" />}
             </Button>
           </Field>
           </>

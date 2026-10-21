@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { IconAlertCircle, IconCircleCheck, IconLoader2 } from "@tabler/icons-react"
+import { IconAlertCircle, IconArrowRight, IconCircleCheck, IconLoader2 } from "@tabler/icons-react"
 import { AuthLayout } from "@/components/auth-layout"
+import { FINSTAP_CTA } from "@/components/finstap-auth-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
@@ -130,12 +131,12 @@ export default function FinstapSignup() {
       title="Create your workspace"
       subtitle="Start your free trial. No card needed."
       footer={
-        <p className="text-sm text-muted-foreground">
-          Already have a workspace?{" "}
-          <Link to="/login" className="font-semibold text-primary underline-offset-4 hover:underline">
+        <>
+          Already have an account?{" "}
+          <Link to="/login" className="font-semibold text-[#5f5cff] underline-offset-4 hover:underline dark:text-[#8b8aff]">
             Login
           </Link>
-        </p>
+        </>
       }
     >
       <form onSubmit={handleSubmit}>
@@ -237,10 +238,14 @@ export default function FinstapSignup() {
             <FieldDescription>At least {MIN_PASSWORD_LEN} characters.</FieldDescription>
           </Field>
           <Field>
-            <Button type="submit" disabled={isLoading || slugState.status === "taken"}>
+            <Button type="submit" disabled={isLoading || slugState.status === "taken"} className={FINSTAP_CTA}>
               {isLoading ? "Creating workspace..." : "Create workspace"}
+              {!isLoading && <IconArrowRight className="size-4" />}
             </Button>
           </Field>
+          <p className="text-xs text-muted-foreground">
+            By creating an account, you agree to the Finstap Terms of Service and Privacy Policy.
+          </p>
         </FieldGroup>
       </form>
     </AuthLayout>
