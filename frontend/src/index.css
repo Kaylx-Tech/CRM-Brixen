@@ -189,6 +189,70 @@ html.is-non-apple,
   --sidebar-ring: #F77C07;
 }
 
+/* ── Finstap build: colours from the logo (blue #297bff → violet #834aff) ──
+   main.jsx sets data-product="finstap" on <html>; the Brixen build never does, so it is unaffected. */
+:root[data-product="finstap"] {
+  --primary: #6559ff;
+  --primary-foreground: #ffffff;
+  --secondary: #f3f2ff;
+  --secondary-foreground: #2b2b2b;
+  --accent: #f3f2ff;
+  --accent-foreground: #2b2b2b;
+  --ring: #6559ff;
+  --chart-1: #9db8ff;
+  --chart-2: #297bff;
+  --chart-3: #6559ff;
+  --chart-4: #4a2fd0;
+  --chart-5: #834aff;
+  /* Charts: logo blues and violets, light and dark alternating so neighbouring slices stay apart */
+  --viz-1: #297bff;
+  --viz-2: #b7a8ff;
+  --viz-3: #4a2fd0;
+  --viz-4: #84aaff;
+  --viz-5: #834aff;
+  /* Sidebar: deep indigo, the logo violet for the active page */
+  --sidebar: #120f2e;
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: #6559ff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #231d52;
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #6559ff;
+}
+
+:root[data-product="finstap"].dark {
+  --primary: #7c6dff;
+  --primary-foreground: #ffffff;
+  --secondary: #15122b;
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: #0e0c1d;
+  --muted-foreground: #b9b4dc;
+  --accent: #17142f;
+  --accent-foreground: oklch(0.985 0 0);
+  --popover: #13112a;
+  --ring: #7c6dff;
+  --chart-1: #a9c1ff;
+  --chart-2: #4d8dff;
+  --chart-3: #7c6dff;
+  --chart-4: #5b3fe6;
+  --chart-5: #9a6bff;
+  /* A step lighter than the light theme so they read on the dark cards */
+  --viz-1: #4d8dff;
+  --viz-2: #c9bdff;
+  --viz-3: #5b3fe6;
+  --viz-4: #93b4ff;
+  --viz-5: #9a6bff;
+  --sidebar: #0b0919;
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: #7c6dff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1c1840;
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: #7c6dff;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

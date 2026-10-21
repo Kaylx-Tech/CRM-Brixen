@@ -6,8 +6,12 @@ import App from './App.jsx'
 import { IS_FINSTAP } from './lib/workspace'
 import Trace from '@react-trace/kit'
 
-// The Finstap build names its own tab (index.html carries the Brixen title)
-if (IS_FINSTAP) document.title = 'Finstap — Practice management CRM'
+// The Finstap build names its own tab (index.html carries the Brixen title) and switches to its
+// colours (index.css: [data-product="finstap"])
+if (IS_FINSTAP) {
+  document.title = 'Finstap — Practice management CRM'
+  document.documentElement.dataset.product = 'finstap'
+}
 
 // Detect Apple devices (macOS, iOS, iPadOS) and set root class
 if (typeof window !== 'undefined') {
