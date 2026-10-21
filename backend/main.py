@@ -175,6 +175,10 @@ def run_server():
 
     for_each_tenant(_startup)
 
+    # Pending (not yet registered) companies are checked at Companies House every 5 minutes, in every workspace
+    from services.order_companies import start_pending_registration_worker
+    start_pending_registration_worker(lambda job: for_each_tenant(lambda _tenant: job()))
+
     print("=" * 60)
     print("Brixen CRM Modular API Server Started")
     print(f"Listening on http://{HOST}:{PORT}")

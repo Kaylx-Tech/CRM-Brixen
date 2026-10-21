@@ -486,3 +486,36 @@ def notify_accounts_filed(company_id, period_end=None, confirmation=None, trigge
         link='/companies', subject=f'Yearly accounts filed — {name} — {brand}', points=points,
         details=[('Company', name)], cta_label='View your company', category='COMPLIANCE',
         company=company, triggered_by=triggered_by)
+
+
+def notify_company_registered(company_id, triggered_by=None):
+    """A Pending company is now registered at Companies House (app.py notify_company_registered). Sent once."""
+    company = query_db("""
+        SELECT id, user_id, name, company_number, registered_email, registration_notified_at
+        FROM companies WHERE id = ?;
+    """, (company_id,), one=True)
+    if not company or str(company.get('registration_notified_at') or '').strip():
+        return None
+    company = dict(company)
+    name = str(company.get('name') or 'Your company').strip()
+    number = str(company.get('company_number') or '').strip()
+    # The formation order: its form email and owner's name are who the news is for
+    order = query_db("""
+        SELECT id, owner_form_email, owner_name, b2b_client_id FROM orders
+        WHERE company_id = ? ORDER BY id DESC LIMIT 1;
+    """, (company_id,), one=True)
+    brand = brand_settings().get('company_name') or 'Brixen Consultants'
+    result = notify_client(
+        company['user_id'], title='Your company is registered', headline=f'Congratulations, {name} is registered',
+        message=f"Great news: {name} is now officially registered with Companies House.",
+        ntype='success', link='/companies',
+        subject=f'Congratulations, {name} is now registered with Companies House — {brand}',
+        points=['✅ Incorporated at Companies House', '📄 The certificate is in the Companies House filing history'],
+        details=[('Company', name), ('Company number', number)],
+        cta_label='View on Companies House',
+        cta_url=f'https://find-and-update.company-information.service.gov.uk/company/{number}/filing-history',
+        category='COMPANIES_HOUSE', company=company, order=dict(order) if order else None, triggered_by=triggered_by)
+    if result.get('email_sent'):
+        from db import execute_db
+        execute_db("UPDATE companies SET registration_notified_at = CURRENT_TIMESTAMP WHERE id = ?;", (company_id,))
+    return result
