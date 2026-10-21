@@ -10,7 +10,7 @@ import { getApiBase } from "@/lib/api"
 import { setWorkspace } from "@/lib/workspace"
 
 /**
- * acme.finstap.com/welcome?code=… — reached straight after signup on app.finstap.com.
+ * acme.finstap.com/welcome?code=… — reached straight after signup on finstap.com.
  * Browsers keep logins per address, so the new session arrives as a one-time code and is swapped here.
  */
 export default function FinstapWelcome() {

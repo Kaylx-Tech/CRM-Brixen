@@ -23,7 +23,7 @@ import {
 /**
  * Finstap login, in one of three forms:
  *  - on a company's own subdomain (acme.finstap.com): email and password only
- *  - on the shared address with subdomains on (app.finstap.com): "find your workspace", then go there
+ *  - on the shared address with subdomains on (finstap.com): "find your workspace", then go there
  *  - subdomains off: workspace, email and password (?workspace=acme fills it in)
  */
 export function FinstapLoginForm() {

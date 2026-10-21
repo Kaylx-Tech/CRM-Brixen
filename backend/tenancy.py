@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS tenants (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
--- One-time codes that carry a fresh login from app.finstap.com to the company's own subdomain
+-- One-time codes that carry a fresh login from finstap.com (signup) to the company's own subdomain
 -- (browsers keep logins per address, so the session cannot simply be shared)
 CREATE TABLE IF NOT EXISTS login_handoffs (
     code_hash TEXT PRIMARY KEY,

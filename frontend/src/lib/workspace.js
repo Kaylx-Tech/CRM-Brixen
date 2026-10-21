@@ -2,8 +2,8 @@
  * Finstap workspaces: each company signs in to its own workspace (backend: one database per company).
  *
  * With company subdomains (VITE_TENANT_DOMAIN=finstap.com) the address names the workspace:
- * acme.finstap.com is "acme", and app.finstap.com / finstap.com are the shared signup and
- * "find your workspace" pages. Without them, the chosen workspace is remembered in this browser.
+ * acme.finstap.com is "acme", and the main domain finstap.com (or www.) is the shared signup and
+ * "find your workspace" page. Without them, the chosen workspace is remembered in this browser.
  * Either way it is sent as X-Tenant on requests made before login; after login the session token
  * itself names the workspace.
  */
@@ -42,7 +42,7 @@ export function subdomainWorkspace() {
   return normalizeSlug(sub) === sub ? sub : ""
 }
 
-/** Subdomains are on and this page is the shared address (app.finstap.com), not a company's own. */
+/** Subdomains are on and this page is the shared address (finstap.com), not a company's own. */
 export function onSharedHost() {
   return Boolean(TENANT_DOMAIN) && !subdomainWorkspace()
 }
@@ -54,11 +54,11 @@ export function workspaceUrl(slug, path = "/") {
   return `${protocol}//${slug}.${TENANT_DOMAIN}${port ? `:${port}` : ""}${path}`
 }
 
-/** The shared address (https://app.finstap.com/signup) for signup and "find your workspace". */
+/** The shared address, the main domain itself (https://finstap.com/signup), for signup and "find your workspace". */
 export function sharedUrl(path = "/") {
   if (!TENANT_DOMAIN) return path
   const { protocol, port } = window.location
-  return `${protocol}//app.${TENANT_DOMAIN}${port ? `:${port}` : ""}${path}`
+  return `${protocol}//${TENANT_DOMAIN}${port ? `:${port}` : ""}${path}`
 }
 
 export function getWorkspace() {

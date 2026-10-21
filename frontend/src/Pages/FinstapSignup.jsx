@@ -16,7 +16,7 @@ const MIN_PASSWORD_LEN = 8
 /** Finstap signup: a company creates its workspace and its owner account, then lands in the CRM. */
 export default function FinstapSignup() {
   const navigate = useNavigate()
-  // Signup happens on the shared address (app.finstap.com), never inside a company's subdomain
+  // Signup happens on the shared address (finstap.com), never inside a company's subdomain
   useEffect(() => {
     if (subdomainWorkspace()) window.location.replace(sharedUrl("/signup"))
   }, [])
