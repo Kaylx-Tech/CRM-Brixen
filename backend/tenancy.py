@@ -5,9 +5,10 @@ its own file under TENANTS_DIR, so existing queries need no company filter and o
 company can never read another's rows.
 
 Which workspace a request belongs to comes from (first match wins):
-  1. the session token prefix  "<slug>.<uuid>"
-  2. the X-Tenant header or ?tenant= query value
-  3. DEFAULT_TENANT (Brixen's existing database), when that workspace is registered
+  1. the X-Tenant header or ?tenant= / ?workspace= query value
+  2. the page's own subdomain (Origin: https://acme.finstap.com)
+  3. the session token prefix  "<slug>.<uuid>"
+  4. DEFAULT_TENANT (Brixen's existing database), when that workspace is registered
 """
 import hashlib
 import os
@@ -229,9 +230,10 @@ def slug_from_token(token):
 
 
 def requested_slug(environ, query=None, token=None):
-    slug = slug_from_token(token)
-    if slug:
-        return slug
+    """The workspace a request names. What the page says (X-Tenant, ?workspace=, its subdomain) comes
+    first: a leftover session cookie from another company (one api.finstap.com for everyone) must not
+    pull the request into that company. The token's own prefix is used when nothing else is given;
+    a token from another workspace then simply fails to authenticate here."""
     header = (environ.get('HTTP_X_TENANT') or '').strip().lower()
     if header:
         return header
@@ -240,7 +242,10 @@ def requested_slug(environ, query=None, token=None):
         if value:
             return str(value[0] if isinstance(value, list) else value).strip().lower()
     # The page's own address: a request from acme.finstap.com belongs to "acme"
-    return slug_from_origin(environ.get('HTTP_ORIGIN'))
+    slug = slug_from_origin(environ.get('HTTP_ORIGIN'))
+    if slug:
+        return slug
+    return slug_from_token(token)
 
 
 def slug_from_origin(origin):
