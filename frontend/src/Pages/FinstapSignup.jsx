@@ -9,13 +9,17 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { homePath } from "@/lib/permissions"
 import { getApiBase } from "@/lib/api"
-import { normalizeSlug, setWorkspace } from "@/lib/workspace"
+import { normalizeSlug, setWorkspace, sharedUrl, subdomainWorkspace, workspaceUrl } from "@/lib/workspace"
 
 const MIN_PASSWORD_LEN = 8
 
 /** Finstap signup: a company creates its workspace and its owner account, then lands in the CRM. */
 export default function FinstapSignup() {
   const navigate = useNavigate()
+  // Signup happens on the shared address (app.finstap.com), never inside a company's subdomain
+  useEffect(() => {
+    if (subdomainWorkspace()) window.location.replace(sharedUrl("/signup"))
+  }, [])
   const [companyName, setCompanyName] = useState("")
   const [slug, setSlug] = useState("")
   const [slugEdited, setSlugEdited] = useState(false)
@@ -87,6 +91,13 @@ export default function FinstapSignup() {
       const payload = data.data || {}
       if (res.ok && payload.token) {
         setWorkspace(payload.workspace?.slug)
+        // Company subdomains: open acme.finstap.com, which signs in with the one-time code
+        const target = payload.handoff_code ? workspaceUrl(payload.workspace?.slug, `/welcome?code=${encodeURIComponent(payload.handoff_code)}`) : ""
+        if (target) {
+          toastDone(toastId, `Welcome to Finstap, ${payload.workspace?.name || companyName}`)
+          window.location.assign(target)
+          return
+        }
         localStorage.setItem("token", payload.token)
         localStorage.setItem("user", JSON.stringify(payload.user || { email }))
         toastDone(toastId, `Welcome to Finstap, ${payload.workspace?.name || companyName}`)

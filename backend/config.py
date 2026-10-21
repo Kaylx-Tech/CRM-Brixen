@@ -61,7 +61,11 @@ _cors = {
     'https://admin.brixenconsultants.com',
     'http://admin.brixenconsultants.com',
     'https://ledger-frontend-eosin.vercel.app',
-    'http://cjpzactvouqmz48gsswjqgfi.191.215.45.157.sslip.io'
+    'http://cjpzactvouqmz48gsswjqgfi.191.215.45.157.sslip.io',
+    # Finstap (company workspaces are <slug>.finstap.com, allowed in middleware/cors.py)
+    'https://finstap.com',
+    'https://www.finstap.com',
+    'https://app.finstap.com',
     'http://127.0.0.1:5050',
     'http://localhost:5050',
     'http://localhost:5173',
@@ -74,6 +78,13 @@ for _origin in (os.environ.get('EXTRA_CORS_ORIGINS') or '').split(','):
     if _origin:
         _cors.add(_origin)
 ALLOWED_CORS_ORIGINS = frozenset(_cors)
+
+# Finstap company subdomains: acme.finstap.com opens the "acme" workspace.
+# TENANT_BASE_DOMAIN=localhost for local tests (acme.localhost); empty turns subdomains off.
+TENANT_BASE_DOMAIN = (os.environ.get('TENANT_BASE_DOMAIN', 'finstap.com') or '').strip().lower().strip('.')
+# Address of one workspace, used in emails (reset links); {slug} is replaced
+WORKSPACE_URL_TEMPLATE = (os.environ.get('WORKSPACE_URL_TEMPLATE')
+                          or (f'https://{{slug}}.{TENANT_BASE_DOMAIN}' if TENANT_BASE_DOMAIN else '')).rstrip('/')
 
 # Authentication / Sessions
 SESSION_COOKIE_MAX_AGE = 30 * 24 * 60 * 60  # 30 Days in seconds

@@ -9,16 +9,21 @@ Which workspace a request belongs to comes from (first match wins):
   2. the X-Tenant header or ?tenant= query value
   3. DEFAULT_TENANT (Brixen's existing database), when that workspace is registered
 """
+import hashlib
 import os
 import re
+import secrets
 import sqlite3
 import threading
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
+from urllib.parse import urlsplit
+
 import db as db_mod
 from db import set_db_path, NO_TENANT_DB, hash_password
+from config import TENANT_BASE_DOMAIN, WORKSPACE_URL_TEMPLATE
 
 DATA_DIR = os.environ.get('FINSTAP_DATA_DIR') or os.path.dirname(db_mod.DB_PATH)
 PLATFORM_DB_PATH = os.environ.get('PLATFORM_DB_PATH') or os.path.join(DATA_DIR, 'platform.db')
@@ -46,7 +51,18 @@ CREATE TABLE IF NOT EXISTS tenants (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+-- One-time codes that carry a fresh login from app.finstap.com to the company's own subdomain
+-- (browsers keep logins per address, so the session cannot simply be shared)
+CREATE TABLE IF NOT EXISTS login_handoffs (
+    code_hash TEXT PRIMARY KEY,
+    tenant_slug TEXT NOT NULL,
+    session_token TEXT NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    used_at TIMESTAMP
+);
 """
+
+HANDOFF_SECONDS = 120
 
 _platform_lock = threading.Lock()
 _platform_ready = False
@@ -221,7 +237,33 @@ def requested_slug(environ, query=None, token=None):
         value = query.get('tenant') or query.get('workspace')
         if value:
             return str(value[0] if isinstance(value, list) else value).strip().lower()
-    return None
+    # The page's own address: a request from acme.finstap.com belongs to "acme"
+    return slug_from_origin(environ.get('HTTP_ORIGIN'))
+
+
+def slug_from_origin(origin):
+    """'https://acme.finstap.com' → 'acme' (None for the root, app/www/api and other sites)."""
+    if not origin or not TENANT_BASE_DOMAIN:
+        return None
+    host = (urlsplit(origin).hostname or '').lower()
+    suffix = '.' + TENANT_BASE_DOMAIN
+    if not host.endswith(suffix):
+        return None
+    sub = host[:-len(suffix)]
+    if '.' in sub or sub in RESERVED_SLUGS or not SLUG_RE.match(sub):
+        return None
+    return sub
+
+
+def workspace_url(slug, path=''):
+    """Public address of a workspace (https://acme.finstap.com/path), or '' when subdomains are off."""
+    if not WORKSPACE_URL_TEMPLATE or not slug:
+        return ''
+    # The adopted single-company database (Brixen) keeps its own addresses
+    tenant = get_tenant(slug)
+    if tenant and tenant.get('plan') == 'legacy':
+        return ''
+    return WORKSPACE_URL_TEMPLATE.replace('{slug}', slug) + path
 
 
 def resolve_request_tenant(environ, query=None, token=None):
@@ -242,6 +284,43 @@ def new_session_token():
     tenant = current_tenant()
     raw = str(uuid.uuid4())
     return f"{tenant['slug']}.{raw}" if tenant else raw
+
+
+def _hash_code(code):
+    return hashlib.sha256(code.encode('utf-8')).hexdigest()
+
+
+def create_login_handoff(slug, session_token):
+    """A short-lived one-time code for a session (only its hash is stored)."""
+    code = secrets.token_urlsafe(32)
+    _platform_execute("""
+        INSERT INTO login_handoffs (code_hash, tenant_slug, session_token, expires_at)
+        VALUES (?, ?, ?, datetime('now', ?));
+    """, (_hash_code(code), slug, session_token, f'+{HANDOFF_SECONDS} seconds'))
+    return code
+
+
+def redeem_login_handoff(code):
+    """Swap a one-time code for (slug, session_token); None when unknown, used or expired."""
+    if not code:
+        return None
+    ensure_platform()
+    conn = _platform_conn()
+    try:
+        # One write transaction: read the token, then mark the code used and wipe it, so it works exactly once
+        conn.execute("BEGIN IMMEDIATE;")
+        key = _hash_code(str(code))
+        row = conn.execute("""
+            SELECT tenant_slug, session_token FROM login_handoffs
+            WHERE code_hash = ? AND used_at IS NULL AND datetime(expires_at) > datetime('now');
+        """, (key,)).fetchone()
+        if row:
+            conn.execute("UPDATE login_handoffs SET used_at = datetime('now'), session_token = '' WHERE code_hash = ?;",
+                         (key,))
+        conn.commit()
+    finally:
+        conn.close()
+    return (row['tenant_slug'], row['session_token']) if row else None
 
 
 # ── signup: create a workspace ──────────────────────────────────────────────

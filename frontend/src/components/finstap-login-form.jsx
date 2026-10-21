@@ -9,13 +9,31 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { homePath } from "@/lib/permissions"
 import { getApiBase } from "@/lib/api"
-import { getWorkspace, normalizeSlug, setWorkspace, workspaceHeaders } from "@/lib/workspace"
+import {
+  getWorkspace,
+  normalizeSlug,
+  onSharedHost,
+  setWorkspace,
+  sharedUrl,
+  subdomainWorkspace,
+  workspaceHeaders,
+  workspaceUrl,
+} from "@/lib/workspace"
 
-/** Finstap login: the company's workspace, then email and password (?workspace=acme fills it in). */
+/**
+ * Finstap login, in one of three forms:
+ *  - on a company's own subdomain (acme.finstap.com): email and password only
+ *  - on the shared address with subdomains on (app.finstap.com): "find your workspace", then go there
+ *  - subdomains off: workspace, email and password (?workspace=acme fills it in)
+ */
 export function FinstapLoginForm() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const [workspace, setWorkspaceInput] = useState(() => normalizeSlug(params.get("workspace")) || getWorkspace())
+  const fixedWorkspace = subdomainWorkspace()
+  const findMode = onSharedHost()
+  const [workspace, setWorkspaceInput] = useState(
+    () => fixedWorkspace || normalizeSlug(params.get("workspace")) || getWorkspace()
+  )
   const [workspaceName, setWorkspaceName] = useState("")
   const [workspaceError, setWorkspaceError] = useState("")
   const [email, setEmail] = useState("")
@@ -55,6 +73,16 @@ export function FinstapLoginForm() {
       setError("Enter your workspace.")
       return
     }
+    if (findMode) {
+      // The company signs in on its own address
+      if (!workspaceName) {
+        setError("No workspace with this name. Check the spelling or create a new one.")
+        return
+      }
+      setWorkspace(slug)
+      window.location.assign(workspaceUrl(slug, "/login"))
+      return
+    }
     setError("")
     setIsLoading(true)
     const toastId = toastProcessing("Signing in…")
@@ -90,18 +118,40 @@ export function FinstapLoginForm() {
 
   const slug = normalizeSlug(workspace)
 
+  // Signup lives on the shared address; from a company subdomain it is a full page link
+  const signupLink = fixedWorkspace ? (
+    <a href={sharedUrl("/signup")} className="font-semibold text-primary underline-offset-4 hover:underline">
+      Create your workspace
+    </a>
+  ) : (
+    <Link to="/signup" className="font-semibold text-primary underline-offset-4 hover:underline">
+      Create your workspace
+    </Link>
+  )
+
+  // acme.finstap.com for a company that does not exist
+  if (fixedWorkspace && workspaceError) {
+    return (
+      <AuthLayout title="Workspace not found" subtitle={`There is no Finstap workspace called "${fixedWorkspace}".`}>
+        <FieldGroup>
+          <Button onClick={() => window.location.assign(sharedUrl("/login"))}>Find your workspace</Button>
+          <p className="text-center text-sm text-muted-foreground">New to Finstap? {signupLink}</p>
+        </FieldGroup>
+      </AuthLayout>
+    )
+  }
+
   return (
     <AuthLayout
-      title="Welcome back"
-      subtitle={workspaceName ? `Sign in to ${workspaceName}` : "Sign in to your workspace"}
-      footer={
-        <p className="text-sm text-muted-foreground">
-          New to Finstap?{" "}
-          <Link to="/signup" className="font-semibold text-primary underline-offset-4 hover:underline">
-            Create your workspace
-          </Link>
-        </p>
+      title={findMode ? "Find your workspace" : "Welcome back"}
+      subtitle={
+        findMode
+          ? "Enter your company's workspace name to sign in"
+          : workspaceName
+            ? `Sign in to ${workspaceName}`
+            : "Sign in to your workspace"
       }
+      footer={<p className="text-sm text-muted-foreground">New to Finstap? {signupLink}</p>}
     >
       <form onSubmit={handleSubmit}>
         <FieldGroup>
@@ -111,6 +161,8 @@ export function FinstapLoginForm() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+          {/* On a company subdomain the address already names the workspace */}
+          {!fixedWorkspace && (
           <Field>
             <FieldLabel htmlFor="workspace">Workspace</FieldLabel>
             <div className="relative">
@@ -137,6 +189,13 @@ export function FinstapLoginForm() {
               <FieldDescription>The workspace name you chose when you signed up.</FieldDescription>
             )}
           </Field>
+          )}
+          {findMode ? (
+            <Field>
+              <Button type="submit">Continue</Button>
+            </Field>
+          ) : (
+          <>
           <Field>
             <FieldLabel htmlFor="email">Email</FieldLabel>
             <Input
@@ -175,6 +234,8 @@ export function FinstapLoginForm() {
               {isLoading ? "Logging in..." : "Login"}
             </Button>
           </Field>
+          </>
+          )}
         </FieldGroup>
       </form>
     </AuthLayout>

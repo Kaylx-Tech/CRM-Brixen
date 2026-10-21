@@ -22,6 +22,8 @@ export default defineConfig({
   server: {
     host: '127.0.0.1',
     port: 5173,
+    // Local tests of Finstap company subdomains (acme.localhost) need these names accepted
+    allowedHosts: ['.localhost'],
     proxy: {
       '/api': {
         // VITE_PROXY_TARGET lets a second local API run alongside (e.g. a Finstap test backend)

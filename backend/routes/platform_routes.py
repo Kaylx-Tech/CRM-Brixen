@@ -3,6 +3,7 @@
   GET  /api/platform/workspace?slug=acme   → name of a workspace (login page)
   GET  /api/platform/check-slug?slug=acme  → can this workspace URL be used?
   POST /api/platform/signup                → create a company workspace and sign its owner in
+  POST /api/platform/handoff               → one-time code (from signup) → that session, on the company subdomain
 """
 import threading
 import time
@@ -10,7 +11,8 @@ import time
 from db import query_db, execute_db
 from utils.response import success_response, error_response
 from tenancy import (
-    TenantError, check_slug, create_tenant, get_tenant, new_session_token, normalize_slug, use_tenant,
+    TenantError, check_slug, create_login_handoff, create_tenant, get_tenant, new_session_token,
+    normalize_slug, redeem_login_handoff, use_tenant, workspace_url,
 )
 from routes.auth_routes import _client_ip, _public_user, _session_cookie
 
@@ -74,12 +76,37 @@ def handle_platform_routes(environ, start_response, path, method, body, query=No
             """, (token, admin_id))
             user = _public_user(query_db("SELECT * FROM users WHERE id = ? LIMIT 1;", (admin_id,), one=True))
 
+        # With company subdomains the browser moves to acme.finstap.com, carrying the login as a one-time code
+        url = workspace_url(tenant['slug'])
         return success_response(start_response, data={
             "token": token,
             "session_token": token,
             "user": user,
             "workspace": {"slug": tenant['slug'], "name": tenant['name'], "plan": tenant['plan'],
-                          "trial_ends_at": tenant['trial_ends_at']},
+                          "trial_ends_at": tenant['trial_ends_at'], "url": url},
+            "handoff_code": create_login_handoff(tenant['slug'], token) if url else None,
         }, message="Workspace created.", status_code=201, headers=[('Set-Cookie', _session_cookie(token))])
+
+    # ── POST /api/platform/handoff {code} → the session it carries (used once, within 2 minutes) ──
+    if path == '/api/platform/handoff' and method == 'POST':
+        found = redeem_login_handoff((body or {}).get('code'))
+        tenant = get_tenant(found[0]) if found else None
+        if not found or not tenant or tenant['status'] != 'Active':
+            return error_response(start_response, "This sign-in link has expired. Please log in.", status_code=400)
+        token = found[1]
+        with use_tenant(tenant):
+            row = query_db("""
+                SELECT u.* FROM user_sessions s JOIN users u ON u.id = s.user_id
+                WHERE s.session_token = ? AND s.revoked_at IS NULL AND datetime(s.expires_at) > datetime('now')
+                LIMIT 1;
+            """, (token,), one=True)
+        if not row:
+            return error_response(start_response, "This sign-in link has expired. Please log in.", status_code=400)
+        return success_response(start_response, data={
+            "token": token,
+            "session_token": token,
+            "user": _public_user(row),
+            "workspace": {"slug": tenant['slug'], "name": tenant['name']},
+        }, headers=[('Set-Cookie', _session_cookie(token))])
 
     return None

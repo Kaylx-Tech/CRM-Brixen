@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Login from './Pages/Login'
 import ForgotPassword from './Pages/ForgotPassword'
 import FinstapSignup from './Pages/FinstapSignup'
+import FinstapWelcome from './Pages/FinstapWelcome'
 import { IS_FINSTAP } from './lib/workspace'
 import ResetPassword from './Pages/ResetPassword'
 // import SignUp from './Pages/SignUp'
@@ -86,6 +87,9 @@ const App = () => {
 
             {/* Sign-in handed over from the Brixen website (B2B accounts) */}
             <Route path="/sso" element={<Sso />} />
+
+            {/* Finstap: just after signup, the company's subdomain signs in with a one-time code */}
+            {IS_FINSTAP && <Route path="/welcome" element={<FinstapWelcome />} />}
 
             {/* Finstap: companies create their own workspace; the Brixen build has no signup */}
             <Route

@@ -1,6 +1,20 @@
 """CORS Middleware for Brixen CRM
 """
-from config import ALLOWED_CORS_ORIGINS
+from urllib.parse import urlsplit
+
+from config import ALLOWED_CORS_ORIGINS, IS_PRODUCTION, TENANT_BASE_DOMAIN
+
+
+def _is_workspace_origin(origin):
+    """A Finstap company subdomain (https://acme.finstap.com); plain http only outside production."""
+    if not TENANT_BASE_DOMAIN or not origin:
+        return False
+    parts = urlsplit(origin)
+    if parts.scheme != 'https' and (IS_PRODUCTION or parts.scheme != 'http'):
+        return False
+    host = (parts.hostname or '').lower()
+    return host == TENANT_BASE_DOMAIN or host.endswith('.' + TENANT_BASE_DOMAIN)
+
 
 def handle_cors_headers(environ):
     """Generate CORS headers for a given request origin."""
@@ -19,7 +33,8 @@ def handle_cors_headers(environ):
         origin.startswith('https://localhost:') or
         origin.startswith('http://127.0.0.1:') or
         origin.startswith('https://127.0.0.1:') or
-        origin.endswith('.brixenconsultants.com')
+        origin.endswith('.brixenconsultants.com') or
+        _is_workspace_origin(origin)
     )
 
     if is_allowed and origin:
