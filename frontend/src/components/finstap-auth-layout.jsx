@@ -1,52 +1,20 @@
-import { useEffect, useState } from "react"
 import { cn } from "cn"
 import { FinstapLogo, FINSTAP_GRADIENT } from "@/components/finstap-brand"
-
-// Messages that rotate on the brand panel (the dots underneath switch them)
-const SLIDES = [
-  { title: "Your whole practice in one place", text: "Clients, companies and directors together in an easy dashboard." },
-  { title: "Orders that track themselves", text: "Invoices, payments and progress updates without the paperwork." },
-  { title: "Never miss a deadline", text: "Companies House accounts and confirmation statements on time, every time." },
-]
+import authIllustration from "@/assets/finstap-auth-illustration.png"
 
 function BrandPanel() {
-  const [active, setActive] = useState(0)
-
-  useEffect(() => {
-    const timer = setInterval(() => setActive((i) => (i + 1) % SLIDES.length), 6000)
-    return () => clearInterval(timer)
-  }, [active])
-
-  const slide = SLIDES[active]
   return (
-    <div className={cn("relative flex w-full flex-col overflow-hidden p-6 lg:p-10", FINSTAP_GRADIENT)}>
-      {/* Soft light shapes behind the glass card */}
+    <div className={cn("relative flex w-full items-center justify-center overflow-hidden p-6 lg:p-10", FINSTAP_GRADIENT)}>
+      {/* Soft light shapes behind the card */}
       <span aria-hidden className="pointer-events-none absolute -top-24 -right-16 size-80 rounded-full bg-white/15 blur-3xl" />
       <span aria-hidden className="pointer-events-none absolute -bottom-28 -left-20 size-96 rounded-full bg-[#297bff]/40 blur-3xl" />
 
-      <div className="relative flex flex-1 flex-col rounded-[2rem] border border-white/25 bg-white/10 p-8 shadow-2xl shadow-indigo-950/20 backdrop-blur-md lg:p-10">
-        {/* Space kept for the illustration */}
-        <div className="min-h-64 flex-1" data-slot="auth-illustration" />
-
-        <div className="text-white">
-          <h2 className="text-2xl font-bold tracking-tight lg:text-3xl">{slide.title}</h2>
-          <p className="mt-2 max-w-md text-white/80">{slide.text}</p>
-          <div className="mt-6 flex items-center gap-2">
-            {SLIDES.map((s, i) => (
-              <button
-                key={s.title}
-                type="button"
-                aria-label={`Show message ${i + 1}`}
-                onClick={() => setActive(i)}
-                className={cn(
-                  "h-2 rounded-full transition-all",
-                  i === active ? "w-8 bg-white" : "w-2 bg-white/50 hover:bg-white/75"
-                )}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* The illustration card carries its own heading and dots */}
+      <img
+        src={authIllustration}
+        alt="Accounting made simple: track your numbers with confidence"
+        className="relative max-h-full w-auto max-w-full object-contain drop-shadow-2xl"
+      />
     </div>
   )
 }
