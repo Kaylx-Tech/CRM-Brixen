@@ -115,13 +115,7 @@ def compose_client_email(*, subject, headline, greeting, message, points=None, d
         f'{html_escape(message).replace(chr(10), "<br>")}</p>'
         f'{points_html}{details_html}{cta_html}'
     )
-    hero = (
-        f'<tr><td style="padding:24px 24px 8px;background:#ffffff;">'
-        f'<p style="margin:0;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#003971;font-weight:700;">'
-        f'{html_escape(brand.get("company_name") or "Brixen Consultants")}</p>'
-        f'<h1 style="margin:8px 0 0;font-size:22px;line-height:1.3;color:#111827;">{html_escape(headline)}</h1>'
-        f'</td></tr>'
-    )
+    hero = eng.email_brand_header_html(brand, headline)
     html = eng.build_transactional_shell_html(
         subject=subject,
         head_html=f'<head><meta charset="utf-8"><title>{html_escape(subject)}</title></head>',
