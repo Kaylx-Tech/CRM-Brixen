@@ -13,7 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { SectionCards } from '@/Layout/StatsCard'
-import { IconRefresh, IconLoader2, IconPlayerPlay, IconCircleCheck, IconBolt } from '@tabler/icons-react'
+import { IconRefresh, IconLoader2, IconBolt } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { apiRequest } from '@/lib/api'
 import { getCurrentUser, isManagerOrAbove } from '@/lib/permissions'
@@ -25,17 +25,16 @@ function gradeBadgeClass(grade) {
   return 'badge-red'
 }
 
-function priorityBadgeClass(priority) {
-  if (priority === 'Urgent') return 'badge-red'
-  if (priority === 'High') return 'badge-amber'
-  if (priority === 'Low') return 'bg-muted text-muted-foreground'
-  return 'badge-purple'
+function isOverdue(order) {
+  if (!order.expected_date || order.status === 'Completed') return false
+  const due = new Date(String(order.expected_date).slice(0, 10) + 'T23:59:59')
+  return !Number.isNaN(due.getTime()) && due < new Date()
 }
 
-function isOverdue(task) {
-  if (!task.due_date || task.status === 'Completed') return false
-  const due = new Date(String(task.due_date).slice(0, 10) + 'T23:59:59')
-  return !Number.isNaN(due.getTime()) && due < new Date()
+function statusBadgeClass(status) {
+  if (status === 'Processing' || status === 'In Progress') return 'badge-sky'
+  if (status === 'Documents Required' || status === 'Information Required') return 'badge-red'
+  return 'badge-amber'
 }
 
 function departmentLabel(value) {
@@ -49,12 +48,11 @@ function departmentLabel(value) {
   }
 }
 
-/** The signed-in member's own work: grade, task counts and active tasks (old portal "Performance"). */
+/** The signed-in member's own work from their orders: grade, order counts and orders still to finish. */
 export function MyPerformance() {
   const navigate = useNavigate()
   const [data, setData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [updatingId, setUpdatingId] = useState(null)
 
   const load = useCallback(async () => {
     setIsLoading(true)
@@ -71,37 +69,14 @@ export function MyPerformance() {
     load()
   }, [load])
 
-  const setStatus = async (task, status) => {
-    setUpdatingId(task.id)
-    try {
-      const res = await apiRequest(`/tasks/${task.id}`, {
-        method: 'PATCH',
-        body: { status },
-        label: 'Update task',
-        silent: true,
-      })
-      if (!res.ok) {
-        toast.error(res.reason || 'Could not update the task')
-        return
-      }
-      toast.success(status === 'Completed' ? 'Task completed' : 'Task started')
-      load()
-    } finally {
-      setUpdatingId(null)
-    }
-  }
-
   const m = data?.metrics || {}
-  const tasks = data?.my_tasks || []
+  const orders = data?.my_orders || []
   const stats = [
-    { title: 'Incentive grade', hero: true, value: m.grade ? `Grade ${m.grade}` : '—', footerSubText: m.grade_label || 'This month' },
-    { title: 'Open', value: String(m.open_count ?? 0), footerSubText: 'Waiting to start' },
-    { title: 'In progress', value: String(m.in_progress_count ?? 0), footerSubText: 'Active work' },
-    {
-      title: 'Completed this month',
-      value: String(m.completed_count ?? 0),
-      footerSubText: `${m.sla_rate ?? 100}% on time`,
-    },
+    { title: 'Incentive grade', hero: true, value: m.grade ? `Grade ${m.grade}` : '—' },
+    { title: 'Orders this month', value: String(m.assigned_count ?? 0) },
+    { title: 'Pending', value: String(m.open_count ?? 0) },
+    { title: 'In progress', value: String(m.in_progress_count ?? 0) },
+    { title: 'Completed this month', value: String(m.completed_count ?? 0) },
   ]
 
   return (
@@ -114,7 +89,7 @@ export function MyPerformance() {
           <div className="text-sm">
             <p className="font-medium">{m.bonus_badge}</p>
             <p className="text-muted-foreground">
-              {m.completion_rate ?? 0}% of this month's tasks completed · {m.sla_rate ?? 100}% on time
+              {m.completion_rate ?? 0}% of this month's orders completed · {m.sla_rate ?? 100}% on time
               {m.overdue_count ? ` · ${m.overdue_count} overdue` : ''}
             </p>
           </div>
@@ -124,8 +99,8 @@ export function MyPerformance() {
       <div className="rounded-2xl border bg-card">
         <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
           <div>
-            <h3 className="font-semibold">My tasks</h3>
-            <p className="text-sm text-muted-foreground">Open and in-progress work assigned to you</p>
+            <h3 className="font-semibold">My orders</h3>
+            <p className="text-sm text-muted-foreground">Orders assigned to you (or added by you) still to finish</p>
           </div>
           <Button variant="outline" size="sm" onClick={load} disabled={isLoading}>
             <IconRefresh className={`size-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -134,57 +109,42 @@ export function MyPerformance() {
         </div>
         {isLoading && !data ? (
           <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-            <IconLoader2 className="size-4 animate-spin" /> Loading your tasks…
+            <IconLoader2 className="size-4 animate-spin" /> Loading your orders…
           </div>
-        ) : tasks.length === 0 ? (
-          <p className="py-12 text-center text-sm font-medium text-emerald-600">All caught up, no open tasks.</p>
+        ) : orders.length === 0 ? (
+          <p className="py-12 text-center text-sm font-medium text-emerald-600">All caught up, no orders to finish.</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Task</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Due</TableHead>
+                <TableHead>Order</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Product</TableHead>
+                <TableHead>Expected</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tasks.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell className="max-w-72">
-                    <button
-                      type="button"
-                      className="block max-w-full cursor-pointer truncate text-left font-medium hover:underline"
-                      onClick={() => navigate('/admin/tasks')}
-                      title={t.title}
-                    >
-                      {t.title}
-                    </button>
-                    {t.company_name ? <span className="block truncate text-xs text-muted-foreground">{t.company_name}</span> : null}
+              {orders.map((o) => (
+                <TableRow key={o.id}>
+                  <TableCell className="font-medium tabular-nums">{o.order_number || `#${o.id}`}</TableCell>
+                  <TableCell className="max-w-56">
+                    <span className="block truncate">{o.client_name || '—'}</span>
+                    {o.company_name ? <span className="block truncate text-xs text-muted-foreground">{o.company_name}</span> : null}
                   </TableCell>
-                  <TableCell><Badge className={priorityBadgeClass(t.priority)}>{t.priority || 'Medium'}</Badge></TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{t.department || 'General'}</TableCell>
-                  <TableCell className={`text-sm ${isOverdue(t) ? 'font-semibold text-destructive' : 'text-muted-foreground'}`}>
-                    {t.due_date ? String(t.due_date).slice(0, 10) : '—'}
-                    {isOverdue(t) ? ' · overdue' : ''}
+                  <TableCell className="max-w-56 truncate text-sm text-muted-foreground" title={o.products_summary}>
+                    {o.products_summary || o.service_name || '—'}
                   </TableCell>
-                  <TableCell>
-                    <Badge className={t.status === 'In Progress' ? 'badge-sky' : 'badge-amber'}>{t.status}</Badge>
+                  <TableCell className={`text-sm ${isOverdue(o) ? 'font-semibold text-destructive' : 'text-muted-foreground'}`}>
+                    {o.expected_date ? String(o.expected_date).slice(0, 10) : '—'}
+                    {isOverdue(o) ? ' · overdue' : ''}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-1.5">
-                      {t.status !== 'In Progress' ? (
-                        <Button variant="outline" size="sm" disabled={updatingId === t.id} onClick={() => setStatus(t, 'In Progress')}>
-                          <IconPlayerPlay className="size-3.5" /> Start
-                        </Button>
-                      ) : null}
-                      <Button size="sm" disabled={updatingId === t.id} onClick={() => setStatus(t, 'Completed')}>
-                        {updatingId === t.id ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconCircleCheck className="size-3.5" />}
-                        Complete
-                      </Button>
-                    </div>
+                  <TableCell><Badge className={statusBadgeClass(o.status)}>{o.status}</Badge></TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="outline" size="sm" onClick={() => navigate(`/admin/orders?open=${o.id}`)}>
+                      Open
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -248,7 +208,7 @@ function TeamIncentives() {
               <TableHead>Rank</TableHead>
               <TableHead>Team member</TableHead>
               <TableHead>Department</TableHead>
-              <TableHead className="text-right">Assigned</TableHead>
+              <TableHead className="text-right">Orders</TableHead>
               <TableHead className="text-right">Completed</TableHead>
               <TableHead className="text-right">On time</TableHead>
               <TableHead className="text-right">Overdue</TableHead>
@@ -293,7 +253,7 @@ export function StaffDashboard() {
     <div className="flex flex-col gap-6 w-full pb-10">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">{firstName ? `Welcome, ${firstName}` : 'My Dashboard'}</h2>
-        <p className="text-sm text-muted-foreground mt-1">Your tasks and this month's performance</p>
+        <p className="text-sm text-muted-foreground mt-1">Your orders and this month's performance</p>
       </div>
       <MyPerformance />
     </div>
@@ -307,7 +267,7 @@ export default function Performance() {
     <div className="flex flex-col gap-6 w-full pb-10">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Performance</h2>
-        <p className="text-sm text-muted-foreground mt-1">Task progress, on-time rate and incentive grades</p>
+        <p className="text-sm text-muted-foreground mt-1">Orders completed, on-time rate and incentive grades</p>
       </div>
       {canSeeTeam ? (
         <Tabs value={tab} onValueChange={setTab}>

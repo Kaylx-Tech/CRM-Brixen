@@ -10,6 +10,7 @@ import {
   FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Link, useNavigate } from "react-router-dom"
 import { useState } from "react"
 import { Alert, AlertDescription } from "./ui/alert"
@@ -142,9 +143,9 @@ export function LoginForm({ className, ...props }) {
                   Forgot your password?
                 </Link>
               </div>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
+                autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

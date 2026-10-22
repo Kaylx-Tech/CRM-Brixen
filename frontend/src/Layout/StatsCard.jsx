@@ -5,7 +5,6 @@ import {
   Card,
   CardAction,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -106,8 +105,6 @@ export function StatCard({
   value,
   trendValue,
   trendDirection = "up",
-  footerText,
-  footerSubText,
   isLoading = false,
   compact = false,
   onClick,
@@ -213,29 +210,7 @@ export function StatCard({
           </CardAction>
         )}
       </CardHeader>
-      {(footerText || footerSubText || isLoading) && (
-        <CardFooter
-          className={cn(
-            "flex-col items-start",
-            compact ? "gap-0.5 pt-0 text-[11px]" : "gap-1.5 text-sm"
-          )}
-        >
-          {isLoading ? (
-            <Shimmer className="h-3 w-28" />
-          ) : (
-            <>
-              {footerText && (
-                <div className="line-clamp-1 flex gap-1.5 font-medium">
-                  {footerText} {!compact && <TrendIcon className="size-4" />}
-                </div>
-              )}
-              {footerSubText && (
-                <div className={cn("line-clamp-1", hero ? "text-white/80" : "text-muted-foreground")}>{footerSubText}</div>
-              )}
-            </>
-          )}
-        </CardFooter>
-      )}
+      {/* No line of text under the number (footerText / footerSubText are ignored) */}
     </MotionCard>
   )
 }

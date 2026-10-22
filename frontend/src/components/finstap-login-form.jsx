@@ -5,6 +5,7 @@ import { AuthLayout } from "@/components/auth-layout"
 import { FINSTAP_CTA } from "@/components/finstap-auth-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
@@ -225,9 +226,8 @@ export function FinstapLoginForm() {
                 Forgot your password?
               </Link>
             </div>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               autoComplete="current-password"
               required
               value={password}

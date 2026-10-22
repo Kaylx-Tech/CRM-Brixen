@@ -48,20 +48,31 @@ def _count(sql, params):
     return int((query_db(sql, params, one=True) or {}).get('c') or 0)
 
 
+# Performance is worked out from orders: an order counts for the team member it is assigned to, or (not
+# assigned) the member who added it. Completed on time = completed by the order's expected date.
+ORDER_OWNER_SQL = "COALESCE(o.assigned_staff_id, o.created_by_id)"
+ORDER_LIVE_SQL = "COALESCE(o.is_draft, 0) = 0 AND o.status NOT IN ('Cancelled', 'Refunded')"
+ORDER_DONE_AT_SQL = "COALESCE(o.completed_at, o.updated_at, o.created_at)"
+ORDER_WAITING_STATUSES = ('Pending', 'Pending Verification', 'Information Required', 'Documents Required',
+                          'Submitted', 'Draft')
+ORDER_WORKING_STATUSES = ('Processing', 'In Progress')
+
+
 def _staff_month_metrics(staff_id, month):
     """month is 'YYYY-MM'."""
-    assigned = _count("SELECT COUNT(*) c FROM tasks WHERE assigned_staff_id = ? AND strftime('%Y-%m', created_at) = ?;",
-                      (staff_id, month))
-    completed = _count("""SELECT COUNT(*) c FROM tasks WHERE assigned_staff_id = ? AND status = 'Completed'
-                          AND strftime('%Y-%m', completed_at) = ?;""", (staff_id, month))
-    on_time = _count("""SELECT COUNT(*) c FROM tasks WHERE assigned_staff_id = ? AND status = 'Completed'
-                        AND strftime('%Y-%m', completed_at) = ?
-                        AND (due_date IS NULL OR date(completed_at) <= date(due_date));""", (staff_id, month))
-    overdue = _count("""SELECT COUNT(*) c FROM tasks WHERE assigned_staff_id = ?
-                        AND status NOT IN ('Completed', 'Cancelled') AND due_date IS NOT NULL
-                        AND date(due_date) < date('now');""", (staff_id,))
-    open_c = _count("SELECT COUNT(*) c FROM tasks WHERE assigned_staff_id = ? AND status = 'Open';", (staff_id,))
-    in_prog = _count("SELECT COUNT(*) c FROM tasks WHERE assigned_staff_id = ? AND status = 'In Progress';", (staff_id,))
+    base = f"SELECT COUNT(*) c FROM orders o WHERE {ORDER_OWNER_SQL} = ? AND {ORDER_LIVE_SQL}"
+    assigned = _count(base + " AND strftime('%Y-%m', o.created_at) = ?;", (staff_id, month))
+    done_in_month = f" AND o.status = 'Completed' AND strftime('%Y-%m', {ORDER_DONE_AT_SQL}) = ?"
+    completed = _count(base + done_in_month + ";", (staff_id, month))
+    on_time = _count(base + done_in_month +
+                     f" AND (o.expected_date IS NULL OR date({ORDER_DONE_AT_SQL}) <= date(o.expected_date));",
+                     (staff_id, month))
+    overdue = _count(base + " AND o.status != 'Completed' AND o.expected_date IS NOT NULL"
+                     " AND date(o.expected_date) < date('now');", (staff_id,))
+    waiting = ', '.join('?' * len(ORDER_WAITING_STATUSES))
+    working = ', '.join('?' * len(ORDER_WORKING_STATUSES))
+    open_c = _count(base + f" AND o.status IN ({waiting});", (staff_id, *ORDER_WAITING_STATUSES))
+    in_prog = _count(base + f" AND o.status IN ({working});", (staff_id, *ORDER_WORKING_STATUSES))
     return {'assigned_count': assigned, 'completed_count': completed, 'on_time_count': on_time,
             'overdue_count': overdue, 'open_count': open_c, 'in_progress_count': in_prog,
             **calculate_incentive_grade(completed, assigned, on_time, overdue)}
@@ -90,20 +101,24 @@ def handle_task_routes(environ, start_response, path, method, user, body, query)
         month = datetime.date.today().strftime('%Y-%m')
         metrics = _staff_month_metrics(user_id, month)
         metrics['completed_all_time'] = _count(
-            "SELECT COUNT(*) c FROM tasks WHERE assigned_staff_id = ? AND status = 'Completed';", (user_id,))
-        rows = query_db("""
-            SELECT t.*, c.name AS company_name, creator.full_name AS creator_name
-            FROM tasks t
-            LEFT JOIN companies c ON t.company_id = c.id
-            LEFT JOIN users creator ON t.created_by_id = creator.id
-            WHERE t.assigned_staff_id = ? AND t.status NOT IN ('Completed', 'Cancelled')
-            ORDER BY CASE WHEN t.due_date IS NOT NULL AND date(t.due_date) < date('now') THEN 0 ELSE 1 END,
-                     CASE t.priority WHEN 'Urgent' THEN 0 WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 ELSE 3 END,
-                     t.due_date IS NULL, t.due_date ASC, t.created_at DESC
+            f"SELECT COUNT(*) c FROM orders o WHERE {ORDER_OWNER_SQL} = ? AND {ORDER_LIVE_SQL}"
+            " AND o.status = 'Completed';", (user_id,))
+        # Their orders still to finish: overdue first, then by expected date
+        rows = query_db(f"""
+            SELECT o.id, o.order_number, o.service_name, o.status, o.expected_date, o.created_at,
+                   u.full_name AS client_name, c.name AS company_name,
+                   COALESCE((SELECT GROUP_CONCAT(li.product_name, ', ') FROM order_line_items li
+                             WHERE li.order_id = o.id), o.service_name) AS products_summary
+            FROM orders o
+            LEFT JOIN users u ON o.user_id = u.id
+            LEFT JOIN companies c ON o.company_id = c.id
+            WHERE {ORDER_OWNER_SQL} = ? AND {ORDER_LIVE_SQL} AND o.status != 'Completed'
+            ORDER BY CASE WHEN o.expected_date IS NOT NULL AND date(o.expected_date) < date('now') THEN 0 ELSE 1 END,
+                     o.expected_date IS NULL, o.expected_date ASC, o.created_at DESC
             LIMIT 50;
         """, (user_id,)) or []
         return success_response(start_response, data={
-            "month": month, "metrics": metrics, "my_tasks": [dict(r) for r in rows]})
+            "month": month, "metrics": metrics, "my_orders": [dict(r) for r in rows]})
 
     # ── GET /api/tasks/incentives-report (team leaderboard: admin + manager) ──
     if path == '/api/tasks/incentives-report' and method == 'GET':
