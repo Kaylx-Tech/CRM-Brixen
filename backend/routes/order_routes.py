@@ -353,11 +353,13 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
 
         row = query_db("""
             SELECT o.*, o.total as amount, u.full_name as client_name, u.email as client_email, u.phone as client_phone,
-                   c.name as company_name, c.company_number, cb.full_name as created_by_name
+                   c.name as company_name, c.company_number, cb.full_name as created_by_name,
+                   u.is_b2b as client_is_b2b, u.client_type as client_type, asg.full_name as assigned_staff_name
             FROM orders o
             LEFT JOIN users u ON o.user_id = u.id
             LEFT JOIN companies c ON o.company_id = c.id
             LEFT JOIN users cb ON o.created_by_id = cb.id
+            LEFT JOIN users asg ON o.assigned_staff_id = asg.id
             WHERE o.id = ?
             LIMIT 1;
         """, (order_id,), one=True)
@@ -598,6 +600,22 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         if 'notes' in body:
             updates.append("notes = ?")
             params.append(body['notes'])
+        # Who works on the order (Performance counts it for them); admins and managers choose
+        if 'assigned_staff_id' in body:
+            if user_role not in ('SUPER_ADMIN', 'ADMIN', 'MANAGER'):
+                return error_response(start_response, "Only admins and managers can assign orders", status_code=403)
+            assignee = body.get('assigned_staff_id')
+            if assignee in (None, '', 0, '0'):
+                updates.append("assigned_staff_id = NULL")
+            else:
+                member = query_db("""
+                    SELECT id FROM users WHERE id = ? AND role IN ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
+                      AND status = 'Active' AND removed_at IS NULL LIMIT 1;
+                """, (assignee,), one=True)
+                if not member:
+                    return error_response(start_response, "Choose an active team member", status_code=400)
+                updates.append("assigned_staff_id = ?")
+                params.append(int(member['id']))
         if 'access_email' in body:
             updates.append("access_email = ?")
             params.append(body['access_email'])

@@ -161,7 +161,8 @@ export default function Payments() {
   const [selectedMonth, setSelectedMonth] = useState(CURRENT_MONTH)
   const [revenueFilter, setRevenueFilter] = useState('all')
   const [costInputs, setCostInputs] = useState({})
-  const [isSavingCost, setIsSavingCost] = useState(false)
+  // The order whose cost is being saved (only that row's box waits)
+  const [savingCostId, setSavingCostId] = useState(null)
 
   const fetchInvoices = useCallback(async () => {
     setIsLoadingInvoices(true)
@@ -550,18 +551,27 @@ export default function Payments() {
   }
 
   const handleSaveCost = async (orderId, raw) => {
-    const costVal = parseMoney(raw)
     const current = orders.find((o) => o.id === orderId)
     const currentCost = current
       ? (Number.isFinite(Number(current.resolved_cost)) ? Number(current.resolved_cost) : parseMoney(current.cost_price))
       : null
-    if (currentCost != null && Math.abs(currentCost - costVal) < 0.001) return
-    setIsSavingCost(true)
+    const text = String(raw ?? '').trim()
+    const costVal = parseMoney(text)
+    if (text !== '' && (!Number.isFinite(Number(text.replace(/[£,\s]/g, ''))) || costVal < 0)) {
+      toast.error('Enter a cost of 0 or more, e.g. 25.50')
+      setCostInputs((prev) => ({ ...prev, [orderId]: (currentCost ?? 0).toFixed(2) }))
+      return
+    }
+    if (currentCost != null && Math.abs(currentCost - costVal) < 0.001) {
+      setCostInputs((prev) => ({ ...prev, [orderId]: costVal.toFixed(2) }))
+      return
+    }
+    setSavingCostId(orderId)
     const toastId = toastProcessing('Saving order cost…')
     try {
       const res = await apiRequest(`/orders/${orderId}`, {
         method: 'PUT',
-        body: JSON.stringify({ cost_price: costVal }),
+        body: { cost_price: costVal },
         label: 'Order cost',
         silent: true,
       })
@@ -572,7 +582,7 @@ export default function Payments() {
         toastFail(toastId, res.reason || 'Failed to save order cost')
       }
     } finally {
-      setIsSavingCost(false)
+      setSavingCostId(null)
     }
   }
 
@@ -718,20 +728,31 @@ export default function Payments() {
       cell: ({ row }) => {
         const o = row.original
         const val = costInputs[o.id] !== undefined ? costInputs[o.id] : o.cost.toFixed(2)
+        const saving = savingCostId === o.id
+        // Type the cost, then Enter or click away to save; Esc puts the saved cost back
         return (
-          <div className="inline-flex items-center gap-0.5">
-            <span className="text-muted-foreground text-[10px]">£</span>
+          <div className="relative w-28">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">£</span>
             <Input
-              type="number"
-              step="0.01"
-              min="0"
-              disabled={isSavingCost}
-              className="h-6 w-14 px-1 text-[11px] font-semibold text-center"
+              inputMode="decimal"
+              aria-label={`Cost for order ${o.order_number || o.id}`}
+              disabled={saving}
+              className="pl-6 pr-7 text-sm tabular-nums"
               value={val}
+              onFocus={(e) => e.currentTarget.select()}
               onChange={(e) => setCostInputs((prev) => ({ ...prev, [o.id]: e.target.value }))}
               onBlur={() => handleSaveCost(o.id, val)}
-              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur()
+                if (e.key === 'Escape') {
+                  setCostInputs((prev) => ({ ...prev, [o.id]: o.cost.toFixed(2) }))
+                  e.currentTarget.blur()
+                }
+              }}
             />
+            {saving ? (
+              <IconLoader2 className="absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />
+            ) : null}
           </div>
         )
       },
@@ -748,7 +769,7 @@ export default function Payments() {
       header: 'Source',
       cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.getValue('source')}</span>,
     }),
-  ], [costInputs, isSavingCost])
+  ], [costInputs, savingCostId, orders]) // orders: handleSaveCost compares with the latest saved cost
 
   const profitColumns = useMemo(() => [
     profitCol.accessor('name', {

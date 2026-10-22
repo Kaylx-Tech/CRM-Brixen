@@ -192,6 +192,8 @@ export default function Orders() {
   const [clientType, setClientType] = useState(() => (new URLSearchParams(window.location.search).get('b2b') ? 'B2B' : 'All'))
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  // A stat card's group of statuses (pending / in_progress / completed); the Status dropdown replaces it
+  const [statusGroup, setStatusGroup] = useState('all')
   const [productFilter, setProductFilter] = useState('all')
   const [companyFilter, setCompanyFilter] = useState('all')
   const [paymentFilter, setPaymentFilter] = useState('all')
@@ -202,8 +204,11 @@ export default function Orders() {
   const [cancelTarget, setCancelTarget] = useState(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [quickCrmOpen, setQuickCrmOpen] = useState(false)
-  const [selectedOrderId, setSelectedOrderId] = useState(null)
-  const [viewOrderOpen, setViewOrderOpen] = useState(false)
+  // Deep link from Performance: /admin/orders?open=<orderId> opens that order
+  const [selectedOrderId, setSelectedOrderId] = useState(
+    () => Number(new URLSearchParams(window.location.search).get('open')) || null,
+  )
+  const [viewOrderOpen, setViewOrderOpen] = useState(() => Boolean(selectedOrderId))
 
   const handleOpenOrder = useCallback((orderId) => {
     setSelectedOrderId(orderId)
@@ -217,6 +222,7 @@ export default function Orders() {
       const qs = new URLSearchParams({ page: String(page), limit: '25' })
       if (search.trim()) qs.set('search', search.trim())
       if (statusFilter !== 'all') qs.set('status', statusFilter)
+      else if (statusGroup !== 'all') qs.set('status_group', statusGroup)
       if (productFilter !== 'all') qs.set('product', productFilter)
       if (companyFilter !== 'all') qs.set('company_id', companyFilter)
       if (paymentFilter !== 'all') qs.set('payment_status', paymentFilter)
@@ -252,7 +258,7 @@ export default function Orders() {
     } finally {
       setIsLoading(false)
     }
-  }, [search, statusFilter, productFilter, companyFilter, paymentFilter, datePreset, addedByFilter, clientType, b2bClientId])
+  }, [search, statusFilter, statusGroup, productFilter, companyFilter, paymentFilter, datePreset, addedByFilter, clientType, b2bClientId])
 
   function applyPayload(data, page) {
     const list = data.orders || []
@@ -318,17 +324,21 @@ export default function Orders() {
     })
   }
 
-  const statCards = useMemo(() => [
-    { title: 'Total Orders', hero: true, value: String(stats.total_orders ?? 0), footerSubText: 'Matching filters' },
-    { title: 'Pending', value: String(stats.pending ?? 0), footerSubText: 'Pending / verification' },
-    { title: 'In Progress', value: String(stats.in_progress ?? 0), footerSubText: 'Processing + in progress' },
-    { title: 'Completed', value: String(stats.completed ?? 0), footerSubText: 'Finished orders' },
-    ...(showFinance ? [{
-      title: 'Total Revenue',
-      value: `£${Number(stats.revenue || 0).toFixed(2)}`,
-      footerSubText: 'Excluding cancelled',
-    }] : []),
-  ], [stats, showFinance])
+  // Clicking a card shows its orders (Total = every status); the Status dropdown is cleared
+  const pickGroup = useCallback((group) => {
+    setStatusFilter('all')
+    setStatusGroup(group)
+  }, [])
+
+  const statCards = useMemo(() => {
+    const current = statusFilter === 'all' ? statusGroup : null
+    return [
+      { title: 'Total Orders', hero: true, value: String(stats.total_orders ?? 0), group: 'all' },
+      { title: 'Pending', value: String(stats.pending ?? 0), group: 'pending' },
+      { title: 'In Progress', value: String(stats.in_progress ?? 0), group: 'in_progress' },
+      { title: 'Completed', value: String(stats.completed ?? 0), group: 'completed' },
+    ].map(({ group, ...card }) => ({ ...card, onClick: () => pickGroup(group), active: current === group }))
+  }, [stats, statusFilter, statusGroup, pickGroup])
 
   const columns = useMemo(() => [
     columnHelper.display({
@@ -403,8 +413,12 @@ export default function Orders() {
             />
           )
         }
+        // Not added by the team: the website, or a B2B customer in their own portal
+        const b2bPortal = !Number(o.from_website) && (Number(o.is_b2b) === 1 || o.client_type === 'B2B')
         return (
-          <span className="text-sm text-muted-foreground">{Number(o.from_website) ? 'Website' : '—'}</span>
+          <span className="text-sm text-muted-foreground">
+            {Number(o.from_website) ? 'Website' : b2bPortal ? 'B2B' : '—'}
+          </span>
         )
       },
     })] : []),
@@ -532,7 +546,10 @@ export default function Orders() {
       placeholder: 'Status',
       allLabel: 'All Statuses',
       value: statusFilter,
-      onValueChange: setStatusFilter,
+      onValueChange: (value) => {
+        setStatusFilter(value)
+        setStatusGroup('all')
+      },
       options: STATUS_OPTIONS.map((s) => ({ label: s, value: s })),
     },
     {
@@ -572,6 +589,7 @@ export default function Orders() {
       onValueChange: setAddedByFilter,
       options: [
         ...(facets.added_by || []).map((m) => ({ label: m.full_name || `#${m.id}`, value: String(m.id) })),
+        { label: 'B2B customer', value: 'b2b' },
         { label: 'Website / not recorded', value: 'website' },
       ],
     }] : []),
@@ -581,6 +599,7 @@ export default function Orders() {
   const clearFilters = () => {
     setSearch('')
     setStatusFilter('all')
+    setStatusGroup('all')
     setProductFilter('all')
     setCompanyFilter('all')
     setPaymentFilter('all')

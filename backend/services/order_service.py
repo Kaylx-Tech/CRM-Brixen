@@ -71,11 +71,16 @@ def build_admin_order_list(user, query):
         clauses.append("o.created_by_id = ?")
         params.append(user_id)
 
-    # Admins can filter by the team member who added the order ("website" = not added in the CRM)
+    # Admins can filter by the team member who added the order ("website" = not added in the CRM,
+    # "b2b" = placed by a B2B customer in their portal)
+    b2b_portal_sql = ("(o.created_by_id IS NULL AND COALESCE(o.woocommerce_order_id, '') = '' "
+                      "AND (COALESCE(u.is_b2b, 0) = 1 OR COALESCE(u.client_type, '') = 'B2B'))")
     created_by = _qs_first(query, 'created_by')
     if created_by and not own_only:
         if created_by == 'website':
-            clauses.append("o.created_by_id IS NULL")
+            clauses.append(f"o.created_by_id IS NULL AND NOT {b2b_portal_sql}")
+        elif created_by == 'b2b':
+            clauses.append(b2b_portal_sql)
         else:
             try:
                 clauses.append("o.created_by_id = ?")
@@ -117,17 +122,18 @@ def build_admin_order_list(user, query):
     elif client_type in ('Normal', 'Customer', 'Individual'):
         clauses.append("(COALESCE(u.is_b2b, 0) = 0 AND (u.client_type IS NULL OR u.client_type IN ('', 'Normal', 'Customer', 'Individual')))")
 
+    # The status filter is added last: the stat cards count every status within the other filters
     status_filter = _qs_first(query, 'status')
     status_group = _qs_first(query, 'status_group')
+    status_clause, status_params = None, []
     if status_filter and status_filter not in ('all', 'All'):
-        clauses.append("o.status = ?")
-        params.append(status_filter)
+        status_clause, status_params = "o.status = ?", [status_filter]
     elif status_group == 'pending':
-        clauses.append("o.status IN ('Pending', 'Pending Verification')")
+        status_clause = "o.status IN ('Pending', 'Pending Verification')"
     elif status_group == 'in_progress':
-        clauses.append("o.status IN ('Processing', 'In Progress')")
+        status_clause = "o.status IN ('Processing', 'In Progress')"
     elif status_group == 'completed':
-        clauses.append("o.status = 'Completed'")
+        status_clause = "o.status = 'Completed'"
 
     product = _qs_first(query, 'product')
     if product:
@@ -156,6 +162,11 @@ def build_admin_order_list(user, query):
         clauses.append("date(o.created_at) <= date(?)")
         params.append(date_to)
 
+    stats_where_sql = (" WHERE " + " AND ".join(clauses)) if clauses else ""
+    stats_params = list(params)
+    if status_clause:
+        clauses.append(status_clause)
+        params.extend(status_params)
     where_sql = (" WHERE " + " AND ".join(clauses)) if clauses else ""
     from_sql = """
         FROM orders o
@@ -185,7 +196,7 @@ def build_admin_order_list(user, query):
             SUM(CASE WHEN o.status IN ('Processing', 'In Progress') THEN 1 ELSE 0 END) as in_progress,
             SUM(CASE WHEN o.status = 'Completed' THEN 1 ELSE 0 END) as completed,
             COALESCE(SUM(CASE WHEN o.status != 'Cancelled' THEN o.total ELSE 0 END), 0) as revenue
-    """ + from_sql + where_sql, params, one=True) or {}
+    """ + from_sql + stats_where_sql, stats_params, one=True) or {}
 
     rows = query_db("""
         SELECT o.id, o.order_number, o.user_id, o.company_id, o.service_id, o.service_name,

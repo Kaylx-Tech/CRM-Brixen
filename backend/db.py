@@ -323,6 +323,19 @@ def ensure_schema():
         conn.execute("ALTER TABLE orders ADD COLUMN portfolio_hidden INTEGER NOT NULL DEFAULT 0")
     if 'cost_price' not in order_cols:
         conn.execute("ALTER TABLE orders ADD COLUMN cost_price REAL")
+    # When an order was completed (Performance: completed on time = by its expected date). The trigger
+    # catches every way the status changes; orders completed before this keep their last update time.
+    if 'completed_at' not in order_cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN completed_at TIMESTAMP")
+        conn.execute("UPDATE orders SET completed_at = COALESCE(updated_at, created_at) WHERE status = 'Completed';")
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS trg_orders_completed_at AFTER UPDATE OF status ON orders
+        WHEN NEW.status IS NOT OLD.status
+        BEGIN
+            UPDATE orders SET completed_at = CASE WHEN NEW.status = 'Completed' THEN CURRENT_TIMESTAMP END
+            WHERE id = NEW.id;
+        END;
+    """)
     service_cols = {row[1] for row in conn.execute("PRAGMA table_info(services)").fetchall()}
     if 'woocommerce_product_id' not in service_cols:
         conn.execute("ALTER TABLE services ADD COLUMN woocommerce_product_id TEXT")

@@ -25,7 +25,9 @@ import {
   IconChevronRight,
 } from '@tabler/icons-react'
 
-const PAGE_SIZE = 9
+// Companies per page (dropdown under the grid); skeleton cards while loading
+const PAGE_SIZES = [25, 50, 75, 100]
+const SKELETON_COUNT = 9
 
 // Not registered yet: no real Companies House number (REG- / PENDING placeholder), whatever its status says
 const isNotRegistered = (c) => c.isRegistered === false || c.status === 'Pending' || c.status === 'Draft'
@@ -34,6 +36,7 @@ import CompanyCard from './CompanyCard'
 import AddCompany from './AddCompany'
 import ImportWebfilingModal from './ImportWebfilingModal'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { toastUndoableDelete } from '@/lib/toastActions'
 import { Card, CardContent } from '@/components/ui/card'
@@ -175,16 +178,17 @@ const Companies = () => {
     return true
   })
 
-  // Pages of 9 (3 x 3); a new search or tab starts again on page 1
-  const filterKey = `${activeTab}|${searchTerm}`
+  // A new search, tab or page size starts again on page 1
+  const [pageSize, setPageSize] = useState(PAGE_SIZES[0])
+  const filterKey = `${activeTab}|${searchTerm}|${pageSize}`
   const [pageInfo, setPageInfo] = useState({ key: filterKey, page: 1 })
-  const totalPages = Math.max(1, Math.ceil(filteredCompanies.length / PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil(filteredCompanies.length / pageSize))
   const currentPage = Math.min(pageInfo.key === filterKey ? pageInfo.page : 1, totalPages)
   const setPage = (p) => {
     setPageInfo({ key: filterKey, page: p })
     document.querySelector('main')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
   }
-  const pageCompanies = filteredCompanies.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+  const pageCompanies = filteredCompanies.slice((currentPage - 1) * pageSize, currentPage * pageSize)
   // 1 … 4 5 6 … 18
   const pageNumbers = []
   for (let p = 1; p <= totalPages; p++) {
@@ -414,7 +418,7 @@ const Companies = () => {
       {/* Grid / Skeletons */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pb-8">
-          {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+          {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
             <Skeleton key={i} className="w-full h-[150px] rounded-xl" />
           ))}
         </div>
@@ -463,14 +467,26 @@ const Companies = () => {
           ))}
         </div>
 
-        {/* 9 companies a page */}
-        {totalPages > 1 && (
+        {/* Companies per page (25 / 50 / 75 / 100) and the page buttons */}
+        {filteredCompanies.length > 0 && (
           <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
-            <p className="text-sm text-muted-foreground">
-              {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredCompanies.length)} of{' '}
-              {filteredCompanies.length} companies
-            </p>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span>
+                {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filteredCompanies.length)} of{' '}
+                {filteredCompanies.length} companies
+              </span>
+              <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                <SelectTrigger className="w-auto gap-1" aria-label="Companies per page">
+                  <SelectValue>{`${pageSize} per page`}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZES.map((n) => (
+                    <SelectItem key={n} value={String(n)}>{n} per page</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {totalPages > 1 && <div className="flex items-center gap-1">
               <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>
                 <IconChevronLeft className="h-4 w-4" />
                 Previous
@@ -494,7 +510,7 @@ const Companies = () => {
                 Next
                 <IconChevronRight className="h-4 w-4" />
               </Button>
-            </div>
+            </div>}
           </div>
         )}
         </div>

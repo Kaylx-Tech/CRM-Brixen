@@ -22,7 +22,8 @@ TICKET_PRIORITIES = ('Low', 'Medium', 'High', 'Urgent')
 DOC_PUBLIC_FIELDS = ('id', 'name', 'category', 'file_type', 'file_size', 'status', 'created_at',
                      'company_id', 'order_id', 'company_name', 'order_number', 'drive_web_link')
 ORDER_PRIVATE_FIELDS = ('notes', 'cost_price', 'catalog_cost', 'manual_cost', 'resolved_cost', 'cost_source',
-                        'profit', 'woocommerce_order_id', 'assigned_staff_id', 'data_locked', 'access_email_password',
+                        'profit', 'woocommerce_order_id', 'assigned_staff_id', 'assigned_staff_name',
+                        'data_locked', 'access_email_password',
                         'checkout_form_json', 'website_checkout_pulled_at', 'website_phone_checked_at',
                         'portfolio_hidden', 'b2b_client_id')
 COMPANY_FIELDS = ('id', 'name', 'company_number', 'status', 'inc_date', 'director', 'reg_office', 'package',

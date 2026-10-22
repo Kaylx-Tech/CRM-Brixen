@@ -60,6 +60,7 @@ import PromptDialog from '@/components/PromptDialog'
 import DocumentPreview from '@/components/DocumentPreview'
 import { downloadDocument } from '@/lib/documents'
 import { openInvoice, downloadInvoice } from '@/lib/invoices'
+import { isManagerOrAbove } from '@/lib/permissions'
 
 const PAYMENT_MODES = [
   { value: 'PKR(Bank Transfer)', label: 'PKR (Bank Transfer)' },
@@ -321,6 +322,34 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
     setCopiedKey(key)
     toast.success('Copied to clipboard')
     setTimeout(() => setCopiedKey(null), 2000)
+  }
+
+  // Assigned to: the team member who works on the order (Performance counts it for them)
+  const canAssign = isManagerOrAbove()
+  const [team, setTeam] = useState([])
+  useEffect(() => {
+    if (!isOpen || !canAssign || team.length) return
+    apiRequest('/admin/staff', { label: 'Team', silent: true }).then((res) => {
+      if (res.ok) setTeam((res.data?.data?.staff || []).filter((s) => s.status !== 'Inactive'))
+    })
+  }, [isOpen, canAssign, team.length])
+
+  const handleAssign = async (value) => {
+    const assigned = value === 'none' ? null : Number(value)
+    if ((order?.assigned_staff_id || null) === assigned) return
+    const res = await apiRequest(`/admin/orders/${orderId}`, {
+      method: 'PATCH',
+      body: { assigned_staff_id: assigned },
+      label: 'Assign order',
+      silent: true,
+    })
+    if (res.ok) {
+      const member = team.find((s) => s.id === assigned)
+      setOrder((prev) => ({ ...prev, assigned_staff_id: assigned, assigned_staff_name: member?.full_name || null }))
+      toast.success(member ? `Assigned to ${member.full_name}` : 'Order unassigned')
+    } else {
+      toast.error(res.reason || 'Could not assign the order')
+    }
   }
 
   // Fetch single order details
@@ -741,6 +770,35 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                     <>
                       <span>•</span>
                       <span>Added by <span className="font-medium text-foreground">{order.created_by_name}</span></span>
+                    </>
+                  ) : order && !order.woocommerce_order_id && (Number(order.client_is_b2b) === 1 || order.client_type === 'B2B') ? (
+                    <>
+                      <span>•</span>
+                      <span>Added by <span className="font-medium text-foreground">B2B</span></span>
+                    </>
+                  ) : null}
+                  {canAssign && order ? (
+                    <>
+                      <span>•</span>
+                      <span className="flex items-center gap-1.5">
+                        Assigned to
+                        <Select value={order.assigned_staff_id ? String(order.assigned_staff_id) : 'none'} onValueChange={handleAssign}>
+                          <SelectTrigger className="w-auto gap-1 text-foreground" aria-label="Assigned to">
+                            <SelectValue>{order.assigned_staff_name || 'Nobody'}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nobody</SelectItem>
+                            {team.map((s) => (
+                              <SelectItem key={s.id} value={String(s.id)}>{s.full_name || s.email}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </span>
+                    </>
+                  ) : order?.assigned_staff_name ? (
+                    <>
+                      <span>•</span>
+                      <span>Assigned to <span className="font-medium text-foreground">{order.assigned_staff_name}</span></span>
                     </>
                   ) : null}
                 </DialogDescription>
