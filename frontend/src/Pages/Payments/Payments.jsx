@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -50,6 +50,55 @@ function parseMoney(value) {
   if (typeof value === 'number' && Number.isFinite(value)) return value
   if (value == null || value === '') return 0
   return parseFloat(String(value).replace(/[^0-9.-]+/g, '')) || 0
+}
+
+/**
+ * Order cost box on the Revenue tab. It keeps what is being typed itself, so the table does not redraw
+ * (and drop the focus) on every key. Enter or clicking away saves; Esc puts the saved cost back.
+ * onSave(raw) resolves to the cost to show afterwards.
+ */
+function CostCell({ order, saving, onSave }) {
+  const saved = order.cost.toFixed(2)
+  const [draft, setDraft] = useState(saved)
+  const [prevSaved, setPrevSaved] = useState(saved)
+  if (saved !== prevSaved) {
+    // A refreshed list brought a new saved cost
+    setPrevSaved(saved)
+    setDraft(saved)
+  }
+  const cancelled = useRef(false)
+  return (
+    <div className="relative w-28">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">£</span>
+      <Input
+        inputMode="decimal"
+        aria-label={`Cost for order ${order.order_number || order.id}`}
+        disabled={saving}
+        className="pl-6 pr-7 text-sm tabular-nums"
+        value={draft}
+        onFocus={(e) => e.currentTarget.select()}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={async () => {
+          if (cancelled.current) {
+            cancelled.current = false
+            setDraft(saved)
+            return
+          }
+          setDraft(await onSave(draft))
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur()
+          if (e.key === 'Escape') {
+            cancelled.current = true
+            e.currentTarget.blur()
+          }
+        }}
+      />
+      {saving ? (
+        <IconLoader2 className="absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />
+      ) : null}
+    </div>
+  )
 }
 
 function truncateWords(text, maxWords = 4) {
@@ -160,7 +209,6 @@ export default function Payments() {
   // One month picker for both tabs (next to Refresh); opens on the current month
   const [selectedMonth, setSelectedMonth] = useState(CURRENT_MONTH)
   const [revenueFilter, setRevenueFilter] = useState('all')
-  const [costInputs, setCostInputs] = useState({})
   // The order whose cost is being saved (only that row's box waits)
   const [savingCostId, setSavingCostId] = useState(null)
 
@@ -202,14 +250,6 @@ export default function Payments() {
       const list = (res.data?.data?.orders || res.data?.orders || [])
         .filter((o) => !['Cancelled', 'Refunded'].includes(String(o.status || '')))
       setOrders(list)
-      const inputs = {}
-      list.forEach((o) => {
-        const cost = Number.isFinite(Number(o.resolved_cost))
-          ? Number(o.resolved_cost)
-          : parseMoney(o.cost_price)
-        inputs[o.id] = cost.toFixed(2)
-      })
-      setCostInputs(inputs)
     } catch (err) {
       setOrders([])
       setOrdersError(err?.message || 'Unexpected error')
@@ -550,22 +590,19 @@ export default function Payments() {
     }
   }
 
+  // Saves one order's cost; resolves to the cost the box shows afterwards (the old one if not saved)
   const handleSaveCost = async (orderId, raw) => {
     const current = orders.find((o) => o.id === orderId)
     const currentCost = current
       ? (Number.isFinite(Number(current.resolved_cost)) ? Number(current.resolved_cost) : parseMoney(current.cost_price))
-      : null
+      : 0
     const text = String(raw ?? '').trim()
     const costVal = parseMoney(text)
     if (text !== '' && (!Number.isFinite(Number(text.replace(/[£,\s]/g, ''))) || costVal < 0)) {
       toast.error('Enter a cost of 0 or more, e.g. 25.50')
-      setCostInputs((prev) => ({ ...prev, [orderId]: (currentCost ?? 0).toFixed(2) }))
-      return
+      return currentCost.toFixed(2)
     }
-    if (currentCost != null && Math.abs(currentCost - costVal) < 0.001) {
-      setCostInputs((prev) => ({ ...prev, [orderId]: costVal.toFixed(2) }))
-      return
-    }
+    if (Math.abs(currentCost - costVal) < 0.001) return costVal.toFixed(2)
     setSavingCostId(orderId)
     const toastId = toastProcessing('Saving order cost…')
     try {
@@ -578,13 +615,19 @@ export default function Payments() {
       if (res.ok) {
         toastDone(toastId, `Order cost saved: £${costVal.toFixed(2)}`)
         fetchOrders()
-      } else {
-        toastFail(toastId, res.reason || 'Failed to save order cost')
+        return costVal.toFixed(2)
       }
+      toastFail(toastId, res.reason || 'Failed to save order cost')
+      return currentCost.toFixed(2)
     } finally {
       setSavingCostId(null)
     }
   }
+  // The cost column stays the same between renders (so its boxes keep focus); it calls the latest save
+  const saveCostRef = useRef(handleSaveCost)
+  useEffect(() => {
+    saveCostRef.current = handleSaveCost
+  })
 
   const invoiceColumns = useMemo(() => [
     invoiceCol.accessor('invoice_number', {
@@ -725,37 +768,13 @@ export default function Payments() {
     costCol.display({
       id: 'cost',
       header: 'Cost',
-      cell: ({ row }) => {
-        const o = row.original
-        const val = costInputs[o.id] !== undefined ? costInputs[o.id] : o.cost.toFixed(2)
-        const saving = savingCostId === o.id
-        // Type the cost, then Enter or click away to save; Esc puts the saved cost back
-        return (
-          <div className="relative w-28">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">£</span>
-            <Input
-              inputMode="decimal"
-              aria-label={`Cost for order ${o.order_number || o.id}`}
-              disabled={saving}
-              className="pl-6 pr-7 text-sm tabular-nums"
-              value={val}
-              onFocus={(e) => e.currentTarget.select()}
-              onChange={(e) => setCostInputs((prev) => ({ ...prev, [o.id]: e.target.value }))}
-              onBlur={() => handleSaveCost(o.id, val)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') e.currentTarget.blur()
-                if (e.key === 'Escape') {
-                  setCostInputs((prev) => ({ ...prev, [o.id]: o.cost.toFixed(2) }))
-                  e.currentTarget.blur()
-                }
-              }}
-            />
-            {saving ? (
-              <IconLoader2 className="absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />
-            ) : null}
-          </div>
-        )
-      },
+      cell: ({ row }) => (
+        <CostCell
+          order={row.original}
+          saving={savingCostId === row.original.id}
+          onSave={(raw) => saveCostRef.current(row.original.id, raw)}
+        />
+      ),
     }),
     costCol.accessor('profitLabel', {
       header: 'Profit',
@@ -769,7 +788,7 @@ export default function Payments() {
       header: 'Source',
       cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.getValue('source')}</span>,
     }),
-  ], [costInputs, savingCostId, orders]) // orders: handleSaveCost compares with the latest saved cost
+  ], [savingCostId])
 
   const profitColumns = useMemo(() => [
     profitCol.accessor('name', {
