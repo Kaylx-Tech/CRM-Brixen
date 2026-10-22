@@ -81,7 +81,7 @@ export function MyPerformance() {
 
   return (
     <div className="flex flex-col gap-4">
-      <SectionCards stats={stats} isLoading={isLoading && !data} />
+      <SectionCards stats={stats} isLoading={isLoading && !data} compact/>
 
       {m.bonus_badge ? (
         <div className="flex items-start gap-3 rounded-2xl border bg-card px-4 py-3">
