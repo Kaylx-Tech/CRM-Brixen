@@ -22,6 +22,7 @@ from .email_log_routes import handle_email_log_routes
 from .ticket_routes import handle_ticket_routes
 from .website_routes import handle_website_routes
 from .smart_link_routes import handle_smart_link_routes
+from .ai_routes import handle_ai_routes
 
 
 # Accounts file integration
@@ -40,6 +41,11 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
 
     # 1b. Customer portal (/api/client/*, CLIENT role only; orders/accountancy/notifications fall through)
     res = handle_client_portal_routes(environ, start_response, path, method, user, body, query)
+    if res is not None:
+        return res
+
+    # 1c. AI assistant (team only, read-only)
+    res = handle_ai_routes(environ, start_response, path, method, user, body, query)
     if res is not None:
         return res
 

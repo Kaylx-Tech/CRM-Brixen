@@ -27,26 +27,16 @@ const AdminLayout = () => {
         body: JSON.stringify({ prompt, history: aiMessages })
       }).catch(() => null)
 
-      let reply = ""
-      if (res && res.ok) {
-        const data = await res.json().catch(() => ({}))
-        reply = data.response || data.message || data.reply
-      }
+      // The assistant's answer, or what went wrong (no API key, too many questions, …) in its place
+      const data = res ? await res.json().catch(() => ({})) : {}
+      const reply = res?.ok
+        ? data.data?.reply
+        : data.error || data.message || (res ? '' : 'Could not reach the server. Check your connection.')
 
-      if (!reply) {
-        const p = prompt.toLowerCase()
-        if (p.includes("company") || p.includes("companies")) {
-          reply = "You can view and manage all registered entities in **Company Registered** (`/admin/companies`)."
-        } else if (p.includes("account") || p.includes("filing") || p.includes("tax") || p.includes("hmrc")) {
-          reply = "The **Accountancy** module (`/admin/accountancy`) manages Companies House annual accounts and HMRC returns."
-        } else if (p.includes("customer") || p.includes("client") || p.includes("b2b")) {
-          reply = "All B2B accounts and website signups are in **Customers & Signups** (`/admin/customers`)."
-        } else {
-          reply = `I've noted your request: **"${prompt}"**. I can assist with company filings, CRM customers, orders, and accountancy.`
-        }
-      }
-
-      setAiMessages((prev) => [...prev, { role: 'assistant', content: reply }])
+      setAiMessages((prev) => [...prev, {
+        role: 'assistant',
+        content: reply || 'I encountered an issue processing your request. Please try again.',
+      }])
     } catch {
       setAiMessages((prev) => [...prev, { role: 'assistant', content: "I encountered an issue processing your request. Please try again." }])
     } finally {

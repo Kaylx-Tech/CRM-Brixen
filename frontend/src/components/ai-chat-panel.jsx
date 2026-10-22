@@ -23,10 +23,14 @@ import {
   DrawerDescription,
   DrawerTitle,
 } from "@/components/ui/drawer"
+import { IS_FINSTAP } from "@/lib/workspace"
+
+// The product's own name (Finstap build) in the chat
+const AI_NAME = IS_FINSTAP ? "Finstap" : "Brixen"
 
 const CHAT_PLACEHOLDERS = [
-  "Ask Brixen AI…",
-  "Work with Brixen…",
+  `Ask ${AI_NAME} AI…`,
+  `Work with ${AI_NAME}…`,
   "Ask about companies…",
   "Check filings…",
   "Search customers…",
@@ -203,7 +207,7 @@ export default function AiChatPanel({
                 {topic}
               </DrawerTitle>
               <DrawerDescription className="sr-only">
-                Brixen AI chat
+                {AI_NAME} AI chat
               </DrawerDescription>
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
