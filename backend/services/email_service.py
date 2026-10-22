@@ -5,6 +5,7 @@ Never reports success when SMTP is not configured.
 import smtplib
 import ssl
 import os
+from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -106,6 +107,30 @@ def resend_logged_email(log_id, actor_id=None):
     return ok, status, error
 
 
+def _build_message(subject, sender, recipient, html_content, text_content):
+    """Text + HTML; an HTML email that shows the bundled logo (cid:) carries the logo image inside it."""
+    from services.email_engine import BUNDLED_LOGO_PATH, EMAIL_LOGO_CID
+
+    body = MIMEMultipart('alternative')
+    if text_content:
+        body.attach(MIMEText(text_content, 'plain'))
+    if html_content:
+        body.attach(MIMEText(html_content, 'html'))
+    msg = body
+    if html_content and f'cid:{EMAIL_LOGO_CID}' in html_content and os.path.isfile(BUNDLED_LOGO_PATH):
+        msg = MIMEMultipart('related')
+        msg.attach(body)
+        with open(BUNDLED_LOGO_PATH, 'rb') as fh:
+            logo = MIMEImage(fh.read(), 'png')
+        logo.add_header('Content-ID', f'<{EMAIL_LOGO_CID}>')
+        logo.add_header('Content-Disposition', 'inline', filename='logo.png')
+        msg.attach(logo)
+    msg['Subject'] = subject
+    msg['From'] = sender
+    msg['To'] = recipient
+    return msg
+
+
 def _deliver(recipient, subject, html_content, text_content):
     """Hand the message to the SMTP server. Returns (ok, status, error)."""
     recipient = (recipient or '').strip()
@@ -122,15 +147,7 @@ def _deliver(recipient, subject, html_content, text_content):
         )
         return False, 'not_configured', 'SMTP is not configured (Settings > Email)'
 
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject
-    msg['From'] = f"Brixen Consultants <{from_email}>"
-    msg['To'] = recipient
-
-    if text_content:
-        msg.attach(MIMEText(text_content, 'plain'))
-    if html_content:
-        msg.attach(MIMEText(html_content, 'html'))
+    msg = _build_message(subject, f"Brixen Consultants <{from_email}>", recipient, html_content, text_content)
 
     try:
         if smtp_port == 465:

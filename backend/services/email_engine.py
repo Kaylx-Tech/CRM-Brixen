@@ -6,6 +6,7 @@ Do not invent client/company data — callers must supply verified values only.
 """
 from __future__ import annotations
 
+import os
 import re
 from html import escape as html_escape
 
@@ -523,6 +524,51 @@ def email_issue_card_html(blocks):
                 f'line-height:1.5;color:#1d1d1f;text-align:left;">{html_escape(action)}</p>'
             )
     return ''.join(parts)
+
+
+# The company logo at the top of every client/team email. The bundled logo travels inside the email
+# (cid:, attached by email_service), so it shows without the reader allowing remote images.
+EMAIL_LOGO_CID = 'brand-logo'
+BUNDLED_LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                 'static', 'img', 'brixen-logo.png')
+
+
+def email_logo_src(brand):
+    """<img src> for the brand logo: a full image URL from Settings, the bundled logo, or '' (name only)."""
+    url = str((brand or {}).get('logo_url') or '').strip()
+    if re.match(r'^https?://', url, re.I):
+        return url
+    if url.startswith('/static/img/') and os.path.isfile(BUNDLED_LOGO_PATH):
+        return f'cid:{EMAIL_LOGO_CID}'
+    return ''
+
+
+def email_html_for_preview(html):
+    """The bundled logo as an inline image, for showing a sent email in the browser (Email log)."""
+    marker = f'cid:{EMAIL_LOGO_CID}'
+    if not html or marker not in html or not os.path.isfile(BUNDLED_LOGO_PATH):
+        return html
+    import base64
+    with open(BUNDLED_LOGO_PATH, 'rb') as fh:
+        data = base64.b64encode(fh.read()).decode('ascii')
+    return html.replace(marker, f'data:image/png;base64,{data}')
+
+
+def email_brand_header_html(brand, headline):
+    """Hero row: the logo (or the company name when there is none) above the email's headline."""
+    name = (brand or {}).get('company_name') or 'Brixen Consultants'
+    src = email_logo_src(brand)
+    if src:
+        top = (f'<img src="{html_escape(src)}" alt="{html_escape(name)}" height="36" '
+               'style="display:block;height:36px;width:auto;max-width:200px;border:0;outline:none;text-decoration:none;">')
+    else:
+        top = (f'<p style="margin:0;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#003971;'
+               f'font-weight:700;">{html_escape(name)}</p>')
+    return (
+        f'<tr><td style="padding:24px 24px 8px;background:#ffffff;">{top}'
+        f'<h1 style="margin:{16 if src else 8}px 0 0;font-size:22px;line-height:1.3;color:#111827;">'
+        f'{html_escape(headline)}</h1></td></tr>'
+    )
 
 
 def build_transactional_shell_html(

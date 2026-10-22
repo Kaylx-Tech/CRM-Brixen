@@ -78,7 +78,10 @@ def handle_email_log_routes(environ, start_response, path, method, user, body, q
                        (int(m.group(1)),), one=True)
         if not row:
             return error_response(start_response, "Email not found", status_code=404)
-        return success_response(start_response, data=dict(row))
+        from services.email_engine import email_html_for_preview
+        row = dict(row)
+        row['body_html'] = email_html_for_preview(row.get('body_html'))
+        return success_response(start_response, data=row)
 
     m = re.match(r'^/api/admin/email-logs/(\d+)/resend$', path)
     if m and method == 'POST':

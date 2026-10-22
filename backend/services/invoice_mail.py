@@ -192,14 +192,7 @@ def _compose_email(*, subject, greeting, intro, sections_html, category):
     head = (
         f'<head><meta charset="utf-8"><title>{html_escape(subject)}</title></head>'
     )
-    hero = (
-        f'<tr><td style="padding:24px 24px 8px;background:#ffffff;">'
-        f'<p style="margin:0;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#003971;font-weight:700;">'
-        f'{html_escape(brand.get("company_name") or "Brixen Consultants")}</p>'
-        f'<h1 style="margin:8px 0 0;font-size:22px;line-height:1.3;color:#111827;">'
-        f'{html_escape(subject.split(" — ")[0])}</h1>'
-        f'</td></tr>'
-    )
+    hero = eng.email_brand_header_html(brand, subject.split(" — ")[0])
     disclaimer = eng.category_disclaimer(category)
     html = eng.build_transactional_shell_html(
         subject=subject,
