@@ -13,7 +13,8 @@ def brand_settings():
             'brand_name': get_setting('brand_name', 'Brixen Consultants'),
             'support_email': get_setting('support_email', 'contact@brixenconsultants.com'),
             'support_phone': get_setting('support_phone', ''),
-            'website': get_setting('portal_url', PORTAL_URL) or 'https://brixenconsultants.com',
+            # The public website in email signatures (not the CRM portal); a workspace without one shows its address
+            'website': get_setting('wordpress_url') or get_setting('portal_url', PORTAL_URL) or 'https://brixenconsultants.com',
             # Unset: the settings default (Brixen's bundled logo; none for a new Finstap workspace)
             'logo_url': get_setting('logo_url'),
         }
