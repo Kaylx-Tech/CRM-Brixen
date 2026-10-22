@@ -336,7 +336,19 @@ def ensure_schema():
             WHERE id = NEW.id;
         END;
     """)
-    service_cols = {row[1] for row in conn.execute("PRAGMA table_info(services)").fetchall()}
+    # AI assistant: tokens per answer and member (counts use per workspace)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS ai_usage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            model TEXT,
+            prompt_tokens INTEGER NOT NULL DEFAULT 0,
+            output_tokens INTEGER NOT NULL DEFAULT 0,
+            tools TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+    service_cols ={row[1] for row in conn.execute("PRAGMA table_info(services)").fetchall()}
     if 'woocommerce_product_id' not in service_cols:
         conn.execute("ALTER TABLE services ADD COLUMN woocommerce_product_id TEXT")
     if 'form_config_json' not in service_cols:
