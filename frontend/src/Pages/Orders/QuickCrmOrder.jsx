@@ -51,13 +51,7 @@ const PAYMENT_CHANNELS = [
   "Card Payment",
 ]
 
-const INITIAL_STATUSES = [
-  "Processing",
-  "Pending Verification",
-  "Pending",
-  "In Progress",
-  "Completed",
-]
+const INITIAL_STATUSES = ["Pending", "In Progress", "Completed"]
 
 function unwrapList(res, keys = []) {
   const root = res?.data
@@ -119,7 +113,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
 
   const [lines, setLines] = useState([newLine()])
   const [paymentMode, setPaymentMode] = useState("Manual CRM")
-  const [status, setStatus] = useState("Processing")
+  const [status, setStatus] = useState("Pending")
   const [notes, setNotes] = useState("")
   const [showUnsavedToast, setShowUnsavedToast] = useState(false)
   const [toastSaveState, setToastSaveState] = useState("initial")
@@ -168,7 +162,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
     setDirectorResidence("United Kingdom")
     setLines([newLine()])
     setPaymentMode("Manual CRM")
-    setStatus("Processing")
+    setStatus("Pending")
     setNotes("")
   }, [])
 
