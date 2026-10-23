@@ -3,26 +3,10 @@ import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/inter'
 import './index.css'
 import App from './App.jsx'
-import { IS_FINSTAP } from './lib/workspace'
 import Trace from '@react-trace/kit'
 
-// The Finstap build names its own tab (index.html carries the Brixen title) and switches to its
-// colours (index.css: [data-product="finstap"])
-if (IS_FINSTAP) {
-  document.title = 'Finstap — Practice management CRM'
-  document.documentElement.dataset.product = 'finstap'
-  // Finstap's own tab icons (index.html links the Brixen ones)
-  const icons = [
-    ['link[rel="icon"][sizes="32x32"]', '/finstap-favicon-32.png'],
-    ['link[rel="icon"][sizes="192x192"]', '/finstap-favicon-192.png'],
-    ['link[rel="shortcut icon"]', '/finstap-favicon.ico'],
-    ['link[rel="apple-touch-icon"]', '/finstap-apple-touch-icon.png'],
-  ]
-  for (const [selector, href] of icons) {
-    const link = document.querySelector(selector)
-    if (link) link.href = href
-  }
-}
+// The Finstap build's title, tab icons, link-preview tags and colours (data-product="finstap") are
+// written into index.html at build time (vite.config.js productHtml), so nothing is swapped here
 
 // Detect Apple devices (macOS, iOS, iPadOS) and set root class
 if (typeof window !== 'undefined') {
