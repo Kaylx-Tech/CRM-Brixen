@@ -367,7 +367,17 @@ def test_smtp_connection(test_email=None, custom_cfg=None):
         return {"success": False, "error": f"SMTP Connection error: {str(e)}"}
 
 def test_google_drive_connection(custom_json=None):
-    """Test Google Drive API v3 Service Account credentials and folder hierarchy."""
+    """Test Google Drive the way uploads use it (OAuth refresh token or service account from the server env),
+    down to this company's own folder. A pasted service account JSON is tested on its own (below)."""
+    if not custom_json:
+        from services.google_drive_service import drive_health
+        health = drive_health()
+        summary = ' | '.join(f"{'OK' if s['ok'] else 'FAIL'} {s['step']}{': ' + s['detail'] if s['detail'] else ''}"
+                             for s in health['steps'])
+        if health['ok']:
+            return {"success": True, "message": f"Google Drive works. Files go to {health.get('path')}",
+                    "steps": health['steps'], "summary": summary}
+        return {"success": False, "error": health['error'], "steps": health['steps'], "summary": summary}
     try:
         from google.oauth2 import service_account  # type: ignore
         from googleapiclient.discovery import build  # type: ignore

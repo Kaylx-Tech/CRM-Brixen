@@ -117,6 +117,81 @@ def is_drive_configured():
     """Check if Google Drive credentials are configured and active."""
     return get_drive_service() is not None
 
+
+def _drive_error_text(exc):
+    """A plain reason for a failed Drive call."""
+    text = str(exc)
+    if 'invalid_grant' in text or 'RefreshError' in type(exc).__name__:
+        return ('Google refused the login (invalid_grant): GOOGLE_REFRESH_TOKEN has expired or was revoked. '
+                'Make a new refresh token, and publish the Google OAuth app ("In production") so it stops expiring.')
+    if 'invalid_client' in text or 'unauthorized_client' in text:
+        return 'GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET do not match the refresh token.'
+    if 'File not found' in text or 'notFound' in text or ' 404' in text:
+        return ('GOOGLE_DRIVE_FOLDER_ID was not found for this Google account: check the ID, and that the folder '
+                'belongs to (or is shared as Editor with) the same account as the refresh token.')
+    if 'insufficientPermissions' in text or 'forbidden' in text.lower() or ' 403' in text:
+        return 'This Google account cannot write to that folder (share it as Editor, or use its owner\'s token).'
+    return text[:300]
+
+
+def drive_health(create_workspace_folder=True):
+    """Check the same path uploads use, step by step. Returns {ok, steps: [{step, ok, detail}], error}.
+
+    Never prints or returns secrets: only which settings are present.
+    """
+    steps = []
+
+    def step(name, ok, detail=''):
+        steps.append({'step': name, 'ok': bool(ok), 'detail': detail})
+        return ok
+
+    load_dynamic_env()
+    oauth = all(os.environ.get(k, '').strip() for k in ('GOOGLE_REFRESH_TOKEN', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'))
+    service_account_set = any(os.environ.get(k, '').strip() for k in
+                              ('GOOGLE_SERVICE_ACCOUNT_JSON', 'GOOGLE_SERVICE_ACCOUNT_BASE64', 'GOOGLE_SERVICE_ACCOUNT_PATH'))
+    missing = [k for k in ('GOOGLE_REFRESH_TOKEN', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET') if not os.environ.get(k, '').strip()]
+    if not step('Login settings', oauth or service_account_set,
+                'OAuth refresh token' if oauth else ('service account' if service_account_set else
+                                                     f"missing: {', '.join(missing)}")):
+        return {'ok': False, 'steps': steps, 'error': f"Google login settings are missing on the server: {', '.join(missing)}"}
+    root_id = os.environ.get('GOOGLE_DRIVE_FOLDER_ID', '').strip()
+    step('GOOGLE_DRIVE_FOLDER_ID', bool(root_id), 'set' if root_id else
+         f"not set: a folder named \"{root_folder_name()}\" will be found or made in the account's My Drive")
+
+    reset_drive_client()
+    service = get_drive_service()
+    if not step('Drive client', service is not None,
+                '' if service else 'could not be built (google-api-python-client missing or bad credentials)'):
+        return {'ok': False, 'steps': steps, 'error': 'Google Drive client could not be built.'}
+    try:
+        about = service.about().get(fields='user(emailAddress)').execute()
+        step('Google account', True, about.get('user', {}).get('emailAddress', ''))
+    except Exception as exc:
+        reason = _drive_error_text(exc)
+        step('Google account', False, reason)
+        return {'ok': False, 'steps': steps, 'error': reason}
+    if root_id:
+        try:
+            meta = service.files().get(fileId=root_id, fields='id,name,trashed,capabilities(canAddChildren)',
+                                       supportsAllDrives=True).execute()
+            if meta.get('trashed'):
+                step('Root folder', False, f"\"{meta.get('name')}\" is in the Drive trash")
+                return {'ok': False, 'steps': steps, 'error': 'The Drive folder is in the trash.'}
+            if not (meta.get('capabilities') or {}).get('canAddChildren', True):
+                step('Root folder', False, f"\"{meta.get('name')}\": this account cannot add files to it")
+                return {'ok': False, 'steps': steps, 'error': 'This Google account cannot write to the Drive folder.'}
+            step('Root folder', True, f"\"{meta.get('name')}\"")
+        except Exception as exc:
+            reason = _drive_error_text(exc)
+            step('Root folder', False, reason)
+            return {'ok': False, 'steps': steps, 'error': reason}
+    name = workspace_folder_name()
+    if name and create_workspace_folder:
+        folder_id = workspace_base_folder_id()
+        if not step('Company folder', bool(folder_id), name if folder_id else f"{name} could not be made"):
+            return {'ok': False, 'steps': steps, 'error': f"The company folder {name} could not be made."}
+    return {'ok': True, 'steps': steps, 'error': '', 'path': drive_folder_path('<customer>')}
+
 def get_or_create_folder(folder_name, parent_id=None):
     """Find or create a Google Drive folder under an optional parent folder."""
     service = get_drive_service()
