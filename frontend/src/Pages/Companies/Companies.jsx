@@ -393,7 +393,7 @@ const Companies = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleDeselectAll} className="text-sm h-8">
+            <Button variant="ghost" size="sm" onClick={handleDeselectAll} className="text-sm h-7">
               Clear selection
             </Button>
             {isAdminRole() && (

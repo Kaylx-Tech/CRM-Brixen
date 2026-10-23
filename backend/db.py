@@ -378,6 +378,9 @@ def ensure_schema():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
+    # "Processing" and "In Progress" are one status now: older orders and products become In Progress
+    conn.execute("UPDATE orders SET status = 'In Progress' WHERE status = 'Processing';")
+    conn.execute("UPDATE order_line_items SET fulfillment_status = 'In Progress' WHERE fulfillment_status = 'Processing';")
     service_cols ={row[1] for row in conn.execute("PRAGMA table_info(services)").fetchall()}
     if 'woocommerce_product_id' not in service_cols:
         conn.execute("ALTER TABLE services ADD COLUMN woocommerce_product_id TEXT")

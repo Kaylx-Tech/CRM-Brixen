@@ -501,7 +501,7 @@ export default function Orders() {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger
-              render={<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" aria-label="Order actions" />}
+              render={<Button variant="ghost" size="icon" className="text-muted-foreground" aria-label="Order actions" />}
             >
               <IconDotsVertical className="h-4 w-4" />
             </DropdownMenuTrigger>

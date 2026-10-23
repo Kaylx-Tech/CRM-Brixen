@@ -588,7 +588,7 @@ const Tasks = () => {
           return (
             <DropdownMenu>
               <DropdownMenuTrigger
-                render={<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" aria-label="Task actions" />}
+                render={<Button variant="ghost" size="icon" className="text-muted-foreground" aria-label="Task actions" />}
               >
                 <IconDotsVertical className="size-4" />
               </DropdownMenuTrigger>

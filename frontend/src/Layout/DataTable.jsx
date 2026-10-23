@@ -159,7 +159,7 @@ export const DataTable = ({
                   }}
                   disabled={isLoading}
                 >
-                  <SelectTrigger className={cn("h-8 text-sm", config.triggerClassName || "w-35")}>
+                  <SelectTrigger className={cn("text-sm", config.triggerClassName || "w-35")}>
                     <SelectValue placeholder={config.placeholder} />
                   </SelectTrigger>
                   <SelectContent

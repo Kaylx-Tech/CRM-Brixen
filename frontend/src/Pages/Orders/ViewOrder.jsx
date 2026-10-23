@@ -1305,11 +1305,11 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Button type="button" size="sm" variant="outline" className="h-8 gap-1.5"
+                            <Button type="button" size="sm" variant="outline" className="h-7 gap-1.5"
                               onClick={() => openInvoice(order.invoice.id)}>
                               <IconEye className="w-3.5 h-3.5" /> View invoice
                             </Button>
-                            <Button type="button" size="sm" variant="ghost" className="h-8 gap-1.5"
+                            <Button type="button" size="sm" variant="ghost" className="h-7 gap-1.5"
                               onClick={() => downloadInvoice(order.invoice.id, order.invoice.invoice_number)}>
                               <IconDownload className="w-3.5 h-3.5" /> PDF
                             </Button>
