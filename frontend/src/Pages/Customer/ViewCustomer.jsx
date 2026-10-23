@@ -279,7 +279,7 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
                       value={notificationEmail}
                       onChange={(e) => setNotificationEmail(e.target.value)}
                     />
-                    <Button size="sm" className="h-9" onClick={handleSaveNotificationEmail} disabled={isSaving}>
+                    <Button size="sm" className="h-7" onClick={handleSaveNotificationEmail} disabled={isSaving}>
                       {isSaving ? "Saving..." : "Save"}
                     </Button>
                   </div>

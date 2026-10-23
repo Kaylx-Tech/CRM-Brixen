@@ -20,7 +20,7 @@ export const TablePagination = ({
                 <div className="flex items-center space-x-2">
                     <p className="text-sm font-medium">Rows per page</p>
                     <select
-                        className="h-8 w-[70px] rounded-md border border-input bg-transparent px-2 py-1 text-sm ring-offset-background"
+                        className="h-7 w-[70px] rounded-md border border-input bg-transparent px-2 py-1 text-sm ring-offset-background"
                         value={rowsPerPage}
                         onChange={(e) => onRowsPerPageChange(Number(e.target.value))}
                     >
