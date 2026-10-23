@@ -273,9 +273,9 @@ def ensure_smart_intake_client(extracted_name=None, extracted_email=None, extrac
     return query_db("SELECT * FROM users WHERE id = ?;", (user_id,), one=True)
 
 def companies_house_api_key():
-    row = query_db("SELECT value FROM settings WHERE key = 'companies_house_api_key';", one=True)
-    key = (row['value'] if row and str(row.get('value') or '').strip() else None) or os.environ.get('COMPANIES_HOUSE_API_KEY')
-    return str(key or '').strip()
+    # One key for every Finstap company: the server's own key comes first (same as get_ch_api_key)
+    from services.companies_house_service import get_ch_api_key
+    return get_ch_api_key()
 
 def companies_house_request(path_qs):
     key = companies_house_api_key()

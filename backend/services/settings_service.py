@@ -112,6 +112,11 @@ WORKSPACE_DEFAULT_OVERRIDES = {
 }
 
 
+def _platform_ch_key():
+    from services.companies_house_service import platform_ch_api_key
+    return platform_ch_api_key()
+
+
 def _in_workspace():
     """True inside a Finstap company workspace (not Brixen's own database)."""
     try:
@@ -217,8 +222,11 @@ def get_all_settings(raw: bool = False):
             'google_service_account_path': merged.get('google_service_account_path', '')
         },
         'companies_house': {
-            'companies_house_api_key': merged.get('companies_house_api_key', '') if raw else mask_value(merged.get('companies_house_api_key', '')),
-            'companies_house_api_key_set': bool(merged.get('companies_house_api_key')),
+            # The server's own key (Finstap: one for every company) is never shown, only that it is connected
+            'companies_house_platform': bool(_platform_ch_key()),
+            'companies_house_api_key': '' if _platform_ch_key() else (
+                merged.get('companies_house_api_key', '') if raw else mask_value(merged.get('companies_house_api_key', ''))),
+            'companies_house_api_key_set': bool(_platform_ch_key() or merged.get('companies_house_api_key')),
             'ch_presenter_id': merged.get('ch_presenter_id', ''),
             'ch_presenter_auth': merged.get('ch_presenter_auth', '') if raw else mask_value(merged.get('ch_presenter_auth', '')),
             'ch_presenter_auth_set': bool(merged.get('ch_presenter_auth')),
@@ -249,6 +257,8 @@ def get_all_settings(raw: bool = False):
         k: (v if (raw or k not in SENSITIVE_KEYS) else mask_value(v))
         for k, v in merged.items()
     }
+    if _platform_ch_key() and not raw:
+        result['flat']['companies_house_api_key'] = ''
     return result
 
 def update_settings(payload: dict, user_id=None, ip_address=None):
@@ -468,7 +478,8 @@ def test_google_drive_connection(custom_json=None):
 
 def test_companies_house_connection(custom_api_key=None):
     """Test UK Companies House API Key with a real company query."""
-    api_key = (custom_api_key or get_setting('companies_house_api_key', '')).strip()
+    from services.companies_house_service import get_ch_api_key
+    api_key = (custom_api_key or get_ch_api_key()).strip()  # the key lookups actually use
     if not api_key:
         return {"success": False, "error": "Companies House API key is missing"}
 

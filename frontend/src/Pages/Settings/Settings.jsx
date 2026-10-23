@@ -144,6 +144,7 @@ export default function Settings() {
   const [flags, setFlags] = useState({
     smtp_pass_set: false,
     companies_house_api_key_set: false,
+    companies_house_platform: false,
     google_service_account_json_set: false,
     wordpress_webhook_secret_set: false,
     getaddress_configured: false,
@@ -254,6 +255,7 @@ export default function Settings() {
       setFlags({
         smtp_pass_set: !!smtp.smtp_pass_set,
         companies_house_api_key_set: !!ch.companies_house_api_key_set,
+        companies_house_platform: !!ch.companies_house_platform,
         google_service_account_json_set: !!drive.google_service_account_json_set,
         wordpress_webhook_secret_set: !!webhooks.wordpress_webhook_secret_set,
         getaddress_configured: !!flat.getaddress_api_key,
@@ -791,22 +793,27 @@ export default function Settings() {
             <Section
               title="Companies House"
               description={
-                flags.companies_house_api_key_set
+                flags.companies_house_platform
+                  ? 'Connected for your workspace. Nothing to set up.'
+                  : flags.companies_house_api_key_set
                   ? 'API key is connected. Paste a new key only to replace it.'
                   : 'Create a free key at developer.company-information.service.gov.uk'
               }
             >
-              <Field id="companies_house_api_key" label="REST API key">
-                <Input
-                  id="companies_house_api_key"
-                  type="password"
-                  value={form.companies_house_api_key}
-                  onChange={(e) => setField('companies_house_api_key', e.target.value)}
-                  placeholder={flags.companies_house_api_key_set ? '•••••••• (unchanged)' : 'Paste API key'}
-                  autoComplete="off"
-                  disabled={isLoading}
-                />
-              </Field>
+              {/* The server's own key covers every workspace: no key to paste */}
+              {!flags.companies_house_platform && (
+                <Field id="companies_house_api_key" label="REST API key">
+                  <Input
+                    id="companies_house_api_key"
+                    type="password"
+                    value={form.companies_house_api_key}
+                    onChange={(e) => setField('companies_house_api_key', e.target.value)}
+                    placeholder={flags.companies_house_api_key_set ? '•••••••• (unchanged)' : 'Paste API key'}
+                    autoComplete="off"
+                    disabled={isLoading}
+                  />
+                </Field>
+              )}
               <Button
                 type="button"
                 variant="outline"
