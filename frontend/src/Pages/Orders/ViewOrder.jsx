@@ -68,15 +68,8 @@ const PAYMENT_MODES = [
   { value: 'Website Charge', label: 'Website Charge' },
 ]
 
-const STATUS_OPTIONS = [
-  'Pending Verification',
-  'Pending',
-  'Processing',
-  'In Progress',
-  'Completed',
-  'Cancelled',
-  'Refunded',
-]
+// The statuses the team picks from (older orders may still carry Processing / Pending Verification / Refunded)
+const STATUS_OPTIONS = ['Pending', 'In Progress', 'Completed', 'Cancelled']
 
 function formatOrderNumberDisplay(raw) {
   const s = String(raw ?? '').trim()
@@ -1084,7 +1077,8 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectGroup>
-                                  {STATUS_OPTIONS.map((st) => (
+                                  {/* An older status (e.g. Processing) stays visible on its order until changed */}
+                                  {(STATUS_OPTIONS.includes(status) || !status ? STATUS_OPTIONS : [status, ...STATUS_OPTIONS]).map((st) => (
                                     <SelectItem key={st} value={st} className="text-sm">
                                       {st}
                                     </SelectItem>
@@ -1413,7 +1407,8 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectGroup>
-                                    {['Pending', 'Processing', 'In Progress', 'Completed', 'Cancelled'].map((status) => (
+                                    {(STATUS_OPTIONS.includes(item.fulfillment_status || 'Pending')
+                                      ? STATUS_OPTIONS : [item.fulfillment_status, ...STATUS_OPTIONS]).map((status) => (
                                       <SelectItem key={status} value={status}>{status}</SelectItem>
                                     ))}
                                   </SelectGroup>

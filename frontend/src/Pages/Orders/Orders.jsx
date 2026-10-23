@@ -36,15 +36,7 @@ const PAYMENT_MODES = [
   { value: 'Website Charge', label: 'Website' },
 ]
 
-const STATUS_OPTIONS = [
-  'Pending Verification',
-  'Pending',
-  'Processing',
-  'In Progress',
-  'Completed',
-  'Cancelled',
-  'Refunded',
-]
+const STATUS_OPTIONS = ['Pending', 'In Progress', 'Completed', 'Cancelled']
 
 const DATE_PRESETS = [
   { value: 'all', label: 'All dates' },
