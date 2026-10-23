@@ -17,6 +17,9 @@ Long runs (survive a closed terminal) and live progress:
 
 Files written next to the database: drive_sync_report.csv, drive_sync_progress.json
 Only the three Drive columns of `documents` are written, and only where drive_file_id is empty.
+
+Finstap: runs once per company workspace, each into its own Drive folder (<root>/Finstap-<workspace>/...),
+with its own report (drive_sync_report_<workspace>.csv). --workspace <name> runs just one.
 """
 import argparse
 import csv
@@ -34,13 +37,27 @@ APP_DIR = '/app' if os.path.isdir('/app/services') else os.path.dirname(os.path.
 sys.path.insert(0, APP_DIR)
 
 from db import DB_PATH, get_db, query_db  # noqa: E402
-from services.google_drive_service import get_drive_service, get_customer_folder_id  # noqa: E402
+from services.google_drive_service import (  # noqa: E402
+    get_drive_service, get_customer_folder_id, root_folder_name, workspace_base_folder_id, workspace_folder_name)
 from services.storage_service import sanitize_filename  # noqa: E402
 
 FOLDER_MIME = 'application/vnd.google-apps.folder'
 STORAGE_ROOTS = [p for p in (os.environ.get('STORAGE_PATH'), '/app/storage', '/var/www/brixen-crm/storage') if p]
 OUT_DIR = os.path.dirname(DB_PATH)
-PROGRESS_FILE = os.path.join(OUT_DIR, 'drive_sync_progress.json')
+
+
+def out_file(name):
+    """Report / progress file next to the database; one per company workspace (Finstap)."""
+    folder = workspace_folder_name()
+    if folder:
+        base, ext = os.path.splitext(name)
+        name = f"{base}_{folder.split('-', 1)[-1]}{ext}"
+    return os.path.join(OUT_DIR, name)
+
+
+def drive_prefix():
+    """Path of the Customers folder: Brixen-CRM/Customers or Finstap/Finstap-<workspace>/Customers."""
+    return [root_folder_name()] + ([workspace_folder_name()] if workspace_folder_name() else []) + ['Customers']
 
 
 def fmt_time(sec):
@@ -114,7 +131,7 @@ def list_children(svc, parent_id):
 
 
 def build_drive_index(svc, root_id):
-    """Walk Brixen-CRM/Customers once: {(customer, order_or_None, filename): [meta, ...]}."""
+    """Walk <base>/Customers once: {(customer, order_or_None, filename): [meta, ...]}."""
     index, by_name = {}, {}
     customers = root_id
     for f in list_children(svc, root_id):
@@ -146,31 +163,18 @@ def md5_of(path):
 
 
 def drive_path(meta):
-    return '/'.join(['Brixen-CRM', 'Customers'] + meta['path'] + [meta['name']])
+    return '/'.join(drive_prefix() + meta['path'] + [meta['name']])
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument('--apply', action='store_true', help='write links / upload (default: report only)')
-    ap.add_argument('--limit', type=int, default=0, help='only process the first N documents')
-    args = ap.parse_args()
-    mode = 'APPLY' if args.apply else 'REPORT ONLY (nothing is changed)'
-
-    print('=' * 70)
-    print(f' Brixen CRM  ->  Google Drive document sync   |   mode: {mode}')
-    print('=' * 70, flush=True)
-
-    svc = get_drive_service()
-    if not svc:
-        sys.exit('Google Drive is not configured (GOOGLE_* env missing).')
-    root_id = (os.environ.get('GOOGLE_DRIVE_FOLDER_ID') or '').strip()
-    if not root_id:
-        sys.exit('GOOGLE_DRIVE_FOLDER_ID is required.')
+def sync_documents(svc, args):
+    """Reconcile the documents of the active database (one company workspace on Finstap)."""
+    base_id = workspace_base_folder_id()
+    if not base_id:
+        print('  Could not open or create this workspace\'s Drive folder - skipped.', flush=True)
+        return
     try:
-        about = svc.about().get(fields='user(emailAddress)').execute()
-        print(f"Drive account: {about['user']['emailAddress']}")
-        print('Step 1/2: scanning Drive (Brixen-CRM/Customers) ...', flush=True)
-        index, by_name, folders, files = build_drive_index(svc, root_id)
+        print(f"Step 1/2: scanning Drive ({'/'.join(drive_prefix())}) ...", flush=True)
+        index, by_name, folders, files = build_drive_index(svc, base_id)
     except Exception as exc:  # noqa: BLE001
         if 'invalid_grant' in str(exc) or 'RefreshError' in type(exc).__name__:
             sys.exit('Google token expired/revoked (invalid_grant). Update GOOGLE_REFRESH_TOKEN in Coolify and redeploy.')
@@ -192,7 +196,7 @@ def main():
 
     def write_progress(i, current, finished=False):
         try:
-            with open(PROGRESS_FILE, 'w', encoding='utf-8') as fh:
+            with open(out_file('drive_sync_progress.json'), 'w', encoding='utf-8') as fh:
                 json.dump({'mode': 'apply' if args.apply else 'report', 'total': total, 'done': i, 'counts': counts,
                            'current': current, 'elapsed_sec': int(time.time() - t0), 'finished': finished,
                            'updated_at': time.strftime('%Y-%m-%d %H:%M:%S')}, fh)
@@ -278,7 +282,7 @@ def main():
                 record(i, doc, 'ERROR', note='could not create Drive folder')
                 continue
             fname = sanitize_filename(base or doc['name'])
-            print(f"   uploading {fname} -> Brixen-CRM/Customers/{customer}/{order or ''} ...", flush=True)
+            print(f"   uploading {fname} -> {'/'.join(drive_prefix())}/{customer}/{order or ''} ...", flush=True)
             # documents.file_type holds labels like 'PDF Document', not a MIME type -> derive it from the file name
             mime = mimetypes.guess_type(fname)[0] or mimetypes.guess_type(local)[0] or site_ctype or 'application/octet-stream'
             media = MediaFileUpload(local, mimetype=mime, resumable=True)
@@ -288,7 +292,7 @@ def main():
             if up.get('md5Checksum') and up['md5Checksum'] != md5_of(local):
                 record(i, doc, 'ERROR', up, 'md5 mismatch after upload - NOT linked')
                 continue
-            path_parts = ['Brixen-CRM', 'Customers', customer] + ([order] if order else []) + [fname]
+            path_parts = drive_prefix() + [customer] + ([order] if order else []) + [fname]
             conn.execute(
                 "UPDATE documents SET drive_file_id = ?, drive_web_link = ?, file_path = ? "
                 "WHERE id = ? AND COALESCE(drive_file_id, '') = '';",
@@ -308,7 +312,7 @@ def main():
                 except OSError:
                     pass
 
-    report = os.path.join(OUT_DIR, 'drive_sync_report.csv')
+    report = out_file('drive_sync_report.csv')
     with open(report, 'w', newline='', encoding='utf-8') as fh:
         w = csv.writer(fh)
         w.writerow(['doc_id', 'user_id', 'name', 'action', 'drive_file_id', 'note'])
@@ -319,6 +323,49 @@ def main():
     print(f" uploaded {human(moved_bytes)} | time {fmt_time(time.time() - t0)}")
     print(f" report: {report}")
     print('=' * 70)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--apply', action='store_true', help='write links / upload (default: report only)')
+    ap.add_argument('--limit', type=int, default=0, help='only process the first N documents')
+    ap.add_argument('--workspace', default='', help='Finstap: only this company workspace')
+    args = ap.parse_args()
+    mode = 'APPLY' if args.apply else 'REPORT ONLY (nothing is changed)'
+
+    print('=' * 70)
+    print(f' CRM  ->  Google Drive document sync   |   mode: {mode}')
+    print('=' * 70, flush=True)
+
+    svc = get_drive_service()
+    if not svc:
+        sys.exit('Google Drive is not configured (GOOGLE_* env missing).')
+    if not (os.environ.get('GOOGLE_DRIVE_FOLDER_ID') or '').strip():
+        sys.exit('GOOGLE_DRIVE_FOLDER_ID is required.')
+    try:
+        about = svc.about().get(fields='user(emailAddress)').execute()
+    except Exception as exc:  # noqa: BLE001
+        if 'invalid_grant' in str(exc) or 'RefreshError' in type(exc).__name__:
+            sys.exit('Google token expired/revoked (invalid_grant). Update GOOGLE_REFRESH_TOKEN in Coolify and redeploy.')
+        raise
+    print(f"Drive account: {about['user']['emailAddress']}")
+
+    try:
+        import tenancy
+    except ImportError:
+        tenancy = None
+    if tenancy is None:
+        sync_documents(svc, args)
+        return
+    # Finstap: every company workspace, each into its own Drive folder
+    tenancy.ensure_platform()
+    tenants = [t for t in tenancy.list_tenants() if not args.workspace or t['slug'] == args.workspace]
+    if not tenants:
+        sys.exit(f"No workspace '{args.workspace}'." if args.workspace else 'No workspaces yet.')
+    for tenant in tenants:
+        print(f"\n### Workspace {tenant['slug']} ({tenant['name']})", flush=True)
+        with tenancy.use_tenant(tenant):
+            sync_documents(svc, args)
 
 
 if __name__ == '__main__':

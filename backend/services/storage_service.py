@@ -33,9 +33,13 @@ def is_allowed_file(filename):
     return ext in ALLOWED_EXTENSIONS
 
 def _save_local_copy(client_id, order_id, clean_name, file_bytes):
-    """Write the file under STORAGE_DIR/customer_uploads/<client>/<order|general>/ and return its relative path."""
+    """Write the file under STORAGE_DIR/[workspaces/<workspace>/]customer_uploads/<client>/<order|general>/ and
+    return its relative path (Finstap: each company's files in its own folder, as on Drive)."""
     from config import STORAGE_DIR
+    from services.google_drive_service import workspace_folder_name
     sub = os.path.join('customer_uploads', str(client_id or 'unassigned'), f"order_{order_id}" if order_id else 'general')
+    if workspace_folder_name():
+        sub = os.path.join('workspaces', workspace_folder_name(), sub)
     folder = os.path.join(STORAGE_DIR, sub)
     os.makedirs(folder, exist_ok=True)
     name = f"{uuid.uuid4().hex[:10]}_{clean_name}"

@@ -3,10 +3,11 @@ Supports direct .env (GOOGLE_SERVICE_ACCOUNT_JSON / GOOGLE_SERVICE_ACCOUNT_BASE6
 without needing any local JSON file.
 
 Folder Hierarchy:
-  Brixen-CRM
-  └── customer
-      └── <Customer Name>
-          └── <files & documents>
+  Brixen-CRM (Finstap: one shared root, e.g. "Finstap", from GOOGLE_DRIVE_FOLDER_ID)
+  └── [Finstap-<workspace>]      Finstap only: each company's own folder
+      └── Customers
+          └── <Customer Name>
+              └── [<Order>] <files & documents>
 """
 import os
 import io
@@ -193,31 +194,76 @@ def get_or_create_folder(folder_name, parent_id=None):
         logger.error(f"Failed to get or create folder '{folder_name}': {e}")
         return None
 
-def get_customer_folder_id(customer_name, order_name=None):
-    """Resolve and build the full hierarchy:
-    Brixen-CRM -> Customers -> <Customer Name> [-> <Order Name>]
+def workspace_folder_name():
+    """Finstap: each company's files live in their own folder under the shared root ("Finstap-<workspace>").
+
+    Taken from the workspace name, never from a setting a company could edit, so one company can never
+    write into another's folder. Brixen's own database (legacy plan) or no workspace: None (no extra level).
     """
-    clean_name = str(customer_name or 'General Client').strip()
-    
-    # Check if direct root folder ID is specified in .env
-    root_id = os.environ.get('GOOGLE_DRIVE_FOLDER_ID', '').strip()
-    if not root_id:
-        root_folder_name = os.environ.get('GOOGLE_DRIVE_ROOT_FOLDER', 'Brixen-CRM')
-        root_id = get_or_create_folder(root_folder_name)
-    
+    try:
+        from tenancy import current_tenant
+    except ImportError:
+        return None
+    tenant = current_tenant()
+    if not tenant or tenant.get('plan') == 'legacy' or not tenant.get('slug'):
+        return None
+    return f"Finstap-{tenant['slug']}"
+
+
+def root_folder_name():
+    """Name of the root folder when GOOGLE_DRIVE_FOLDER_ID is not set."""
+    default = 'Finstap' if workspace_folder_name() else 'Brixen-CRM'
+    return os.environ.get('GOOGLE_DRIVE_ROOT_FOLDER', default)
+
+
+def workspace_base_folder_id():
+    """The folder that holds this workspace's Customers folder (the root, or the company's own folder)."""
+    root_id = os.environ.get('GOOGLE_DRIVE_FOLDER_ID', '').strip() or get_or_create_folder(root_folder_name())
     if not root_id:
         logger.error("Root Google Drive folder could not be found or created.")
         return None
+    name = workspace_folder_name()
+    if not name:
+        return root_id
+    # No fallback to the shared root: a company's files must never land next to another company's
+    folder_id = get_or_create_folder(name, parent_id=root_id)
+    if not folder_id:
+        logger.error(f"Workspace Google Drive folder '{name}' could not be found or created.")
+    return folder_id
+
+
+def drive_folder_path(customer_name, order_name=None, filename=''):
+    """Readable path stored with a document, e.g. Finstap/Finstap-acme/Customers/Jane Doe/Order #4/id.pdf"""
+    parts = [root_folder_name()]
+    if workspace_folder_name():
+        parts.append(workspace_folder_name())
+    parts += ['Customers', str(customer_name or 'General Client').strip()]
+    if order_name:
+        parts.append(str(order_name).strip())
+    if filename:
+        parts.append(filename)
+    return '/'.join(parts)
+
+
+def get_customer_folder_id(customer_name, order_name=None):
+    """Resolve and build the full hierarchy:
+    <root> [-> Finstap-<workspace>] -> Customers -> <Customer Name> [-> <Order Name>]
+    """
+    clean_name = str(customer_name or 'General Client').strip()
+
+    base_id = workspace_base_folder_id()
+    if not base_id:
+        return None
 
     # 2. Subfolder: Customers
-    customer_base_id = get_or_create_folder('Customers', parent_id=root_id)
+    customer_base_id = get_or_create_folder('Customers', parent_id=base_id)
     if not customer_base_id:
-        customer_base_id = root_id
+        customer_base_id = base_id
 
     # 3. Client Folder: <Customer Name>
     client_folder_id = get_or_create_folder(clean_name, parent_id=customer_base_id)
     if not client_folder_id:
-        return customer_base_id or root_id
+        return customer_base_id
 
     # 4. Optional Order Folder: <Order Name>
     if order_name:
@@ -230,7 +276,7 @@ def get_customer_folder_id(customer_name, order_name=None):
 
 def upload_file_to_google_drive(customer_name, filename, file_bytes, mime_type='application/octet-stream', order_name=None):
     """Upload a file to Google Drive under:
-    Brixen-CRM/Customers/<Customer Name>/[<Order Name>/]<filename>
+    <root>/[Finstap-<workspace>/]Customers/<Customer Name>/[<Order Name>/]<filename>
     """
     service = get_drive_service()
     if not service:
@@ -238,7 +284,7 @@ def upload_file_to_google_drive(customer_name, filename, file_bytes, mime_type='
             "success": False,
             "status": "pending_credentials",
             "message": "Google Drive credentials not found or invalid in .env",
-            "folder_path": f"Brixen-CRM/Customers/{customer_name}/{order_name + '/' if order_name else ''}{filename}"
+            "folder_path": drive_folder_path(customer_name, order_name, filename)
         }
 
     try:
@@ -268,7 +314,7 @@ def upload_file_to_google_drive(customer_name, filename, file_bytes, mime_type='
         file_id = uploaded_file.get('id')
         web_view_link = uploaded_file.get('webViewLink')
         web_content_link = uploaded_file.get('webContentLink')
-        folder_path = f"Brixen-CRM/Customers/{customer_name}/{order_name + '/' if order_name else ''}{filename}"
+        folder_path = drive_folder_path(customer_name, order_name, filename)
 
         return {
             "success": True,
