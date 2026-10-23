@@ -382,11 +382,12 @@ export default function Orders() {
         const email = o.owner_form_email || o.client_email || '—'
         return (
           <div
-            className="flex flex-col max-w-[160px] min-w-0 cursor-pointer hover:opacity-80"
+            className="flex flex-col max-w-[220px] min-w-0 cursor-pointer hover:opacity-80"
             onClick={() => handleOpenOrder(o.id)}
           >
-            <TruncatedTooltip text={name} className="block max-w-full truncate text-left font-medium text-sm cursor-pointer" />
-            <TruncatedTooltip text={email} className="block max-w-full truncate text-left text-sm text-muted-foreground cursor-pointer" />
+            {/* Owner in bold; a smaller email so the whole address fits */}
+            <TruncatedTooltip text={name} className="block max-w-full truncate text-left font-semibold text-sm cursor-pointer" />
+            <TruncatedTooltip text={email} className="block max-w-full truncate text-left text-xs text-muted-foreground cursor-pointer" />
           </div>
         )
       },
