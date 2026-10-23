@@ -51,6 +51,8 @@ export const DataTable = ({
   searchPlaceholder = "Search data...",
   onClearFilters,
   hideSearch = false,
+  // Phones: each row as a card (renderMobileCard(rowData) returns it) instead of the wide table
+  renderMobileCard,
 }) => {
   const isSearchControlled = typeof onSearchChange === "function";
   const [sorting, setSorting] = React.useState([]);
@@ -123,12 +125,12 @@ export const DataTable = ({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-4 gap-4">
         <div className="flex items-center gap-2 flex-wrap flex-1">
           {!hideSearch && (
-            <div className="relative">
-              <IconSearch className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <div className="relative w-full sm:w-auto">
+              <IconSearch className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder={searchPlaceholder}
                 value={searchDisplay}
-                className="max-w-xs pl-8 text-sm"
+                className="w-full pl-8 text-sm sm:max-w-xs"
                 onChange={(event) => {
                   if (isSearchControlled) onSearchChange(event.target.value);
                   else setGlobalFilter(event.target.value);
@@ -159,7 +161,8 @@ export const DataTable = ({
                   }}
                   disabled={isLoading}
                 >
-                  <SelectTrigger className={cn("text-sm", config.triggerClassName || "w-35")}>
+                  {/* Two filters a row on phones */}
+                  <SelectTrigger className={cn("text-sm max-sm:w-[calc(50%-0.25rem)]", config.triggerClassName || "w-35")}>
                     <SelectValue placeholder={config.placeholder} />
                   </SelectTrigger>
                   <SelectContent
@@ -190,7 +193,7 @@ export const DataTable = ({
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="ml-auto h-7" disabled={isLoading}>
+            <Button variant="outline" size="sm" className={cn("ml-auto h-7", renderMobileCard && "hidden md:inline-flex")} disabled={isLoading}>
               <IconAdjustmentsHorizontal className="mr-2 h-4 w-4" />
               Columns
             </Button>
@@ -214,7 +217,23 @@ export const DataTable = ({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="overflow-x-auto rounded-md border bg-card">
+      {renderMobileCard && (
+        <div className="space-y-2 md:hidden">
+          {isLoading ? (
+            Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)
+          ) : table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map((row) => (
+              <React.Fragment key={row.id}>{renderMobileCard(row.original, row)}</React.Fragment>
+            ))
+          ) : (
+            <div className="rounded-xl border bg-card py-10 text-center text-sm text-muted-foreground">
+              <IconMoodEmpty className="mx-auto mb-3 size-10" />
+              No records found! Clear all filters and try again.
+            </div>
+          )}
+        </div>
+      )}
+      <div className={cn("overflow-x-auto rounded-md border bg-card", renderMobileCard && "hidden md:block")}>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
