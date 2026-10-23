@@ -37,6 +37,33 @@ def load_dynamic_env():
         except Exception:
             pass
 
+
+def env_value(key):
+    """A Google setting from the environment without stray spaces or surrounding quotes (Coolify keeps
+    quotes typed around a value as part of it; a .env file reader drops them)."""
+    value = os.environ.get(key, '').strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+        value = value[1:-1].strip()
+    return value
+
+
+def fingerprint(key):
+    """Compare a secret between two servers without showing it: length, last 4 characters, short hash,
+    and whether quotes or spaces had to be removed."""
+    import hashlib
+    raw = os.environ.get(key, '')
+    value = env_value(key)
+    if not value:
+        return 'not set'
+    notes = []
+    if raw != raw.strip():
+        notes.append('had spaces/new line around it')
+    if raw.strip() != value:
+        notes.append('had quotes around it')
+    digest = hashlib.sha256(value.encode('utf-8')).hexdigest()[:8]
+    return f"{len(value)} chars, ends …{value[-4:]}, sha256 {digest}" + (f" ({'; '.join(notes)})" if notes else '')
+
+
 def get_drive_service():
     """Initialize and return authorized Google Drive v3 API service from .env or file."""
     global _drive_service_instance
@@ -55,9 +82,9 @@ def get_drive_service():
     credentials = None
 
     # 1. From OAuth 2.0 User Refresh Token (GOOGLE_REFRESH_TOKEN + GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET)
-    refresh_token = os.environ.get('GOOGLE_REFRESH_TOKEN', '').strip()
-    client_id = os.environ.get('GOOGLE_CLIENT_ID', '').strip()
-    client_secret = os.environ.get('GOOGLE_CLIENT_SECRET', '').strip()
+    refresh_token = env_value('GOOGLE_REFRESH_TOKEN')
+    client_id = env_value('GOOGLE_CLIENT_ID')
+    client_secret = env_value('GOOGLE_CLIENT_SECRET')
     if refresh_token and client_id and client_secret:
         try:
             from google.oauth2.credentials import Credentials as UserCredentials  # type: ignore
@@ -146,15 +173,21 @@ def drive_health(create_workspace_folder=True):
         return ok
 
     load_dynamic_env()
-    oauth = all(os.environ.get(k, '').strip() for k in ('GOOGLE_REFRESH_TOKEN', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'))
-    service_account_set = any(os.environ.get(k, '').strip() for k in
+    oauth_keys = ('GOOGLE_REFRESH_TOKEN', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET')
+    oauth = all(env_value(k) for k in oauth_keys)
+    service_account_set = any(env_value(k) for k in
                               ('GOOGLE_SERVICE_ACCOUNT_JSON', 'GOOGLE_SERVICE_ACCOUNT_BASE64', 'GOOGLE_SERVICE_ACCOUNT_PATH'))
-    missing = [k for k in ('GOOGLE_REFRESH_TOKEN', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET') if not os.environ.get(k, '').strip()]
+    missing = [k for k in oauth_keys if not env_value(k)]
     if not step('Login settings', oauth or service_account_set,
                 'OAuth refresh token' if oauth else ('service account' if service_account_set else
                                                      f"missing: {', '.join(missing)}")):
         return {'ok': False, 'steps': steps, 'error': f"Google login settings are missing on the server: {', '.join(missing)}"}
-    root_id = os.environ.get('GOOGLE_DRIVE_FOLDER_ID', '').strip()
+    if oauth:
+        # To compare with a server where the same login works (shows no secret)
+        step('GOOGLE_CLIENT_ID', True, f"…{env_value('GOOGLE_CLIENT_ID')[-40:]}")
+        step('GOOGLE_CLIENT_SECRET', True, fingerprint('GOOGLE_CLIENT_SECRET'))
+        step('GOOGLE_REFRESH_TOKEN', True, fingerprint('GOOGLE_REFRESH_TOKEN'))
+    root_id = env_value('GOOGLE_DRIVE_FOLDER_ID')
     step('GOOGLE_DRIVE_FOLDER_ID', bool(root_id), 'set' if root_id else
          f"not set: a folder named \"{root_folder_name()}\" will be found or made in the account's My Drive")
 
@@ -293,7 +326,7 @@ def root_folder_name():
 
 def workspace_base_folder_id():
     """The folder that holds this workspace's Customers folder (the root, or the company's own folder)."""
-    root_id = os.environ.get('GOOGLE_DRIVE_FOLDER_ID', '').strip() or get_or_create_folder(root_folder_name())
+    root_id = env_value('GOOGLE_DRIVE_FOLDER_ID') or get_or_create_folder(root_folder_name())
     if not root_id:
         logger.error("Root Google Drive folder could not be found or created.")
         return None
