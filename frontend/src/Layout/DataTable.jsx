@@ -40,6 +40,43 @@ import { features } from "./data-table-features";
 
 import { cn } from "cn";
 
+const ACTION_COLUMNS = ["actions", "action"];
+
+function columnLabel(column) {
+  const header = column.columnDef.header;
+  if (typeof header === "string") return header;
+  const text = column.columnDef.meta?.label || column.id.replace(/_/g, " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** Phones: one table row as a card: its first column as the title (actions on the right), the rest
+ *  as label / value lines. */
+function StackedRowCard({ row, table }) {
+  const cells = row.getVisibleCells().filter((c) => c.column.id !== "select");
+  const actions = cells.find((c) => ACTION_COLUMNS.includes(c.column.id));
+  const [first, ...rest] = cells.filter((c) => c !== actions);
+  return (
+    <div className="rounded-xl border bg-card p-3 shadow-xs" data-state={row.getIsSelected() ? "selected" : undefined}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1 text-sm font-medium">{first && <table.FlexRender cell={first} />}</div>
+        {actions && <div className="-mr-1 -mt-1 shrink-0"><table.FlexRender cell={actions} /></div>}
+      </div>
+      {rest.length > 0 && (
+        <dl className="mt-2 space-y-1.5 border-t pt-2">
+          {rest.map((cell) => (
+            <div key={cell.id} className="flex items-start justify-between gap-3 text-sm">
+              <dt className="shrink-0 pt-0.5 text-xs text-muted-foreground">{columnLabel(cell.column)}</dt>
+              <dd className="flex min-w-0 justify-end text-right [&_*]:max-w-full">
+                <table.FlexRender cell={cell} />
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
+  );
+}
+
 export const DataTable = ({
   columns,
   data,
@@ -51,8 +88,10 @@ export const DataTable = ({
   searchPlaceholder = "Search data...",
   onClearFilters,
   hideSearch = false,
-  // Phones: each row as a card (renderMobileCard(rowData) returns it) instead of the wide table
+  // Phones: each row as a card instead of the wide table: renderMobileCard(rowData) for a page's own
+  // card, otherwise the row's columns stacked as label / value. mobileCards={false} keeps the table.
   renderMobileCard,
+  mobileCards = true,
 }) => {
   const isSearchControlled = typeof onSearchChange === "function";
   const [sorting, setSorting] = React.useState([]);
@@ -193,7 +232,7 @@ export const DataTable = ({
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className={cn("ml-auto h-7", renderMobileCard && "hidden md:inline-flex")} disabled={isLoading}>
+            <Button variant="outline" size="sm" className={cn("ml-auto h-7", mobileCards && "hidden md:inline-flex")} disabled={isLoading}>
               <IconAdjustmentsHorizontal className="mr-2 h-4 w-4" />
               Columns
             </Button>
@@ -217,13 +256,15 @@ export const DataTable = ({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {renderMobileCard && (
+      {mobileCards && (
         <div className="space-y-2 md:hidden">
           {isLoading ? (
             Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)
           ) : table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
-              <React.Fragment key={row.id}>{renderMobileCard(row.original, row)}</React.Fragment>
+              <React.Fragment key={row.id}>
+                {renderMobileCard ? renderMobileCard(row.original, row) : <StackedRowCard row={row} table={table} />}
+              </React.Fragment>
             ))
           ) : (
             <div className="rounded-xl border bg-card py-10 text-center text-sm text-muted-foreground">
@@ -233,7 +274,7 @@ export const DataTable = ({
           )}
         </div>
       )}
-      <div className={cn("overflow-x-auto rounded-md border bg-card", renderMobileCard && "hidden md:block")}>
+      <div className={cn("overflow-x-auto rounded-md border bg-card", mobileCards && "hidden md:block")}>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

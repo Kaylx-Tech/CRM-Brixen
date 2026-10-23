@@ -281,7 +281,7 @@ const Companies = () => {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Registered Companies</h2>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="outline"
             size="icon"
