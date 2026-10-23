@@ -525,6 +525,47 @@ export default function Orders() {
     }),
   ], [savingId, handleOpenOrder, showFinance, showAddedBy])
 
+  // Phones: one card per order (tap to open) instead of the wide table
+  const renderOrderCard = useCallback((o) => {
+    const pct = progressPercent(o)
+    const open = o.status !== 'Completed' && o.status !== 'Cancelled' && o.status !== 'Refunded'
+    const b2bPortal = !Number(o.from_website) && (Number(o.is_b2b) === 1 || o.client_type === 'B2B')
+    const addedBy = o.created_by_name || (Number(o.from_website) ? 'Website' : b2bPortal ? 'B2B' : '')
+    return (
+      <button
+        type="button"
+        onClick={() => handleOpenOrder(o.id)}
+        className="w-full rounded-xl border bg-card p-3 text-left shadow-xs transition-colors active:bg-muted/50"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <Badge className="badge-sky rounded-full font-mono">{formatOrderNumberDisplay(o.order_number)}</Badge>
+          <Badge className={`${statusTone(o, pct)} tabular-nums whitespace-nowrap`}>
+            {o.status || 'Pending'}{open ? ` · ${pct}%` : ''}
+          </Badge>
+        </div>
+        <div className="mt-2 min-w-0">
+          <p className="truncate text-sm font-semibold">{o.owner_name || o.client_name || '—'}</p>
+          <p className="truncate text-xs text-muted-foreground">{o.owner_form_email || o.client_email || '—'}</p>
+          {o.company_name ? <p className="mt-1 truncate text-sm">{o.company_name}</p> : null}
+        </div>
+        <div className="mt-2">
+          <ProductPills summary={o.products_summary || o.service_name} />
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-2 border-t pt-2 text-xs text-muted-foreground">
+          <span>
+            {o.created_at ? new Date(o.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}
+            {showAddedBy && addedBy ? ` · ${addedBy}` : ''}
+          </span>
+          {showFinance ? (
+            <span className="text-sm font-semibold tabular-nums text-foreground">
+              £{Number(o.total || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          ) : null}
+        </div>
+      </button>
+    )
+  }, [handleOpenOrder, showFinance, showAddedBy])
+
   const tableFilterConfig = useMemo(() => [
     {
       key: 'company',
@@ -632,7 +673,8 @@ export default function Orders() {
           setB2bClientId('all')
         }}
       >
-        <TabsList>
+        {/* Scrolls sideways on phones instead of cutting the last tab off */}
+        <TabsList className="max-w-full justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <TabsTrigger value="All" className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             All Orders
           </TabsTrigger>
@@ -677,6 +719,7 @@ export default function Orders() {
         onSearchChange={setSearch}
         searchPlaceholder="Search orders…"
         onClearFilters={clearFilters}
+        renderMobileCard={renderOrderCard}
       />
 
       <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
