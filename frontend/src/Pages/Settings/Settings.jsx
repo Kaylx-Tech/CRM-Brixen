@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
@@ -38,11 +39,16 @@ const EMPTY_FORM = {
   brand_name: '',
   support_email: '',
   support_phone: '',
+  legal_name: '',
+  company_number: '',
+  registered_office: '',
+  ico_number: '',
+  invoice_payment_details: '',
   team_notification_emails: '',
   currency: '£',
-  order_prefix: '#GB',
-  order_number_prefix: 'BRX',
-  invoice_prefix: 'INV-2026-',
+  order_prefix: '',
+  order_number_prefix: 'ORD',
+  invoice_prefix: 'INV-',
   portal_url: '',
   frontend_url: '',
   uk_formfill_pro_url: '',
@@ -53,7 +59,7 @@ const EMPTY_FORM = {
   smtp_from: '',
   companies_house_api_key: '',
   getaddress_api_key: '',
-  google_drive_root_folder: 'Brixen-CRM',
+  google_drive_root_folder: '',
   google_service_account_json: '',
   wordpress_url: '',
   wordpress_webhook_secret: '',
@@ -203,11 +209,16 @@ export default function Settings() {
         brand_name: brand.brand_name || flat.brand_name || '',
         support_email: brand.support_email || flat.support_email || '',
         support_phone: brand.support_phone || flat.support_phone || '',
+        legal_name: brand.legal_name || flat.legal_name || '',
+        company_number: flat.company_number || '',
+        registered_office: flat.registered_office || '',
+        ico_number: flat.ico_number || '',
+        invoice_payment_details: brand.invoice_payment_details || flat.invoice_payment_details || '',
         team_notification_emails: flat.team_notification_emails || '',
         currency: brand.currency || flat.currency || '£',
-        order_prefix: brand.order_prefix || flat.order_prefix || '#GB',
-        order_number_prefix: brand.order_number_prefix || flat.order_number_prefix || 'BRX',
-        invoice_prefix: brand.invoice_prefix || flat.invoice_prefix || 'INV-2026-',
+        order_prefix: brand.order_prefix || flat.order_prefix || '',
+        order_number_prefix: brand.order_number_prefix || flat.order_number_prefix || 'ORD',
+        invoice_prefix: brand.invoice_prefix || flat.invoice_prefix || 'INV-',
         portal_url: brand.portal_url || flat.portal_url || '',
         frontend_url: brand.frontend_url || flat.frontend_url || '',
         uk_formfill_pro_url: flat.uk_formfill_pro_url || '',
@@ -218,7 +229,7 @@ export default function Settings() {
         smtp_from: smtp.smtp_from || '',
         companies_house_api_key: '',
         getaddress_api_key: '',
-        google_drive_root_folder: drive.google_drive_root_folder || 'Brixen-CRM',
+        google_drive_root_folder: drive.google_drive_root_folder || '',
         google_service_account_json: '',
         wordpress_url: webhooks.wordpress_url || '',
         wordpress_webhook_secret: '',
@@ -337,10 +348,15 @@ export default function Settings() {
         brand_name: (form.brand_name || form.company_name).trim(),
         support_email: form.support_email.trim(),
         support_phone: form.support_phone.trim(),
+        legal_name: form.legal_name.trim(),
+        company_number: form.company_number.trim(),
+        registered_office: form.registered_office.trim(),
+        ico_number: form.ico_number.trim(),
+        invoice_payment_details: form.invoice_payment_details.trim(),
         team_notification_emails: form.team_notification_emails.trim(),
         currency: form.currency.trim() || '£',
         order_prefix: form.order_prefix.trim(),
-        order_number_prefix: (form.order_number_prefix || '').trim() || 'BRX',
+        order_number_prefix: (form.order_number_prefix || '').trim() || 'ORD',
         invoice_prefix: form.invoice_prefix.trim(),
         portal_url: form.portal_url.trim(),
         frontend_url: form.frontend_url.trim(),
@@ -553,7 +569,7 @@ export default function Settings() {
                     id="team_notification_emails"
                     value={form.team_notification_emails}
                     onChange={(e) => setField('team_notification_emails', e.target.value)}
-                    placeholder="orders@brixenconsultants.com, support@…"
+                    placeholder="orders@yourcompany.com, support@…"
                     disabled={isLoading}
                   />
                 </Field>
@@ -568,7 +584,7 @@ export default function Settings() {
                 <Field
                   id="order_number_prefix"
                   label="Order prefix"
-                  hint={`New CRM orders: ${form.order_number_prefix || 'BRX'}-1001-${MONTH_TAG}. Letters and numbers only; the count carries on.`}
+                  hint={`New CRM orders: ${form.order_number_prefix || 'ORD'}-1001-${MONTH_TAG}. Letters and numbers only; the count carries on.`}
                 >
                   <Input
                     id="order_number_prefix"
@@ -611,10 +627,67 @@ export default function Settings() {
                     id="uk_formfill_pro_url"
                     value={form.uk_formfill_pro_url}
                     onChange={(e) => setField('uk_formfill_pro_url', e.target.value)}
-                    placeholder="https://portal.brixenconsultants.com/formfill"
+                    placeholder="https://yourcompany.com/formfill"
                     disabled={isLoading}
                   />
                 </Field>
+              </div>
+            </Section>
+
+            <Section title="Invoices" description="Your business details and how customers pay, printed on invoices and payment emails.">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field id="legal_name" label="Registered business name">
+                  <Input
+                    id="legal_name"
+                    value={form.legal_name}
+                    onChange={(e) => setField('legal_name', e.target.value)}
+                    placeholder="Acme Accountants Ltd"
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="company_number" label="Company number">
+                  <Input
+                    id="company_number"
+                    value={form.company_number}
+                    onChange={(e) => setField('company_number', e.target.value)}
+                    placeholder="12345678"
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="registered_office" label="Registered office">
+                  <Input
+                    id="registered_office"
+                    value={form.registered_office}
+                    onChange={(e) => setField('registered_office', e.target.value)}
+                    placeholder="1 High Street, London, EC1A 1AA"
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="ico_number" label="ICO registration number">
+                  <Input
+                    id="ico_number"
+                    value={form.ico_number}
+                    onChange={(e) => setField('ico_number', e.target.value)}
+                    placeholder="ZA123456"
+                    disabled={isLoading}
+                  />
+                </Field>
+                <div className="md:col-span-2">
+                  <Field
+                    id="invoice_payment_details"
+                    label="Payment details"
+                    hint="One per line, e.g. “Account name: Acme Ltd”. Left empty, invoices show no payment details."
+                  >
+                    <Textarea
+                      id="invoice_payment_details"
+                      rows={4}
+                      value={form.invoice_payment_details}
+                      onChange={(e) => setField('invoice_payment_details', e.target.value)}
+                      placeholder={'Account name: Acme Accountants Ltd\nAccount number: 12345678\nSort code: 00-00-00'}
+                      disabled={isLoading}
+                    />
+                  </Field>
+                </div>
               </div>
             </Section>
           </TabsContent>
@@ -955,7 +1028,7 @@ export default function Settings() {
                     id="compliance_alerts_website"
                     value={form.compliance_alerts_website}
                     onChange={(e) => setField('compliance_alerts_website', e.target.value)}
-                    placeholder="https://brixenconsultants.com"
+                    placeholder="https://yourcompany.com"
                     disabled={isLoading}
                   />
                 </Field>
@@ -964,7 +1037,7 @@ export default function Settings() {
                     id="compliance_alerts_whatsapp_url"
                     value={form.compliance_alerts_whatsapp_url}
                     onChange={(e) => setField('compliance_alerts_whatsapp_url', e.target.value)}
-                    placeholder="https://wa.me/447360515317"
+                    placeholder="https://wa.me/447700900000"
                     disabled={isLoading}
                   />
                 </Field>

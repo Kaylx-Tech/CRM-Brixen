@@ -31,6 +31,14 @@ DEFAULT_SETTINGS = {
     # ── Brand & General ───────────────────────────────────
     'company_name': 'Brixen Consultants',
     'brand_name': 'Brixen Consultants',
+    'legal_name': 'Brixen Consultants Ltd',
+    # Free text printed on invoices and payment emails (bank account, payment link…); empty = Brixen's own
+    # bank details in Brixen's database, nothing in a Finstap workspace
+    'invoice_payment_details': '',
+    # Printed on a Finstap company's invoices when filled in (Brixen's invoices carry Brixen's own)
+    'company_number': '',
+    'registered_office': '',
+    'ico_number': '',
     'logo_url': '/static/img/logo.svg',
     'primary_color': '#003971',
     'support_email': 'contact@brixenconsultants.com',
@@ -86,6 +94,7 @@ DEFAULT_SETTINGS = {
 WORKSPACE_DEFAULT_OVERRIDES = {
     'company_name': '',
     'brand_name': '',
+    'legal_name': '',
     'logo_url': '',
     'support_email': '',
     'support_phone': '',
@@ -103,14 +112,19 @@ WORKSPACE_DEFAULT_OVERRIDES = {
 }
 
 
-def _defaults():
-    """Brixen's defaults for its own database; neutral ones inside a Finstap company workspace."""
+def _in_workspace():
+    """True inside a Finstap company workspace (not Brixen's own database)."""
     try:
         from tenancy import current_tenant
         tenant = current_tenant()
     except ImportError:
         tenant = None
-    if tenant and tenant.get('plan') != 'legacy':
+    return bool(tenant and tenant.get('plan') != 'legacy')
+
+
+def _defaults():
+    """Brixen's defaults for its own database; neutral ones inside a Finstap company workspace."""
+    if _in_workspace():
         return {**DEFAULT_SETTINGS, **WORKSPACE_DEFAULT_OVERRIDES}
     return DEFAULT_SETTINGS
 
@@ -170,8 +184,10 @@ def get_all_settings(raw: bool = False):
     # 3. Build categorized dictionary
     result = {
         'brand': {
-            'company_name': merged.get('company_name', 'Brixen Consultants'),
-            'brand_name': merged.get('brand_name', 'Brixen Consultants'),
+            'company_name': merged.get('company_name', ''),
+            'brand_name': merged.get('brand_name', ''),
+            'legal_name': merged.get('legal_name', ''),
+            'invoice_payment_details': merged.get('invoice_payment_details', ''),
             'logo_url': merged.get('logo_url', '/static/img/logo.svg'),
             'primary_color': merged.get('primary_color', '#003971'),
             'support_email': merged.get('support_email', 'contact@brixenconsultants.com'),
@@ -266,9 +282,11 @@ def update_settings(payload: dict, user_id=None, ip_address=None):
             INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?);
         """, (key, val_str))
 
-        # Synchronize with runtime os.environ
-        os.environ[key.upper()] = val_str
-        os.environ[key] = val_str
+        # Synchronize with runtime os.environ (one process serves every Finstap company: a workspace's
+        # settings stay in its own database, or one company's values would fill another's empty ones)
+        if not _in_workspace():
+            os.environ[key.upper()] = val_str
+            os.environ[key] = val_str
         saved_keys.append(key)
 
     # Keep compliance key aliases in sync (admin UI vs compliance_alerts engine)
@@ -287,8 +305,9 @@ def update_settings(payload: dict, user_id=None, ip_address=None):
                 "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?);",
                 (dest, val_str),
             )
-            os.environ[dest.upper()] = val_str
-            os.environ[dest] = val_str
+            if not _in_workspace():
+                os.environ[dest.upper()] = val_str
+                os.environ[dest] = val_str
             saved_keys.append(dest)
 
     # Invalidate Google Drive client cache if drive credentials changed
@@ -323,7 +342,9 @@ def test_smtp_connection(test_email=None, custom_cfg=None):
     smtp_port = int(cfg.get('smtp_port') or get_setting('smtp_port', '587'))
     smtp_user = cfg.get('smtp_user') or get_setting('smtp_user', '')
     smtp_pass = cfg.get('smtp_pass') or get_setting('smtp_pass', '')
-    from_email = cfg.get('smtp_from') or get_setting('smtp_from', 'notifications@brixenconsultants.com')
+    from_email = cfg.get('smtp_from') or get_setting('smtp_from') or smtp_user
+    from services.portal_compat import brand_name
+    sender = brand_name()
 
     if not smtp_user or not smtp_pass:
         return {
@@ -338,10 +359,10 @@ def test_smtp_connection(test_email=None, custom_cfg=None):
                 server.login(smtp_user, smtp_pass)
                 if test_email:
                     msg = MIMEMultipart('alternative')
-                    msg['Subject'] = "Brixen CRM - SMTP Configuration Test Successful"
-                    msg['From'] = f"Brixen Consultants <{from_email}>"
+                    msg['Subject'] = f"{sender} - SMTP Configuration Test Successful"
+                    msg['From'] = f"{sender} <{from_email}>"
                     msg['To'] = test_email
-                    body_html = "<div style='font-family:sans-serif;padding:20px;color:#0f172a'><h3>SMTP Connection Verified</h3><p>Your Brixen CRM transactional email server is configured properly and ready to dispatch live client notifications.</p></div>"
+                    body_html = "<div style='font-family:sans-serif;padding:20px;color:#0f172a'><h3>SMTP Connection Verified</h3><p>Your CRM transactional email server is configured properly and ready to dispatch live client notifications.</p></div>"
                     msg.attach(MIMEText(body_html, 'html'))
                     server.sendmail(from_email, [test_email], msg.as_string())
         else:
@@ -350,10 +371,10 @@ def test_smtp_connection(test_email=None, custom_cfg=None):
                 server.login(smtp_user, smtp_pass)
                 if test_email:
                     msg = MIMEMultipart('alternative')
-                    msg['Subject'] = "Brixen CRM - SMTP Configuration Test Successful"
-                    msg['From'] = f"Brixen Consultants <{from_email}>"
+                    msg['Subject'] = f"{sender} - SMTP Configuration Test Successful"
+                    msg['From'] = f"{sender} <{from_email}>"
                     msg['To'] = test_email
-                    body_html = "<div style='font-family:sans-serif;padding:20px;color:#0f172a'><h3>SMTP Connection Verified</h3><p>Your Brixen CRM transactional email server is configured properly and ready to dispatch live client notifications.</p></div>"
+                    body_html = "<div style='font-family:sans-serif;padding:20px;color:#0f172a'><h3>SMTP Connection Verified</h3><p>Your CRM transactional email server is configured properly and ready to dispatch live client notifications.</p></div>"
                     msg.attach(MIMEText(body_html, 'html'))
                     server.sendmail(from_email, [test_email], msg.as_string())
 

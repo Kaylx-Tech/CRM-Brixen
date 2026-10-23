@@ -320,7 +320,7 @@ PRODUCT_FORM_CONFIGS = {
                 "name": "proposed_company_name",
                 "label": "Proposed Company Name",
                 "type": "text",
-                "placeholder": "e.g. BRIXEN ENTERPRISES LIMITED",
+                "placeholder": "e.g. ACME ENTERPRISES LIMITED",
                 "help_text": "Must end with LTD or LIMITED.",
                 "required": True
             },

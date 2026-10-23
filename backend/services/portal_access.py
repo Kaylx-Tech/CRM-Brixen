@@ -7,7 +7,17 @@ The team always. Customers: only B2B accounts. Individual and Business customers
 from services.wordpress_service import wordpress_base_url, website_customer_login_url
 
 STAFF_ROLES = ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
-WEBSITE_ONLY_MESSAGE = "This is a website customer account. Please sign in on the Brixen website."
+
+
+def website_only_message():
+    from services.portal_compat import brand_name
+    return f"This is a website customer account. Please sign in on the {brand_name()} website."
+
+
+def _in_workspace():
+    """A Finstap company: its customers have no separate website, so they all use its portal."""
+    from services.portal_compat import _workspace_name
+    return bool(_workspace_name())
 
 
 def is_b2b_client(user):
@@ -24,7 +34,7 @@ def client_can_use_crm_portal(user, *, impersonated=False):
         return False
     if str(user.get('email') or '').strip().lower() == 'guest.unlinked@brixenconsultants.com':
         return False
-    return is_b2b_client(user)
+    return _in_workspace() or is_b2b_client(user)
 
 
 def website_login_url():

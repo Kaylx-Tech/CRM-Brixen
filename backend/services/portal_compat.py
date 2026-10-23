@@ -5,28 +5,45 @@ from db import query_db
 from config import FRONTEND_URL, PORTAL_URL
 
 
+def _workspace_name():
+    """The company's own name inside a Finstap workspace (None for Brixen's own database)."""
+    try:
+        from tenancy import current_tenant
+        tenant = current_tenant()
+    except ImportError:
+        return None
+    if tenant and tenant.get('plan') != 'legacy':
+        return tenant.get('name') or tenant.get('slug')
+    return None
+
+
 def brand_settings():
+    """Who the emails, invoices and documents come from. Values come from the company's own Settings (their
+    defaults are Brixen's only in Brixen's own database); a Finstap company never falls back to Brixen."""
+    workspace = _workspace_name()
     try:
         from services.settings_service import get_setting
+        name = get_setting('company_name') or get_setting('brand_name') or workspace or 'Our team'
         return {
-            'company_name': get_setting('company_name', 'Brixen Consultants'),
-            'brand_name': get_setting('brand_name', 'Brixen Consultants'),
-            'support_email': get_setting('support_email', 'contact@brixenconsultants.com'),
-            'support_phone': get_setting('support_phone', ''),
+            'company_name': name,
+            'brand_name': get_setting('brand_name') or name,
+            'legal_name': get_setting('legal_name') or name,
+            'support_email': get_setting('support_email') or '',
+            'support_phone': get_setting('support_phone') or '',
             # The public website in email signatures (not the CRM portal); a workspace without one shows its address
-            'website': get_setting('wordpress_url') or get_setting('portal_url', PORTAL_URL) or 'https://brixenconsultants.com',
+            'website': get_setting('wordpress_url') or get_setting('portal_url') or ('' if workspace else PORTAL_URL),
             # Unset: the settings default (Brixen's bundled logo; none for a new Finstap workspace)
             'logo_url': get_setting('logo_url'),
         }
     except Exception:
-        return {
-            'company_name': 'Brixen Consultants',
-            'brand_name': 'Brixen Consultants',
-            'support_email': 'contact@brixenconsultants.com',
-            'support_phone': '',
-            'website': 'https://brixenconsultants.com',
-            'logo_url': '',
-        }
+        name = workspace or 'Our team'
+        return {'company_name': name, 'brand_name': name, 'legal_name': name, 'support_email': '',
+                'support_phone': '', 'website': '', 'logo_url': ''}
+
+
+def brand_name():
+    """The company's display name for emails and documents (never Brixen inside a Finstap workspace)."""
+    return brand_settings().get('company_name') or 'Our team'
 
 
 def portal_base_url():

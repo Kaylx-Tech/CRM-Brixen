@@ -2796,7 +2796,7 @@ def _ch_gateway_xml(company_number, auth_code, presenter_id, presenter_auth, per
         esc(filing_type or 'MicroEntity'),
         '" PeriodEnd="',
         esc(period_end),
-        '">Brixen FRS 105 HTML pack. Not a validated TIS v5.9 iXBRL submission.</Accounts></Body>',
+        '">FRS 105 HTML pack. Not a validated TIS v5.9 iXBRL submission.</Accounts></Body>',
         '</GovTalkMessage>',
     ]
     return ''.join(parts)
@@ -2837,7 +2837,7 @@ def submit_companies_house(company_id, data, user_id=None):
         execute_db("UPDATE ledger_books SET company_number = ? WHERE id = ?;", (company_number, book['id']))
     mode = 'sandbox'
     status = 'accepted'
-    receipt = f"BRIXEN-SANDBOX-{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}-{book['id']}"
+    receipt = f"CRM-SANDBOX-{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}-{book['id']}"
     message = (
         'No Companies House software-filing credentials on this server. '
         'Download the Companies House pack and upload it in WebFiling. '
@@ -2918,7 +2918,7 @@ def submit_hmrc(company_id, data, user_id=None):
     tax = money(hmrc.get('tax') or 0)
     mode = 'sandbox'
     status = 'recorded'
-    receipt = f"BRIXEN-HMRC-{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}-{book['id']}"
+    receipt = f"CRM-HMRC-{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}-{book['id']}"
     if _book_kind(book) == 'dormant':
         message = (
             'Recorded as dormant for Corporation Tax. This is not a live HMRC filing. '
@@ -3117,6 +3117,12 @@ def _gbp(value):
     return f"{sign}£{abs(amount):,.2f}"
 
 
+def _brand_name():
+    """The accountant's own name on the accounts pack (its Settings; never Brixen in a Finstap company)."""
+    from services.portal_compat import brand_name
+    return brand_name()
+
+
 def _esc(value):
     return html_lib.escape(str(value or ''))
 
@@ -3150,14 +3156,14 @@ def render_statutory_html(ws, filleted=False):
     dormant = str(org.get('filing_kind') or '') == 'dormant' or bool(ye.get('can_file_dormant'))
     if dormant:
         title = 'Dormant company accounts for filing at Companies House' if filleted else 'Dormant company accounts for the members'
-        brand = 'Brixen Consultants · dormant company accounts'
+        brand = f'{_brand_name()} · dormant company accounts'
         pl_block = f"""
         <h2>Profit and loss account</h2>
         <p>The company was dormant throughout the year ended {_esc(_uk_long(org['period_end']))} and made neither a profit nor a loss.</p>
         """
     else:
         title = 'Accounts for filing at Companies House' if filleted else 'Accounts for the members'
-        brand = 'Brixen Consultants · FRS 105 micro-entity accounts'
+        brand = f'{_brand_name()} · FRS 105 micro-entity accounts'
         rows_pl = ''
         if not filleted:
             for line in pl['lines']:
@@ -3226,7 +3232,7 @@ def render_statutory_html(ws, filleted=False):
     <p>Approved by the board and signed on its behalf by</p>
     <p style="margin-top:36px;border-top:1px solid #0f172a;width:280px;padding-top:8px;">{_esc(ye['signed_by'])}<br>Director<br>{_esc(_uk_long(org['period_end']))}</p>
   </div>
-  <p class="disclaimer">This is a transactional compliance pack prepared from the CRM ledger. Brixen Consultants is not Companies House. Draft iXBRL is not a validated software-filing package.</p>
+  <p class="disclaimer">This is a transactional compliance pack prepared from the CRM ledger. We are not Companies House. Draft iXBRL is not a validated software-filing package.</p>
 </div>
 </body>
 </html>

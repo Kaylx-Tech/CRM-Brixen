@@ -93,14 +93,22 @@ def ensure_compliance_alert_settings():
         'compliance_alerts_verified_only': '0',
         'compliance_alerts_whatsapp_enabled': '1',
         'compliance_alerts_test_mode': '0',
-        'compliance_alerts_test_recipient': 'brixenconsultant@gmail.com',
-        'compliance_alerts_website': 'https://brixenconsultants.com',
+        'compliance_alerts_test_recipient': '',
+        'compliance_alerts_website': '',
         'compliance_alerts_whatsapp_url': '',
     }
     for key, value in defaults.items():
         existing = query_db('SELECT value FROM settings WHERE key = ?;', (key,), one=True)
         if not existing:
             upsert_setting(key, value)
+    # Earlier versions wrote Brixen's own test mailbox and website into every Finstap company: cleared
+    from services.portal_compat import _workspace_name
+    if _workspace_name():
+        for key, brixen_value in (('compliance_alerts_test_recipient', 'brixenconsultant@gmail.com'),
+                                  ('compliance_alerts_website', 'https://brixenconsultants.com')):
+            row = query_db('SELECT value FROM settings WHERE key = ?;', (key,), one=True)
+            if row and str(row.get('value') or '').strip().lower() == brixen_value:
+                upsert_setting(key, '')
 
 
 def compliance_alert_settings():
@@ -114,8 +122,8 @@ def compliance_alert_settings():
         'verified_only': _setting_bool('compliance_alerts_verified_only', False),
         'whatsapp_enabled': _setting_bool('compliance_alerts_whatsapp_enabled', True),
         'test_mode': _setting_bool('compliance_alerts_test_mode', False),
-        'test_recipient': _setting('compliance_alerts_test_recipient', 'brixenconsultant@gmail.com'),
-        'website': _setting('compliance_alerts_website', 'https://brixenconsultants.com'),
+        'test_recipient': _setting('compliance_alerts_test_recipient', ''),
+        'website': _setting('compliance_alerts_website', ''),
         'whatsapp_url': _setting('compliance_alerts_whatsapp_url', ''),
     }
 
@@ -419,7 +427,7 @@ ISSUE_GUIDANCE = {
             ''
         ),
         'resolve': (
-            'If an update is required, Brixen Consultants can guide you through the process and the relevant Companies House filing.',
+            'If an update is required, we can guide you through the process and the relevant Companies House filing.',
             ''
         ),
         'bold': (),
@@ -437,7 +445,7 @@ ISSUE_GUIDANCE = {
             ''
         ),
         'resolve': (
-            'If an update is required, Brixen Consultants can confirm the details and guide you through the next steps.',
+            'If an update is required, we can confirm the details and guide you through the next steps.',
             ''
         ),
         'bold': (),
@@ -455,7 +463,7 @@ ISSUE_GUIDANCE = {
             ''
         ),
         'resolve': (
-            'If an update is required, Brixen Consultants can confirm the details and guide you through the next steps.',
+            'If an update is required, we can confirm the details and guide you through the next steps.',
             ''
         ),
         'bold': (),
@@ -494,10 +502,10 @@ def issue_guidance_for(issues):
                     'Prompt review helps keep the company position clear.',
                 ),
                 'resolve': (
-                    'Contact Brixen Consultants so we can review the record with you.',
+                    'Contact us so we can review the record with you.',
                     'We will advise on the practical next step.',
                 ),
-                'bold': ('Brixen Consultants',),
+                'bold': ('Contact us',),
                 'ask': 'Would you like us to review this with you?',
             }
         due = str((item or {}).get('due') or '').strip()
@@ -570,7 +578,7 @@ def brand_contact_block():
 
     brand = app_mod.brand_settings()
     cfg = compliance_alert_settings()
-    website = cfg.get('website') or brand.get('website') or 'https://brixenconsultants.com'
+    website = cfg.get('website') or brand.get('website') or ''
     phone = str(brand.get('support_phone') or '').strip()
     email = str(brand.get('support_email') or '').strip()
     wa = str(cfg.get('whatsapp_url') or '').strip()
@@ -579,7 +587,7 @@ def brand_contact_block():
         if digits:
             wa = f'https://wa.me/{digits}'
     return {
-        'brixen_company_name': brand.get('company_name') or 'Brixen Consultants',
+        'brixen_company_name': brand.get('company_name') or app_mod.brand_name(),
         'brixen_website': website,
         'brixen_email': email,
         'brixen_phone': phone,

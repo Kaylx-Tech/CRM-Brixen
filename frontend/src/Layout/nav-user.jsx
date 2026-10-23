@@ -47,7 +47,7 @@ export function NavUser({
 
   const user = {
     name: storedUser.full_name || storedUser.name || defaultUser?.name || 'Administrator',
-    email: storedUser.email || defaultUser?.email || 'admin@brixenconsultants.com',
+    email: storedUser.email || defaultUser?.email || '',
     avatar: storedUser.avatar_url || defaultUser?.avatar || '',
   }
 

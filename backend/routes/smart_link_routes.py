@@ -54,7 +54,7 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
         return error_response(start_response, "Authentication required", status_code=401)
     role = user.get('role')
     if role not in TEAM_ROLES:
-        return error_response(start_response, "Smart Operations is for the Brixen team.", status_code=403)
+        return error_response(start_response, "Smart Operations is for the team only.", status_code=403)
 
     if path == '/api/admin/smart-links' and method == 'GET':
         rows = query_db("""

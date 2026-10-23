@@ -159,7 +159,7 @@ function TicketThread({ ticketId, onChanged }) {
               <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
                 <p className="whitespace-pre-wrap">{m.message}</p>
                 <p className={`mt-1 text-[11px] ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                  {mine ? "You" : (m.sender_name || "Brixen team")} · {formatDate(m.created_at)}
+                  {mine ? "You" : (m.sender_name || "Support team")} · {formatDate(m.created_at)}
                 </p>
               </div>
             </div>
@@ -249,7 +249,7 @@ export function PortalMessages() {
                   <span className="shrink-0 text-xs text-muted-foreground">{formatDate(m.created_at)}</span>
                 </div>
                 <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">{m.sender_role === "CLIENT" ? "You" : (m.sender_name || "Brixen team")}:</span> {m.message}
+                  <span className="font-medium text-foreground">{m.sender_role === "CLIENT" ? "You" : (m.sender_name || "Support team")}:</span> {m.message}
                 </p>
               </Link>
             </li>

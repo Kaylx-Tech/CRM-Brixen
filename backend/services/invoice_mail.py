@@ -11,7 +11,7 @@ from html import escape as html_escape
 from db import query_db
 from services.email_service import send_email
 from services import email_engine as eng
-from services.portal_compat import brand_settings
+from services.portal_compat import brand_name, brand_settings
 
 INVOICE_BANK_GBP = {
     'currency': 'GBP',
@@ -27,11 +27,26 @@ INVOICE_BANK_PKR = {
     'iban': 'PK42UNIL0109000343170125',
 }
 
-PAYMENT_REQUEST_COPY = (
-    'Thank you for your order with Brixen Consultants.\n\n'
-    'Your invoice details are below.\n\n'
-    'You may settle this invoice using either the GBP or PKR payment details provided below.'
-)
+def payment_methods():
+    """How invoices say to pay: ('custom', text) from Settings > Payment details on invoices,
+    ('brixen', '') Brixen's own bank accounts (Brixen's database only), or ('none', '') for a Finstap company
+    that has not added its details yet. A Finstap company never sees Brixen's bank accounts."""
+    from services.settings_service import get_setting
+    from services.portal_compat import _workspace_name
+    text = str(get_setting('invoice_payment_details') or '').strip()
+    if text:
+        return 'custom', text
+    return ('none', '') if _workspace_name() else ('brixen', '')
+
+
+def payment_request_copy():
+    mode, _text = payment_methods()
+    lines = [f'Thank you for your order with {brand_name()}.', '', 'Your invoice details are below.']
+    if mode == 'brixen':
+        lines += ['', 'You may settle this invoice using either the GBP or PKR payment details provided below.']
+    elif mode == 'custom':
+        lines += ['', 'Payment details are below.']
+    return '\n'.join(lines)
 
 
 def _money(value):
@@ -160,7 +175,13 @@ def _build_sections(invoice, order, *, include_bank):
         summary.append(('Order', number))
 
     sections = [_section_html('Invoice', summary)]
-    if include_bank:
+    mode, text = payment_methods()
+    if include_bank and mode == 'custom':
+        sections.append(_section_html('How to pay', [
+            (line.split(':', 1)[0].strip(), line.split(':', 1)[1].strip()) if ':' in line else ('', line.strip())
+            for line in text.splitlines() if line.strip()
+        ]))
+    elif include_bank and mode == 'brixen':
         gbp = INVOICE_BANK_GBP
         pkr = INVOICE_BANK_PKR
         sections.append(_section_html('Pay in GBP', [
@@ -180,7 +201,7 @@ def _compose_email(*, subject, greeting, intro, sections_html, category):
     brand = brand_settings()
     brand_for_sig = {
         **brand,
-        'legal_name': brand.get('legal_name') or 'Brixen Consultants Ltd',
+        'legal_name': brand.get('legal_name') or brand.get('company_name'),
     }
     intro_html = html_escape(intro).replace('\n', '<br>')
     body_inner = (
@@ -217,7 +238,7 @@ def send_payment_requested(invoice, order):
     if not to:
         return {'email_sent': False, 'email_status': 'No recipient email'}
 
-    company = brand_settings().get('company_name') or 'Brixen Consultants'
+    company = brand_name()
     invoice_number = str(invoice.get('invoice_number') or '').strip()
     order_number = str(order.get('order_number') or '').strip()
     if invoice_number:
@@ -230,7 +251,7 @@ def send_payment_requested(invoice, order):
     subject, text, html = _compose_email(
         subject=subject,
         greeting=_greeting_name(invoice, order),
-        intro=PAYMENT_REQUEST_COPY,
+        intro=payment_request_copy(),
         sections_html=_build_sections(invoice, order, include_bank=True),
         category='INVOICE',
     )
@@ -263,7 +284,7 @@ def send_payment_received(invoice, order):
             'We’ve received the full amount for this invoice. Thank you — this payment is now complete.'
         )
 
-    company = brand_settings().get('company_name') or 'Brixen Consultants'
+    company = brand_name()
     invoice_number = str(invoice.get('invoice_number') or '').strip()
     order_number = str(order.get('order_number') or '').strip()
     service = str(order.get('service_name') or '').strip()

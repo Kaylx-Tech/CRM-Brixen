@@ -17,7 +17,7 @@ from db import query_db
 from services import email_engine as eng
 from services.email_service import send_email
 from services.notification_service import create_notification
-from services.portal_compat import brand_settings
+from services.portal_compat import brand_name, brand_settings
 
 PLACEHOLDER_DOMAINS = ('@brixen-pending.local',)
 
@@ -34,6 +34,10 @@ def client_panel_url():
             return value.rstrip('/')
     except Exception:
         pass
+    # A Finstap company's customers use its own CRM portal (there is no website client panel)
+    from services.portal_compat import _workspace_name
+    if _workspace_name():
+        return _crm_url('/portal')
     return 'https://brixenconsultants.com/client-panel/customer-messages'
 
 
@@ -83,9 +87,9 @@ def _greeting(client, order=None):
 
 def compose_client_email(*, subject, headline, greeting, message, points=None, details=None,
                          cta_label=None, cta_url=None, category='ORDER'):
-    """Brixen transactional email (same shell as the invoice emails). Returns (subject, text, html)."""
+    """Transactional email in the company's name (same shell as the invoice emails). Returns (subject, text, html)."""
     brand = brand_settings()
-    brand_for_sig = {**brand, 'legal_name': brand.get('legal_name') or 'Brixen Consultants Ltd'}
+    brand_for_sig = {**brand, 'legal_name': brand.get('legal_name') or brand.get('company_name')}
     points = [str(p).strip() for p in (points or []) if str(p).strip()]
     details = [(k, v) for k, v in (details or []) if str(v or '').strip()]
 
@@ -150,7 +154,7 @@ def notify_client(user_id, *, title, message, ntype='info', link=None, email=Tru
         if not recipient:
             result['email_status'] = 'No email address'
             return result
-        company_name = brand_settings().get('company_name') or 'Brixen Consultants'
+        company_name = brand_name()
         subj, text, html = compose_client_email(
             subject=subject or f"{title} — {company_name}",
             headline=headline or title,
@@ -179,9 +183,9 @@ def _crm_url(path=''):
     try:
         from config import FRONTEND_URL
         from services.settings_service import get_setting
-        base = (get_setting('frontend_url', '') or FRONTEND_URL or 'https://admin.brixenconsultants.com').rstrip('/')
+        base = (get_setting('frontend_url', '') or FRONTEND_URL or '').rstrip('/')
     except Exception:
-        base = 'https://admin.brixenconsultants.com'
+        base = ''
     return f"{base}{path}"
 
 
@@ -233,7 +237,7 @@ def email_staff_member(user_id, title, message, link_path='/admin/tasks', trigge
         """, (user_id,), one=True)
         if not member or not _usable(member.get('email')):
             return False
-        return _staff_email(to=_usable(member['email']), subject=f"{title} — Brixen Consultants", headline=title,
+        return _staff_email(to=_usable(member['email']), subject=f"{title} — {brand_name()}", headline=title,
                             greeting=str(member.get('full_name') or 'there').split()[0], message=message,
                             link_path=link_path, triggered_by=triggered_by)
     except Exception as exc:
@@ -331,7 +335,7 @@ def notify_order_received(order_id, triggered_by=None):
         return None
     number = order.get('order_number') or f"#{order_id}"
     service = str(order.get('service_name') or 'Your order').strip()
-    brand = brand_settings().get('company_name') or 'Brixen Consultants'
+    brand = brand_name()
     details = [('Order', number), ('Service', service)]
     if order.get('company_name'):
         details.append(('Company', order['company_name']))
@@ -355,7 +359,7 @@ def notify_product_status_changed(order_id, line_item_id, triggered_by=None):
     product = str(item.get('product_name') or 'Your product').strip()
     status = str(item.get('fulfillment_status') or 'Pending').strip()
     number = order.get('order_number') or f"#{order_id}"
-    brand = brand_settings().get('company_name') or 'Brixen Consultants'
+    brand = brand_name()
     return notify_client(
         order['user_id'], title=f'{product} status updated',
         headline=f'Your {product} order is {status.lower()}',
@@ -375,7 +379,7 @@ def notify_order_status_changed(order_id, old_status, triggered_by=None):
     status = order.get('status') or 'Pending'
     number = order.get('order_number') or f"#{order_id}"
     service = str(order.get('service_name') or 'Your order').strip()
-    brand = brand_settings().get('company_name') or 'Brixen Consultants'
+    brand = brand_name()
     if status == 'Completed':
         return notify_client(
             order['user_id'], title=f'{service} is complete', headline=f'{service} is done',
@@ -419,7 +423,7 @@ def notify_document_available(document_id, client_message=None, triggered_by=Non
              if doc.get('order_id') else None)
     return notify_client(
         doc['user_id'], title='New document available',
-        message='Brixen Consultants has uploaded a new document to your client portal. Log in to view and download it.',
+        message=f'{brand_name()} has uploaded a new document to your client portal. Log in to view and download it.',
         ntype='document_uploaded', link='/documents',
         subject=f'New document ready — {name}', headline='A new document is available in your client portal',
         details=details, cta_label='View your documents', category='DOCUMENT',
@@ -452,7 +456,7 @@ def notify_compliance_done(company_id, events, triggered_by=None):
         titles.append('PSC verification')
         points += ['✅ PSC verification is complete', '👥 People with significant control are confirmed']
     headline = ' and '.join(titles) + ' is done'
-    brand = brand_settings().get('company_name') or 'Brixen Consultants'
+    brand = brand_name()
     return notify_client(
         company['user_id'], title=headline, headline=headline,
         message='A required company check is now complete.', ntype='compliance_complete', link='/companies',
@@ -473,7 +477,7 @@ def notify_accounts_filed(company_id, period_end=None, confirmation=None, trigge
     if confirmation:
         points.append(f'📄 Confirmation {confirmation}')
     points.append('📁 Company files are in your client panel')
-    brand = brand_settings().get('company_name') or 'Brixen Consultants'
+    brand = brand_name()
     return notify_client(
         company['user_id'], title='Yearly accounts filed', headline='Your yearly accounts are filed',
         message='Good news — the accounts for this company are now filed.', ntype='accounts_filed',
@@ -498,7 +502,7 @@ def notify_company_registered(company_id, triggered_by=None):
         SELECT id, owner_form_email, owner_name, b2b_client_id FROM orders
         WHERE company_id = ? ORDER BY id DESC LIMIT 1;
     """, (company_id,), one=True)
-    brand = brand_settings().get('company_name') or 'Brixen Consultants'
+    brand = brand_name()
     result = notify_client(
         company['user_id'], title='Your company is registered', headline=f'Congratulations, {name} is registered',
         message=f"Great news: {name} is now officially registered with Companies House.",

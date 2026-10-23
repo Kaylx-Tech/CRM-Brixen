@@ -34,7 +34,7 @@ def _smtp_config():
         port = 587
     user = (user or '').strip()
     password = (password or '').strip()
-    from_email = (from_email or user or 'no-reply@brixenconsultants.com').strip()
+    from_email = (from_email or user or '').strip()
     return host, port, user, password, from_email
 
 
@@ -147,7 +147,10 @@ def _deliver(recipient, subject, html_content, text_content):
         )
         return False, 'not_configured', 'SMTP is not configured (Settings > Email)'
 
-    msg = _build_message(subject, f"Brixen Consultants <{from_email}>", recipient, html_content, text_content)
+    from email.utils import formataddr
+    from services.portal_compat import brand_name
+    # Sent in the company's own name (its Settings > company name)
+    msg = _build_message(subject, formataddr((brand_name(), from_email)), recipient, html_content, text_content)
 
     try:
         if smtp_port == 465:

@@ -95,7 +95,7 @@ export default function ResetPassword() {
                 )}
                 {websiteUrl && (
                   <a href={websiteUrl} className="mt-1 block font-semibold underline">
-                    Reset it on the Brixen website
+                    Reset it on the website
                   </a>
                 )}
               </AlertDescription>

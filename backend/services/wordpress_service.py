@@ -28,7 +28,10 @@ def _setting(key, env_name, default=''):
 
 
 def wordpress_base_url():
-    return (_setting('wordpress_url', 'WORDPRESS_URL', 'https://brixenconsultants.com')).rstrip('/')
+    # A Finstap company has no website unless it adds its own (never Brixen's)
+    from services.portal_compat import _workspace_name
+    default = '' if _workspace_name() else 'https://brixenconsultants.com'
+    return (_setting('wordpress_url', 'WORDPRESS_URL', default)).rstrip('/')
 
 
 def website_customer_login_url():

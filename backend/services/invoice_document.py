@@ -15,18 +15,33 @@ import urllib.request
 
 from db import query_db
 from services.invoice_service import invoice_money_state
-from services.invoice_mail import INVOICE_BANK_GBP, INVOICE_BANK_PKR
-from services.portal_compat import brand_settings
+from services.invoice_mail import INVOICE_BANK_GBP, INVOICE_BANK_PKR, payment_methods
+from services.portal_compat import _workspace_name, brand_settings
 
 LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', 'img', 'brixen-logo.png')
 
-# Registered company details printed on every invoice (app.py brand_settings)
+# Brixen's registered company details, printed on Brixen's own invoices (app.py brand_settings)
 COMPANY_DETAILS = {
     'legal_name': 'Brixen Consultants Ltd',
     'company_number': '17314564',
     'registered_office': '57 Wellesley Road, Ilford, United Kingdom, IG1 4JZ',
     'ico_number': 'ZB941411',
 }
+
+
+def company_details():
+    """Who the invoice is from. A Finstap company: its own Settings (legal name, company number, registered
+    office, ICO number); lines it has not filled in are left out. Brixen's database: Brixen's details."""
+    if not _workspace_name():
+        return dict(COMPANY_DETAILS)
+    from services.settings_service import get_setting
+    brand = brand_settings()
+    return {
+        'legal_name': brand.get('legal_name') or brand.get('company_name') or '',
+        'company_number': get_setting('company_number') or '',
+        'registered_office': get_setting('registered_office') or '',
+        'ico_number': get_setting('ico_number') or '',
+    }
 
 _PAKISTAN_RE = re.compile(
     r'\b(pakistan|pakistani|islamabad|lahore|karachi|rawalpindi|faisalabad|peshawar|'
@@ -55,8 +70,8 @@ def format_uk_date(raw):
 
 
 def _phone_display(brand):
-    digits = re.sub(r'\D', '', str((brand or {}).get('support_phone') or '447360515317')) or '447360515317'
-    return f"+{digits}"
+    digits = re.sub(r'\D', '', str((brand or {}).get('support_phone') or ''))
+    return f"+{digits}" if digits else ''
 
 
 def download_filename(invoice_number):
@@ -192,7 +207,8 @@ def document_payload(invoice_id):
     fx_pounds = money['amount_due'] if money['amount_due'] > 0.004 else money['total']
     return {
         'invoice': invoice,
-        'brand': {**brand_settings(), **COMPANY_DETAILS},
+        'brand': {**brand_settings(), **company_details()},
+        'own_logo': not _workspace_name(),
         'owner_name': invoice.get('owner_name') or invoice.get('client_name') or '',
         'owner_email': invoice.get('owner_form_email') or invoice.get('client_email') or '',
         'company_name': invoice.get('company_name') or '',
@@ -263,11 +279,17 @@ def _render_pdf(payload, s=1.0):
     pdf.set_title(latin(f"Invoice {invoice.get('invoice_number') or ''}"))
 
     left, top = pdf.get_x(), pdf.get_y()
-    if os.path.exists(LOGO_PATH):
+    if payload.get('own_logo') and os.path.exists(LOGO_PATH):
         try:
             pdf.image(LOGO_PATH, x=left, y=top, w=48 if s >= 0.8 else 40)
         except Exception:
             pass
+    elif not payload.get('own_logo'):
+        # A Finstap company: its name in place of a logo
+        pdf.set_xy(left, top)
+        pdf.set_font('Helvetica', 'B', 16)
+        pdf.set_text_color(*ink)
+        pdf.multi_cell(90, 7, latin(brand.get('company_name') or brand.get('legal_name') or ''), align='L')
 
     pdf.set_xy(left + 100, top)
     pdf.set_font('Helvetica', 'B', 9)
@@ -275,13 +297,13 @@ def _render_pdf(payload, s=1.0):
     pdf.multi_cell(78, 4.2, latin('Registered Business name\n' + brand.get('legal_name', '').upper()), align='R')
     pdf.set_font('Helvetica', '', 9)
     pdf.set_x(left + 100)
-    pdf.multi_cell(78, 4.2, latin('\n'.join([
+    pdf.multi_cell(78, 4.2, latin('\n'.join(line for line in [
         brand.get('registered_office', ''),
-        brand.get('support_email') or 'contact@brixenconsultants.com',
+        brand.get('support_email') or '',
         _phone_display(brand),
-        f"Company No - {brand.get('company_number', '')}",
-        f"ICO Reg No - {brand.get('ico_number', '')}",
-    ])), align='R')
+        f"Company No - {brand['company_number']}" if brand.get('company_number') else '',
+        f"ICO Reg No - {brand['ico_number']}" if brand.get('ico_number') else '',
+    ] if line)), align='R')
 
     pdf.set_y(max(pdf.get_y(), top + 36 * s) + 4 * s)
     pdf.set_draw_color(*rule)
@@ -349,12 +371,23 @@ def _render_pdf(payload, s=1.0):
         pdf.cell(140, max(7 * s, 5), label, align='R')
         pdf.cell(38, max(7 * s, 5), money(value), align='R', new_x='LMARGIN', new_y='NEXT')
 
+    mode, details = payment_methods()
+    if mode == 'none':
+        # A Finstap company that has not added its payment details: no payment section at all
+        return bytes(pdf.output()), pdf.page_no()
+
     pdf.ln(4 * s)
     pdf.line(16, pdf.get_y(), 194, pdf.get_y())
     pdf.ln(6 * s)
     pdf.set_font('Helvetica', 'B', 16 if s >= 0.8 else 13)
-    pdf.cell(0, 8 * s, 'PAYMENT METHODS', new_x='LMARGIN', new_y='NEXT')
+    pdf.cell(0, 8 * s, 'PAYMENT METHODS' if mode == 'brixen' else 'HOW TO PAY', new_x='LMARGIN', new_y='NEXT')
     pdf.ln(2 * s)
+
+    if mode == 'custom':
+        # The company's own payment details (Settings), one line each
+        pdf.set_font('Helvetica', '', 10)
+        pdf.multi_cell(0, 5.5, latin(details), align='L')
+        return bytes(pdf.output()), pdf.page_no()
 
     def bank_block(title, fields):
         pdf.set_font('Helvetica', 'B', 10)

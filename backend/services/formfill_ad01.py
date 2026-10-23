@@ -51,7 +51,7 @@ def generate_ad01_pdf(data):
             self.set_y(-14)
             self.set_font('Helvetica', '', 8)
             self.set_text_color(120, 120, 120)
-            self.cell(0, 8, f'AD01 - Change of registered office address | Page {self.page_no()} | Generated via Brixen UK FormFill Pro', 0, 0, 'C')
+            self.cell(0, 8, f'AD01 - Change of registered office address | Page {self.page_no()} | Generated via UK FormFill', 0, 0, 'C')
 
     pdf = AD01PDF(orientation='P', unit='mm', format='A4')
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -361,7 +361,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <div class="form-section">
                 <div class="section-title" style="justify-content:space-between;">
                     <span>2. New Registered Office Address</span>
-                    <button type="button" class="preset-btn" onclick="applyBrixenAddress()">📍 Use Brixen Central London Address</button>
                 </div>
                 <div class="form-grid">
                     <div class="form-group" style="grid-column: 1 / -1;">
@@ -429,14 +428,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             if (found) {
                 document.getElementById('company_name').value = found.name || '';
             }
-        }
-
-        function applyBrixenAddress() {
-            document.getElementById('address_line_1').value = '100 Bishopsgate';
-            document.getElementById('address_line_2').value = 'London';
-            document.getElementById('post_town').value = 'London';
-            document.getElementById('county').value = 'Greater London';
-            document.getElementById('postcode').value = 'EC2N 4AG';
         }
 
         async function handleGenerateAD01(e) {

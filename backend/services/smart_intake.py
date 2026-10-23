@@ -50,7 +50,7 @@ def store_client_document_file(client_id, order_id, ext, file_bytes, filename=No
     if not res.get('success'):
         return None, res.get('error') or 'Google Drive upload failed'
     _STORE_LOCAL.last = res
-    return res.get('file_path') or f"Brixen-CRM/Customers/{customer}/{name}", None
+    return res.get('file_path') or f"Customers/{customer}/{name}", None
 
 
 def _apply_drive_link(doc_id):

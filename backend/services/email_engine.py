@@ -34,11 +34,11 @@ EMAIL_CATEGORIES = (
 
 COMPLIANCE_DISCLAIMER = (
     'This is a transactional compliance notice based on information held in our '
-    'CRM and/or Companies House data. Brixen Consultants is not Companies House.'
+    'CRM and/or Companies House data. We are not Companies House.'
 )
 
 TRANSACTIONAL_ACCOUNT_NOTE = (
-    'This is a transactional email from Brixen Consultants about your account. '
+    'This is a transactional email about your account. '
     'It is not a marketing message.'
 )
 
@@ -150,6 +150,12 @@ def normalize_email_category(value, default='ORDER'):
     return default
 
 
+def _company_name():
+    """The sending company's name (its Settings; never Brixen inside a Finstap workspace)."""
+    from services.portal_compat import brand_name
+    return brand_name()
+
+
 def category_disclaimer(category, override=None):
     """Return disclaimer text for category. override='' suppresses; None uses category default."""
     if override is not None:
@@ -176,7 +182,7 @@ def trim_email_copy(text, max_words=180):
 
 
 def normalize_legal_name(value):
-    name = str(value or 'Brixen Consultants Ltd').strip()
+    name = str(value or '').strip()
     name = re.sub(r'\bLTD\b', 'Ltd', name, flags=re.I)
     name = re.sub(r'\bLimited\b', 'Ltd', name, flags=re.I)
     return name.rstrip('.,;: ').strip()
@@ -198,13 +204,13 @@ def brand_contact_fields(brand):
     email = str(brand.get('support_email') or '').strip()
     phone_raw = str(brand.get('support_phone') or '').strip()
     phone = format_uk_phone_display(phone_raw)
-    website = str(brand.get('website') or '').strip() or 'https://brixenconsultants.com'
+    website = str(brand.get('website') or '').strip()
     website_label = website.replace('https://', '').replace('http://', '').rstrip('/')
-    legal = normalize_legal_name(brand.get('legal_name') or 'Brixen Consultants Ltd')
-    display = str(brand.get('company_name') or 'Brixen Consultants').strip()
+    display = str(brand.get('company_name') or _company_name()).strip()
     display = re.sub(r'\bLTD\b', 'Ltd', display, flags=re.I).rstrip('.,;: ').strip()
+    legal = normalize_legal_name(brand.get('legal_name') or display)
     return {
-        'display_name': display or 'Brixen Consultants',
+        'display_name': display or _company_name(),
         'legal_name': legal,
         'email': email,
         'phone': phone,
@@ -219,7 +225,7 @@ def email_signature_text(brand):
     lines = [
         'Kind regards,',
         '',
-        'The Brixen Consultants Team',
+        f"The {c['display_name']} Team",
         c['legal_name'],
     ]
     if c['email']:
@@ -243,7 +249,7 @@ def email_signature_html(brand, *, align='left'):
         f'font-size:15px;line-height:1.45;color:{ink};">Kind regards,</p>',
         f'<p style="margin:0;text-align:{align};font-family:{EMAIL_FONT_STACK};'
         f'font-size:15px;line-height:1.45;font-weight:600;color:{ink};">'
-        f'The Brixen Consultants Team</p>',
+        f'The {html_escape(c["display_name"])} Team</p>',
         f'<p style="margin:2px 0 0;text-align:{align};font-family:{EMAIL_FONT_STACK};'
         f'font-size:14px;line-height:1.45;color:{muted};">{html_escape(c["legal_name"])}</p>',
     ]
@@ -398,7 +404,7 @@ def email_premium_header_html(wordmark_url=None, eyebrow='Client Compliance Upda
     if mark:
         logo_cell = (
             f'<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:16px;">'
-            f'<tr><td><img src="{mark}" alt="Brixen Consultants" width="120" '
+            f'<tr><td><img src="{mark}" alt="{html_escape(_company_name())}" width="120" '
             f'style="display:block;border:0;outline:none;text-decoration:none;width:120px;height:auto;"></td></tr>'
             f'</table>'
         )
@@ -556,7 +562,7 @@ def email_html_for_preview(html):
 
 def email_brand_header_html(brand, headline):
     """Hero row: the logo (or the company name when there is none) above the email's headline."""
-    name = (brand or {}).get('company_name') or 'Brixen Consultants'
+    name = (brand or {}).get('company_name') or _company_name()
     src = email_logo_src(brand)
     if src:
         top = (f'<img src="{html_escape(src)}" alt="{html_escape(name)}" height="36" '
@@ -615,8 +621,8 @@ def build_transactional_shell_html(
 
 def email_signature_html(brand, *, align='left'):
     c = brand_contact_fields(brand)
-    bname = c.get("brand_name") or c.get("display_name") or "Brixen Consultants"
-    cname = c.get("company_name") or c.get("legal_name") or "Brixen Consultants Ltd"
+    bname = c.get("brand_name") or c.get("display_name") or _company_name()
+    cname = c.get("company_name") or c.get("legal_name") or _company_name()
     return (
         f'<div style="margin:24px 0 0;font-family:{EMAIL_FONT_STACK};font-size:15px;line-height:1.5;color:#374151;text-align:{align};">'
         f'<p style="margin:0 0 8px;font-weight:400;">Kind regards,</p>'

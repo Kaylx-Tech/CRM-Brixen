@@ -434,7 +434,7 @@ function CompanyNameAvailabilityField({ id, value, onChange, placeholder }) {
           className="w-full pr-9 text-sm"
           value={input}
           onChange={(e) => onChange({ input: e.target.value, state: e.target.value.trim().length >= 3 ? "typing" : "idle" })}
-          placeholder={placeholder || "e.g. Brixen Ventures Ltd"}
+          placeholder={placeholder || "e.g. Acme Ventures Ltd"}
           autoComplete="off"
         />
         {current.state === "checking" || current.state === "typing" ? (

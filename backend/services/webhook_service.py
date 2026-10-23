@@ -131,9 +131,9 @@ def process_woocommerce_order(payload):
     line_items = payload.get('line_items') or []
     if isinstance(line_items, list) and line_items:
         names = [str(item.get('name') or '').strip() for item in line_items if isinstance(item, dict)]
-        service_name = ', '.join(n for n in names if n) or 'Brixen Professional Service'
+        service_name = ', '.join(n for n in names if n) or 'Professional Service'
     else:
-        service_name = 'Brixen Professional Service'
+        service_name = 'Professional Service'
 
     # 3. Idempotent upsert by woocommerce_order_id then order_number
     existing = None
@@ -182,7 +182,8 @@ def process_woocommerce_order(payload):
             'order_update', '/admin/orders',
         )
         from services.client_mail import email_team
-        email_team(f"New website order {order_num} — Brixen Consultants",
+        from services.portal_compat import brand_name
+        email_team(f"New website order {order_num} — {brand_name()}",
                    f"A new website order is in the CRM.\nOrder: {order_num}\nClient: {full_name or email}",
                    link_path='/admin/orders', order_id=order_id)
         created = True

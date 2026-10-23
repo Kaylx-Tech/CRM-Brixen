@@ -283,7 +283,7 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
             execute_db("UPDATE users SET wordpress_user_id = ? WHERE id = ?;", (site['wordpress_user_id'], cid))
         return success_response(
             start_response,
-            message=f"{name} can now sign in on the Brixen website ({wordpress_service.website_customer_login_url()}) with {target.get('email')}.",
+            message=f"{name} can now sign in on the website ({wordpress_service.website_customer_login_url()}) with {target.get('email')}.",
             data={"portal_login_ready": False, "website_provisioned": True})
 
     # ── 5. POST /api/admin/customers/delete (Single Delete) ──────────────────

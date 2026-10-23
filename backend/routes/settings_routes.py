@@ -20,16 +20,19 @@ def handle_settings_routes(environ, start_response, path, method, user, body, qu
     
     # ── 1. GET /api/settings/public or /api/public/settings ────────────────
     if path in ('/api/settings/public', '/api/public/settings') and method == 'GET':
+        # The company's own details (Settings defaults are Brixen's only in Brixen's own database)
+        from services.portal_compat import brand_settings
+        brand = brand_settings()
         public_data = {
-            'company_name': get_setting('company_name', 'Brixen Consultants'),
-            'brand_name': get_setting('brand_name', 'Brixen Consultants'),
-            'logo_url': get_setting('logo_url', '/static/img/logo.svg'),
+            'company_name': brand['company_name'],
+            'brand_name': brand['brand_name'],
+            'logo_url': get_setting('logo_url'),
             'primary_color': get_setting('primary_color', '#003971'),
-            'support_email': get_setting('support_email', 'contact@brixenconsultants.com'),
-            'support_phone': get_setting('support_phone', '+44 7360 515317'),
+            'support_email': brand['support_email'],
+            'support_phone': brand['support_phone'],
             'currency': get_setting('currency', '£'),
-            'portal_url': get_setting('portal_url', 'https://portal.brixenconsultants.com'),
-            'frontend_url': get_setting('frontend_url', 'https://admin.brixenconsultants.com')
+            'portal_url': get_setting('portal_url'),
+            'frontend_url': get_setting('frontend_url'),
         }
         return success_response(start_response, data=public_data)
 

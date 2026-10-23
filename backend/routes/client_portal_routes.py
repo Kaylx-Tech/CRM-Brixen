@@ -353,7 +353,8 @@ def handle_client_portal_routes(environ, start_response, path, method, user, bod
         except Exception:
             pass
         from services.client_mail import email_team
-        email_team(f"New support ticket {number} — Brixen Consultants",
+        from services.portal_compat import brand_name
+        email_team(f"New support ticket {number} — {brand_name()}",
                    f"A client opened a support ticket.\nTicket: {number}\n"
                    f"Client: {user.get('full_name') or user.get('email')}\nSubject: {subject}",
                    link_path='/admin/tickets')

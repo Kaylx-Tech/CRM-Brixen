@@ -10,6 +10,7 @@ import re
 from db import query_db, execute_db
 from utils.response import success_response, error_response
 from services.permissions import departments_from_user
+from services.portal_compat import brand_name
 
 TICKET_STATUSES = ('Open', 'In Progress', 'Resolved', 'Closed')
 TICKET_PRIORITIES = ('Low', 'Medium', 'High', 'Urgent')
@@ -134,7 +135,7 @@ def handle_ticket_routes(environ, start_response, path, method, user, body, quer
         execute_db("""
             INSERT INTO support_messages (ticket_id, sender_id, sender_name, sender_role, message, created_at)
             VALUES (?, ?, ?, ?, ?, datetime('now'));
-        """, (tid, user.get('id'), user.get('full_name') or user.get('email') or 'Brixen', user.get('role'), text))
+        """, (tid, user.get('id'), user.get('full_name') or user.get('email') or brand_name(), user.get('role'), text))
 
         # Status after the reply: what the team chose, otherwise an open ticket moves to In Progress
         new_status = body.get('status') if body.get('status') in TICKET_STATUSES else (
@@ -145,7 +146,7 @@ def handle_ticket_routes(environ, start_response, path, method, user, body, quer
         from services.client_mail import notify_client
         preview = text if len(text) <= 600 else text[:600].rstrip() + '…'
         mail = notify_client(
-            ticket['user_id'], title='New message from Brixen',
+            ticket['user_id'], title=f'New message from {brand_name()}',
             message=f"You have a new reply on support ticket {ticket['ticket_number']}.",
             ntype='support', link='/support',
             subject=f"New reply on {ticket['ticket_number']} — {ticket.get('subject') or 'Support ticket'}",

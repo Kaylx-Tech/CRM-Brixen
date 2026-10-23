@@ -460,7 +460,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                       className="w-full"
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
-                      placeholder="e.g. BRIXEN CONSULTANTS LTD"
+                      placeholder="e.g. ACME TRADING LTD"
                     />
                   </div>
                   <div className="space-y-2">

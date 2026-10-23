@@ -206,7 +206,7 @@ const Accountancy = () => {
           <IconArrowsSort className="ml-2 h-4 w-4" />
         </Button>
       ),
-      cell: ({ row }) => <span className="text-sm">{row.getValue("owner_name") || "Brixen Client"}</span>,
+      cell: ({ row }) => <span className="text-sm">{row.getValue("owner_name") || "Client"}</span>,
     }),
     columnHelper.accessor("has_address", {
       header: "Address",
