@@ -370,12 +370,15 @@ def test_google_drive_connection(custom_json=None):
     """Test Google Drive the way uploads use it (OAuth refresh token or service account from the server env),
     down to this company's own folder. A pasted service account JSON is tested on its own (below)."""
     if not custom_json:
+        from services import r2_storage
         from services.google_drive_service import drive_health
-        health = drive_health()
+        # With Cloudflare R2 set up, documents go there (not Drive), so that is what gets tested
+        health = r2_storage.health() if r2_storage.is_configured() else drive_health()
         summary = ' | '.join(f"{'OK' if s['ok'] else 'FAIL'} {s['step']}{': ' + s['detail'] if s['detail'] else ''}"
                              for s in health['steps'])
         if health['ok']:
-            return {"success": True, "message": f"Google Drive works. Files go to {health.get('path')}",
+            store = 'Cloudflare R2' if r2_storage.is_configured() else 'Google Drive'
+            return {"success": True, "message": f"{store} works. Files go to {health.get('path')}",
                     "steps": health['steps'], "summary": summary}
         return {"success": False, "error": health['error'], "steps": health['steps'], "summary": summary}
     try:

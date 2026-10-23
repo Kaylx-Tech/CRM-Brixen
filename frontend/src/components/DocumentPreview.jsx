@@ -24,7 +24,9 @@ export default function DocumentPreview({ doc, className = "" }) {
 
   if (!doc) return null
   const name = doc.name || doc.file_name || "document"
-  const driveLink = doc.drive_web_link || (doc.drive_file_id ? `https://drive.google.com/file/d/${doc.drive_file_id}/view` : null)
+  // A Google Drive link only for files on Drive (R2 files are "r2:<key>" and private, no outside link)
+  const onDrive = doc.drive_file_id && !String(doc.drive_file_id).startsWith("r2:")
+  const driveLink = doc.drive_web_link || (onDrive ? `https://drive.google.com/file/d/${doc.drive_file_id}/view` : null)
 
   if (state.status === "loading") {
     return <Skeleton className={`w-full h-[70vh] rounded-md ${className}`} />

@@ -16,6 +16,7 @@ from services.google_drive_service import (
     get_drive_service,
     is_drive_configured
 )
+from services import r2_storage
 
 ALLOWED_EXTENSIONS = {
     '.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx',
@@ -57,18 +58,35 @@ def save_client_file(client_id, customer_name, filename, file_bytes, order_id=No
     
     order_folder = order_name or (f"Order #{order_id}" if order_id else None)
 
-    # Stream direct to Google Drive
-    drive_res = upload_file_to_google_drive(
-        customer_name=customer_name,
-        filename=clean_name,
-        file_bytes=file_bytes,
-        mime_type=mime_type,
-        order_name=order_folder
-    )
-    
+    if r2_storage.is_configured():
+        # Cloudflare R2 (Finstap): private bucket, the company's own prefix
+        key = r2_storage.object_key(customer_name, order_folder, clean_name)
+        r2_res = r2_storage.upload(key, file_bytes, mime_type)
+        if r2_res.get('success'):
+            return {
+                "success": True,
+                "title": clean_name,
+                "file_size": len(file_bytes),
+                "mime_type": mime_type,
+                "file_path": key,
+                "drive_file_id": r2_res['ref'],
+                "drive_web_link": None,
+                "drive_download_link": None,
+            }
+        drive_res = {'success': False, 'error': f"R2: {r2_res.get('error')}"}
+    else:
+        # Stream direct to Google Drive
+        drive_res = upload_file_to_google_drive(
+            customer_name=customer_name,
+            filename=clean_name,
+            file_bytes=file_bytes,
+            mime_type=mime_type,
+            order_name=order_folder
+        )
+
     if not drive_res.get('success'):
-        # Never lose an upload because Drive is down or its token expired: keep the file on the server's
-        # persistent storage; scripts/drive_sync.py moves it to Drive later (it picks up rows without a drive_file_id).
+        # Never lose an upload because R2 / Drive is down or its token expired: keep the file on the server's
+        # persistent storage; scripts/r2_sync.py (or drive_sync.py) moves it later (rows without a drive_file_id).
         drive_error = drive_res.get('message') or drive_res.get('error') or 'Google Drive upload failed.'
         print(f"[Storage] Drive upload failed ({drive_error}); saving {clean_name} locally")
         try:
@@ -106,7 +124,9 @@ def save_client_file(client_id, customer_name, filename, file_bytes, order_id=No
     }
 
 def get_file_download_stream(file_id):
-    """Stream a file directly from Google Drive for client download/viewing."""
+    """Stream a file directly from Google Drive (or R2 for "r2:<key>") for client download/viewing."""
+    if r2_storage.is_r2_ref(file_id):
+        return r2_storage.download(file_id)
     service = get_drive_service()
     if not service:
         return None, None
