@@ -726,7 +726,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
           {/* Header Section */}
           <div className="p-6 border-b bg-muted/20">
             <DialogHeader className="flex-row items-center gap-4 space-y-0 text-left">
-              <Avatar className="w-13 h-13 bg-primary text-primary-foreground flex items-center justify-center text-lg font-bold">
+              <Avatar className="hidden sm:flex w-13 h-13 bg-primary text-primary-foreground items-center justify-center text-lg font-bold">
                 <AvatarFallback>
                   <IconPackage className="w-6 h-6" />
                 </AvatarFallback>

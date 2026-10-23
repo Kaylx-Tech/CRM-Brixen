@@ -154,7 +154,7 @@ export function StatCard({
           )}
         />
       )}
-      <CardHeader className={cn("relative", compact ? "gap-0.5" : undefined)}>
+      <CardHeader className={cn("relative @max-[200px]/card:grid-cols-1!", compact ? "gap-0.5" : undefined)}>
         <CardDescription
           className={cn(
             compact ? "flex items-center gap-2 text-[11px]" : "flex flex-col items-start gap-2.5",
@@ -187,7 +187,8 @@ export function StatCard({
           {isLoading ? <Shimmer className={compact ? "h-6 w-16 mt-0.5" : "h-8 w-20 mt-1"} /> : value}
         </CardTitle>
         {(trendValue || isLoading) && (
-          <CardAction>
+          // A narrow card (phones) puts the trend under the number so it is never cut off
+          <CardAction className="@max-[200px]/card:col-start-1 @max-[200px]/card:row-span-1 @max-[200px]/card:row-start-3 @max-[200px]/card:mt-1 @max-[200px]/card:justify-self-start">
             {isLoading ? (
               <Shimmer className="h-5 w-12 rounded-full" />
             ) : (
