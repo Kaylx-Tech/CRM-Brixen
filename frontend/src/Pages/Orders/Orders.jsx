@@ -808,7 +808,7 @@ export default function Orders() {
         }}
         title="Cancel order"
         description={cancelOrderMessage(cancelOrderTarget)}
-        confirmText="Cancel order and invoice"
+        confirmText="Yes, cancel"
         cancelText="Keep order"
       />
     </div>
