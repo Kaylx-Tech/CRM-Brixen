@@ -9,6 +9,7 @@ import { PasswordInput } from "@/components/ui/password-input"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
+import { toast } from "@/components/ui/toast"
 import { homePath } from "@/lib/permissions"
 import { getApiBase } from "@/lib/api"
 import { getDeviceId } from "@/lib/device"
@@ -52,6 +53,14 @@ export function FinstapLoginForm() {
     const token = data.data?.token || data.token
     const user = data.data?.user || data.user
     if (!token) return false
+    const skipped = data.data?.otp_skipped_reason
+    if (skipped) {
+      // The code email could not go out, so the server let this sign-in through without one
+      toast.warning("Signed in without a login code", {
+        description: `The login code email could not be sent: ${skipped}. Ask your admin to fix the email settings.`,
+        duration: 20000,
+      })
+    }
     setWorkspace(slug)
     localStorage.setItem("token", token)
     localStorage.setItem("user", JSON.stringify(user || { email }))

@@ -38,6 +38,13 @@ export function LoginForm({ className, ...props }) {
     const token = data.token || nested.token || data.session_token || nested.session_token || null
     const userObj = data.user || nested.user || null
     if (!token) return false
+    if (nested.otp_skipped_reason) {
+      // The code email could not go out, so the server let this sign-in through without one
+      toast.warning("Signed in without a login code", {
+        description: `The login code email could not be sent: ${nested.otp_skipped_reason}. Ask your admin to fix the email settings.`,
+        duration: 20000,
+      })
+    }
     localStorage.setItem("token", token)
     localStorage.setItem("user", JSON.stringify(userObj || { email }))
     // Customers land on their portal, the team on the CRM
@@ -100,7 +107,7 @@ export function LoginForm({ className, ...props }) {
 
   return (
     // Full screen split: brand panel fills the left half, the form sits in the right half
-    <div className={cn("grid min-h-screen w-full md:grid-cols-2", className)} {...props}>
+    <div className={cn("grid min-h-screen w-full bg-background md:grid-cols-2", className)} {...props}>
       <div className="relative hidden md:flex flex-col justify-center p-12 lg:p-16 bg-linear-to-br from-slate-900 via-blue-900 to-blue-950 text-white">
         <div className="max-w-[480px] space-y-4">
           <img src={whiteLogo} alt="Brixen Logo" className="w-auto mb-6 h-16" />
@@ -204,6 +211,7 @@ export function LoginForm({ className, ...props }) {
         >
           Visit Our Website
         </a>
+
         <FieldDescription className="px-6 text-center">
           © 2026 Brixen Consultants Ltd. All rights reserved.
         </FieldDescription>

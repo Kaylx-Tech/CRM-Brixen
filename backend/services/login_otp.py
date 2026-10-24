@@ -8,6 +8,9 @@ stores hashes of the device id and the code.
   * a code works for 10 minutes and for 5 tries; a new one can be sent after 60 seconds
   * a confirmed browser is trusted for 24 hours from the moment the code was entered
   * LOGIN_EMAIL_OTP=0 (env) switches codes off, e.g. while email is down
+  * when the code email cannot be sent at all (SMTP missing or refusing), the sign-in goes ahead
+    without a code and the login screen shows why, so nobody is locked out by an email problem;
+    LOGIN_OTP_STRICT=1 (env) blocks the sign-in instead
   * Finstap workspaces in LOGIN_OTP_SKIP_WORKSPACES (env, comma-separated; default "demo", the
     workspace shown to prospective clients) sign in without a code
 """
@@ -33,6 +36,11 @@ def _workspace_slug():
     except ImportError:
         return ''
     return str((current_tenant() or {}).get('slug') or '').lower()
+
+
+def strict_mode():
+    """LOGIN_OTP_STRICT=1: no sign-in at all when the code email cannot be sent."""
+    return str(os.environ.get('LOGIN_OTP_STRICT', '0')).strip().lower() in ('1', 'true', 'on', 'yes')
 
 
 def otp_enabled():
@@ -140,8 +148,14 @@ def _send_code(user, code):
     return sent
 
 
+def email_failure_reason():
+    """Why the code email did not go out (from the email service), for the login fallback."""
+    from services.email_service import last_failure_reason
+    return last_failure_reason() or 'the email could not be sent'
+
+
 def start_challenge(user, device_id, user_agent=''):
-    """Email a new code. Returns (challenge, error)."""
+    """Email a new code. Returns (challenge, error); on error email_failure_reason() says why."""
     _ensure_tables()
     challenge = uuid.uuid4().hex
     code = f"{secrets.randbelow(1_000_000):06d}"

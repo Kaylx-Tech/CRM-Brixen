@@ -66,6 +66,30 @@ def _log_email(recipient, subject, html_content, text_content, status, error, me
         return None
 
 
+# Why the last email on this server thread could not be sent (read by the login code step)
+_last_failure = {'status': '', 'error': ''}
+
+
+def last_failure_reason():
+    """A short, readable reason the last send failed ('' when it went out). No secrets in it."""
+    status = _last_failure['status']
+    text = str(_last_failure['error'] or '')
+    low = text.lower()
+    if not status:
+        return ''
+    if status == 'not_configured':
+        return 'email (SMTP) is not set up on the server: SMTP_USER / SMTP_PASS are empty'
+    if status == 'invalid_recipient':
+        return 'the account has no valid email address'
+    if '535' in low or 'authentication' in low or 'username and password' in low or 'auth' in low:
+        return 'the email server refused the SMTP username or password (SMTP_USER / SMTP_PASS)'
+    if 'timed out' in low or 'timeout' in low or 'refused' in low or 'unreachable' in low or 'name or service' in low:
+        return 'the server cannot reach the email server (SMTP_HOST / SMTP_PORT)'
+    if 'sender' in low or '553' in low or '550' in low:
+        return 'the email server refused the From address (SMTP_FROM must be the SMTP_USER mailbox)'
+    return f'the email server said: {text[:140]}'
+
+
 def send_email(recipient, subject, html_content, text_content=None, *, category=None, user_id=None,
                order_id=None, company_id=None, triggered_by=None, log=True, store_body=True):
     """Send an HTML transactional email via SMTP. Returns True only on real send.
@@ -82,6 +106,7 @@ def send_email(recipient, subject, html_content, text_content=None, *, category=
         ok, status, error = False, 'suppressed', 'Emails are turned off in Settings > Email'
     else:
         ok, status, error = _deliver(recipient, subject, html_content, text_content)
+    _last_failure['status'], _last_failure['error'] = ('', '') if ok else (status, error)
     if log:
         _log_email((recipient or '').strip(), subject,
                    html_content if store_body else None, text_content if store_body else None,
