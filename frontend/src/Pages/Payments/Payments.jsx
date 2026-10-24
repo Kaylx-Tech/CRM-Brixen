@@ -33,6 +33,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { toast } from "sonner"
 import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
+import { formatGBP, plainAmount } from "@/lib/money"
 
 const invoiceCol = createColumnHelper()
 const costCol = createColumnHelper()
@@ -58,7 +59,7 @@ function parseMoney(value) {
  * onSave(raw) resolves to the cost to show afterwards.
  */
 function CostCell({ order, saving, onSave }) {
-  const saved = order.cost.toFixed(2)
+  const saved = plainAmount(order.cost)
   const [draft, setDraft] = useState(saved)
   const [prevSaved, setPrevSaved] = useState(saved)
   if (saved !== prevSaved) {
@@ -132,7 +133,7 @@ function invoiceWhenLabel(inv) {
   if (!inv) return 'After work'
   if (inv.payment_timing === 'Deposit') {
     const deposit = parseMoney(inv.deposit_amount)
-    return deposit > 0 ? `Deposit £${deposit.toFixed(2)}` : 'Deposit'
+    return deposit > 0 ? `Deposit ${formatGBP(deposit)}` : 'Deposit'
   }
   return inv.payment_timing === 'Advance' ? 'Advance' : 'After work'
 }
@@ -308,9 +309,9 @@ export default function Payments() {
         dateLabel: inv.created_at
           ? new Date(inv.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
           : '—',
-        totalLabel: `£${money.total.toFixed(2)}`,
-        paidLabel: `£${money.paid.toFixed(2)}`,
-        dueLabel: `£${money.due.toFixed(2)}`,
+        totalLabel: formatGBP(money.total),
+        paidLabel: formatGBP(money.paid),
+        dueLabel: formatGBP(money.due),
         statusLabel: money.status,
       }
     })
@@ -331,7 +332,7 @@ export default function Payments() {
     })
     return Array.from(byClient.values())
       .sort((a, b) => b.due - a.due)
-      .map((r) => ({ ...r, dueLabel: `£${r.due.toFixed(2)}` }))
+      .map((r) => ({ ...r, dueLabel: formatGBP(r.due) }))
   }, [invoices])
 
   const revenueStats = useMemo(() => {
@@ -352,21 +353,21 @@ export default function Payments() {
       },
       {
         title: 'Sell total',
-        value: `£${sell.toFixed(2)}`,
+        value: formatGBP(sell),
         footerSubText: 'Click to filter revenue',
         onClick: () => setRevenueFilter((prev) => (prev === 'sell' ? 'all' : 'sell')),
         active: revenueFilter === 'sell',
       },
       {
         title: 'Total cost',
-        value: `£${cost.toFixed(2)}`,
+        value: formatGBP(cost),
         footerSubText: 'Click to filter cost',
         onClick: () => setRevenueFilter((prev) => (prev === 'cost' ? 'all' : 'cost')),
         active: revenueFilter === 'cost',
       },
       {
         title: 'Net profit',
-        value: `£${net.toFixed(2)}`,
+        value: formatGBP(net),
         trendValue: sell > 0 ? `${((net / sell) * 100).toFixed(1)}%` : '0%',
         trendDirection: net >= 0 ? 'up' : 'down',
         footerSubText: 'Click profitable orders',
@@ -380,7 +381,7 @@ export default function Payments() {
     {
       title: 'Total billed',
       hero: true,
-      value: `£${collectionStats.billed.toFixed(2)}`,
+      value: formatGBP(collectionStats.billed),
       footerSubText: (() => {
         const n = monthInvoices.filter((i) => String(i.status || '') !== 'Cancelled').length
         return `${monthLabel} · ${n} invoice${n === 1 ? '' : 's'}`
@@ -390,14 +391,14 @@ export default function Payments() {
     },
     {
       title: 'Received (paid)',
-      value: `£${collectionStats.paid.toFixed(2)}`,
+      value: formatGBP(collectionStats.paid),
       footerSubText: 'Click to filter paid',
       onClick: () => setPayFilter('paid'),
       active: payFilter === 'paid',
     },
     {
       title: 'Clients still owe',
-      value: `£${collectionStats.owed.toFixed(2)}`,
+      value: formatGBP(collectionStats.owed),
       footerSubText: 'Click outstanding',
       onClick: () => setPayFilter('outstanding'),
       active: payFilter === 'outstanding',
@@ -436,8 +437,8 @@ export default function Payments() {
       cost,
       profit,
       source,
-      sellLabel: `£${sell.toFixed(2)}`,
-      profitLabel: `£${profit.toFixed(2)}`,
+      sellLabel: formatGBP(sell),
+      profitLabel: formatGBP(profit),
       clientDisplay: o.owner_name || o.client_name || 'Customer',
       emailDisplay: o.owner_form_email || o.client_email || '',
     }
@@ -476,9 +477,9 @@ export default function Payments() {
       .sort((a, b) => b.profit - a.profit)
       .map((r) => ({
         ...r,
-        sellLabel: `£${r.sell.toFixed(2)}`,
-        costLabel: `£${r.cost.toFixed(2)}`,
-        profitLabel: `£${r.profit.toFixed(2)}`,
+        sellLabel: formatGBP(r.sell),
+        costLabel: formatGBP(r.cost),
+        profitLabel: formatGBP(r.profit),
         marginLabel: `${r.sell > 0 ? ((r.profit / r.sell) * 100).toFixed(1) : '0.0'}%`,
       }))
   }, [filteredCostRows])
@@ -543,9 +544,9 @@ export default function Payments() {
       payment_timing: ['Advance', 'Deposit'].includes(inv.payment_timing) ? inv.payment_timing : 'After work',
       payment_method: inv.payment_method || 'Credit Card (Stripe)',
       due_date: String(inv.due_date || '').slice(0, 10),
-      total: money.total.toFixed(2),
-      deposit_amount: parseMoney(inv.deposit_amount || money.total * 0.5).toFixed(2),
-      amount_paid: money.paid.toFixed(2),
+      total: plainAmount(money.total),
+      deposit_amount: plainAmount(parseMoney(inv.deposit_amount || money.total * 0.5)),
+      amount_paid: plainAmount(money.paid),
     })
   }
 
@@ -600,9 +601,9 @@ export default function Payments() {
     const costVal = parseMoney(text)
     if (text !== '' && (!Number.isFinite(Number(text.replace(/[£,\s]/g, ''))) || costVal < 0)) {
       toast.error('Enter a cost of 0 or more, e.g. 25.50')
-      return currentCost.toFixed(2)
+      return plainAmount(currentCost)
     }
-    if (Math.abs(currentCost - costVal) < 0.001) return costVal.toFixed(2)
+    if (Math.abs(currentCost - costVal) < 0.001) return plainAmount(costVal)
     setSavingCostId(orderId)
     const toastId = toastProcessing('Saving order cost…')
     try {
@@ -613,12 +614,12 @@ export default function Payments() {
         silent: true,
       })
       if (res.ok) {
-        toastDone(toastId, `Order cost saved: £${costVal.toFixed(2)}`)
+        toastDone(toastId, `Order cost saved: ${formatGBP(costVal)}`)
         fetchOrders()
-        return costVal.toFixed(2)
+        return plainAmount(costVal)
       }
       toastFail(toastId, res.reason || 'Failed to save order cost')
-      return currentCost.toFixed(2)
+      return plainAmount(currentCost)
     } finally {
       setSavingCostId(null)
     }
@@ -1099,7 +1100,7 @@ export default function Payments() {
         description={
           invoiceToDelete
             ? `Invoice ${invoiceToDelete.invoice_number} for cancelled order ${invoiceToDelete.order_number || ''} will be permanently deleted${
-                invoiceToDelete.money?.paid > 0.004 ? `, including the £${invoiceToDelete.money.paid.toFixed(2)} recorded as received` : ''
+                invoiceToDelete.money?.paid > 0.004 ? `, including the ${formatGBP(invoiceToDelete.money.paid)} recorded as received` : ''
               }. This cannot be undone.`
             : ''
         }

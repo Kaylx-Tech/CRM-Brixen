@@ -35,6 +35,7 @@ import { apiRequest } from '@/lib/api'
 import { attentionIssues, formatUkDate } from './attention'
 import { openDocument, downloadDocument } from '@/lib/documents'
 import { toast } from 'sonner'
+import { formatGBP } from '@/lib/money'
 
 const DOC_CATEGORIES = [
   'Company Documents',
@@ -604,7 +605,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                           </div>
                         </div>
                         <div className="text-sm font-semibold">
-                          {ord.total ? `£${ord.total}` : ''}
+                          {ord.total ? formatGBP(ord.total) : ''}
                         </div>
                       </div>
                     ))}

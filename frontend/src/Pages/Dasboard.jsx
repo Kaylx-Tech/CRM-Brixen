@@ -45,6 +45,7 @@ import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { apiRequest, getApiBase } from "@/lib/api"
 import { canViewRevenue, getCurrentUser } from "@/lib/permissions"
+import { formatGBP } from "@/lib/money"
 
 // ==========================================
 // Dashboard layout: which cards each user wants to see
@@ -163,13 +164,15 @@ function CustomizeDashboard({ hidden, onToggle, onReset }) {
 // ==========================================
 
 // Currency formatting (£ GBP)
+// £1,250 or £1,250.50 (no ".00"); the server's display text is used when there is no number
 const formatCurrency = (val, displayVal) => {
+  const num = typeof val === 'number' ? val : parseFloat(val)
+  if (Number.isFinite(num)) return formatGBP(num)
   if (displayVal && typeof displayVal === 'string' && displayVal.trim() !== '') {
-    const cleaned = displayVal.replace(/[^\d.,-]/g, '')
-    if (cleaned) return `£${cleaned}`
+    const cleaned = displayVal.replace(/[^\d.-]/g, '')
+    if (cleaned) return formatGBP(cleaned)
   }
-  const num = typeof val === 'number' ? val : parseFloat(val) || 0
-  return `£${num.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return formatGBP(0)
 }
 
 // Parse Trend Object from Backend MoM calculation

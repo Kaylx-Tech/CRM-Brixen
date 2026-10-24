@@ -28,6 +28,7 @@ import CustomerTypeConfirmDialog from '@/components/CustomerTypeConfirmDialog'
 import { isAdminRole } from '@/lib/permissions'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { IconLock } from '@tabler/icons-react'
+import { formatGBP } from '@/lib/money'
 
 const getInitials = (name) => {
   if (!name) return "CU"
@@ -44,7 +45,7 @@ const fmtDate = (v) => {
     : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-const money = (v) => (v === undefined || v === null || v === '' ? null : `£${Number(v).toFixed(2)}`)
+const money = (v) => (v === undefined || v === null || v === '' ? null : formatGBP(v))
 
 const Empty = ({ children }) => (
   <div className="py-12 text-center text-muted-foreground text-sm">{children}</div>

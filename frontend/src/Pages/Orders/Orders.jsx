@@ -16,6 +16,7 @@ import {
   IconRefresh,
   IconNote,
 } from "@tabler/icons-react"
+import { formatGBP } from "@/lib/money"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
@@ -460,7 +461,7 @@ export default function Orders() {
         const totalNum = Number(o.total || 0)
         return (
           <span className="text-sm font-semibold tabular-nums">
-            £{totalNum.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {formatGBP(totalNum)}
           </span>
         )
       },
@@ -587,7 +588,7 @@ export default function Orders() {
           </span>
           {showFinance ? (
             <span className="text-sm font-semibold tabular-nums text-foreground">
-              £{Number(o.total || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {formatGBP(o.total)}
             </span>
           ) : null}
         </div>

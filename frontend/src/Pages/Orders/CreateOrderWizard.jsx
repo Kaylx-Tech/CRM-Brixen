@@ -24,6 +24,7 @@ import ToastSave from "@/components/ToastSave"
 import { DateOfBirthInput } from "@/components/date-of-birth-input"
 import { isDateOfBirthLabel } from "@/lib/date-of-birth"
 import { canViewPrices } from "@/lib/permissions"
+import { formatGBP } from "@/lib/money"
 import {
   IconArrowRight,
   IconBookmark,
@@ -585,12 +586,8 @@ function customerTypeLabel(c) {
   return "Normal Customer"
 }
 
-function formatGbp(n) {
-  return `£${Number(n || 0).toLocaleString("en-GB", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`
-}
+// £49, or £49.50 when there are pence
+const formatGbp = formatGBP
 
 function unwrapList(res, keys = []) {
   const root = res?.data
