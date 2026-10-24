@@ -4,7 +4,7 @@ import { FieldDescription } from "@/components/ui/field"
 // Same split screen as the login page: brand panel on the left half, the card content on the right
 export function AuthLayout({ title, subtitle, children }) {
   return (
-    <div className="grid min-h-screen w-full md:grid-cols-2">
+    <div className="grid min-h-screen w-full bg-background md:grid-cols-2">
       <div className="relative hidden md:flex flex-col justify-center p-12 lg:p-16 bg-linear-to-br from-slate-900 via-blue-900 to-blue-950 text-white">
         <div className="max-w-[480px] space-y-4">
           <img src={whiteLogo} alt="Brixen Logo" className="w-auto mb-6 h-16" />

@@ -2,20 +2,9 @@
 
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
-import { canOpenPath, isAdminRole } from "@/lib/permissions"
+import { canOpenPath, isAdminRole, isManagerOrAbove } from "@/lib/permissions"
+import { NAV_GROUPS } from "@/lib/nav-groups"
 import {
-  IconDashboard,
-  IconUsers,
-  IconBuilding,
-  IconCalculator,
-  IconShoppingCart,
-  IconListCheck,
-  IconApps,
-  IconFileInvoice,
-  IconFileCheck,
-  IconMessageCircle,
-  IconLink,
-  IconBrain,
   IconHistory,
   IconMail,
   IconSettings,
@@ -35,34 +24,9 @@ import {
   CommandSeparator,
 } from "@/components/ui/command"
 
+// The same names and groups as the menu (lib/nav-groups.js), then System & Account
 const commandGroups = [
-  {
-    heading: "Navigation",
-    items: [
-      { title: "Overview", url: "/admin/dashboard", icon: IconDashboard },
-      { title: "Customers / Signups", url: "/admin/customers", icon: IconUsers },
-      { title: "Company Registered", url: "/admin/companies", icon: IconBuilding },
-      { title: "Orders Manager", url: "/admin/orders", icon: IconShoppingCart },
-    ],
-  },
-  {
-    heading: "Services & Operations",
-    items: [
-      { title: "Tasks & Team", url: "/admin/tasks", icon: IconListCheck },
-      { title: "Services Catalog", url: "/admin/services", icon: IconApps },
-      { title: "Smart Intake", url: "/admin/intake", icon: IconBrain },
-    ],
-  },
-  {
-    heading: "Finance & Documents",
-    items: [
-      { title: "Accountancy", url: "/admin/accountancy", icon: IconCalculator },
-      { title: "Payment/Invoices", url: "/admin/payments", icon: IconFileInvoice },
-      { title: "Documents Review", url: "/admin/documents", icon: IconFileCheck },
-      { title: "Support Tickets", url: "/admin/tickets", icon: IconMessageCircle },
-      { title: "Smart Operations", url: "/admin/smart-operations", icon: IconLink },
-    ],
-  },
+  ...NAV_GROUPS.map((g) => ({ heading: g.label, items: g.items })),
   {
     heading: "System & Account",
     items: [
@@ -88,7 +52,7 @@ export function CommandManyItems({ open: controlledOpen, onOpenChange: setContro
       .map((group) => ({
         ...group,
         items: group.items.filter((item) =>
-          canOpenPath(item.url) && (admin || item.url !== "/admin/settings")),
+          canOpenPath(item.url) && (admin || item.url !== "/admin/settings") && (!item.managerOnly || isManagerOrAbove())),
       }))
       .filter((group) => group.items.length > 0)
   }, [])

@@ -56,8 +56,13 @@ export default function ClientLayout() {
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <div className="flex w-full flex-col items-center justify-center">
-                <img src={brixenLogo} alt="Brixen" className="h-18 w-auto" />
+              {/* The logo large, with room around it and a soft shadow (same as the admin menu) */}
+              <div className="flex w-full items-center justify-center px-1 pt-4 pb-3">
+                <img
+                  src={brixenLogo}
+                  alt="Brixen"
+                  className="h-16 w-auto max-w-[200px] object-contain drop-shadow-[0_3px_10px_rgba(0,0,0,0.35)]"
+                />
               </div>
             </SidebarMenuItem>
           </SidebarMenu>
