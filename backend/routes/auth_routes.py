@@ -10,6 +10,7 @@ from db import query_db, execute_db, verify_password, hash_password
 from utils.response import json_response, success_response, error_response
 from services.email_service import send_email
 from services.price_privacy import hides_prices, normalize_staff_type
+from services import login_otp
 from config import FRONTEND_URL, COOKIE_SECURE, SESSION_COOKIE_MAX_AGE
 
 MIN_PASSWORD_LEN = 8
@@ -115,6 +116,28 @@ def _impersonation_origin(session_token):
     return dict(origin) if origin else None
 
 
+def _login_success(start_response, user_id):
+    """Start a 30-day session for the user and answer the login (after the password, and the
+    emailed code when one was needed)."""
+    session_token = str(uuid.uuid4())
+    execute_db("""
+        INSERT INTO user_sessions (session_token, user_id, expires_at, last_activity_at)
+        VALUES (?, ?, datetime('now', '+30 days'), datetime('now'));
+    """, (session_token, user_id))
+
+    # Same safe payload as /me, so the frontend gets department (staff page access depends on it)
+    full_row = query_db("SELECT * FROM users WHERE id = ? LIMIT 1;", (user_id,), one=True)
+    user_data = _public_user(dict(full_row)) if full_row else {"id": user_id}
+
+    cookie_header = _session_cookie(session_token)
+    return success_response(start_response, data={
+        "token": session_token,
+        "session_token": session_token,
+        "user": user_data,
+        "status": "success"
+    }, message="Login successful.", headers=[('Set-Cookie', cookie_header)])
+
+
 def _session_cookie(token, *, clear=False):
     """Build Set-Cookie for session_token (Secure on HTTPS / Coolify)."""
     if clear:
@@ -192,25 +215,42 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
                 return error_response(start_response, WEBSITE_ONLY_MESSAGE, status_code=403,
                                       details={'login_target': 'website', 'website_url': website_login_url()})
 
-        # Generate new DB session token (30 days validity)
-        session_token = str(uuid.uuid4())
-        execute_db("""
-            INSERT INTO user_sessions (session_token, user_id, expires_at, last_activity_at)
-            VALUES (?, ?, datetime('now', '+30 days'), datetime('now'));
-        """, (session_token, user_row['id']))
-        
-        # Same safe payload as /me, so the frontend gets department (staff page access depends on it)
-        full_row = query_db("SELECT * FROM users WHERE id = ? LIMIT 1;", (user_row['id'],), one=True)
-        user_data = _public_user(dict(full_row)) if full_row else {
-            "id": user_row['id'], "email": user_row['email'], "name": user_row['name'], "role": user_row['role']}
-        
-        cookie_header = _session_cookie(session_token)
-        return success_response(start_response, data={
-            "token": session_token,
-            "session_token": session_token,
-            "user": user_data,
-            "status": "success"
-        }, message="Login successful.", headers=[('Set-Cookie', cookie_header)])
+        # Email login code: needed unless this browser entered one for this user in the last 24 hours
+        device_id = str(body.get('device_id') or '').strip()[:100]
+        if login_otp.otp_enabled() and not login_otp.device_trusted(user_row['id'], device_id):
+            full = query_db("SELECT id, email, full_name FROM users WHERE id = ?;", (user_row['id'],), one=True)
+            challenge, err = login_otp.start_challenge(dict(full or user_row), device_id,
+                                                       environ.get('HTTP_USER_AGENT', ''))
+            if err:
+                return error_response(start_response, err, status_code=503)
+            return success_response(start_response, data={
+                "otp_required": True,
+                "challenge": challenge,
+                "email_hint": login_otp.email_hint(user_row['email']),
+                "resend_after": login_otp.RESEND_SECONDS,
+            }, message="We emailed you a login code.")
+
+        return _login_success(start_response, user_row['id'])
+
+    # ── POST /api/auth/login/verify (the emailed login code) ─────────────
+    if path == '/api/auth/login/verify' and method == 'POST':
+        user_id, err = login_otp.verify_code(body.get('challenge'), body.get('code'),
+                                             str(body.get('device_id') or '').strip()[:100],
+                                             environ.get('HTTP_USER_AGENT', ''))
+        if err:
+            return error_response(start_response, err, status_code=400)
+        row = query_db("SELECT id, status FROM users WHERE id = ? LIMIT 1;", (user_id,), one=True)
+        if not row or row.get('status') != 'Active':
+            return error_response(start_response, "Account is disabled. Please contact support.", status_code=403)
+        return _login_success(start_response, user_id)
+
+    # ── POST /api/auth/login/resend (a new login code for the same sign-in) ──
+    if path == '/api/auth/login/resend' and method == 'POST':
+        ok, err, wait = login_otp.resend_code(body.get('challenge'))
+        if not ok:
+            return error_response(start_response, err, status_code=429 if wait else 400,
+                                  details={'resend_after': wait} if wait else None)
+        return success_response(start_response, data={"resend_after": wait}, message="A new code is on its way.")
 
     # ── GET /api/auth/me ──────────────────────────────────────────────────
     if path == '/api/auth/me' and method == 'GET':

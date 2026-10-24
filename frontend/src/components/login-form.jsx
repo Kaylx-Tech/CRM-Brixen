@@ -18,6 +18,8 @@ import { IconAlertCircle } from "@tabler/icons-react"
 import { toast } from "sonner"
 import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { homePath } from "@/lib/permissions"
+import { getDeviceId } from "@/lib/device"
+import { LoginCodeStep } from "@/components/login-code-step"
 
 export function LoginForm({ className, ...props }) {
   const navigate = useNavigate()
@@ -26,6 +28,22 @@ export function LoginForm({ className, ...props }) {
   const [error, setError] = useState("")
   const [websiteUrl, setWebsiteUrl] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  // Second step: the emailed login code ({ challenge, emailHint, resendAfter } while it is shown)
+  const [codeStep, setCodeStep] = useState(null)
+  const apiUrl = import.meta.env.VITE_API_URL || "/api"
+
+  /** Keep the session from a successful login (password, or password + emailed code) and go home. */
+  const finishLogin = (data) => {
+    const nested = data.data || {}
+    const token = data.token || nested.token || data.session_token || nested.session_token || null
+    const userObj = data.user || nested.user || null
+    if (!token) return false
+    localStorage.setItem("token", token)
+    localStorage.setItem("user", JSON.stringify(userObj || { email }))
+    // Customers land on their portal, the team on the CRM
+    navigate(homePath(userObj || {}))
+    return true
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -35,12 +53,11 @@ export function LoginForm({ className, ...props }) {
     const toastId = toastProcessing("Signing in…")
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "/api"
       const res = await fetch(`${apiUrl}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, device_id: getDeviceId() }),
       })
 
       const data = await res.json()
@@ -51,14 +68,13 @@ export function LoginForm({ className, ...props }) {
       const nested = data.data || {}
       const token = data.token || nested.token || data.session_token || nested.session_token || null
 
-      const userObj = data.user || nested.user || null
-
-      if (isSuccess && token) {
-        localStorage.setItem("token", token)
-        localStorage.setItem("user", JSON.stringify(userObj || { email }))
+      if (isSuccess && nested.otp_required) {
+        // Password right, new browser (or 24 hours passed): ask for the emailed code
+        toastDone(toastId, "We emailed you a login code")
+        setCodeStep({ challenge: nested.challenge, emailHint: nested.email_hint, resendAfter: nested.resend_after })
+      } else if (isSuccess && token) {
+        finishLogin(data)
         toastDone(toastId, "Logged in successfully")
-        // Customers land on their portal, the team on the CRM
-        navigate(homePath(userObj || {}))
       } else if (isSuccess && !token) {
         // Logged in but no token in response — should not happen
         const msg = "Login succeeded but no session token received. Contact support."
@@ -100,6 +116,23 @@ export function LoginForm({ className, ...props }) {
         </div>
       </div>
       <div className="flex flex-col items-center justify-center gap-6 p-6 md:p-10">
+        {codeStep ? (
+          <div className="w-full max-w-sm py-8">
+            <LoginCodeStep
+              apiUrl={apiUrl}
+              challenge={codeStep.challenge}
+              emailHint={codeStep.emailHint}
+              resendAfter={codeStep.resendAfter}
+              onSuccess={(data) => {
+                if (finishLogin(data)) toast.success("Logged in successfully")
+              }}
+              onBack={() => {
+                setCodeStep(null)
+                setPassword("")
+              }}
+            />
+          </div>
+        ) : (
         <form className="w-full max-w-sm" onSubmit={handleSubmit}>
           <FieldGroup>
             <div className="flex flex-col py-8 items-center gap-2 text-center">
@@ -162,6 +195,7 @@ export function LoginForm({ className, ...props }) {
               </FieldDescription> */}
           </FieldGroup>
         </form>
+        )}
 
         <a
           href="https://brixenconsultants.com"
