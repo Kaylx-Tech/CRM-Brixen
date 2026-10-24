@@ -108,21 +108,6 @@ function TruncatedTooltip({ text, className }) {
   return <OverflowTooltip text={text} className={className} />
 }
 
-/** Hover card for an order's status: the status, its progress and the team's internal notes. */
-function OrderNotesTip({ order, pct }) {
-  const notes = String(order?.notes || '').trim()
-  return (
-    <div className="flex max-w-xs flex-col items-start gap-1.5 py-0.5 text-left">
-      <span className="font-semibold">{order?.status || 'Pending'} · {pct}%</span>
-      <span className="text-[10px] font-medium uppercase tracking-wider opacity-60">Internal notes</span>
-      {notes ? (
-        <p className="m-0 line-clamp-[10] whitespace-pre-wrap break-words leading-relaxed">{notes}</p>
-      ) : (
-        <p className="m-0 italic opacity-60">No notes yet</p>
-      )}
-    </div>
-  )
-}
 
 function shortenProductName(name) {
   if (!name) return '—'
@@ -499,20 +484,21 @@ export default function Orders() {
       cell: ({ row }) => {
         const o = row.original
         const pct = progressPercent(o)
-        const hasNotes = Boolean(String(o.notes || '').trim())
+        const notes = String(o.notes || '').trim()
+        const badge = (
+          <Badge className={`${statusTone(o, pct)} tabular-nums cursor-pointer whitespace-nowrap`} onClick={() => handleOpenOrder(o.id)}>
+            {o.status || 'Pending'}
+            {o.status !== 'Completed' && o.status !== 'Cancelled' && o.status !== 'Refunded' ? ` · ${pct}%` : ''}
+            {/* A note icon when the order has internal notes: hover to read them */}
+            {notes ? <IconNote className="ml-0.5 size-3 opacity-70" aria-label="Has internal notes" /> : null}
+          </Badge>
+        )
+        // Hovering shows just the internal notes, in the same plain bubble as the product names
+        if (!notes) return badge
         return (
           <Tooltip>
-            <TooltipTrigger className="inline-flex">
-              <Badge className={`${statusTone(o, pct)} tabular-nums cursor-pointer whitespace-nowrap`} onClick={() => handleOpenOrder(o.id)}>
-                {o.status || 'Pending'}
-                {o.status !== 'Completed' && o.status !== 'Cancelled' && o.status !== 'Refunded' ? ` · ${pct}%` : ''}
-                {/* A dot when the order has internal notes: hover to read them */}
-                {hasNotes ? <IconNote className="ml-0.5 size-3 opacity-70" aria-label="Has internal notes" /> : null}
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent side="left" className="max-w-xs">
-              <OrderNotesTip order={o} pct={pct} />
-            </TooltipContent>
+            <TooltipTrigger className="inline-flex">{badge}</TooltipTrigger>
+            <TooltipContent className="max-w-xs whitespace-pre-wrap break-words">{notes}</TooltipContent>
           </Tooltip>
         )
       },
