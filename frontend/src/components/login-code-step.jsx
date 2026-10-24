@@ -8,9 +8,9 @@ import { getDeviceId } from "@/lib/device"
 /**
  * Second sign-in step: the 6-digit code we emailed. `challenge` comes from /auth/login; a right code
  * returns the same session as a normal login (passed to onSuccess). `headers` are extra request
- * headers (the Finstap workspace).
+ * headers (the Finstap workspace). `heading={false}` leaves the title to the page around it.
  */
-export function LoginCodeStep({ apiUrl, challenge, emailHint, resendAfter = 60, headers = {}, onSuccess, onBack }) {
+export function LoginCodeStep({ apiUrl, challenge, emailHint, resendAfter = 60, headers = {}, heading = true, onSuccess, onBack }) {
   const [code, setCode] = useState("")
   const [error, setError] = useState("")
   const [info, setInfo] = useState("")
@@ -90,16 +90,18 @@ export function LoginCodeStep({ apiUrl, challenge, emailHint, resendAfter = 60, 
         verify()
       }}
     >
-      <div className="flex flex-col items-center gap-2 text-center">
-        <span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <IconMailCheck className="size-6" />
-        </span>
-        <h1 className="text-2xl font-bold">Check your email</h1>
-        <p className="text-balance text-sm text-muted-foreground">
-          We sent a 6-digit login code to <span className="font-medium text-foreground">{emailHint}</span>.
-          This browser will not ask again for 24 hours.
-        </p>
-      </div>
+      {heading ? (
+        <div className="flex flex-col items-center gap-2 text-center">
+          <span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <IconMailCheck className="size-6" />
+          </span>
+          <h1 className="text-2xl font-bold">Check your email</h1>
+          <p className="text-balance text-sm text-muted-foreground">
+            We sent a 6-digit login code to <span className="font-medium text-foreground">{emailHint}</span>.
+            This browser will not ask again for 24 hours.
+          </p>
+        </div>
+      ) : null}
 
       {error ? (
         <Alert variant="destructive">
