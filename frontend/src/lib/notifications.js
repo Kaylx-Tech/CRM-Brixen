@@ -49,9 +49,14 @@ export function resolveAdminLink(link) {
   if (!link) return null
   const raw = String(link).trim()
   if (raw.startsWith("http")) return raw
-  if (raw.startsWith("/admin/")) return raw
-  const cleaned = raw.replace(/^#/, "").replace(/^\//, "")
-  if (ADMIN_LINKS[cleaned]) return ADMIN_LINKS[cleaned]
-  if (cleaned.startsWith("admin-")) return `/admin/${cleaned.replace(/^admin-/, "")}`
-  return null
+  const route = (() => {
+    if (raw.startsWith("/admin/")) return raw
+    const cleaned = raw.replace(/^#/, "").replace(/^\//, "")
+    if (ADMIN_LINKS[cleaned]) return ADMIN_LINKS[cleaned]
+    if (cleaned.startsWith("admin-")) return `/admin/${cleaned.replace(/^admin-/, "")}`
+    return null
+  })()
+  // Tasks are GOV Forms in Smart Operations (Team is only the members list)
+  if (route && route.split("?")[0] === "/admin/tasks") return "/admin/smart-operations?tab=gov-forms"
+  return route
 }
