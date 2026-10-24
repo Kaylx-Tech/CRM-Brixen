@@ -38,6 +38,13 @@ export function LoginForm({ className, ...props }) {
     const token = data.token || nested.token || data.session_token || nested.session_token || null
     const userObj = data.user || nested.user || null
     if (!token) return false
+    if (nested.otp_skipped_reason) {
+      // The code email could not go out, so the server let this sign-in through without one
+      toast.warning("Signed in without a login code", {
+        description: `The login code email could not be sent: ${nested.otp_skipped_reason}. Ask your admin to fix the email settings.`,
+        duration: 20000,
+      })
+    }
     localStorage.setItem("token", token)
     localStorage.setItem("user", JSON.stringify(userObj || { email }))
     // Customers land on their portal, the team on the CRM

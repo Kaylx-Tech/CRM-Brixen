@@ -116,9 +116,9 @@ def _impersonation_origin(session_token):
     return dict(origin) if origin else None
 
 
-def _login_success(start_response, user_id):
+def _login_success(start_response, user_id, extra=None):
     """Start a 30-day session for the user and answer the login (after the password, and the
-    emailed code when one was needed)."""
+    emailed code when one was needed). `extra` adds fields to the reply (e.g. why no code was sent)."""
     session_token = str(uuid.uuid4())
     execute_db("""
         INSERT INTO user_sessions (session_token, user_id, expires_at, last_activity_at)
@@ -134,7 +134,8 @@ def _login_success(start_response, user_id):
         "token": session_token,
         "session_token": session_token,
         "user": user_data,
-        "status": "success"
+        "status": "success",
+        **(extra or {}),
     }, message="Login successful.", headers=[('Set-Cookie', cookie_header)])
 
 
@@ -222,7 +223,12 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
             challenge, err = login_otp.start_challenge(dict(full or user_row), device_id,
                                                        environ.get('HTTP_USER_AGENT', ''))
             if err:
-                return error_response(start_response, err, status_code=503)
+                reason = login_otp.email_failure_reason()
+                print(f"[Login code] could not email {user_row['email']}: {reason}")
+                if login_otp.strict_mode():
+                    return error_response(start_response, err, status_code=503)
+                # An email problem must not lock everyone out: sign in without a code, and say why
+                return _login_success(start_response, user_row['id'], extra={"otp_skipped_reason": reason})
             return success_response(start_response, data={
                 "otp_required": True,
                 "challenge": challenge,
