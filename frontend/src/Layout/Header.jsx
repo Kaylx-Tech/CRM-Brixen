@@ -14,6 +14,7 @@ import { ModeToggle } from '@/components/ThemeTogge'
 import Notification from '@/components/Notification'
 import { PrivacyToggle } from '@/components/PrivacyToggle'
 import TeamSwitcher from '@/components/TeamSwitcher'
+import { IS_FINSTAP } from '@/lib/workspace'
 
 const ROUTE_LABELS = {
   admin: 'Admin',
@@ -38,6 +39,15 @@ const ROUTE_LABELS = {
   messages: 'Messages',
 }
 
+// Finstap: the same names as its menu (lib/finstap-nav.js)
+const FINSTAP_ROUTE_LABELS = {
+  customers: 'Clients',
+  tasks: 'Team',
+  payments: 'Finance',
+  tickets: 'Support',
+  'smart-operations': 'Smart Operations',
+}
+
 export function SiteHeader({ homeHref = '/admin/dashboard' }) {
   const location = useLocation()
   const pathSegments = location.pathname.split('/').filter(Boolean)
@@ -53,7 +63,8 @@ export function SiteHeader({ homeHref = '/admin/dashboard' }) {
     ]
 
     const currentSegment = pathSegments[pathSegments.length - 1]
-    const label = ROUTE_LABELS[currentSegment] || (currentSegment.charAt(0).toUpperCase() + currentSegment.slice(1))
+    const label = (IS_FINSTAP && FINSTAP_ROUTE_LABELS[currentSegment]) || ROUTE_LABELS[currentSegment] ||
+      (currentSegment.charAt(0).toUpperCase() + currentSegment.slice(1))
 
     items.push({
       label,

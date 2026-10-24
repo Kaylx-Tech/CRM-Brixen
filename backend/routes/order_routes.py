@@ -9,6 +9,7 @@ from utils.response import json_response, success_response, error_response
 from services.invoice_service import attach_order_profit_fields
 from services.order_service import build_admin_order_list
 from services.manual_order_service import create_manual_crm_order
+from services.price_privacy import hides_prices
 from services.notification_service import notify_staff
 
 
@@ -51,6 +52,24 @@ def _price_customer_order(body, user):
     body['line_items'] = items
     body.pop('price', None)
     body['amount'] = body['total'] = round(total, 2)
+    body['vat'] = 0
+    return body
+
+
+def _price_operations_staff_order(body):
+    """Operations staff place orders without seeing prices (their money fields are dropped on the way in):
+    the order is priced like the customer's own order would be, from the catalogue (B2B starts at 0
+    for the team to price). A single product without line items takes its catalogue price too."""
+    body = dict(body or {})
+    customer = query_db("SELECT * FROM users WHERE id = ? LIMIT 1;",
+                        (body.get('user_id') or body.get('client_id'),), one=True)
+    if _wizard_line_items(body):
+        return _price_customer_order(body, dict(customer or {}))
+    from services.b2b_service import client_is_b2b
+    name = str(body.get('service_name') or body.get('product') or '').strip()
+    svc = query_db("SELECT price FROM services WHERE name = ? AND status = 'Active' LIMIT 1;", (name,), one=True)
+    price = 0.0 if (customer and client_is_b2b(dict(customer))) else float((svc or {}).get('price') or 0)
+    body['price'] = body['amount'] = body['total'] = round(price, 2)
     body['vat'] = 0
     return body
 
@@ -412,6 +431,8 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
     if path in ('/api/orders/draft', '/api/admin/orders/draft', '/api/client/orders/draft') and method == 'POST':
         if not is_staff:
             body = _price_customer_order(body, user)
+        elif hides_prices(user):
+            body = _price_operations_staff_order(body)
         result, err = _upsert_wizard_order(body=body or {}, user_id=user_id, is_staff=is_staff, as_draft=True,
                                            own_orders_only=own_orders_only)
         if err:
@@ -428,6 +449,8 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         # Customers (B2B portal) order through the wizard only, at prices the server sets
         if not is_staff:
             payload = _price_customer_order(payload, user)
+        elif hides_prices(user):
+            payload = _price_operations_staff_order(payload)
         # The order wizard sends its answers in form_values (and the customer's email as company_email);
         # it must take the wizard path, which saves those answers and finalises a saved draft.
         is_wizard = isinstance(payload.get('form_values'), dict)

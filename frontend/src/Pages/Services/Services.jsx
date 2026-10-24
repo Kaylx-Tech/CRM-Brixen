@@ -10,7 +10,7 @@ import { DataTable } from "../../Layout/DataTable";
 import AddService from "./AddService";
 import ViewService from "./ViewService";
 import DeleteConfirmation from "../../components/DeleteConfirmation";
-import { isAdminRole } from "@/lib/permissions";
+import { isAdminRole, canViewPrices } from "@/lib/permissions";
 import FormFieldsBuilder, { formFieldsError } from "./FormFieldsBuilder";
 import {
   Dialog,
@@ -49,6 +49,8 @@ const Services = () => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   // Prices sync to the website, so only admins add, edit or delete services (old portal rule)
   const canManageCatalog = isAdminRole();
+  // Staff Operations see the services but no prices at all
+  const showPrices = canViewPrices();
   const [viewingService, setViewingService] = useState(null);
 
   // Edit state
@@ -130,21 +132,25 @@ const Services = () => {
         value: String(active),
         footerSubText: `${data.length - active} inactive`,
       },
-      {
-        title: "Average Price",
-        tone: "violet",
-        icon: IconTag,
-        value: money(avg),
-        footerSubText: "Sell price",
-      },
-      {
-        title: "Top Price",
-        tone: "orange",
-        icon: IconCrown,
-        value: money(prices.length ? Math.max(...prices) : 0),
-        footerSubText: "Most expensive service",
-      },
     ];
+    if (showPrices) {
+      stats.push(
+        {
+          title: "Average Price",
+          tone: "violet",
+          icon: IconTag,
+          value: money(avg),
+          footerSubText: "Sell price",
+        },
+        {
+          title: "Top Price",
+          tone: "orange",
+          icon: IconCrown,
+          value: money(prices.length ? Math.max(...prices) : 0),
+          footerSubText: "Most expensive service",
+        },
+      );
+    }
     if (canManageCatalog) {
       const profits = data.map(
         (s) => (Number(s.price) || 0) - (Number(s.cost_price ?? s.originalPrice) || 0),
@@ -158,7 +164,7 @@ const Services = () => {
       });
     }
     return stats;
-  }, [data, canManageCatalog]);
+  }, [data, canManageCatalog, showPrices]);
 
   // ── Open Edit Dialog ──
   const openEditDialog = (service) => {
@@ -331,10 +337,14 @@ const Services = () => {
           <span className="text-muted-foreground text-base">{row.getValue("category")}</span>
         ),
       }),
-      columnHelper.accessor("sellPrice", {
-        header: "Sell price",
-        cell: ({ row }) => <span className="font-medium">{row.getValue("sellPrice")}</span>,
-      }),
+      ...(showPrices
+        ? [
+            columnHelper.accessor("sellPrice", {
+              header: "Sell price",
+              cell: ({ row }) => <span className="font-medium">{row.getValue("sellPrice")}</span>,
+            }),
+          ]
+        : []),
       // Cost and profit are for admins only; the team sees the sell price
       ...(canManageCatalog
         ? [
@@ -406,7 +416,7 @@ const Services = () => {
         },
       }),
     ],
-    [canManageCatalog],
+    [canManageCatalog, showPrices],
   );
 
   const filterConfig = [

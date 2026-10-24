@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner"
 import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { apiRequest } from "@/lib/api"
+import { canViewPrices } from "@/lib/permissions"
 import ToastSave from "@/components/ToastSave"
 import { IconLoader2, IconPlus, IconTrash } from "@tabler/icons-react"
 
@@ -83,6 +84,8 @@ function Section({ title, children }) {
 }
 
 export default function QuickCrmOrder({ open, onClose, onCreated }) {
+  // Staff Operations add products without prices; the server takes the catalogue price
+  const showPrices = canViewPrices()
   const [error, setError] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [loadingClients, setLoadingClients] = useState(false)
@@ -598,7 +601,10 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
 
                 <div className="space-y-2">
                   {lines.map((line) => (
-                    <div key={line.id} className="grid grid-cols-1 sm:grid-cols-[1fr_110px_36px] gap-2 items-center">
+                    <div
+                      key={line.id}
+                      className={`grid grid-cols-1 gap-2 items-center ${showPrices ? "sm:grid-cols-[1fr_110px_36px]" : "sm:grid-cols-[1fr_36px]"}`}
+                    >
                       <Input
                         list="manual-order-service-list"
                         className="w-full"
@@ -606,15 +612,17 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                         value={line.product_name}
                         onChange={(e) => updateLine(line.id, "product_name", e.target.value)}
                       />
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        className="w-full"
-                        placeholder="Price (£)"
-                        value={line.price}
-                        onChange={(e) => updateLine(line.id, "price", e.target.value)}
-                      />
+                      {showPrices ? (
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className="w-full"
+                          placeholder="Price (£)"
+                          value={line.price}
+                          onChange={(e) => updateLine(line.id, "price", e.target.value)}
+                        />
+                      ) : null}
                       <Button
                         type="button"
                         variant="outline"
@@ -666,10 +674,12 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="text-right sm:pt-6">
-                    <div className="text-[11px] font-semibold uppercase text-muted-foreground">Total Amount</div>
-                    <div className="text-xl font-extrabold mt-0.5">£{total.toFixed(2)}</div>
-                  </div>
+                  {showPrices ? (
+                    <div className="text-right sm:pt-6">
+                      <div className="text-[11px] font-semibold uppercase text-muted-foreground">Total Amount</div>
+                      <div className="text-xl font-extrabold mt-0.5">£{total.toFixed(2)}</div>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="space-y-2">

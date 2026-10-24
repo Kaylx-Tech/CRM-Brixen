@@ -60,7 +60,7 @@ import PromptDialog from '@/components/PromptDialog'
 import DocumentPreview from '@/components/DocumentPreview'
 import { downloadDocument } from '@/lib/documents'
 import { openInvoice, downloadInvoice } from '@/lib/invoices'
-import { isManagerOrAbove } from '@/lib/permissions'
+import { isManagerOrAbove, canViewPrices } from '@/lib/permissions'
 
 const PAYMENT_MODES = [
   { value: 'PKR(Bank Transfer)', label: 'PKR (Bank Transfer)' },
@@ -319,6 +319,8 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
 
   // Assigned to: the team member who works on the order (Performance counts it for them)
   const canAssign = isManagerOrAbove()
+  // Staff Operations work on orders without any money: no prices, totals or invoice
+  const showPrices = canViewPrices()
   const [team, setTeam] = useState([])
   useEffect(() => {
     if (!isOpen || !canAssign || team.length) return
@@ -757,8 +759,12 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                       <span className="font-medium text-foreground">{order.company_name}</span>
                     </>
                   )}
-                  <span>•</span>
-                  <span className="font-semibold text-primary">£{Number(order?.total || 0).toFixed(2)}</span>
+                  {showPrices ? (
+                    <>
+                      <span>•</span>
+                      <span className="font-semibold text-primary">£{Number(order?.total || 0).toFixed(2)}</span>
+                    </>
+                  ) : null}
                   {order?.created_by_name ? (
                     <>
                       <span>•</span>
@@ -805,7 +811,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
               <TabsList className="flex w-max">
                 <TabsTrigger value="overview">Order Details</TabsTrigger>
                 <TabsTrigger value="credentials">Service Credentials</TabsTrigger>
-                <TabsTrigger value="products">Products & Pricing</TabsTrigger>
+                <TabsTrigger value="products">{showPrices ? 'Products & Pricing' : 'Products'}</TabsTrigger>
                 <TabsTrigger value="documents">
                   Documents ({order?.documents?.length || 0})
                 </TabsTrigger>
@@ -1281,7 +1287,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
 
                     {/* ── TAB 3: PRODUCTS & PRICING ─────────────────────────────── */}
                     <TabsContent value="products" className="m-0 space-y-6 outline-none">
-                      {order?.invoice ? (
+                      {showPrices && order?.invoice ? (
                         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/20 p-4">
                           <div className="flex items-center gap-3">
                             <IconFileText className="w-5 h-5 text-muted-foreground" />
@@ -1372,7 +1378,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                   <span className="text-[10px] text-muted-foreground ml-2">({svc.category || svc.category_name})</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className="font-bold">£{Number(svc.price || 0).toFixed(2)}</span>
+                                  {showPrices ? <span className="font-bold">£{Number(svc.price || 0).toFixed(2)}</span> : null}
                                   <Button size="icon-xs" variant="outline" className="h-5 w-5">
                                     <IconPlus className="w-3 h-3" />
                                   </Button>
@@ -1386,7 +1392,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                       <div className="rounded-lg border overflow-hidden">
                         <div className="p-3 bg-muted/30 border-b flex items-center justify-between text-sm font-semibold text-muted-foreground">
                           <span>Product / Service</span>
-                          <span>Status / Price</span>
+                          <span>{showPrices ? 'Status / Price' : 'Status'}</span>
                         </div>
                         {orderItems.map((item) => (
                           <div key={item.id} className="p-4 flex items-center justify-between gap-3 text-sm border-b last:border-b-0">
@@ -1414,18 +1420,22 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                   </SelectGroup>
                                 </SelectContent>
                               </Select>
-                              <span className="text-sm text-muted-foreground">£</span>
-                              <Input
-                                key={`${item.id}-${item.unit_price}`}
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                defaultValue={Number(item.unit_price || 0).toFixed(2)}
-                                className="w-28 text-right font-bold"
-                                aria-label={`Price for ${item.product_name}`}
-                                onBlur={(e) => handleSaveItemPrice(item, e.target.value)}
-                                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
-                              />
+                              {showPrices ? (
+                                <>
+                                  <span className="text-sm text-muted-foreground">£</span>
+                                  <Input
+                                    key={`${item.id}-${item.unit_price}`}
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    defaultValue={Number(item.unit_price || 0).toFixed(2)}
+                                    className="w-28 text-right font-bold"
+                                    aria-label={`Price for ${item.product_name}`}
+                                    onBlur={(e) => handleSaveItemPrice(item, e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                                  />
+                                </>
+                              ) : null}
                               {orderItems.length > 1 && (
                                 <Button
                                   type="button"
@@ -1441,10 +1451,12 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                             </div>
                           </div>
                         ))}
-                        <div className="p-3 bg-muted/30 border-t flex items-center justify-between text-sm font-semibold">
-                          <span>Total</span>
-                          <span>£{Number(order?.total || 0).toFixed(2)}</span>
-                        </div>
+                        {showPrices ? (
+                          <div className="p-3 bg-muted/30 border-t flex items-center justify-between text-sm font-semibold">
+                            <span>Total</span>
+                            <span>£{Number(order?.total || 0).toFixed(2)}</span>
+                          </div>
+                        ) : null}
                       </div>
                     </TabsContent>
 

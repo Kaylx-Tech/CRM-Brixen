@@ -409,6 +409,9 @@ def ensure_schema():
     user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
     if 'department' not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN department TEXT")
+    # STAFF members are 'marketing' (NULL counts as marketing, as before) or 'operations' (no prices)
+    if 'staff_type' not in user_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN staff_type TEXT")
     if 'date_of_birth' not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN date_of_birth TEXT")
     if 'notification_email' not in user_cols:
