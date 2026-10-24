@@ -27,16 +27,23 @@ export async function fetchDocumentBlob(docId, { mode = "view" } = {}) {
   }
   const headers = authHeaders()
   delete headers["Content-Type"]
-  const res = await fetch(`${getApiBase()}/documents/${docId}/${mode}`, { credentials: "include", headers })
+  let res
+  try {
+    res = await fetch(`${getApiBase()}/documents/${docId}/${mode}`, { credentials: "include", headers })
+  } catch {
+    // The request never completed (server unreachable, restarting or timed out): say so plainly
+    throw new Error("Could not reach the server to load this file. Please try again in a moment.")
+  }
   if (!res.ok) {
-    let message = "File could not be loaded"
+    // The server says why (e.g. Google Drive sign-in expired, file removed from Drive)
+    let message = res.status === 404 ? "This file is not on Drive or the server." : "File could not be loaded"
     try {
       const data = await res.json()
       message = data.error || data.message || message
     } catch {
       /* not json */
     }
-    const err = new Error(res.status === 404 ? "File content unavailable (not on Drive or disk yet)" : message)
+    const err = new Error(message)
     err.status = res.status
     throw err
   }

@@ -832,7 +832,10 @@ export default function Documents() {
                 variant="outline"
                 size="sm"
                 className="h-8 text-sm gap-1.5"
-                onClick={() => previewDoc && downloadDocument(previewDoc.id, previewDoc.name)}
+                onClick={() =>
+                  previewDoc &&
+                  downloadDocument(previewDoc.id, previewDoc.name).catch((e) => toast.error(e.message || 'Download failed'))
+                }
               >
                 <IconDownload className="w-3.5 h-3.5" />
                 Download

@@ -3,6 +3,7 @@ import { IconFileText, IconAlertTriangle } from "@tabler/icons-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { fetchDocumentBlob, downloadDocument } from "@/lib/documents"
+import { toast } from "@/components/ui/toast"
 
 /**
  * Inline viewer for a CRM document. The file is fetched through the authenticated API
@@ -65,7 +66,9 @@ export default function DocumentPreview({ doc, className = "" }) {
       <p className="text-sm font-medium">{name}</p>
       <p className="text-sm text-muted-foreground">Preview is not available for this file type.</p>
       <div className="flex gap-2">
-        <Button size="sm" onClick={() => downloadDocument(doc.id, name)}>Download</Button>
+        <Button size="sm" onClick={() => downloadDocument(doc.id, name).catch((e) => toast.error(e.message || "Download failed"))}>
+          Download
+        </Button>
         {driveLink && (
           <Button asChild size="sm" variant="outline">
             <a href={driveLink} target="_blank" rel="noopener noreferrer">Open in Drive</a>
