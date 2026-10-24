@@ -8,6 +8,8 @@ stores hashes of the device id and the code.
   * a code works for 10 minutes and for 5 tries; a new one can be sent after 60 seconds
   * a confirmed browser is trusted for 24 hours from the moment the code was entered
   * LOGIN_EMAIL_OTP=0 (env) switches codes off, e.g. while email is down
+  * Finstap workspaces in LOGIN_OTP_SKIP_WORKSPACES (env, comma-separated; default "demo", the
+    workspace shown to prospective clients) sign in without a code
 """
 import hashlib
 import hmac
@@ -24,8 +26,21 @@ MAX_SENDS = 5
 TRUST_HOURS = 24
 
 
+def _workspace_slug():
+    """The Finstap workspace of this request ('' in Brixen, which has no workspaces)."""
+    try:
+        from tenancy import current_tenant
+    except ImportError:
+        return ''
+    return str((current_tenant() or {}).get('slug') or '').lower()
+
+
 def otp_enabled():
-    return str(os.environ.get('LOGIN_EMAIL_OTP', '1')).strip().lower() not in ('0', 'false', 'off', 'no')
+    if str(os.environ.get('LOGIN_EMAIL_OTP', '1')).strip().lower() in ('0', 'false', 'off', 'no'):
+        return False
+    skip = {s.strip().lower() for s in os.environ.get('LOGIN_OTP_SKIP_WORKSPACES', 'demo').split(',') if s.strip()}
+    slug = _workspace_slug()
+    return not (slug and slug in skip)
 
 
 def _ensure_tables():
