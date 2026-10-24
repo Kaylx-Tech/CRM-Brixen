@@ -3,6 +3,7 @@ Handles DB <-> Environment precedence, masked secrets, connection verification
 for SMTP, Google Drive 5TB Storage, Companies House API, and WordPress Integrations.
 """
 import os
+import re
 import json
 import base64
 import smtplib
@@ -41,6 +42,13 @@ DEFAULT_SETTINGS = {
     'ico_number': '',
     'logo_url': '/static/img/logo.svg',
     'primary_color': '#003971',
+    # Finstap Settings → Branding: images as data: URLs (kept in the company's own database) and the
+    # accent colour; empty = the Finstap look. accent_auto=1 means the colour is picked from the logo.
+    'brand_logo': '',
+    'brand_logo_dark': '',
+    'brand_icon': '',
+    'accent_color': '',
+    'accent_auto': '1',
     'support_email': 'contact@brixenconsultants.com',
     'support_phone': '+44 7360 515317',
     'currency': '£',
@@ -110,6 +118,26 @@ WORKSPACE_DEFAULT_OVERRIDES = {
     'wordpress_url': '',
     'secret_key': '',
 }
+
+
+BRAND_IMAGE_KEYS = ('brand_logo', 'brand_logo_dark', 'brand_icon')
+BRANDING_KEYS = BRAND_IMAGE_KEYS + ('accent_color', 'accent_auto')
+BRAND_IMAGE_MAX_CHARS = 1_500_000  # ~1 MB image once base64 is decoded
+_BRAND_IMAGE_PREFIX = re.compile(r'^data:image/(png|jpeg|webp|gif|svg\+xml|x-icon|vnd\.microsoft\.icon);base64,[A-Za-z0-9+/=]+$')
+_HEX_COLOR = re.compile(r'^#[0-9a-fA-F]{6}$')
+
+
+def _check_branding_value(key, val_str):
+    """Branding images must be small image data: URLs and the accent a #rrggbb colour (empty clears)."""
+    if not val_str:
+        return
+    if key in BRAND_IMAGE_KEYS:
+        if len(val_str) > BRAND_IMAGE_MAX_CHARS:
+            raise ValueError('Image is too large (max about 1 MB).')
+        if not _BRAND_IMAGE_PREFIX.match(val_str):
+            raise ValueError('Upload a PNG, JPG, WebP, SVG or ICO image.')
+    elif key == 'accent_color' and not _HEX_COLOR.match(val_str):
+        raise ValueError('Accent colour must look like #6559ff.')
 
 
 def _platform_ch_key():
@@ -195,6 +223,11 @@ def get_all_settings(raw: bool = False):
             'invoice_payment_details': merged.get('invoice_payment_details', ''),
             'logo_url': merged.get('logo_url', '/static/img/logo.svg'),
             'primary_color': merged.get('primary_color', '#003971'),
+            'brand_logo': merged.get('brand_logo', ''),
+            'brand_logo_dark': merged.get('brand_logo_dark', ''),
+            'brand_icon': merged.get('brand_icon', ''),
+            'accent_color': merged.get('accent_color', ''),
+            'accent_auto': merged.get('accent_auto', '1') not in ('0', 'false', 'False'),
             'support_email': merged.get('support_email', 'contact@brixenconsultants.com'),
             'support_phone': merged.get('support_phone', '+44 7360 515317'),
             'currency': merged.get('currency', '£'),
@@ -279,13 +312,20 @@ def update_settings(payload: dict, user_id=None, ip_address=None):
             if not k.endswith('_set'):
                 flat_updates[k] = v
 
+    # Check every branding value first, so a bad image saves nothing at all
+    for key, value in flat_updates.items():
+        if key in BRAND_IMAGE_KEYS or key == 'accent_color':
+            _check_branding_value(key, str(value).strip() if value is not None else '')
+
     saved_keys = []
     for key, value in flat_updates.items():
         val_str = str(value) if value is not None else ""
-        
+
         # If the user sent a masked placeholder (e.g. "******" or "[CONFIGURED]"), skip modifying it
         if "******" in val_str or val_str == "[CONFIGURED]":
             continue
+        if key in BRAND_IMAGE_KEYS or key == 'accent_color':
+            val_str = val_str.strip()
 
         # Save to SQLite settings table
         execute_db("""
@@ -294,7 +334,9 @@ def update_settings(payload: dict, user_id=None, ip_address=None):
 
         # Synchronize with runtime os.environ (one process serves every Finstap company: a workspace's
         # settings stay in its own database, or one company's values would fill another's empty ones)
-        if not _in_workspace():
+        # Branding is never copied into the environment: images are large, and an env value would
+        # fill the empty logo or colour of every company workspace on this server
+        if not _in_workspace() and key not in BRANDING_KEYS:
             os.environ[key.upper()] = val_str
             os.environ[key] = val_str
         saved_keys.append(key)

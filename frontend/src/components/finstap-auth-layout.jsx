@@ -1,5 +1,6 @@
 import { cn } from "cn"
 import { FinstapLogo, FINSTAP_GRADIENT } from "@/components/finstap-brand"
+import { subdomainWorkspace } from "@/lib/workspace"
 import authIllustration from "@/assets/finstap-auth-illustration.png"
 
 function BrandPanel() {
@@ -21,14 +22,16 @@ function BrandPanel() {
 
 /** Finstap sign-in pages: the form on the left half, the brand panel on the right half. */
 export function FinstapAuthLayout({ title, subtitle, children, footer }) {
+  const companyPage = Boolean(subdomainWorkspace())
   return (
     <div className="grid min-h-screen w-full bg-background md:grid-cols-2">
       <div className="flex flex-col items-center justify-center px-6 py-10 md:px-10">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col items-center gap-2 text-center">
-            {/* Dark text logo on light pages, white text logo in dark mode */}
-            <FinstapLogo className="mb-6 h-9 dark:hidden" />
-            <FinstapLogo light className="mb-6 hidden h-9 dark:block" />
+            {/* Dark text logo on light pages, white text logo in dark mode; a company's own address
+                (acme.finstap.com) shows that company's logo once it has uploaded one */}
+            <FinstapLogo company={companyPage} className="mb-6 h-9 dark:hidden" />
+            <FinstapLogo company={companyPage} light className="mb-6 hidden h-9 dark:block" />
             <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
             {subtitle && <p className="text-balance text-sm text-muted-foreground">{subtitle}</p>}
           </div>

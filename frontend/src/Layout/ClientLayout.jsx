@@ -3,6 +3,7 @@ import { Navigate, Outlet } from "react-router-dom"
 import brixenLogo from "@/assets/white-logo.webp"
 import { FinstapLogo } from "@/components/finstap-brand"
 import { IS_FINSTAP } from "@/lib/workspace"
+import { loadBranding } from "@/lib/branding"
 import { NavMain } from "@/Layout/nav-main"
 import { NavUser } from "@/Layout/nav-user"
 import { SiteHeader } from "@/Layout/Header"
@@ -49,6 +50,11 @@ const NAV_ITEMS = [
 ]
 
 export default function ClientLayout() {
+  // Signed in now: the workspace's own branding
+  React.useEffect(() => {
+    loadBranding()
+  }, [])
+
   // Team members belong in the admin CRM
   if (getRole() && getRole() !== "CLIENT") return <Navigate to="/admin/dashboard" replace />
 

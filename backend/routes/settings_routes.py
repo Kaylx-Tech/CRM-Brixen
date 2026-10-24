@@ -28,6 +28,11 @@ def handle_settings_routes(environ, start_response, path, method, user, body, qu
             'brand_name': brand['brand_name'],
             'logo_url': get_setting('logo_url'),
             'primary_color': get_setting('primary_color', '#003971'),
+            # Finstap Settings → Branding (empty = the Finstap look)
+            'brand_logo': get_setting('brand_logo'),
+            'brand_logo_dark': get_setting('brand_logo_dark'),
+            'brand_icon': get_setting('brand_icon'),
+            'accent_color': get_setting('accent_color'),
             'support_email': brand['support_email'],
             'support_phone': brand['support_phone'],
             'currency': get_setting('currency', '£'),
@@ -71,6 +76,8 @@ def handle_settings_routes(environ, start_response, path, method, user, body, qu
             ip_addr = environ.get('HTTP_X_FORWARDED_FOR') or environ.get('REMOTE_ADDR')
             updated = update_settings(body, user_id=user.get('id'), ip_address=ip_addr)
             return success_response(start_response, data=updated, message="System settings updated successfully")
+        except ValueError as e:
+            return error_response(start_response, str(e), status_code=400)
         except Exception as e:
             return error_response(start_response, f"Failed to save settings: {e}", status_code=500)
 

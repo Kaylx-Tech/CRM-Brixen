@@ -2,6 +2,7 @@ import * as React from "react"
 import brixenLogo from "@/assets/white-logo.webp"
 import { FinstapLogo } from "@/components/finstap-brand"
 import { IS_FINSTAP } from "@/lib/workspace"
+import { loadBranding } from "@/lib/branding"
 import { NavMain } from "@/Layout/nav-main"
 import { NavUser } from "@/Layout/nav-user"
 import {
@@ -61,6 +62,10 @@ export function AppSidebar({
   ...props
 }) {
   const [searchOpen, setSearchOpen] = React.useState(false)
+  // Signed in now: the workspace's own branding (the login page may not have known the workspace)
+  React.useEffect(() => {
+    loadBranding()
+  }, [])
   // Each role only sees the pages it can open; staff land on their own work instead of the admin overview
   const navItems = React.useMemo(() => {
     const staff = isStaffRole()

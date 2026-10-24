@@ -5,6 +5,7 @@ import ForgotPassword from './Pages/ForgotPassword'
 import FinstapSignup from './Pages/FinstapSignup'
 import FinstapWelcome from './Pages/FinstapWelcome'
 import { IS_FINSTAP } from './lib/workspace'
+import { loadBranding } from './lib/branding'
 import ResetPassword from './Pages/ResetPassword'
 // import SignUp from './Pages/SignUp'
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute'
@@ -55,6 +56,11 @@ import { PrivacyProvider } from './context/PrivacyContext'
 import { Toaster } from './components/ui/sonner'
 
 const App = () => {
+  // Finstap: the company's logo, tab icon and accent colour (Settings → Branding)
+  React.useEffect(() => {
+    loadBranding()
+  }, [])
+
   return (
     <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
       <PrivacyProvider>

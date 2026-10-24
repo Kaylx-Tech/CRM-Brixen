@@ -12,9 +12,13 @@ import { IconRefresh, IconDeviceFloppy, IconLoader2, IconMail, IconBuilding, Ico
 import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import { apiRequest } from '@/lib/api'
+import { IS_FINSTAP } from '@/lib/workspace'
+import { loadBranding } from '@/lib/branding'
+import BrandingTab from './BrandingTab'
 
 const MIN_PASSWORD = 10
-const SETTINGS_TABS = new Set(['general', 'email', 'integrations', 'compliance', 'profile'])
+// Branding (logo, icon, accent colour) is a Finstap company setting; Brixen keeps its own look
+const SETTINGS_TABS = new Set(['general', ...(IS_FINSTAP ? ['branding'] : []), 'email', 'integrations', 'compliance', 'profile'])
 
 function syncLocalUser(user) {
   if (!user) return
@@ -74,6 +78,11 @@ const EMPTY_FORM = {
   compliance_alerts_test_recipient: '',
   compliance_alerts_website: '',
   compliance_alerts_whatsapp_url: '',
+  brand_logo: '',
+  brand_logo_dark: '',
+  brand_icon: '',
+  accent_color: '',
+  accent_auto: true,
 }
 
 function asBool(val, fallback = false) {
@@ -250,6 +259,11 @@ export default function Settings() {
           '',
         compliance_alerts_website: flat.compliance_alerts_website || '',
         compliance_alerts_whatsapp_url: flat.compliance_alerts_whatsapp_url || '',
+        brand_logo: brand.brand_logo || '',
+        brand_logo_dark: brand.brand_logo_dark || '',
+        brand_icon: brand.brand_icon || '',
+        accent_color: brand.accent_color || '',
+        accent_auto: brand.accent_auto !== false,
       })
 
       setFlags({
@@ -381,6 +395,15 @@ export default function Settings() {
         compliance_alerts_website: form.compliance_alerts_website.trim(),
         compliance_alerts_whatsapp_url: form.compliance_alerts_whatsapp_url.trim(),
       }
+      if (IS_FINSTAP) {
+        Object.assign(payload, {
+          brand_logo: form.brand_logo,
+          brand_logo_dark: form.brand_logo_dark,
+          brand_icon: form.brand_icon,
+          accent_color: form.accent_color,
+          accent_auto: form.accent_auto ? '1' : '0',
+        })
+      }
 
       // Secrets: only send when user typed a new value (blank = keep current)
       if (form.smtp_pass.trim()) payload.smtp_pass = form.smtp_pass.trim()
@@ -410,6 +433,8 @@ export default function Settings() {
       }
       toastDone(toastId, res.data?.message || 'System settings saved.')
       await loadSettings()
+      // New logo / colour everywhere (sidebar, tab icon) and remembered for the next visit
+      if (IS_FINSTAP) await loadBranding()
     } finally {
       setIsSaving(false)
     }
@@ -511,6 +536,7 @@ export default function Settings() {
         <TabsList >
           {[
             ['general', 'General'],
+            ...(IS_FINSTAP ? [['branding', 'Branding']] : []),
             ['email', 'Email (SMTP)'],
             ['integrations', 'Integrations'],
             ['compliance', 'Compliance'],
@@ -693,6 +719,12 @@ export default function Settings() {
               </div>
             </Section>
           </TabsContent>
+
+          {IS_FINSTAP && (
+            <TabsContent value="branding" className="mt-0 space-y-4">
+              <BrandingTab form={form} setField={setField} disabled={isLoading || isSaving} />
+            </TabsContent>
+          )}
 
           <TabsContent value="email" className="mt-0 space-y-4">
             <Section
