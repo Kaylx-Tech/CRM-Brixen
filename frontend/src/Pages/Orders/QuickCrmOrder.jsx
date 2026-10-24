@@ -24,6 +24,7 @@ import { toast } from "sonner"
 import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { apiRequest } from "@/lib/api"
 import { canViewPrices } from "@/lib/permissions"
+import { formatGBP } from "@/lib/money"
 import ToastSave from "@/components/ToastSave"
 import { IconLoader2, IconPlus, IconTrash } from "@tabler/icons-react"
 
@@ -677,7 +678,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                   {showPrices ? (
                     <div className="text-right sm:pt-6">
                       <div className="text-[11px] font-semibold uppercase text-muted-foreground">Total Amount</div>
-                      <div className="text-xl font-extrabold mt-0.5">£{total.toFixed(2)}</div>
+                      <div className="text-xl font-extrabold mt-0.5">{formatGBP(total)}</div>
                     </div>
                   ) : null}
                 </div>

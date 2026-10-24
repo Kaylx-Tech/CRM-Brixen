@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { m, fadeUp } from "@/lib/motion"
+import { formatGBP } from "@/lib/money"
 
 // Bars / areas / slices grow in smoothly (shorter and softer than the Recharts default)
 const CHART_ANIMATION = { isAnimationActive: true, animationBegin: 120, animationDuration: 850, animationEasing: "ease-out" }
@@ -115,7 +116,7 @@ export function ChartBarMultiple({
                     <div className="flex items-center justify-between w-full min-w-[130px] gap-2">
                       <span className="text-muted-foreground">Sales Revenue</span>
                       <span className="  font-medium text-foreground tabular-nums">
-                        £{Number(value || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {formatGBP(value)}
                       </span>
                     </div>
                   )}

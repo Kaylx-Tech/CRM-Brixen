@@ -61,6 +61,7 @@ import DocumentPreview from '@/components/DocumentPreview'
 import { downloadDocument } from '@/lib/documents'
 import { openInvoice, downloadInvoice } from '@/lib/invoices'
 import { isManagerOrAbove, canViewPrices } from '@/lib/permissions'
+import { formatGBP, plainAmount } from '@/lib/money'
 
 const PAYMENT_MODES = [
   { value: 'PKR(Bank Transfer)', label: 'PKR (Bank Transfer)' },
@@ -762,7 +763,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                   {showPrices ? (
                     <>
                       <span>•</span>
-                      <span className="font-semibold text-primary">£{Number(order?.total || 0).toFixed(2)}</span>
+                      <span className="font-semibold text-primary">{formatGBP(order?.total)}</span>
                     </>
                   ) : null}
                   {order?.created_by_name ? (
@@ -1303,9 +1304,9 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                 </Badge>
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                Total £{Number(order.invoice.total || 0).toFixed(2)}
-                                {' · '}Paid £{Number(order.invoice.amount_paid || 0).toFixed(2)}
-                                {' · '}Due £{Number(order.invoice.amount_due || 0).toFixed(2)}
+                                Total {formatGBP(order.invoice.total)}
+                                {' · '}Paid {formatGBP(order.invoice.amount_paid)}
+                                {' · '}Due {formatGBP(order.invoice.amount_due)}
                                 {order.invoice.payment_timing ? ` · ${order.invoice.payment_timing}` : ''}
                               </p>
                             </div>
@@ -1378,7 +1379,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                   <span className="text-[10px] text-muted-foreground ml-2">({svc.category || svc.category_name})</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  {showPrices ? <span className="font-bold">£{Number(svc.price || 0).toFixed(2)}</span> : null}
+                                  {showPrices ? <span className="font-bold">{formatGBP(svc.price)}</span> : null}
                                   <Button size="icon-xs" variant="outline" className="h-5 w-5">
                                     <IconPlus className="w-3 h-3" />
                                   </Button>
@@ -1428,7 +1429,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                     type="number"
                                     min="0"
                                     step="0.01"
-                                    defaultValue={Number(item.unit_price || 0).toFixed(2)}
+                                    defaultValue={plainAmount(item.unit_price)}
                                     className="w-28 text-right font-bold"
                                     aria-label={`Price for ${item.product_name}`}
                                     onBlur={(e) => handleSaveItemPrice(item, e.target.value)}
@@ -1454,7 +1455,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                         {showPrices ? (
                           <div className="p-3 bg-muted/30 border-t flex items-center justify-between text-sm font-semibold">
                             <span>Total</span>
-                            <span>£{Number(order?.total || 0).toFixed(2)}</span>
+                            <span>{formatGBP(order?.total)}</span>
                           </div>
                         ) : null}
                       </div>

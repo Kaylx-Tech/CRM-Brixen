@@ -32,6 +32,7 @@ import {
 } from '@tabler/icons-react'
 import { FIELD_TYPES } from './FormFieldsBuilder'
 import { canViewRevenue, canViewPrices } from '@/lib/permissions'
+import { formatGBP } from '@/lib/money'
 
 /** Read-only view of a service's order form (as built in Edit Service), with sub-fields under their trigger. */
 function FormFieldsPreview({ fields, nested = false }) {
@@ -208,7 +209,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                         <IconCurrencyPound className="w-4 h-4 text-primary" />
                       </div>
                       <div className="mt-2">
-                        <div className="text-2xl font-bold text-foreground">£{sellPriceNum.toFixed(2)}</div>
+                        <div className="text-2xl font-bold text-foreground">{formatGBP(sellPriceNum)}</div>
                         <span className="text-sm text-muted-foreground">Customer price</span>
                       </div>
                     </div>
@@ -222,7 +223,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                       <IconReceipt2 className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <div className="mt-2">
-                      <div className="text-2xl font-bold text-muted-foreground">£{costPriceNum.toFixed(2)}</div>
+                      <div className="text-2xl font-bold text-muted-foreground">{formatGBP(costPriceNum)}</div>
                       <span className="text-sm text-muted-foreground">Base cost</span>
                     </div>
                   </div>
@@ -234,7 +235,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                     </div>
                     <div className="mt-2">
                       <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                        £{profitNum.toFixed(2)}
+                        {formatGBP(profitNum)}
                       </div>
                       <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
                         {marginPercent}% net margin
@@ -301,15 +302,15 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center py-2 border-b text-sm">
                       <span className="text-muted-foreground">Retail Selling Price</span>
-                      <span className="font-bold text-base">£{sellPriceNum.toFixed(2)}</span>
+                      <span className="font-bold text-base">{formatGBP(sellPriceNum)}</span>
                     </div>
                     <div className="flex justify-between items-center py-2 border-b text-sm">
                       <span className="text-muted-foreground">Original / Fulfillment Cost</span>
-                      <span className="font-medium text-muted-foreground">£{costPriceNum.toFixed(2)}</span>
+                      <span className="font-medium text-muted-foreground">{formatGBP(costPriceNum)}</span>
                     </div>
                     <div className="flex justify-between items-center py-2 border-b text-sm">
                       <span className="text-muted-foreground">Gross Profit per Unit</span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400">£{profitNum.toFixed(2)}</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">{formatGBP(profitNum)}</span>
                     </div>
                     <div className="flex justify-between items-center py-2 text-sm">
                       <span className="text-muted-foreground">Profit Margin Ratio</span>

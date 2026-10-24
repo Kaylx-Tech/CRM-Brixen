@@ -11,6 +11,7 @@ import AddService from "./AddService";
 import ViewService from "./ViewService";
 import DeleteConfirmation from "../../components/DeleteConfirmation";
 import { isAdminRole, canViewPrices } from "@/lib/permissions";
+import { formatGBP } from "@/lib/money";
 import FormFieldsBuilder, { formFieldsError } from "./FormFieldsBuilder";
 import {
   Dialog,
@@ -89,9 +90,9 @@ const Services = () => {
         const costPrice = Number(s.cost_price ?? s.originalPrice) || 0;
         return {
           ...s,
-          sellPrice: `£${price}`,
-          originalPrice: `£${costPrice}`,
-          profit: `£${price - costPrice}`,
+          sellPrice: formatGBP(price),
+          originalPrice: formatGBP(costPrice),
+          profit: formatGBP(price - costPrice),
         };
       });
       setData(formatted);
@@ -115,7 +116,7 @@ const Services = () => {
 
   // Headline numbers; cost and profit only for admins
   const serviceStats = useMemo(() => {
-    const money = (n) => `£${n.toLocaleString("en-GB", { maximumFractionDigits: 2 })}`;
+    const money = formatGBP;
     const prices = data.map((s) => Number(s.price) || 0);
     const avg = prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : 0;
     const categories = new Set(data.map((s) => s.category).filter(Boolean));

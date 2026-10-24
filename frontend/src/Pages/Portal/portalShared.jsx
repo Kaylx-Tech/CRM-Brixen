@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { IconLoader2, IconRefresh, IconAlertCircle } from "@tabler/icons-react"
 import { apiRequest } from "@/lib/api"
+import { formatGBP } from "@/lib/money"
 
 /** GET an endpoint and return { data, isLoading, error, reload }; `data` is the response's `data` object. */
 export function usePortalData(path) {
@@ -32,9 +33,9 @@ export function usePortalData(path) {
   return { data, isLoading, error, reload }
 }
 
+/** £49, or £49.50 when there are pence */
 export function money(value) {
-  const n = Number(value || 0)
-  return `£${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return formatGBP(value)
 }
 
 export function formatDate(value) {
