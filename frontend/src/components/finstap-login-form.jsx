@@ -11,6 +11,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { homePath } from "@/lib/permissions"
 import { getApiBase } from "@/lib/api"
+import { getDeviceId } from "@/lib/device"
+import { LoginCodeStep } from "@/components/login-code-step"
 import {
   getWorkspace,
   normalizeSlug,
@@ -42,6 +44,20 @@ export function FinstapLoginForm() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  // Second step: the emailed login code ({ challenge, emailHint, resendAfter, slug } while shown)
+  const [codeStep, setCodeStep] = useState(null)
+
+  /** Keep the session from a successful login (password, or password + emailed code) and go home. */
+  const finishLogin = (data, slug) => {
+    const token = data.data?.token || data.token
+    const user = data.data?.user || data.user
+    if (!token) return false
+    setWorkspace(slug)
+    localStorage.setItem("token", token)
+    localStorage.setItem("user", JSON.stringify(user || { email }))
+    navigate(homePath(user || {}))
+    return true
+  }
 
   // Show which company the user is signing in to, as soon as the workspace is known
   useEffect(() => {
@@ -93,17 +109,18 @@ export function FinstapLoginForm() {
         method: "POST",
         headers: { "Content-Type": "application/json", ...workspaceHeaders(slug) },
         credentials: "include",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, device_id: getDeviceId() }),
       })
       const data = await res.json().catch(() => ({}))
-      const token = data.data?.token || data.token
-      const user = data.data?.user || data.user
-      if (res.ok && token) {
-        setWorkspace(slug)
-        localStorage.setItem("token", token)
-        localStorage.setItem("user", JSON.stringify(user || { email }))
+      if (res.ok && data.data?.otp_required) {
+        // Password right, new browser (or 24 hours passed): ask for the emailed code
+        toastDone(toastId, "We emailed you a login code")
+        setCodeStep({ challenge: data.data.challenge, emailHint: data.data.email_hint,
+                      resendAfter: data.data.resend_after, slug })
+        return
+      }
+      if (res.ok && finishLogin(data, slug)) {
         toastDone(toastId, "Logged in successfully")
-        navigate(homePath(user || {}))
         return
       }
       const msg = data.message || data.error || "Invalid email or password."
@@ -142,6 +159,29 @@ export function FinstapLoginForm() {
           </Button>
           <p className="text-center text-sm text-muted-foreground">Don&apos;t have an account? {signupLink}</p>
         </FieldGroup>
+      </AuthLayout>
+    )
+  }
+
+  if (codeStep) {
+    return (
+      <AuthLayout
+        title="Check your email"
+        subtitle={`We sent a 6-digit login code to ${codeStep.emailHint}. This browser will not ask again for 24 hours.`}
+      >
+        <LoginCodeStep
+          heading={false}
+          apiUrl={getApiBase()}
+          challenge={codeStep.challenge}
+          emailHint={codeStep.emailHint}
+          resendAfter={codeStep.resendAfter}
+          headers={workspaceHeaders(codeStep.slug)}
+          onSuccess={(data) => finishLogin(data, codeStep.slug)}
+          onBack={() => {
+            setCodeStep(null)
+            setPassword("")
+          }}
+        />
       </AuthLayout>
     )
   }
