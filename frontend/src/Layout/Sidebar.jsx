@@ -1,6 +1,6 @@
 import * as React from "react"
 import brixenLogo from "@/assets/white-logo.webp"
-import { FinstapLogo } from "@/components/finstap-brand"
+import { FinstapMenuLogo } from "@/components/finstap-brand"
 import { IS_FINSTAP } from "@/lib/workspace"
 import { loadBranding } from "@/lib/branding"
 import { FINSTAP_NAV_GROUPS } from "@/lib/finstap-nav"
@@ -127,7 +127,7 @@ export function AppSidebar({
             <div className="w-full flex flex-col justify-center items-center">
               {/* Finstap build: its own logo (white text on the dark sidebar) */}
               {IS_FINSTAP ? (
-                <FinstapLogo light className="my-3 h-9" />
+                <FinstapMenuLogo />
               ) : (
                 <img src={brixenLogo} alt="Brixen" className="h-18 w-auto" />
               )}

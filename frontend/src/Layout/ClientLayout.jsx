@@ -1,7 +1,7 @@
 import React from "react"
 import { Navigate, Outlet } from "react-router-dom"
 import brixenLogo from "@/assets/white-logo.webp"
-import { FinstapLogo } from "@/components/finstap-brand"
+import { FinstapMenuLogo } from "@/components/finstap-brand"
 import { IS_FINSTAP } from "@/lib/workspace"
 import { loadBranding } from "@/lib/branding"
 import { NavMain } from "@/Layout/nav-main"
@@ -66,7 +66,7 @@ export default function ClientLayout() {
             <SidebarMenuItem>
               <div className="flex w-full flex-col items-center justify-center">
                 {IS_FINSTAP ? (
-                  <FinstapLogo light className="my-3 h-9" />
+                  <FinstapMenuLogo />
                 ) : (
                   <img src={brixenLogo} alt="Brixen" className="h-18 w-auto" />
                 )}
