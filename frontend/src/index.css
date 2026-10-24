@@ -257,6 +257,10 @@ html.is-non-apple,
    behind it, and gentle motion. The menu and the frame around the page are both 86% of the menu
    colour over the page background, so they stay one colour; the glow sits on <body> behind both. */
 :root[data-product="finstap"] {
+  /* Light mode sits on a white page, so it keeps more of the menu colour than dark mode */
+  --menu-surface: color-mix(in srgb, var(--sidebar) 95%, transparent);
+}
+:root[data-product="finstap"].dark {
   --menu-surface: color-mix(in srgb, var(--sidebar) 86%, transparent);
 }
 :root[data-product="finstap"] body {
