@@ -321,6 +321,10 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
     if path in ('/api/orders', '/api/admin/orders', '/api/client/orders') and method == 'GET':
         if is_staff or path.startswith('/api/admin/'):
             payload = build_admin_order_list(user, query)
+            # Internal notes are for the team only (shown when hovering an order's status)
+            if not is_staff:
+                payload['orders'] = [{k: v for k, v in dict(o).items() if k != 'notes'}
+                                     for o in (payload.get('orders') or [])]
             # Keep Payments page fields
             orders = payload.get('orders') or []
             payload['total'] = (payload.get('pagination') or {}).get('total', len(orders))

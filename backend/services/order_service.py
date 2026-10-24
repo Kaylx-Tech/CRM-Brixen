@@ -202,6 +202,7 @@ def build_admin_order_list(user, query):
         SELECT o.id, o.order_number, o.user_id, o.company_id, o.service_id, o.service_name,
                o.price, o.vat, o.total, o.cost_price, o.status, o.progress_percent, o.payment_mode,
                o.created_at, o.updated_at, o.expected_date,
+               o.notes,  -- internal notes, shown when hovering the status in the Orders list
                o.owner_name, o.owner_form_email,
                u.full_name as client_name, u.email as client_email, u.email as portal_account_email,
                u.is_b2b, u.client_type,
