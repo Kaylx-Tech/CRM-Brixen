@@ -17,6 +17,7 @@ import {
   IconNote,
 } from "@tabler/icons-react"
 import { formatGBP } from "@/lib/money"
+import { canCancelOrder, cancelOrder, cancelOrderMessage } from "@/lib/orders"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
@@ -197,6 +198,8 @@ export default function Orders() {
   const [b2bClientId, setB2bClientId] = useState(() => new URLSearchParams(window.location.search).get('b2b') || 'all')
   const [savingId, setSavingId] = useState(null)
   const [cancelTarget, setCancelTarget] = useState(null)
+  // "Cancel order" (order and its invoice in one step), separate from the admin's Delete
+  const [cancelOrderTarget, setCancelOrderTarget] = useState(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [quickCrmOpen, setQuickCrmOpen] = useState(false)
   // Deep link from Performance: /admin/orders?open=<orderId> opens that order
@@ -519,6 +522,11 @@ export default function Orders() {
               <DropdownMenuItem onClick={() => handleOpenOrder(o.id)}>
                 Open order
               </DropdownMenuItem>
+              {canCancelOrder(o) && (
+                <DropdownMenuItem variant="destructive" onClick={() => setCancelOrderTarget(o)}>
+                  Cancel order
+                </DropdownMenuItem>
+              )}
               {isAdminRole() && (
                 <DropdownMenuItem
                   variant="destructive"
@@ -788,6 +796,19 @@ export default function Orders() {
         title="Delete order"
         description={`Permanently delete order ${cancelTarget?.order_number || cancelTarget?.id || ''} and its documents? You can undo for a few seconds.`}
         confirmText="Delete order"
+        cancelText="Keep order"
+      />
+      <DeleteConfirmation
+        isOpen={Boolean(cancelOrderTarget)}
+        onClose={() => setCancelOrderTarget(null)}
+        onConfirm={async () => {
+          const target = cancelOrderTarget
+          setCancelOrderTarget(null)
+          if (target && (await cancelOrder(target))) fetchOrders(pagination.page || 1)
+        }}
+        title="Cancel order"
+        description={cancelOrderMessage(cancelOrderTarget)}
+        confirmText="Cancel order and invoice"
         cancelText="Keep order"
       />
     </div>

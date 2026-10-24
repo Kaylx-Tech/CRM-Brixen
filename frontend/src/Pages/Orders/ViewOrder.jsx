@@ -31,6 +31,7 @@ import {
 import {
   IconCopy,
   IconCheck,
+  IconBan,
   IconEye,
   IconEyeOff,
   IconPlus,
@@ -62,6 +63,7 @@ import { downloadDocument } from '@/lib/documents'
 import { openInvoice, downloadInvoice } from '@/lib/invoices'
 import { isManagerOrAbove, canViewPrices } from '@/lib/permissions'
 import { formatGBP, plainAmount } from '@/lib/money'
+import { canCancelOrder, cancelOrder, cancelOrderMessage } from '@/lib/orders'
 
 const PAYMENT_MODES = [
   { value: 'PKR(Bank Transfer)', label: 'PKR (Bank Transfer)' },
@@ -239,6 +241,8 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
   // Add product catalog picker
   const [showProductPicker, setShowProductPicker] = useState(false)
   const [removeTarget, setRemoveTarget] = useState(null)
+  // "Cancel order": the order and its invoice in one step
+  const [confirmCancel, setConfirmCancel] = useState(false)
   const [isRemovingItem, setIsRemovingItem] = useState(false)
   const [addFieldOpen, setAddFieldOpen] = useState(false)
   const [catalogServices, setCatalogServices] = useState([])
@@ -751,6 +755,17 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                   >
                     {copiedKey === 'order_num' ? <IconCheck className="w-3.5 h-3.5 text-emerald-600" /> : <IconCopy className="w-3.5 h-3.5" />}
                   </Button>
+                  {canCancelOrder(order) ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="ml-auto h-7 gap-1.5 text-destructive hover:text-destructive"
+                      onClick={() => setConfirmCancel(true)}
+                    >
+                      <IconBan className="w-3.5 h-3.5" />
+                      Cancel order
+                    </Button>
+                  ) : null}
                 </div>
                 <DialogDescription className="text-sm text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
                   <span>{formatDateDisplay(order?.created_at)}</span>
@@ -1630,6 +1645,22 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
         description={`Remove "${removeTarget?.product_name || 'this product'}" from this order? The order total will be recalculated.`}
         confirmText="Remove"
         isLoading={isRemovingItem}
+      />
+
+      <DeleteConfirmation
+        isOpen={confirmCancel}
+        onClose={() => setConfirmCancel(false)}
+        onConfirm={async () => {
+          setConfirmCancel(false)
+          if (order && (await cancelOrder(order))) {
+            fetchOrderDetails()
+            if (onOrderUpdated) onOrderUpdated()
+          }
+        }}
+        title="Cancel order"
+        description={cancelOrderMessage(order)}
+        confirmText="Cancel order and invoice"
+        cancelText="Keep order"
       />
 
       <PromptDialog
