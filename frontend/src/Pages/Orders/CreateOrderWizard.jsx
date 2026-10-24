@@ -21,6 +21,8 @@ import { toast } from "sonner"
 import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { apiRequest } from "@/lib/api"
 import ToastSave from "@/components/ToastSave"
+import { DateOfBirthInput } from "@/components/date-of-birth-input"
+import { isDateOfBirthLabel } from "@/lib/date-of-birth"
 import {
   IconArrowRight,
   IconBookmark,
@@ -539,6 +541,9 @@ function ServiceFieldInput({ field, value, onChange, hint }) {
             </Label>
           ))}
         </RadioGroup>
+      ) : isDateOfBirthLabel(field.label) ? (
+        // Dates of birth: a calendar and DD/MM/YYYY, wherever a service's form asks for one
+        <DateOfBirthInput id={id} value={value} onChange={onChange} />
       ) : (
         <Input
           id={id}
