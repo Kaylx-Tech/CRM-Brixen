@@ -253,6 +253,64 @@ html.is-non-apple,
   --sidebar-ring: #7c6dff;
 }
 
+/* ── Finstap menu: a lighter, see-through ("glass") menu surface with a soft glow of the accent
+   behind it, and gentle motion. The menu and the frame around the page are both 86% of the menu
+   colour over the page background, so they stay one colour; the glow sits on <body> behind both. */
+:root[data-product="finstap"] {
+  --menu-surface: color-mix(in srgb, var(--sidebar) 86%, transparent);
+}
+:root[data-product="finstap"] body {
+  background-image:
+    radial-gradient(42rem 30rem at 0% 0%, color-mix(in srgb, var(--sidebar-primary) 38%, transparent), transparent 70%),
+    radial-gradient(36rem 26rem at 0% 100%, color-mix(in srgb, var(--sidebar-primary) 16%, transparent), transparent 70%);
+  background-attachment: fixed;
+}
+:root[data-product="finstap"] [data-slot="sidebar-inner"],
+:root[data-product="finstap"] [data-slot="sidebar-inset"] {
+  background-color: var(--menu-surface);
+}
+/* Phones: the menu slides over the page, so it blurs what is behind it */
+:root[data-product="finstap"] [data-slot="sidebar"][data-mobile="true"] {
+  background-color: var(--menu-surface);
+  background-image: radial-gradient(28rem 20rem at 0% 0%, color-mix(in srgb, var(--sidebar-primary) 30%, transparent), transparent 70%);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+/* Menu rows slide in one after another when the menu opens (--i = row number) */
+@keyframes fs-menu-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: none; }
+}
+/* The active page's pill settles in */
+@keyframes fs-pill-in {
+  from { transform: scale(0.96); box-shadow: 0 0 0 0 color-mix(in srgb, var(--sidebar-primary) 45%, transparent); }
+  to { transform: none; }
+}
+/* Badges pop in */
+@keyframes fs-badge-pop {
+  0% { opacity: 0; transform: scale(0.4); }
+  70% { opacity: 1; transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.fs-menu-row {
+  animation: fs-menu-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 28ms);
+}
+.fs-menu-btn[data-active]:not([data-active="false"]) {
+  animation: fs-pill-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.fs-menu-badge {
+  animation: fs-badge-pop 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 28ms + 0.2s);
+}
+@media (prefers-reduced-motion: reduce) {
+  .fs-menu-row,
+  .fs-menu-btn[data-active],
+  .fs-menu-badge {
+    animation: none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
