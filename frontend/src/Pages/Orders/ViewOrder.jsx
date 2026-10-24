@@ -759,7 +759,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                     <Button
                       variant="outline"
                       size="sm"
-                      className="ml-auto h-7 gap-1.5 text-destructive hover:text-destructive"
+                      className="ml-auto mr-8 h-7 gap-1.5 text-destructive hover:text-destructive"
                       onClick={() => setConfirmCancel(true)}
                     >
                       <IconBan className="w-3.5 h-3.5" />
@@ -1659,7 +1659,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
         }}
         title="Cancel order"
         description={cancelOrderMessage(order)}
-        confirmText="Cancel order and invoice"
+        confirmText="Yes, cancel"
         cancelText="Keep order"
       />
 
