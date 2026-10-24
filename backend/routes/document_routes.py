@@ -14,7 +14,7 @@ from services.audit_service import log_activity
 from config import BASE_DIR, STORAGE_DIR
 from db import query_db, execute_db
 from utils.response import json_response, success_response, error_response
-from services.storage_service import save_client_file, get_file_download_stream
+from services.storage_service import save_client_file, get_file_download_stream, last_download_error
 from services.document_lifecycle import (
     LIFECYCLE_STAGES,
     public_document,
@@ -96,7 +96,9 @@ def _drive_bytes_cached(drive_file_id):
 
 
 def _serve_document(start_response, doc, inline):
-    """Stream a document from Drive, then local disk, then redirect to its Drive link."""
+    """Stream a document from Drive, then local disk. When neither has it, say why (and give the
+    Drive link) instead of redirecting: the CRM loads files with fetch(), and a redirect to Google
+    is blocked by the browser and only shows up as "Failed to fetch"."""
     disposition = 'inline' if inline else 'attachment'
 
     def _respond(content_bytes, mime):
@@ -111,10 +113,12 @@ def _serve_document(start_response, doc, inline):
         return [content_bytes]
 
     drive_file_id = doc.get('drive_file_id')
+    drive_reason = ''
     if drive_file_id:
         content_bytes, meta = _drive_bytes_cached(drive_file_id)
         if content_bytes:
             return _respond(content_bytes, (meta or {}).get('mimeType') or 'application/octet-stream')
+        drive_reason = last_download_error()
 
     local = _local_document_path(doc.get('file_path'))
     if local:
@@ -125,11 +129,12 @@ def _serve_document(start_response, doc, inline):
         return _respond(content_bytes, mime)
 
     link = doc.get('drive_web_link')
-    if isinstance(link, str) and link.startswith('https://'):
-        start_response('302 Found', [('Location', link)])
-        return [b'']
-
-    return error_response(start_response, "File content unavailable", status_code=404)
+    link = link if isinstance(link, str) and link.startswith('https://') else ''
+    if drive_file_id:
+        return error_response(start_response, drive_reason or 'Google Drive did not send this file.',
+                              status_code=502, details={'drive_web_link': link} if link else None)
+    return error_response(start_response, "This file was never uploaded (it is not on Drive or the server).",
+                          status_code=404, details={'drive_web_link': link} if link else None)
 
 
 def handle_document_routes(environ, start_response, path, method, user, body, query):

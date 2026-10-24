@@ -30,7 +30,8 @@ def json_response(start_response, data, status_code=200, headers=None):
         404: '404 Not Found',
         409: '409 Conflict',
         422: '422 Unprocessable Entity',
-        500: '500 Internal Server Error'
+        500: '500 Internal Server Error',
+        502: '502 Bad Gateway',
     }
     status = status_map.get(status_code, f"{status_code} Response")
     

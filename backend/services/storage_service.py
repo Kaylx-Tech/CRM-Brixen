@@ -123,12 +123,38 @@ def save_client_file(client_id, customer_name, filename, file_bytes, order_id=No
         "drive_download_link": drive_res.get('webContentLink')
     }
 
+# Why the last Drive download failed (shown to the team instead of a bare "could not load")
+_last_download_error = {'message': ''}
+
+
+def last_download_error():
+    """A short, readable reason the last Drive download failed ('' when it worked)."""
+    return _last_download_error['message']
+
+
+def _drive_error_reason(exc):
+    text = str(exc)
+    low = text.lower()
+    if 'invalid_grant' in low or 'expired' in low or 'revoked' in low or 'unauthorized' in low:
+        return 'Google Drive sign-in has expired or was revoked. An admin needs to connect Google Drive again.'
+    if 'notfound' in low.replace(' ', '') or 'file not found' in low or '404' in low:
+        return 'This file is no longer on Google Drive (it may have been moved or deleted there).'
+    if 'insufficient' in low or 'permission' in low or '403' in low:
+        return "The CRM's Google account cannot open this file on Drive."
+    return f'Google Drive did not send the file ({text[:160]}).'
+
+
 def get_file_download_stream(file_id):
     """Stream a file directly from Google Drive (or R2 for "r2:<key>") for client download/viewing."""
+    _last_download_error['message'] = ''
     if r2_storage.is_r2_ref(file_id):
-        return r2_storage.download(file_id)
+        content_bytes, meta = r2_storage.download(file_id)
+        if not content_bytes:
+            _last_download_error['message'] = 'The file could not be read from document storage (R2).'
+        return content_bytes, meta
     service = get_drive_service()
     if not service:
+        _last_download_error['message'] = 'Google Drive is not connected on the server.'
         return None, None
 
     try:
@@ -148,4 +174,5 @@ def get_file_download_stream(file_id):
         return fh.read(), file_meta
     except Exception as e:
         print(f"[Google Drive Download Error] {e}")
+        _last_download_error['message'] = _drive_error_reason(e)
         return None, None
