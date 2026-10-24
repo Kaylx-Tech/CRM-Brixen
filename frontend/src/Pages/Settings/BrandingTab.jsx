@@ -57,8 +57,8 @@ function ImageSlot({ slot, value, disabled, onPick, onRemove }) {
       </div>
       <div
         className={`flex h-28 items-center justify-center rounded-md border border-dashed p-3 ${
-          // Each logo on the background it is made for, in light and dark mode alike
-          slot.dark ? 'bg-[#120f2e]' : 'bg-white'
+          // Each logo on the background it is made for (the menu's own colour), in light and dark mode alike
+          slot.dark ? 'bg-sidebar' : 'bg-white'
         }`}
       >
         {value ? (
@@ -193,7 +193,7 @@ export default function BrandingTab({ form, setField, disabled }) {
 
       <Section
         title="Accent colour"
-        description="Used for buttons, links, the active page in the sidebar and highlights."
+        description="Used for buttons, links and highlights; the menu (sidebar) takes a deep shade of it."
       >
         <div className="flex items-start gap-2">
           <Checkbox
@@ -294,9 +294,11 @@ export default function BrandingTab({ form, setField, disabled }) {
             <Button type="button" variant="outline">Outline</Button>
             <Badge>Badge</Badge>
             <span className="text-sm font-medium text-primary">A link in your colour</span>
-            <span className="inline-flex items-center gap-2 rounded-md bg-[#120f2e] px-3 py-1.5 text-sm text-white">
+            {/* The menu in its accent shade, as the sidebar shows it */}
+            <span className="inline-flex items-center gap-2 rounded-md bg-sidebar px-3 py-1.5 text-sm text-sidebar-foreground">
               <span className="size-2 rounded-full" style={{ background: shown }} />
-              <span className="rounded px-2 py-0.5" style={{ background: shown, color: textOn(shown) }}>Active page</span>
+              <span className="rounded bg-sidebar-accent px-2 py-0.5 text-sidebar-accent-foreground">Active page</span>
+              <span className="text-sidebar-foreground/70">Menu</span>
             </span>
           </div>
           {!accent && (

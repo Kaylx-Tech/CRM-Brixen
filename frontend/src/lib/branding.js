@@ -83,6 +83,14 @@ function withLightness(hex, fn) {
   return rgbToHex(hslToRgb([h, s, Math.max(0, Math.min(1, fn(l)))]))
 }
 
+/** The colour's hue at a set lightness, with its saturation capped (deep shades for the menu). */
+export function shade(hex, lightness, maxSaturation = 0.55) {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return hex
+  const [h, s] = rgbToHsl(rgb)
+  return rgbToHex(hslToRgb([h, Math.min(s, maxSaturation), lightness]))
+}
+
 function mix(hex, otherHex, amount) {
   const a = hexToRgb(hex)
   const b = hexToRgb(otherHex)
@@ -216,6 +224,16 @@ export async function prepareBrandImage(file, maxSize = 512) {
 
 // ── Applying it to the page ───────────────────────────────────────────────
 
+/** Menu (sidebar) background and active-page colours for an accent, in light and dark mode. */
+export function menuColours(accent) {
+  return {
+    light: shade(accent, 0.14),
+    lightActive: shade(accent, 0.22),
+    dark: shade(accent, 0.09),
+    darkActive: shade(accent, 0.16),
+  }
+}
+
 function applyAccent(accent) {
   let tag = document.getElementById(STYLE_ID)
   if (!accent || !hexToRgb(accent)) {
@@ -226,20 +244,20 @@ function applyAccent(accent) {
   const dark = withLightness(accent, (l) => Math.min(0.72, l + 0.07))
   const darkFg = textOn(dark)
   const tint = mix(accent, "#ffffff", 0.08)
-  // The active page in the dark sidebar: a dim shade of the accent instead of Finstap's violet
-  const sidebarActive = mix(accent, "#120f2e", 0.24)
-  const sidebarActiveDark = mix(dark, "#0b0919", 0.24)
+  // The menu (sidebar) in a deep shade of the accent instead of Finstap's indigo, with the active
+  // page a step lighter; white menu text stays readable at these lightnesses
+  const menu = menuColours(accent)
   const css = `
 :root[data-product="finstap"] {
   --primary: ${accent}; --primary-foreground: ${fg}; --ring: ${accent};
   --secondary: ${tint}; --accent: ${tint}; --chart-3: ${accent}; --viz-1: ${accent};
+  --sidebar: ${menu.light}; --sidebar-accent: ${menu.lightActive};
   --sidebar-primary: ${accent}; --sidebar-primary-foreground: ${fg}; --sidebar-ring: ${accent};
-  --sidebar-accent: ${sidebarActive};
 }
 :root[data-product="finstap"].dark {
   --primary: ${dark}; --primary-foreground: ${darkFg}; --ring: ${dark}; --chart-3: ${dark}; --viz-1: ${dark};
+  --sidebar: ${menu.dark}; --sidebar-accent: ${menu.darkActive};
   --sidebar-primary: ${dark}; --sidebar-primary-foreground: ${darkFg}; --sidebar-ring: ${dark};
-  --sidebar-accent: ${sidebarActiveDark};
 }`
   if (!tag) {
     tag = document.createElement("style")
