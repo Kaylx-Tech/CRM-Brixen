@@ -29,7 +29,7 @@ import Settings from './Pages/Settings/Settings'
 import NotificationsPage from './Pages/Notifications/Notifications'
 import Performance, { StaffDashboard } from './Pages/Performance/Performance'
 import PageGuard from './components/PageGuard'
-import { isStaffRole, homePath } from './lib/permissions'
+import { isStaffRole, homePath, isManagerOrAbove } from './lib/permissions'
 import ClientLayout from './Layout/ClientLayout'
 import PortalDashboard from './Pages/Portal/PortalDashboard'
 import PortalCompanies from './Pages/Portal/PortalCompanies'
@@ -42,6 +42,12 @@ import { PortalServices, PortalAddresses, PortalAccountancy } from './Pages/Port
 // "/" sends each user to their own home (customers -> portal, team -> CRM)
 function HomeRedirect() {
   return <Navigate to={homePath()} replace />
+}
+
+// Finstap: Team is the members list (admins and managers); tasks moved to Smart Operations → GOV Forms,
+// so staff (and old task links) land there
+function FinstapTeam() {
+  return isManagerOrAbove() ? <Tasks view="team" /> : <Navigate to="/admin/smart-operations?tab=gov-forms" replace />
 }
 
 // Staff land on their own work; admins and managers get the company overview (money stays admin-only)
@@ -138,7 +144,7 @@ const App = () => {
                 <Route path="companies" element={<Companies />} />
                 <Route path="accountancy" element={<PageGuard page="accountancy"><Accountancy /></PageGuard>} />
                 <Route path="orders" element={<PageGuard page="orders"><Orders /></PageGuard>} />
-                <Route path="tasks" element={<Tasks />} />
+                <Route path="tasks" element={IS_FINSTAP ? <FinstapTeam /> : <Tasks />} />
                 <Route path="services" element={<PageGuard page="services"><Services /></PageGuard>} />
                 <Route path="payments" element={<PageGuard page="payments"><Payments /></PageGuard>} />
                 <Route path="documents" element={<PageGuard page="documents"><Documents /></PageGuard>} />

@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
-import { canOpenPath, isAdminRole } from "@/lib/permissions"
+import { canOpenPath, isAdminRole, isManagerOrAbove } from "@/lib/permissions"
 import { IS_FINSTAP } from "@/lib/workspace"
 import { FINSTAP_NAV_GROUPS } from "@/lib/finstap-nav"
 import {
@@ -94,7 +94,7 @@ export function CommandManyItems({ open: controlledOpen, onOpenChange: setContro
       .map((group) => ({
         ...group,
         items: group.items.filter((item) =>
-          canOpenPath(item.url) && (admin || item.url !== "/admin/settings")),
+          canOpenPath(item.url) && (admin || item.url !== "/admin/settings") && (!item.managerOnly || isManagerOrAbove())),
       }))
       .filter((group) => group.items.length > 0)
   }, [])

@@ -183,8 +183,17 @@ function extractList(payload, keys = []) {
   return []
 }
 
-const Tasks = () => {
-  const [activeTab, setActiveTab] = useState('Tasks')
+/**
+ * Tasks & Team. `view` splits it for Finstap: "team" is the Team page (members only) and "gov-forms"
+ * is the tasks list shown as GOV Forms inside Smart Operations (no page heading of its own).
+ * Without `view` (Brixen) both stay on one page with Tasks / Team tabs.
+ */
+const Tasks = ({ view } = {}) => {
+  const [tabChoice, setActiveTab] = useState('Tasks')
+  const activeTab = view === 'team' ? 'Team' : view === 'gov-forms' ? 'Tasks' : tabChoice
+  const govForms = view === 'gov-forms'
+  const taskWord = govForms ? 'GOV form' : 'task'
+  const listName = govForms ? 'GOV Forms' : 'Tasks'
   const [statusFilter, setStatusFilter] = useState('All')
   const [tasks, setTasks] = useState([])
   const [staff, setStaff] = useState([])
@@ -221,7 +230,7 @@ const Tasks = () => {
     setIsLoading(true)
     setLoadError(null)
     try {
-      const res = await apiRequest('/tasks', { label: 'Tasks' })
+      const res = await apiRequest('/tasks', { label: listName })
       if (!res.ok) {
         setTasks([])
         setLoadError(res.reason)
@@ -246,19 +255,19 @@ const Tasks = () => {
         raw: t,
       }))
       setTasks(mapped)
-      if (mapped.length === 0) toastApiEmpty('Tasks', getApiBase())
+      if (mapped.length === 0) toastApiEmpty(listName, getApiBase())
     } catch (err) {
       console.error('Failed to load tasks', err)
       setTasks([])
       setLoadError(err?.message || 'Unexpected error')
-      toast.error('Tasks failed to load', {
+      toast.error(`${listName} failed to load`, {
         description: err?.message || 'Unexpected error',
         duration: 8000,
       })
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [listName])
 
   const loadStaff = useCallback(async () => {
     setStaffLoading(true)
@@ -292,9 +301,10 @@ const Tasks = () => {
     }
   }, [])
 
+  // The Team page needs no tasks; GOV Forms still loads the team (for "assign to")
   useEffect(() => {
-    loadTasks()
-  }, [loadTasks])
+    if (view !== 'team') loadTasks()
+  }, [loadTasks, view])
 
   useEffect(() => {
     loadStaff()
@@ -534,7 +544,7 @@ const Tasks = () => {
   const taskColumns = useMemo(
     () => [
       columnHelper.accessor('title', {
-        header: 'Task',
+        header: govForms ? 'GOV form' : 'Task',
       cell: ({ row }) => (
           <div className="flex flex-col gap-0.5 min-w-0 max-w-[280px]">
             <OverflowTooltip
@@ -632,7 +642,7 @@ const Tasks = () => {
       }),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [staff, canManageTasks]
+    [staff, canManageTasks, govForms]
   )
 
   const staffColumns = useMemo(
@@ -739,10 +749,14 @@ const Tasks = () => {
   )
 
   return (
-    <div className="flex flex-col gap-6 w-full pb-10">
+    <div className={`flex flex-col w-full ${govForms ? 'gap-4' : 'gap-6 pb-10'}`}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Tasks & Team</h2>
+          {govForms ? (
+            <p className="text-sm text-muted-foreground">Government forms the team is working on, who has each one and when it is due.</p>
+          ) : (
+            <h2 className="text-2xl font-bold tracking-tight">{view === 'team' ? 'Team' : 'Tasks & Team'}</h2>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -765,7 +779,7 @@ const Tasks = () => {
             canManageTasks ? (
               <Button onClick={openCreateTask}>
                 <IconPlus className="size-4" />
-                New task
+                New {taskWord}
               </Button>
             ) : null
           ) : canManageTeam ? (
@@ -783,12 +797,14 @@ const Tasks = () => {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList>
-          <TabsTrigger value="Tasks">Tasks</TabsTrigger>
-          {canManageTasks && <TabsTrigger value="Team">Team</TabsTrigger>}
-        </TabsList>
-      </Tabs>
+      {!view && (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList>
+            <TabsTrigger value="Tasks">Tasks</TabsTrigger>
+            {canManageTasks && <TabsTrigger value="Team">Team</TabsTrigger>}
+          </TabsList>
+        </Tabs>
+      )}
 
       {activeTab === 'Tasks' ? (
         <div className="flex flex-col gap-4">
@@ -835,7 +851,7 @@ const Tasks = () => {
       >
         <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
-            <DialogTitle>{editingTask ? 'Edit task' : 'New task'}</DialogTitle>
+            <DialogTitle>{editingTask ? `Edit ${taskWord}` : `New ${taskWord}`}</DialogTitle>
             <DialogDescription>
               {editingTask
                 ? 'Update assignment, priority, or status.'
@@ -1168,7 +1184,7 @@ const Tasks = () => {
         onClose={() => !isDeleting && setTaskToDelete(null)}
         onConfirm={confirmDeleteTask}
         isLoading={isDeleting}
-        title="Delete task?"
+        title={`Delete ${taskWord}?`}
         description={
           taskToDelete
             ? `“${taskToDelete.title}” will be permanently removed.`

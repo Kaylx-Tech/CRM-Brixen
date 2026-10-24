@@ -36,7 +36,7 @@ import {
   IconTrophy,
 } from "@tabler/icons-react"
 import { CommandManyItems } from "@/components/ComboSearch"
-import { canOpenPath, isStaffRole } from "@/lib/permissions"
+import { canOpenPath, isStaffRole, isManagerOrAbove } from "@/lib/permissions"
 
 const data = {
   user: {
@@ -106,7 +106,7 @@ export function AppSidebar({
     return FINSTAP_NAV_GROUPS.map((group) => ({
       label: group.label,
       items: group.items
-        .filter((item) => canOpenPath(item.url))
+        .filter((item) => canOpenPath(item.url) && (!item.managerOnly || isManagerOrAbove()))
         .map(({ icon: Icon, ...item }) => ({
           ...item,
           icon: <Icon />,

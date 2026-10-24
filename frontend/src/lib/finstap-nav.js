@@ -1,7 +1,8 @@
 /**
  * The Finstap admin menu: names, order and groups (the Brixen build keeps its own flat list in
  * Layout/Sidebar.jsx). The sidebar and the Ctrl/⌘ K search both read this, so they always match.
- * `badge` names a count from /admin/stats/nav-counts shown next to the page.
+ * `badge` names a count from /admin/stats/nav-counts shown next to the page; `managerOnly` pages are
+ * for admins and managers.
  */
 import {
   IconLayoutDashboard,
@@ -43,7 +44,8 @@ export const FINSTAP_NAV_GROUPS = [
     label: "Business",
     items: [
       { title: "Finance", url: "/admin/payments", icon: IconFileInvoice },
-      { title: "Team", url: "/admin/tasks", icon: IconUsersGroup },
+      // Team members list: admins and managers (staff's tasks are GOV Forms in Smart Operations)
+      { title: "Team", url: "/admin/tasks", icon: IconUsersGroup, managerOnly: true },
       { title: "Performance", url: "/admin/performance", icon: IconTrophy },
       { title: "Support", url: "/admin/tickets", icon: IconHeadset, badge: "tickets" },
     ],

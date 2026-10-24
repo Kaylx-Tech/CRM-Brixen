@@ -1,4 +1,5 @@
 /** Shared helpers for the notification bell and the Notifications page. */
+import { IS_FINSTAP } from "@/lib/workspace"
 
 function parseServerDate(dateStr) {
   if (!dateStr) return null
@@ -49,9 +50,14 @@ export function resolveAdminLink(link) {
   if (!link) return null
   const raw = String(link).trim()
   if (raw.startsWith("http")) return raw
-  if (raw.startsWith("/admin/")) return raw
-  const cleaned = raw.replace(/^#/, "").replace(/^\//, "")
-  if (ADMIN_LINKS[cleaned]) return ADMIN_LINKS[cleaned]
-  if (cleaned.startsWith("admin-")) return `/admin/${cleaned.replace(/^admin-/, "")}`
-  return null
+  const route = (() => {
+    if (raw.startsWith("/admin/")) return raw
+    const cleaned = raw.replace(/^#/, "").replace(/^\//, "")
+    if (ADMIN_LINKS[cleaned]) return ADMIN_LINKS[cleaned]
+    if (cleaned.startsWith("admin-")) return `/admin/${cleaned.replace(/^admin-/, "")}`
+    return null
+  })()
+  // Finstap: tasks are GOV Forms in Smart Operations (Team is only the members list)
+  if (IS_FINSTAP && route && route.split("?")[0] === "/admin/tasks") return "/admin/smart-operations?tab=gov-forms"
+  return route
 }

@@ -17,6 +17,7 @@ import {
   IconCheck,
   IconCopy,
   IconExternalLink,
+  IconFileText,
   IconLink,
   IconLoader2,
   IconPencil,
@@ -26,6 +27,10 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import { toast } from 'sonner'
+import { useSearchParams } from 'react-router-dom'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { IS_FINSTAP } from '@/lib/workspace'
+import Tasks from '@/Pages/Tasks/Tasks'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
 import { m, spring } from '@/lib/motion'
 import { apiRequest } from '@/lib/api'
@@ -110,6 +115,10 @@ function LinkRow({ link, canManage, onEdit, onDelete }) {
 }
 
 export default function SmartOperations() {
+  // ?tab=gov-forms opens GOV Forms (Finstap); the links are the default tab
+  const [searchParams, setSearchParams] = useSearchParams()
+  const govForms = IS_FINSTAP && searchParams.get('tab') === 'gov-forms'
+  const setTab = (value) => setSearchParams(value === 'gov-forms' ? { tab: 'gov-forms' } : {}, { replace: true })
   const [links, setLinks] = useState([])
   const [categories, setCategories] = useState([])
   const [canManage, setCanManage] = useState(false)
@@ -218,11 +227,13 @@ export default function SmartOperations() {
       <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Smart Operations</h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Quick links for the team: partner portals, referral links and forms, grouped by company.
-          </p>
+          {!govForms && (
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Quick links for the team: partner portals, referral links and forms, grouped by company.
+            </p>
+          )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className={`flex items-center gap-2 ${govForms ? 'hidden' : ''}`}>
           <Button variant="outline" onClick={load} disabled={isLoading}>
             <IconRefresh className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
@@ -236,6 +247,26 @@ export default function SmartOperations() {
         </div>
       </div>
 
+      {/* Finstap: the team's tasks live here as GOV Forms, next to the links */}
+      {IS_FINSTAP && (
+        <Tabs value={govForms ? 'gov-forms' : 'links'} onValueChange={setTab}>
+          <TabsList>
+            <TabsTrigger value="links">
+              <IconLink className="size-4" />
+              Links
+            </TabsTrigger>
+            <TabsTrigger value="gov-forms">
+              <IconFileText className="size-4" />
+              GOV Forms
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      )}
+
+      {govForms ? (
+        <Tasks view="gov-forms" />
+      ) : (
+      <>
       <div className="relative w-full md:max-w-sm">
         <IconSearch className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input className="pl-9" placeholder="Search company, link or note…" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -304,6 +335,8 @@ export default function SmartOperations() {
             )
           })}
         </div>
+      )}
+      </>
       )}
 
       {/* Add / edit a link */}
