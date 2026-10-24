@@ -14,6 +14,7 @@ import {
   IconTrash,
   IconDotsVertical,
   IconRefresh,
+  IconNote,
 } from "@tabler/icons-react"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -104,6 +105,22 @@ function productTone(name) {
 
 function TruncatedTooltip({ text, className }) {
   return <OverflowTooltip text={text} className={className} />
+}
+
+/** Hover card for an order's status: the status, its progress and the team's internal notes. */
+function OrderNotesTip({ order, pct }) {
+  const notes = String(order?.notes || '').trim()
+  return (
+    <div className="flex max-w-xs flex-col items-start gap-1.5 py-0.5 text-left">
+      <span className="font-semibold">{order?.status || 'Pending'} · {pct}%</span>
+      <span className="text-[10px] font-medium uppercase tracking-wider opacity-60">Internal notes</span>
+      {notes ? (
+        <p className="m-0 line-clamp-[10] whitespace-pre-wrap break-words leading-relaxed">{notes}</p>
+      ) : (
+        <p className="m-0 italic opacity-60">No notes yet</p>
+      )}
+    </div>
+  )
 }
 
 function shortenProductName(name) {
@@ -481,15 +498,20 @@ export default function Orders() {
       cell: ({ row }) => {
         const o = row.original
         const pct = progressPercent(o)
+        const hasNotes = Boolean(String(o.notes || '').trim())
         return (
           <Tooltip>
             <TooltipTrigger className="inline-flex">
               <Badge className={`${statusTone(o, pct)} tabular-nums cursor-pointer whitespace-nowrap`} onClick={() => handleOpenOrder(o.id)}>
                 {o.status || 'Pending'}
                 {o.status !== 'Completed' && o.status !== 'Cancelled' && o.status !== 'Refunded' ? ` · ${pct}%` : ''}
+                {/* A dot when the order has internal notes: hover to read them */}
+                {hasNotes ? <IconNote className="ml-0.5 size-3 opacity-70" aria-label="Has internal notes" /> : null}
               </Badge>
             </TooltipTrigger>
-            <TooltipContent>{o.status || 'Pending'} · {pct}%</TooltipContent>
+            <TooltipContent side="left" className="max-w-xs">
+              <OrderNotesTip order={o} pct={pct} />
+            </TooltipContent>
           </Tooltip>
         )
       },
@@ -547,6 +569,13 @@ export default function Orders() {
           <p className="truncate text-sm font-semibold">{o.owner_name || o.client_name || '—'}</p>
           <p className="truncate text-xs text-muted-foreground">{o.owner_form_email || o.client_email || '—'}</p>
           {o.company_name ? <p className="mt-1 truncate text-sm">{o.company_name}</p> : null}
+          {/* Phones cannot hover: the internal notes show here, two lines at most */}
+          {String(o.notes || '').trim() ? (
+            <p className="mt-2 flex items-start gap-1.5 rounded-md bg-muted/60 px-2 py-1.5 text-xs text-muted-foreground">
+              <IconNote className="mt-0.5 size-3.5 shrink-0" />
+              <span className="line-clamp-2 whitespace-pre-wrap break-words">{o.notes}</span>
+            </p>
+          ) : null}
         </div>
         <div className="mt-2">
           <ProductPills summary={o.products_summary || o.service_name} />
