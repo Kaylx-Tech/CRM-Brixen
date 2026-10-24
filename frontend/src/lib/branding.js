@@ -325,6 +325,22 @@ export async function loadBranding() {
   }
 }
 
+// The remembered branding goes on as soon as this file loads, before the first paint, so the app
+// opens in the company's colours instead of flashing Finstap's violet first
+if (IS_FINSTAP && typeof window !== "undefined") {
+  try {
+    const workspace = currentWorkspace()
+    const cached = workspace && JSON.parse(localStorage.getItem(CACHE_PREFIX + workspace) || "null")
+    if (cached) {
+      state = { ...EMPTY, ...cached }
+      applyAccent(state.accent)
+      applyIcon(state.icon)
+    }
+  } catch {
+    // No storage or a broken entry: loadBranding() fetches it from the server
+  }
+}
+
 function subscribe(fn) {
   listeners.add(fn)
   return () => listeners.delete(fn)

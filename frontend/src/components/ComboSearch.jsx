@@ -3,6 +3,8 @@
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { canOpenPath, isAdminRole } from "@/lib/permissions"
+import { IS_FINSTAP } from "@/lib/workspace"
+import { FINSTAP_NAV_GROUPS } from "@/lib/finstap-nav"
 import {
   IconDashboard,
   IconUsers,
@@ -84,7 +86,11 @@ export function CommandManyItems({ open: controlledOpen, onOpenChange: setContro
   // Only offer pages this role can open ("System Settings" itself is admin-only; profile is for everyone)
   const visibleGroups = React.useMemo(() => {
     const admin = isAdminRole()
-    return commandGroups
+    // Finstap: the same names and groups as its menu, then System & Account
+    const groups = IS_FINSTAP
+      ? [...FINSTAP_NAV_GROUPS.map((g) => ({ heading: g.label, items: g.items })), commandGroups[commandGroups.length - 1]]
+      : commandGroups
+    return groups
       .map((group) => ({
         ...group,
         items: group.items.filter((item) =>

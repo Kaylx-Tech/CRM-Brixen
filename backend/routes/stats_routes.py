@@ -439,6 +439,24 @@ def handle_stats_routes(environ, start_response, path, method, user, body, query
     user_id = user.get('id')
     is_staff = user.get('role', 'CLIENT') in STAFF_ROLES
 
+    # Menu badges (Finstap sidebar): open work waiting in Orders, Documents and Support, all time
+    if path == '/api/admin/stats/nav-counts' and method == 'GET':
+        if not is_staff:
+            return error_response(start_response, "Insufficient permissions", status_code=403)
+        status_in = ','.join('?' for _ in ACTIVE_ORDER_STATUSES)
+        counts = {
+            'orders': _count(
+                f"SELECT COUNT(*) AS c FROM orders WHERE COALESCE(is_draft, 0) = 0 AND status IN ({status_in});",
+                ACTIVE_ORDER_STATUSES),
+            'documents': _count(
+                "SELECT COUNT(*) AS c FROM documents WHERE status IN ('Pending Review', 'Pending') "
+                "OR overall_status IN ('REVIEW_REQUIRED', 'PENDING');"),
+            'tickets': (
+                _count("SELECT COUNT(*) AS c FROM support_tickets WHERE status IN ('Open', 'In Progress');")
+                if _has_table('support_tickets') else 0),
+        }
+        return success_response(start_response, data=counts)
+
     if path in ('/api/stats', '/api/stats/overview', '/api/admin/stats') and method == 'GET':
         if is_staff:
             month_param = query.get('month', [None])[0] if query else None
