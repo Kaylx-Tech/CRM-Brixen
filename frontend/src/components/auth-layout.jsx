@@ -1,8 +1,12 @@
 import whiteLogo from "../assets/white-logo.webp"
+import brixenLogoDark from "../assets/brixen-logo.png"
 import { FieldDescription } from "@/components/ui/field"
+import { useLightOnly } from "@/hooks/theme-provider"
 
-// Same split screen as the login page: brand panel on the left half, the card content on the right
+// Same split screen as the login page: brand panel on the left half, the card content on the right.
+// Always light, like the login page.
 export function AuthLayout({ title, subtitle, children }) {
+  useLightOnly()
   return (
     <div className="grid min-h-screen w-full bg-background md:grid-cols-2">
       <div className="relative hidden md:flex flex-col justify-center p-12 lg:p-16 bg-linear-to-br from-slate-900 via-blue-900 to-blue-950 text-white">
@@ -22,6 +26,8 @@ export function AuthLayout({ title, subtitle, children }) {
       <div className="flex flex-col items-center justify-center gap-6 p-6 md:p-10">
         <div className="w-full max-w-sm">
           <div className="flex flex-col py-8 items-center gap-2 text-center">
+            {/* Phones hide the blue brand panel, so the logo sits above the form */}
+            <img src={brixenLogoDark} alt="Brixen" className="mb-4 h-12 w-auto md:hidden" />
             <h1 className="text-2xl font-bold">{title}</h1>
             {subtitle && <p className="text-balance text-muted-foreground">{subtitle}</p>}
           </div>

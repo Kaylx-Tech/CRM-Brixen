@@ -1,5 +1,6 @@
 import { cn } from "cn"
 import whiteLogo from "../assets/white-logo.webp"
+import brixenLogoDark from "../assets/brixen-logo.png"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -19,9 +20,12 @@ import { toast } from "sonner"
 import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { homePath } from "@/lib/permissions"
 import { getDeviceId } from "@/lib/device"
+import { useLightOnly } from "@/hooks/theme-provider"
 import { LoginCodeStep } from "@/components/login-code-step"
 
 export function LoginForm({ className, ...props }) {
+  // The sign-in pages are always light (white form next to the blue brand panel)
+  useLightOnly()
   const navigate = useNavigate()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -143,6 +147,8 @@ export function LoginForm({ className, ...props }) {
         <form className="w-full max-w-sm" onSubmit={handleSubmit}>
           <FieldGroup>
             <div className="flex flex-col py-8 items-center gap-2 text-center">
+              {/* Phones hide the blue brand panel, so the logo sits above the form */}
+              <img src={brixenLogoDark} alt="Brixen" className="mb-4 h-12 w-auto md:hidden" />
               <h1 className="text-2xl font-bold">Welcome back</h1>
               <p className="text-balance text-muted-foreground">Login to your account</p>
             </div>
