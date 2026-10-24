@@ -6,6 +6,7 @@ import re
 from db import query_db, execute_db, hash_password
 from utils.response import json_response, success_response, error_response
 from services.permissions import check_permission, can_view_revenue
+from services.price_privacy import normalize_staff_type
 from services.b2b_service import client_is_b2b
 from services import wordpress_service
 
@@ -320,6 +321,7 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
     if path == '/api/admin/staff' and method == 'GET':
         rows = query_db("""
             SELECT u.id, u.full_name, u.email, u.phone, u.role, u.status, u.created_at, u.department,
+                   CASE WHEN u.role = 'STAFF' THEN COALESCE(u.staff_type, 'marketing') END AS staff_type,
                    (SELECT COUNT(*) FROM tasks t
                     WHERE t.assigned_staff_id = u.id
                       AND t.status IN ('Open', 'In Progress')) as open_tasks,
@@ -363,11 +365,16 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
             if new_role not in allowed_roles:
                 return error_response(start_response, "You cannot give that role", status_code=403)
         departments = _departments_or_all(body.get('departments'))
-        execute_db("UPDATE users SET role = ?, department = ? WHERE id = ?;", (new_role, json.dumps(departments), sid))
+        # Staff Marketing or Staff Operations (Operations never see prices); kept when not sent
+        current_type = (query_db("SELECT staff_type FROM users WHERE id = ?;", (sid,), one=True) or {}).get('staff_type')
+        staff_type = normalize_staff_type(body.get('staff_type', current_type), new_role)
+        execute_db("UPDATE users SET role = ?, department = ?, staff_type = ? WHERE id = ?;",
+                   (new_role, json.dumps(departments), staff_type, sid))
         _audit(user, 'STAFF_ACCESS_CHANGED', 'users', sid,
-               f"{member['email']}: role {member['role']} -> {new_role}; departments {', '.join(departments)}")
+               f"{member['email']}: role {member['role']} -> {new_role}"
+               f"{f' ({staff_type})' if staff_type else ''}; departments {', '.join(departments)}")
         return success_response(start_response, message="Access updated. The member sees it the next time a page loads.",
-                                data={"id": sid, "role": new_role, "departments": departments})
+                                data={"id": sid, "role": new_role, "staff_type": staff_type, "departments": departments})
 
     # ── 6c. DELETE /api/admin/staff/<id> (Remove team member, admin only) ────
     # Soft remove: the account is switched off and signed out, but kept so task and audit history stay intact.
@@ -443,10 +450,11 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
             # Adding back someone who was removed earlier: switch the old account on again
             execute_db("""
                 UPDATE users SET full_name = ?, password_hash = ?, role = ?, phone = COALESCE(?, phone),
-                                 status = 'Active', removed_at = NULL, department = ?
+                                 status = 'Active', removed_at = NULL, department = ?, staff_type = ?
                 WHERE id = ?;
             """, (full_name, hash_password(password), role, phone or None,
-                  json.dumps(_departments_or_all(body.get('departments'))), existing['id']))
+                  json.dumps(_departments_or_all(body.get('departments'))),
+                  normalize_staff_type(body.get('staff_type'), role), existing['id']))
             _audit(user, 'STAFF_RESTORED', 'users', existing['id'], f"Re-added {role} account for {email}")
             return success_response(start_response, message=f"Team member '{full_name}' added back", data={"id": existing['id']})
         if existing:
@@ -463,11 +471,14 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         if is_b2b and new_id:
             execute_db("UPDATE users SET b2b_id = COALESCE(b2b_id, ?) WHERE id = ?;", (f"B2B-{str(new_id).zfill(6)}", new_id))
         if role != 'CLIENT' and new_id:
-            # Staff access depends on departments; without any, a new member could open nothing
-            execute_db("UPDATE users SET department = ? WHERE id = ?;",
-                       (json.dumps(_departments_or_all(body.get('departments'))), new_id))
+            # Staff access depends on departments; without any, a new member could open nothing.
+            # STAFF are Marketing or Operations (Operations never see prices)
+            execute_db("UPDATE users SET department = ?, staff_type = ? WHERE id = ?;",
+                       (json.dumps(_departments_or_all(body.get('departments'))),
+                        normalize_staff_type(body.get('staff_type'), role), new_id))
+        staff_type = normalize_staff_type(body.get('staff_type'), role)
         _audit(user, 'CUSTOMER_CREATED' if role == 'CLIENT' else 'STAFF_CREATED', 'users', new_id,
-               f"Created {role} account for {email}")
+               f"Created {role}{f' ({staff_type})' if staff_type else ''} account for {email}")
         noun = 'Customer' if role == 'CLIENT' else 'Team member'
         return success_response(start_response, message=f"{noun} '{full_name}' created successfully", data={"id": new_id})
 

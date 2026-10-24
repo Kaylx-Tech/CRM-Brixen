@@ -9,6 +9,7 @@ import urllib.parse
 from db import query_db, execute_db, verify_password, hash_password
 from utils.response import json_response, success_response, error_response
 from services.email_service import send_email
+from services.price_privacy import hides_prices, normalize_staff_type
 from config import FRONTEND_URL, COOKIE_SECURE, SESSION_COOKIE_MAX_AGE
 
 MIN_PASSWORD_LEN = 8
@@ -72,6 +73,9 @@ def _public_user(user_row):
         "country": user_row.get('country') or '',
         "address": user_row.get('address') or '',
         "department": user_row.get('department') or '',
+        # STAFF are Marketing or Operations; Operations never see prices (services/price_privacy.py)
+        "staff_type": normalize_staff_type(user_row.get('staff_type'), user_row.get('role')),
+        "can_view_prices": not hides_prices(user_row),
         "status": user_row.get('status') or '',
         "avatar_url": user_row.get('avatar_url') or '',
     }

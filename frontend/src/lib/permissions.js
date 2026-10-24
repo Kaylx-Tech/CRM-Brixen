@@ -35,6 +35,42 @@ export function canViewRevenue(user = getCurrentUser()) {
   return isAdminRole(user)
 }
 
+/**
+ * Order prices (what the customer pays): everyone except Staff Operations. The server sends
+ * can_view_prices at login and leaves every money field empty for them anyway.
+ */
+export function canViewPrices(user = getCurrentUser()) {
+  if (user?.can_view_prices === false) return false
+  return !(getRole(user) === "STAFF" && String(user?.staff_type || "").toLowerCase() === "operations")
+}
+
+/** Team roles as they are picked and shown: STAFF splits into Staff Marketing and Staff Operations. */
+export const TEAM_ROLE_OPTIONS = [
+  { value: "STAFF_MARKETING", label: "Staff Marketing", role: "STAFF", staff_type: "marketing" },
+  { value: "STAFF_OPERATIONS", label: "Staff Operations", role: "STAFF", staff_type: "operations", hint: "No prices" },
+  { value: "MANAGER", label: "Manager", role: "MANAGER" },
+  { value: "ADMIN", label: "Admin", role: "ADMIN" },
+]
+
+/** The role picker value for a member: "STAFF_OPERATIONS" etc. */
+export function teamRoleValue(role, staffType) {
+  const r = String(role || "").toUpperCase()
+  if (r !== "STAFF") return r
+  return String(staffType || "").toLowerCase() === "operations" ? "STAFF_OPERATIONS" : "STAFF_MARKETING"
+}
+
+/** { role, staff_type } to send for a picked team role value. */
+export function teamRolePayload(value) {
+  const opt = TEAM_ROLE_OPTIONS.find((o) => o.value === value)
+  if (opt) return { role: opt.role, staff_type: opt.staff_type || null }
+  return { role: String(value || "").toUpperCase(), staff_type: null }
+}
+
+export function teamRoleLabel(role, staffType) {
+  const value = teamRoleValue(role, staffType)
+  return TEAM_ROLE_OPTIONS.find((o) => o.value === value)?.label || (value === "SUPER_ADMIN" ? "Super Admin" : value)
+}
+
 function userDepartments(user) {
   const raw = user?.departments ?? user?.department
   if (Array.isArray(raw)) return raw

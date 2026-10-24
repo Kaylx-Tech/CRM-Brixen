@@ -47,7 +47,15 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { apiRequest, getApiBase, toastApiEmpty } from '@/lib/api'
-import { getCurrentUser, isAdminRole, isManagerOrAbove } from '@/lib/permissions'
+import {
+  getCurrentUser,
+  isAdminRole,
+  isManagerOrAbove,
+  TEAM_ROLE_OPTIONS,
+  teamRoleLabel,
+  teamRolePayload,
+  teamRoleValue,
+} from '@/lib/permissions'
 import {
   toastUndoableDelete,
   toastProcessing,
@@ -73,7 +81,18 @@ function parseDepartments(value) {
     return text.split(',').map((d) => d.trim()).filter(Boolean)
   }
 }
-const STAFF_ROLES = ['STAFF', 'MANAGER', 'ADMIN']
+// Role picker values: STAFF_MARKETING / STAFF_OPERATIONS (both role STAFF), MANAGER, ADMIN
+const isStaffPick = (value) => String(value || '').startsWith('STAFF')
+
+/** A role choice with its note ("Never sees prices" for Staff Operations). */
+function TeamRoleItems() {
+  return TEAM_ROLE_OPTIONS.map((o) => (
+    <SelectItem key={o.value} value={o.value}>
+      {o.label}
+      {o.hint ? <span className="ml-1.5 text-xs text-muted-foreground">· {o.hint}</span> : null}
+    </SelectItem>
+  ))
+}
 
 const emptyTaskForm = {
   title: '',
@@ -89,7 +108,7 @@ const emptyStaffForm = {
   full_name: '',
   email: '',
   phone: '',
-  role: 'STAFF',
+  role: 'STAFF_MARKETING',
   password: '',
   departments: [...DEPARTMENTS],
 }
@@ -275,6 +294,7 @@ const Tasks = () => {
         email: s.email || '',
         phone: s.phone || '',
         role: s.role || 'STAFF',
+        staffType: s.staff_type || '',
         status: s.status || 'Active',
         departments: parseDepartments(s.department),
         openTasks: Number(s.open_tasks) || 0,
@@ -442,7 +462,7 @@ const Tasks = () => {
           full_name: staffForm.full_name.trim(),
           email: staffForm.email.trim().toLowerCase(),
           phone: staffForm.phone.trim() || undefined,
-          role: staffForm.role,
+          ...teamRolePayload(staffForm.role),
           password: staffForm.password,
           departments: staffForm.departments,
         }),
@@ -474,7 +494,7 @@ const Tasks = () => {
     try {
       const res = await apiRequest(`/admin/staff/${accessMember.id}`, {
         method: 'PATCH',
-        body: { role: accessMember.role, departments: accessMember.departments },
+        body: { ...teamRolePayload(accessMember.role), departments: accessMember.departments },
         label: 'Team access',
         silent: true,
       })
@@ -648,8 +668,10 @@ const Tasks = () => {
       }),
       columnHelper.accessor('role', {
         header: 'Role',
-        cell: ({ getValue }) => (
-          <Badge className={roleBadgeClass(getValue())}>{humanRole(getValue())}</Badge>
+        cell: ({ row }) => (
+          <Badge className={roleBadgeClass(row.original.role)}>
+            {teamRoleLabel(row.original.role, row.original.staffType)}
+          </Badge>
         ),
       }),
       columnHelper.accessor('status', {
@@ -711,7 +733,7 @@ const Tasks = () => {
                         setAccessMember({
                           id: row.original.id,
                           name: row.original.name,
-                          role: row.original.role,
+                          role: teamRoleValue(row.original.role, row.original.staffType),
                           departments: row.original.departments.length ? row.original.departments : [...DEPARTMENTS],
                         })
                       }
@@ -1064,14 +1086,12 @@ const Tasks = () => {
                   }
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Role" />
+                    <SelectValue placeholder="Role">
+                      {TEAM_ROLE_OPTIONS.find((o) => o.value === staffForm.role)?.label}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {STAFF_ROLES.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {humanRole(r)}
-                      </SelectItem>
-                    ))}
+                    <TeamRoleItems />
                   </SelectContent>
                 </Select>
               </div>
@@ -1091,7 +1111,7 @@ const Tasks = () => {
                 required
               />
             </div>
-            {staffForm.role === 'STAFF' && (
+            {isStaffPick(staffForm.role) && (
               <DepartmentPicker
                 value={staffForm.departments}
                 onChange={(departments) => setStaffForm((p) => ({ ...p, departments }))}
@@ -1134,16 +1154,16 @@ const Tasks = () => {
                 onValueChange={(val) => setAccessMember((m) => ({ ...m, role: val || m.role }))}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue>{humanRole(accessMember?.role)}</SelectValue>
+                  <SelectValue>
+                    {TEAM_ROLE_OPTIONS.find((o) => o.value === accessMember?.role)?.label || humanRole(accessMember?.role)}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {STAFF_ROLES.map((r) => (
-                    <SelectItem key={r} value={r}>{humanRole(r)}</SelectItem>
-                  ))}
+                  <TeamRoleItems />
                 </SelectContent>
               </Select>
             </div>
-            {accessMember?.role === 'STAFF' && (
+            {isStaffPick(accessMember?.role) && (
               <DepartmentPicker
                 value={accessMember.departments}
                 onChange={(departments) => setAccessMember((m) => ({ ...m, departments }))}

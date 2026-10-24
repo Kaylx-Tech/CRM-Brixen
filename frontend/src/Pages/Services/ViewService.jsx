@@ -31,7 +31,7 @@ import {
   IconForms,
 } from '@tabler/icons-react'
 import { FIELD_TYPES } from './FormFieldsBuilder'
-import { canViewRevenue } from '@/lib/permissions'
+import { canViewRevenue, canViewPrices } from '@/lib/permissions'
 
 /** Read-only view of a service's order form (as built in Edit Service), with sub-fields under their trigger. */
 function FormFieldsPreview({ fields, nested = false }) {
@@ -200,16 +200,19 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
               <TabsContent value="overview" className="m-0 space-y-6 outline-none">
                 {/* Financial KPI Cards */}
                 <div className={`grid grid-cols-1 gap-3 ${showFinance ? 'sm:grid-cols-3' : ''}`}>
-                  <div className="p-4 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between">
-                    <div className="flex items-center justify-between text-muted-foreground">
-                      <span className="text-sm font-semibold uppercase tracking-wider">Sell Price</span>
-                      <IconCurrencyPound className="w-4 h-4 text-primary" />
+                  {/* Staff Operations never see prices */}
+                  {canViewPrices() ? (
+                    <div className="p-4 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between">
+                      <div className="flex items-center justify-between text-muted-foreground">
+                        <span className="text-sm font-semibold uppercase tracking-wider">Sell Price</span>
+                        <IconCurrencyPound className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="mt-2">
+                        <div className="text-2xl font-bold text-foreground">£{sellPriceNum.toFixed(2)}</div>
+                        <span className="text-sm text-muted-foreground">Customer price</span>
+                      </div>
                     </div>
-                    <div className="mt-2">
-                      <div className="text-2xl font-bold text-foreground">£{sellPriceNum.toFixed(2)}</div>
-                      <span className="text-sm text-muted-foreground">Customer price</span>
-                    </div>
-                  </div>
+                  ) : null}
 
                   {showFinance ? (
                   <>

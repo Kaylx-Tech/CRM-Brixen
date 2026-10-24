@@ -23,6 +23,7 @@ import { apiRequest } from "@/lib/api"
 import ToastSave from "@/components/ToastSave"
 import { DateOfBirthInput } from "@/components/date-of-birth-input"
 import { isDateOfBirthLabel } from "@/lib/date-of-birth"
+import { canViewPrices } from "@/lib/permissions"
 import {
   IconArrowRight,
   IconBookmark,
@@ -637,6 +638,8 @@ function StepPill({ step, current, onClick }) {
 // portal: a signed-in (B2B) customer orders for themselves, so the Customer step is skipped and
 // every request goes to the /client API
 export default function CreateOrderWizard({ open, onClose, onCreated, portal = false }) {
+  // Staff Operations order without seeing prices (the server prices their orders from the catalogue)
+  const showPrices = portal || canViewPrices()
   const firstStep = portal ? 2 : 1
   const steps = portal ? STEPS.filter((s) => s.id !== 1) : STEPS
   const [step, setStep] = useState(firstStep)
@@ -1379,9 +1382,11 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
                             </div>
                             <div className="flex items-center justify-between text-sm">
                               <span className="font-bold text-primary">
-                                {selectedCustomer && isB2BCustomer(selectedCustomer)
-                                  ? "Custom B2B"
-                                  : formatGbp(p.price)}
+                                {!showPrices
+                                  ? ""
+                                  : selectedCustomer && isB2BCustomer(selectedCustomer)
+                                    ? "Custom B2B"
+                                    : formatGbp(p.price)}
                               </span>
                               <span className="text-muted-foreground">{p.duration || p.estimated_delivery_time || ""}</span>
                             </div>
@@ -1410,11 +1415,13 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="text-xl font-extrabold text-primary">
-                      {selectedCustomer && isB2BCustomer(selectedCustomer)
-                        ? "Custom B2B Rate"
-                        : formatGbp(selectedSummary.price)}
-                    </div>
+                    {showPrices ? (
+                      <div className="text-xl font-extrabold text-primary">
+                        {selectedCustomer && isB2BCustomer(selectedCustomer)
+                          ? "Custom B2B Rate"
+                          : formatGbp(selectedSummary.price)}
+                      </div>
+                    ) : null}
                     <Button type="button" variant="ghost" size="sm" className="text-sm mt-1" onClick={() => setStep(2)}>
                       Change products
                     </Button>
@@ -1509,15 +1516,17 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
                         Customer: {selectedCustomer?.full_name} ({selectedCustomer?.email})
                       </p>
                     </div>
-                    <div className="text-right">
-                      <div className="text-[11px] font-semibold text-muted-foreground">AUTHORITATIVE TOTAL</div>
-                      <div className="text-2xl font-extrabold">
-                        {selectedCustomer && isB2BCustomer(selectedCustomer)
-                          ? "Custom B2B"
-                          : formatGbp(selectedSummary.price)}
+                    {showPrices ? (
+                      <div className="text-right">
+                        <div className="text-[11px] font-semibold text-muted-foreground">AUTHORITATIVE TOTAL</div>
+                        <div className="text-2xl font-extrabold">
+                          {selectedCustomer && isB2BCustomer(selectedCustomer)
+                            ? "Custom B2B"
+                            : formatGbp(selectedSummary.price)}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">No VAT</div>
                       </div>
-                      <div className="text-[11px] text-muted-foreground">No VAT</div>
-                    </div>
+                    ) : null}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

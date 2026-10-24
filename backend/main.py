@@ -15,6 +15,7 @@ from middleware.cors import handle_cors_headers, handle_options_preflight
 from middleware.auth_guard import get_authenticated_user
 from utils.response import json_response, error_response
 from routes import dispatch_api_routes
+from services.price_privacy import hides_prices, applies_to_path, blocked_path, strip_incoming, scrub_json_payload
 
 
 class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
@@ -58,6 +59,25 @@ def parse_multipart_form(raw_body, content_type):
             except Exception:
                 fields[name] = ''
     return fields, files
+
+
+def _dispatch_without_prices(environ, start_response, path, method, user, body, query_params):
+    """Run the route, then blank every money field in its JSON reply before it leaves the server."""
+    held = {}
+
+    def hold_start_response(status, response_headers, exc_info=None):
+        held['status'], held['headers'] = status, list(response_headers)
+        return lambda _data: None
+
+    response = dispatch_api_routes(environ, hold_start_response, path, method, user, body, query_params)
+    if response is None:
+        return error_response(start_response, f"Endpoint not found: {method} {path}", status_code=404)
+    headers = held.get('headers', [])
+    is_json = any(k.lower() == 'content-type' and 'json' in v.lower() for k, v in headers)
+    payload = scrub_json_payload(response) if is_json else b''.join(response)
+    headers = [(k, v) for k, v in headers if k.lower() != 'content-length'] + [('Content-Length', str(len(payload)))]
+    start_response(held.get('status', '200 OK'), headers)
+    return [payload]
 
 
 def app(environ, start_response):
@@ -122,6 +142,14 @@ def app(environ, start_response):
 
     # 5. Dispatch Modular Routes
     try:
+        # Operations staff never see or set money (services/price_privacy.py)
+        if hides_prices(user) and applies_to_path(path):
+            if blocked_path(path):
+                return error_response(custom_start_response, "Prices and invoices are not available to Operations staff.",
+                                      status_code=403)
+            return _dispatch_without_prices(environ, custom_start_response, path, method, user,
+                                            strip_incoming(body), query_params)
+
         response = dispatch_api_routes(environ, custom_start_response, path, method, user, body, query_params)
         if response is not None:
             return response
