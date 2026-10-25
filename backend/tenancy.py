@@ -463,6 +463,12 @@ def create_tenant(company_name, slug, owner_name, owner_email, password):
             except Exception as exc:
                 # The workspace still works without it; the admin can import it from Services
                 print(f"[Tenancy] Starter catalog for '{slug}' was not added: {exc}")
+            try:
+                from services.starter_links import import_starter_links
+                import_starter_links(admin_id)
+            except Exception as exc:
+                # The admin can add them from Smart Operations
+                print(f"[Tenancy] Default Smart Operations links for '{slug}' were not added: {exc}")
     except Exception as exc:
         # Keep the file for inspection; the workspace just never goes Active
         _platform_execute("UPDATE tenants SET status = 'Failed', updated_at = datetime('now') WHERE id = ?;",

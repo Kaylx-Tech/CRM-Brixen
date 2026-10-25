@@ -16,6 +16,7 @@ import {
 import {
   IconCheck,
   IconCopy,
+  IconDownload,
   IconExternalLink,
   IconFileText,
   IconLink,
@@ -206,6 +207,23 @@ export default function SmartOperations() {
     }
   }
 
+  // The default partner and referral links (new workspaces start with them); skips ones already here
+  const [isImporting, setIsImporting] = useState(false)
+  const importDefaults = async () => {
+    setIsImporting(true)
+    try {
+      const res = await apiRequest('/admin/smart-links/import-starter', { method: 'POST', label: 'Add default links', silent: true })
+      if (!res.ok) {
+        toast.error(res.reason || 'Could not add the default links')
+        return
+      }
+      toast.success(res.data?.message || 'Default links added')
+      load()
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
   const confirmDelete = async () => {
     if (!toDelete) return
     setIsDeleting(true)
@@ -236,10 +254,16 @@ export default function SmartOperations() {
         </div>
         <div className={`flex items-center gap-2 ${govForms ? 'hidden' : ''}`}>
           {canManage && (
-            <Button onClick={() => openNew()}>
-              <IconPlus className="h-4 w-4" />
-              Add link
-            </Button>
+            <>
+              <Button variant="outline" onClick={importDefaults} disabled={isImporting}>
+                {isImporting ? <IconLoader2 className="h-4 w-4 animate-spin" /> : <IconDownload className="h-4 w-4" />}
+                Add default links
+              </Button>
+              <Button onClick={() => openNew()}>
+                <IconPlus className="h-4 w-4" />
+                Add link
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -287,10 +311,16 @@ export default function SmartOperations() {
                 : 'An admin or manager can add the team links here.'}
           </p>
           {canManage && !search.trim() && (
-            <Button className="mt-4" onClick={() => openNew()}>
-              <IconPlus className="h-4 w-4" />
-              Add the first link
-            </Button>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <Button variant="outline" onClick={importDefaults} disabled={isImporting}>
+                {isImporting ? <IconLoader2 className="h-4 w-4 animate-spin" /> : <IconDownload className="h-4 w-4" />}
+                Add default links
+              </Button>
+              <Button onClick={() => openNew()}>
+                <IconPlus className="h-4 w-4" />
+                Add the first link
+              </Button>
+            </div>
           )}
         </div>
       ) : (

@@ -72,6 +72,13 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
         return error_response(start_response, "Only admins and managers can change Smart Operations links.",
                               status_code=403)
 
+    # The default partner and referral links (the ones a new workspace starts with)
+    if path == '/api/admin/smart-links/import-starter' and method == 'POST':
+        from services.starter_links import import_starter_links
+        added, skipped = import_starter_links(user.get('id'))
+        message = f"Added {added} default link(s)." if added else "You already have every default link."
+        return success_response(start_response, data={'added': added, 'skipped': skipped}, message=message)
+
     if path == '/api/admin/smart-links' and method == 'POST':
         fields, err = _clean(body)
         if err:
