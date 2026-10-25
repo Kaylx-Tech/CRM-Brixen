@@ -203,6 +203,13 @@ def run_server():
         except Exception as exc:
             print(f"[Tenancy] {tenant['slug']}: starter catalog sync skipped: {exc}")
         try:
+            from routes.catalog_routes import upgrade_date_of_birth_fields
+            changed = upgrade_date_of_birth_fields()
+            if changed:
+                print(f"[Catalog] {tenant['slug']}: {changed} order form(s): date of birth questions now use the calendar")
+        except Exception as exc:
+            print(f"[Catalog] {tenant['slug']}: date of birth upgrade skipped: {exc}")
+        try:
             from services.permanent_purge import enforce_live_database
             enforce_live_database()
             print(f"[PermanentPurge] {tenant['slug']}: live database enforcement complete")

@@ -35,8 +35,10 @@ DEFAULT_DOCUMENT_REQUIREMENTS = [
 # checkbox = tick box that opens its own sub-form (`fields`) when ticked
 # company = name/number checked against Companies House (registered -> official name, else proposed name)
 # company_name = proposed new name checked for availability at Companies House
-FORM_FIELD_TYPES = ('text', 'file', 'radio', 'checkbox', 'company', 'company_name')
-SUB_FORM_TYPES = ('text', 'file', 'radio', 'company', 'company_name')   # no checkbox inside a sub-form
+# date = DD/MM/YYYY picked from a calendar (a date of birth cannot be in the future)
+FORM_FIELD_TYPES = ('text', 'date', 'file', 'radio', 'checkbox', 'company', 'company_name')
+SUB_FORM_TYPES = ('text', 'date', 'file', 'radio', 'company', 'company_name')   # no checkbox inside a sub-form
+DATE_OF_BIRTH_LABEL = re.compile(r'\b(date of birth|birth ?date|d\.?o\.?b\.?|born)\b', re.I)
 MAX_FORM_FIELDS = 30
 MAX_RADIO_OPTIONS = 20
 
@@ -122,6 +124,41 @@ def form_fields_of(service_row):
     """The order-form fields saved on a service (empty list when none)."""
     fields, _err = clean_form_fields((service_row or {}).get('form_config_json'))
     return fields or []
+
+
+def _date_of_birth_to_date(fields):
+    """Turn 'Date of birth' text questions (also inside sub-forms and answers) into date fields."""
+    changed = False
+    for f in fields or []:
+        if not isinstance(f, dict):
+            continue
+        if f.get('type') == 'text' and DATE_OF_BIRTH_LABEL.search(str(f.get('label') or '')):
+            f['type'] = 'date'
+            f['placeholder'] = ''
+            changed = True
+        for branch in f.get('option_fields') or []:
+            changed = _date_of_birth_to_date(branch) or changed
+        changed = _date_of_birth_to_date(f.get('fields')) or changed
+    return changed
+
+
+def upgrade_date_of_birth_fields():
+    """Order forms saved before the Date field existed: their date of birth questions become calendar
+    dates. Safe to run on every start-up. Returns how many services changed."""
+    changed = 0
+    rows = query_db("SELECT id, form_config_json FROM services "
+                    "WHERE form_config_json LIKE '%birth%' OR form_config_json LIKE '%dob%' "
+                    "OR form_config_json LIKE '%born%';") or []
+    for row in rows:
+        try:
+            data = json.loads(row['form_config_json'])
+        except (TypeError, ValueError):
+            continue
+        fields = data.get('fields') if isinstance(data, dict) else data
+        if isinstance(fields, list) and _date_of_birth_to_date(fields):
+            execute_db("UPDATE services SET form_config_json = ? WHERE id = ?;", (json.dumps(data), row['id']))
+            changed += 1
+    return changed
 
 
 def handle_catalog_routes(environ, start_response, path, method, user, body, query):

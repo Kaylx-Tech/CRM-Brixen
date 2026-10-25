@@ -526,7 +526,7 @@ function ServiceFieldInput({ field, value, onChange, hint }) {
   const id = `svc-field-${field.key.replace(/[^a-z0-9]+/gi, "-")}`
   return (
     <div className="space-y-2">
-      <Label htmlFor={["text", "company", "company_name"].includes(field.type) ? id : undefined} className="text-sm font-semibold">
+      <Label htmlFor={["text", "date", "company", "company_name"].includes(field.type) ? id : undefined} className="text-sm font-semibold">
         {field.label}
         {field.required ? <span className="text-destructive ml-1">*</span> : null}
       </Label>
@@ -543,9 +543,9 @@ function ServiceFieldInput({ field, value, onChange, hint }) {
             </Label>
           ))}
         </RadioGroup>
-      ) : isDateOfBirthLabel(field.label) ? (
-        // Dates of birth: a calendar and DD/MM/YYYY, wherever a service's form asks for one
-        <DateOfBirthInput id={id} value={value} onChange={onChange} />
+      ) : field.type === "date" || isDateOfBirthLabel(field.label) ? (
+        // Date fields (and older "Date of birth" text questions): a calendar and DD/MM/YYYY
+        <DateOfBirthInput id={id} value={value} onChange={onChange} allowFuture={!isDateOfBirthLabel(field.label)} />
       ) : (
         <Input
           id={id}

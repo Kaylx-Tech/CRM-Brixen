@@ -17,10 +17,12 @@ import {
   IconCornerDownRight,
   IconBuilding,
   IconSignature,
+  IconCalendar,
 } from "@tabler/icons-react"
 
 export const FIELD_TYPES = [
   { value: "text", label: "Text input", icon: IconForms },
+  { value: "date", label: "Date (calendar)", icon: IconCalendar },
   { value: "file", label: "Document upload", icon: IconUpload },
   { value: "radio", label: "Question (radio)", icon: IconCircleDot },
   { value: "checkbox", label: "Checkbox + sub-form", icon: IconSquareCheck },
@@ -34,6 +36,7 @@ const MAX_OPTIONS = 20
 // A new field starts with this label (editable); repeated ones are numbered so they stay separate questions
 const DEFAULT_LABELS = {
   text: "Text field",
+  date: "Date of birth",
   file: "Document upload",
   radio: "Question",
   checkbox: "Checkbox option",
@@ -223,6 +226,11 @@ export default function FormFieldsBuilder({ value = [], onChange, disabled, nest
                 />
               ) : null}
 
+              {field.type === "date" ? (
+                <p className="mt-2 rounded-lg border bg-background px-3 py-2 text-xs text-muted-foreground">
+                  Typed as DD/MM/YYYY or picked from a calendar. A date of birth cannot be in the future.
+                </p>
+              ) : null}
               {field.type === "company" ? (
                 <p className="mt-2 rounded-lg border bg-background px-3 py-2 text-xs text-muted-foreground">
                   Checked live at Companies House while the order is filled in. When a registered company is selected,

@@ -13,7 +13,7 @@ import sys
 
 BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BACKEND)
-from routes.catalog_routes import clean_form_fields  # noqa: E402
+from routes.catalog_routes import _date_of_birth_to_date, clean_form_fields  # noqa: E402
 
 SOURCE = os.path.join(BACKEND, 'scripts', 'starter_catalog_source.json')
 OUTPUT = os.path.join(BACKEND, 'services', 'starter_catalog.json')
@@ -107,7 +107,9 @@ def main():
     out = []
     for s in services:
         desc, delivery, duration, renewal = DETAILS[s['name']]
-        fields, err = clean_form_fields(tidy_fields(copy.deepcopy(s['form_fields'])))
+        raw = tidy_fields(copy.deepcopy(s['form_fields']))
+        _date_of_birth_to_date(raw)   # date of birth questions use the calendar
+        fields, err = clean_form_fields(raw)
         if err:
             raise SystemExit(f"{s['name']}: {err}")
         # The documents the form asks for (its upload fields)
