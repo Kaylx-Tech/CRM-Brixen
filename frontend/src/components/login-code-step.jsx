@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { IconAlertCircle, IconArrowLeft, IconMailCheck } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { CodeInput } from "@/components/ui/code-input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { getDeviceId } from "@/lib/device"
 
@@ -29,6 +29,9 @@ export function LoginCodeStep({
   const [info, setInfo] = useState("")
   const [busy, setBusy] = useState(false)
   const [wait, setWait] = useState(resendAfter)
+  // A wrong code shakes the boxes (a new number each time) and keeps them red until the next digit
+  const [shake, setShake] = useState(0)
+  const [invalid, setInvalid] = useState(false)
   const inputRef = useRef(null)
 
   useEffect(() => {
@@ -66,7 +69,9 @@ export function LoginCodeStep({
       }
       setError(data.error || data.message || "That code is not right.")
       setCode("")
-      inputRef.current?.focus()
+      setInvalid(true)
+      setShake((n) => n + 1)
+      setTimeout(() => inputRef.current?.focus(), 0)
     } catch {
       setError("Failed to connect to server. Please check your connection.")
     } finally {
@@ -124,22 +129,19 @@ export function LoginCodeStep({
       ) : null}
       {info ? <p className="m-0 text-center text-sm text-emerald-600">{info}</p> : null}
 
-      <Input
+      <CodeInput
         ref={inputRef}
-        inputMode="numeric"
-        autoComplete="one-time-code"
         aria-label="Login code"
-        placeholder="••••••"
-        maxLength={6}
         value={code}
         disabled={busy}
-        onChange={(e) => {
-          const digits = e.target.value.replace(/\D/g, "").slice(0, 6)
+        invalid={invalid}
+        shake={shake}
+        onChange={(digits) => {
           setCode(digits)
+          setInvalid(false)
           // A full code signs in straight away (typed or pasted)
           if (digits.length === 6) verify(digits)
         }}
-        className="h-12 text-center font-mono text-2xl tracking-[0.5em]"
       />
 
       <Button type="submit" disabled={busy || code.length !== 6}>
