@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dialog"
 import {
   IconCalendarWeek,
-  IconRefresh,
   IconPlus,
   IconPencil,
   IconTrash,
@@ -49,7 +48,7 @@ function buildMonthOptions(count = 24) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     const label = d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
-    options.push({ value, label: i === 0 ? `Current month (${label})` : label })
+    options.push({ value, label })
   }
   return options
 }
@@ -212,12 +211,11 @@ export default function BalanceSheet({ embedded = false }) {
             </div>
             <Button
               variant="ghost"
-              size="icon"
-              className="h-7 w-7"
+              size="icon-xs"
               title="Correct the rupees received"
               onClick={() => setRupeeForm({ invoice: inv, amount: inv.amount == null ? '' : plainAmount(inv.amount) })}
             >
-              <IconPencil className="h-4 w-4" />
+              <IconPencil className="size-3.5" />
             </Button>
           </div>
         )
@@ -244,8 +242,7 @@ export default function BalanceSheet({ embedded = false }) {
         <div className="flex justify-end gap-1">
           <Button
             variant="ghost"
-            size="icon"
-            className="h-7 w-7"
+            size="icon-xs"
             title="Edit expense"
             onClick={() => setExpenseForm({
               id: row.original.id,
@@ -256,10 +253,10 @@ export default function BalanceSheet({ embedded = false }) {
               currency: row.original.currency,
             })}
           >
-            <IconPencil className="h-4 w-4" />
+            <IconPencil className="size-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" title="Remove expense" onClick={() => setExpenseToDelete(row.original)}>
-            <IconTrash className="h-4 w-4" />
+          <Button variant="ghost" size="icon-xs" title="Remove expense" onClick={() => setExpenseToDelete(row.original)}>
+            <IconTrash className="size-3.5" />
           </Button>
         </div>
       ),
@@ -298,10 +295,11 @@ export default function BalanceSheet({ embedded = false }) {
             {monthName(month)} · GBP and PKR kept separate · each month opens with last month&apos;s closing balance
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Small, quiet controls; the sheet reloads itself after every change, so no Refresh button */}
+        <div className="flex flex-wrap items-center gap-1.5">
           <Select value={month} onValueChange={(v) => setMonth(v || CURRENT_MONTH)}>
-            <SelectTrigger className="w-[220px] text-sm">
-              <IconCalendarWeek className="h-4 w-4 shrink-0" />
+            <SelectTrigger size="sm" className="text-[13px]">
+              <IconCalendarWeek className="size-3.5 shrink-0" />
               <SelectValue placeholder="Month">
                 {MONTH_OPTIONS.find((m) => m.value === month)?.label || monthName(month)}
               </SelectValue>
@@ -314,12 +312,8 @@ export default function BalanceSheet({ embedded = false }) {
               </SelectGroup>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={() => load()}>
-            <IconRefresh className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
-          <Button onClick={() => setExpenseForm({ ...EMPTY_EXPENSE, spent_on: month === CURRENT_MONTH ? todayISO() : `${month}-01` })}>
-            <IconPlus className="mr-2 h-4 w-4" />
+          <Button size="sm" className="text-[13px]" onClick={() => setExpenseForm({ ...EMPTY_EXPENSE, spent_on: month === CURRENT_MONTH ? todayISO() : `${month}-01` })}>
+            <IconPlus className="size-3.5" />
             Add expense
           </Button>
         </div>
@@ -410,9 +404,9 @@ export default function BalanceSheet({ embedded = false }) {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setExpenseForm(null)} disabled={savingExpense}>Cancel</Button>
-            <Button onClick={saveExpense} disabled={savingExpense}>
-              {savingExpense && <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button size="sm" variant="outline" onClick={() => setExpenseForm(null)} disabled={savingExpense}>Cancel</Button>
+            <Button size="sm" onClick={saveExpense} disabled={savingExpense}>
+              {savingExpense && <IconLoader2 className="size-3.5 animate-spin" />}
               {expenseForm?.id ? 'Save expense' : 'Add expense'}
             </Button>
           </DialogFooter>
@@ -444,9 +438,9 @@ export default function BalanceSheet({ embedded = false }) {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setStartForm(null)} disabled={savingStart}>Cancel</Button>
-            <Button onClick={saveStart} disabled={savingStart}>
-              {savingStart && <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button size="sm" variant="outline" onClick={() => setStartForm(null)} disabled={savingStart}>Cancel</Button>
+            <Button size="sm" onClick={saveStart} disabled={savingStart}>
+              {savingStart && <IconLoader2 className="size-3.5 animate-spin" />}
               Save
             </Button>
           </DialogFooter>
@@ -471,14 +465,14 @@ export default function BalanceSheet({ embedded = false }) {
           )}
           <DialogFooter className="gap-2">
             {rupeeForm?.invoice.edited && (
-              <Button variant="ghost" onClick={() => saveRupees(true)} disabled={savingRupees} className="mr-auto">
-                <IconRotate className="mr-2 h-4 w-4" />
+              <Button size="sm" variant="ghost" onClick={() => saveRupees(true)} disabled={savingRupees} className="mr-auto">
+                <IconRotate className="size-3.5" />
                 Use live rate
               </Button>
             )}
-            <Button variant="outline" onClick={() => setRupeeForm(null)} disabled={savingRupees}>Cancel</Button>
-            <Button onClick={() => saveRupees(false)} disabled={savingRupees}>
-              {savingRupees && <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button size="sm" variant="outline" onClick={() => setRupeeForm(null)} disabled={savingRupees}>Cancel</Button>
+            <Button size="sm" onClick={() => saveRupees(false)} disabled={savingRupees}>
+              {savingRupees && <IconLoader2 className="size-3.5 animate-spin" />}
               Save
             </Button>
           </DialogFooter>
