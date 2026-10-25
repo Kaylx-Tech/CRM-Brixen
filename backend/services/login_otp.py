@@ -121,6 +121,59 @@ def trust_device(user_id, device_id, user_agent=''):
     """, (user_id, device, f'+{TRUST_HOURS} hours', (user_agent or '')[:250]))
 
 
+def code_email_html(brand, logo_src, code):
+    """The login code email: logo (or the name), headline, the code in a large box, and why it came."""
+    from html import escape
+    name = escape(brand)
+    if logo_src:
+        top = (f'<img src="{escape(logo_src)}" alt="{name}" height="48" style="display:block;height:48px;'
+               'width:auto;max-width:240px;border:0;outline:none;text-decoration:none;">')
+    else:
+        top = f'<p style="margin:0;font-size:22px;font-weight:700;color:#111827;">{name}</p>'
+    font = "font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;"
+    return f"""<!doctype html>
+<html><body style="margin:0;padding:0;background:#ffffff;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;">
+  <tr><td align="center" style="padding:40px 16px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;{font}color:#111827;">
+      <tr><td style="padding:0 0 40px;">{top}</td></tr>
+      <tr><td style="padding:0 0 20px;font-size:30px;line-height:1.25;font-weight:700;">Finish signing in to {name}.</td></tr>
+      <tr><td style="padding:0 0 24px;font-size:16px;line-height:1.5;color:#4b5563;">Use this one-time login code to confirm it's you:</td></tr>
+      <tr><td align="center" style="background:#f1f4f8;border-radius:16px;padding:32px 16px;font-size:44px;line-height:1;font-weight:500;letter-spacing:6px;color:#111827;">{code}</td></tr>
+      <tr><td style="padding:16px 0 32px;font-size:14px;line-height:1.5;color:#6b7280;">The code works for {CODE_MINUTES} minutes. Never share it with anyone.</td></tr>
+      <tr><td style="border:1px solid #e5e7eb;border-radius:16px;padding:24px;">
+        <p style="margin:0 0 12px;font-size:20px;font-weight:700;color:#111827;">Why did I get this email?</p>
+        <p style="margin:0;font-size:15px;line-height:1.6;color:#4b5563;">Someone signed in to {name} with your email and password. If this wasn't you, change your password now, because someone else knows it.</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>"""
+
+
+FINSTAP_LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                 'static', 'img', 'finstap-logo.png')
+
+
+def _email_logo():
+    """(img src, (bytes, subtype) or None) for the code email: the company's logo from Settings > Branding,
+    Finstap's logo when it has none, and the company name ('') when its logo is one email apps cannot show (SVG, ICO)."""
+    import base64
+    import re
+    from services.settings_service import get_setting
+    data_url = str(get_setting('brand_logo') or '').strip()
+    if not data_url:
+        with open(FINSTAP_LOGO_PATH, 'rb') as fh:
+            return 'cid:brand-logo', (fh.read(), 'png')
+    found = re.match(r'^data:image/(png|jpeg|jpg|gif|webp);base64,(.+)$', data_url, re.I | re.S)
+    if not found:
+        return '', None
+    try:
+        return 'cid:brand-logo', (base64.b64decode(found.group(2)), found.group(1).lower().replace('jpg', 'jpeg'))
+    except ValueError:
+        return '', None
+
+
 def _send_code(user, code):
     """Email the code; True when it went out (or, outside production, when it was printed instead)."""
     from services.email_service import send_email
@@ -129,16 +182,10 @@ def _send_code(user, code):
     subject = f"{code} is your {brand} login code"
     text = (f"Your login code is {code}.\n\nIt works for {CODE_MINUTES} minutes. If you did not try to "
             f"sign in, change your password, because someone knows it.")
-    html = f"""
-    <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:auto;padding:24px;color:#111">
-      <p style="margin:0 0 12px">Hello {user.get('full_name') or user.get('name') or ''},</p>
-      <p style="margin:0 0 16px">Use this code to finish signing in to {brand}:</p>
-      <p style="font-size:32px;font-weight:700;letter-spacing:8px;margin:0 0 16px">{code}</p>
-      <p style="margin:0 0 8px;color:#555">It works for {CODE_MINUTES} minutes.</p>
-      <p style="margin:0;color:#555">If you did not try to sign in, change your password: someone knows it.</p>
-    </div>"""
+    logo_src, logo = _email_logo()
+    html = code_email_html(brand, logo_src, code)
     sent = send_email(user.get('email'), subject, html, text, category='SECURITY',
-                      user_id=user.get('id'), store_body=False)
+                      user_id=user.get('id'), store_body=False, logo=logo)
     if not sent:
         from config import IS_PRODUCTION
         if not IS_PRODUCTION:
