@@ -63,6 +63,24 @@ CREATE TABLE IF NOT EXISTS login_handoffs (
     expires_at TIMESTAMP NOT NULL,
     used_at TIMESTAMP
 );
+-- Signup step 1: the owner's email is confirmed with an emailed 6-digit code before a workspace is made
+-- (services/signup_email.py); a confirmed email gets a token that the signup itself must bring
+CREATE TABLE IF NOT EXISTS signup_emails (
+    challenge TEXT PRIMARY KEY,
+    email TEXT NOT NULL,
+    code_hash TEXT NOT NULL,
+    tries INTEGER NOT NULL DEFAULT 0,
+    sends INTEGER NOT NULL DEFAULT 1,
+    ip TEXT,
+    sent_at TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+    expires_at TIMESTAMP NOT NULL,
+    verified_at TIMESTAMP,
+    token_hash TEXT,
+    token_expires_at TIMESTAMP,
+    used_at TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_signup_emails_email ON signup_emails(email, sent_at);
+CREATE INDEX IF NOT EXISTS idx_signup_emails_token ON signup_emails(token_hash);
 """
 
 HANDOFF_SECONDS = 120

@@ -2,7 +2,10 @@
 
   GET  /api/platform/workspace?slug=acme   → name of a workspace (login page)
   GET  /api/platform/check-slug?slug=acme  → can this workspace URL be used?
-  POST /api/platform/signup                → create a company workspace and sign its owner in
+  POST /api/platform/signup/email-code     → {email} → 6-digit code emailed (signup step 1)
+  POST /api/platform/signup/email-resend   → {challenge} → a new code for the same email
+  POST /api/platform/signup/email-verify   → {challenge, code} → email_token for the signup
+  POST /api/platform/signup                → create a company workspace (needs email_token) and sign its owner in
   POST /api/platform/handoff               → one-time code (from signup) → that session, on the company subdomain
 """
 import threading
@@ -15,6 +18,8 @@ from tenancy import (
     normalize_slug, redeem_login_handoff, use_tenant, workspace_url,
 )
 from routes.auth_routes import _client_ip, _public_user, _session_cookie
+from services import signup_email
+from services.signup_email import SignupEmailError
 
 # Signup flood guard: max workspaces per IP inside the window
 SIGNUP_MAX_PER_IP = 5
@@ -54,18 +59,54 @@ def handle_platform_routes(environ, start_response, path, method, body, query=No
         problem = check_slug(slug)
         return success_response(start_response, data={"slug": slug, "available": not problem, "error": problem})
 
+    # ── Signup step 1: the owner's email, confirmed with an emailed code (services/signup_email.py) ──
+    if path == '/api/platform/signup/email-code' and method == 'POST':
+        email = signup_email.normalize_email((body or {}).get('email'))
+        try:
+            challenge = signup_email.start(email, _client_ip(environ))
+        except SignupEmailError as exc:
+            return error_response(start_response, str(exc), status_code=429 if exc.wait else 400,
+                                  details={'resend_after': exc.wait} if exc.wait else None)
+        return success_response(start_response, data={
+            "challenge": challenge, "email": email, "resend_after": signup_email.RESEND_SECONDS,
+        }, message="Code sent.")
+
+    if path == '/api/platform/signup/email-resend' and method == 'POST':
+        try:
+            signup_email.resend((body or {}).get('challenge'))
+        except SignupEmailError as exc:
+            return error_response(start_response, str(exc), status_code=429 if exc.wait else 400,
+                                  details={'resend_after': exc.wait} if exc.wait else None)
+        return success_response(start_response, data={"resend_after": signup_email.RESEND_SECONDS},
+                                message="A new code is on its way.")
+
+    if path == '/api/platform/signup/email-verify' and method == 'POST':
+        try:
+            email, token = signup_email.verify((body or {}).get('challenge'), (body or {}).get('code'))
+        except SignupEmailError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        return success_response(start_response, data={"email": email, "email_token": token},
+                                message="Email confirmed.")
+
     if path == '/api/platform/signup' and method == 'POST':
         body = body or {}
+        # The owner's email must have been confirmed with a code (step 1); the confirmed email is the one used
+        email_token = body.get('email_token')
+        verified = signup_email.verified_email(email_token)
+        if not verified:
+            return error_response(start_response, "Confirm your email first: we send you a 6-digit code.",
+                                  status_code=400, details={'email_unverified': True})
         if not _signup_allowed(_client_ip(environ)):
             return error_response(start_response, "Too many signups from this network. Try again later.",
                                   status_code=429)
         try:
             tenant, admin_id = create_tenant(
                 body.get('company_name'), body.get('slug'),
-                body.get('full_name'), body.get('email'), body.get('password'),
+                body.get('full_name'), verified, body.get('password'),
             )
         except TenantError as exc:
             return error_response(start_response, str(exc), status_code=400)
+        signup_email.use_token(email_token)
 
         # Sign the owner straight into the new workspace
         with use_tenant(tenant):

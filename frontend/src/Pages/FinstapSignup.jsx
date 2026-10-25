@@ -11,6 +11,7 @@ import {
 } from "@tabler/icons-react"
 import { AuthLayout } from "@/components/auth-layout"
 import { FINSTAP_CTA } from "@/components/finstap-auth-layout"
+import { LoginCodeStep } from "@/components/login-code-step"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
@@ -31,9 +32,15 @@ import {
 
 const MIN_PASSWORD_LEN = 8
 
-const STEPS = ["Company", "Your account"]
+const STEPS = ["Email", "Company", "Your account"]
 
-/** "1 Company — 2 Your account" with the current step highlighted and finished steps ticked. */
+const STEP_TEXT = {
+  1: ["Confirm your email", "We'll send you a 6-digit code."],
+  2: ["Create your workspace", "Start your free trial."],
+  3: ["Create your account", "You'll sign in with these details."],
+}
+
+/** "1 Email — 2 Company — 3 Your account" with the current step highlighted and finished steps ticked. */
 function SignupSteps({ step }) {
   return (
     <ol className="flex items-center gap-3">
@@ -90,8 +97,43 @@ export default function FinstapSignup() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  // Two steps: 1 = the company and its address, 2 = the owner's own account
+  // Three steps: 1 = the owner's email, confirmed with a code, 2 = the company and its address,
+  // 3 = the owner's own account
   const [step, setStep] = useState(1)
+  // Step 1: the code that was emailed ({ challenge, resendAfter }), then the token the signup must bring
+  const [emailCode, setEmailCode] = useState(null)
+  const [emailToken, setEmailToken] = useState("")
+
+  const sendEmailCode = async (e) => {
+    e.preventDefault()
+    setError("")
+    setIsLoading(true)
+    try {
+      const res = await fetch(`${getApiBase()}/platform/signup/email-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.data?.challenge) {
+        setEmail(data.data.email || email)
+        setEmailCode({ challenge: data.data.challenge, resendAfter: data.data.resend_after || 60 })
+        return
+      }
+      setError(data.error || data.message || "Could not send the code. Please try again.")
+    } catch {
+      setError("Failed to connect to server. Please check your connection.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const changeEmail = () => {
+    setEmailCode(null)
+    setEmailToken("")
+    setError("")
+    setStep(1)
+  }
 
   // The workspace name (one word) follows the company name until the user types their own
   useEffect(() => {
@@ -131,7 +173,7 @@ export default function FinstapSignup() {
     }
   }, [slug])
 
-  // Step 1 → 2 only with a company name and a free address
+  // Step 2 → 3 only with a company name and a free address
   const goToAccount = () => {
     if (!companyName.trim()) {
       setError("Enter your company name.")
@@ -150,12 +192,12 @@ export default function FinstapSignup() {
       return
     }
     setError("")
-    setStep(2)
+    setStep(3)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (step === 1) {
+    if (step === 2) {
       goToAccount()
       return
     }
@@ -180,6 +222,7 @@ export default function FinstapSignup() {
           slug: toWorkspaceName(slug),
           full_name: fullName,
           email,
+          email_token: emailToken,
           password,
         }),
       })
@@ -206,9 +249,16 @@ export default function FinstapSignup() {
         return
       }
       const msg = data.message || data.error || "Could not create the workspace. Please try again."
+      if (data.details?.email_unverified) {
+        // The confirmation ran out (or was used): confirm the email again on step 1
+        changeEmail()
+        setError(msg)
+        toastFail(toastId, msg)
+        return
+      }
       setError(msg)
-      // A problem with the company or its address is fixed on step 1
-      if (/workspace|address|company/i.test(msg)) setStep(1)
+      // A problem with the company or its address is fixed on step 2
+      if (/workspace|address|company/i.test(msg)) setStep(2)
       toastFail(toastId, msg)
     } catch {
       const msg = "Failed to connect to server. Please check your connection."
@@ -221,8 +271,8 @@ export default function FinstapSignup() {
 
   return (
     <AuthLayout
-      title={step === 1 ? "Create your workspace" : "Create your account"}
-      subtitle={step === 1 ? "Start your free trial." : "You'll sign in with these details."}
+      title={STEP_TEXT[step][0]}
+      subtitle={STEP_TEXT[step][1]}
       footer={
         <>
           Already have an account?{" "}
@@ -235,6 +285,72 @@ export default function FinstapSignup() {
         </>
       }
     >
+      {step === 1 ? (
+        // Step 1 sits outside the main form: the code step is a form of its own
+        <FieldGroup>
+          <SignupSteps step={step} />
+          {error && (
+            <Alert variant="destructive">
+              <IconAlertCircle className="size-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          {emailCode ? (
+            <>
+              <p className="m-0 text-sm text-muted-foreground">
+                We sent a 6-digit code to{" "}
+                <span className="font-medium text-foreground">{email}</span>. It works for 10
+                minutes.
+              </p>
+              <LoginCodeStep
+                heading={false}
+                apiUrl={getApiBase()}
+                challenge={emailCode.challenge}
+                emailHint={email}
+                resendAfter={emailCode.resendAfter}
+                verifyPath="/platform/signup/email-verify"
+                resendPath="/platform/signup/email-resend"
+                submitLabel="Confirm email"
+                onSuccess={(data) => {
+                  setEmailToken(data.data?.email_token || "")
+                  setEmail(data.data?.email || email)
+                  setError("")
+                  setStep(2)
+                }}
+                onBack={changeEmail}
+              />
+            </>
+          ) : (
+            <form onSubmit={sendEmailCode}>
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="email">Work email</FieldLabel>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@company.com"
+                    autoComplete="email"
+                    autoFocus
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
+                  />
+                  <FieldDescription>
+                    You'll use this email to sign in. We'll send it a code to confirm it's yours.
+                  </FieldDescription>
+                </Field>
+                <Field>
+                  <Button type="submit" disabled={isLoading} className={FINSTAP_CTA}>
+                    {isLoading ? "Sending code..." : "Send code"}
+                    {!isLoading && <IconArrowRight className="size-4" />}
+                  </Button>
+                </Field>
+              </FieldGroup>
+            </form>
+          )}
+        </FieldGroup>
+      ) : (
       <form onSubmit={handleSubmit}>
         <FieldGroup>
           <SignupSteps step={step} />
@@ -244,7 +360,7 @@ export default function FinstapSignup() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          {step === 1 ? (
+          {step === 2 ? (
             <>
               <Field>
                 <FieldLabel htmlFor="company">Company name</FieldLabel>
@@ -281,11 +397,7 @@ export default function FinstapSignup() {
                     .{TENANT_DOMAIN || "finstap.com"}
                   </span>
                 </div>
-                <div className="rounded-xl bg-muted/40 px-3 py-2 text-sm">
-                  <span className="font-semibold text-foreground">
-                    https://{workspaceHost(toWorkspaceName(slug))}
-                  </span>
-                </div>
+                
                 {slugState.status === "checking" ? (
                   <FieldDescription className="flex items-center gap-1.5">
                     <IconLoader2 className="size-4 animate-spin" /> Checking…
@@ -313,7 +425,7 @@ export default function FinstapSignup() {
             </>
           ) : (
             <>
-              {/* What step 1 set up, with a way back to change it */}
+              {/* What steps 1 and 2 set up, with a way back to change it */}
               <div className="flex items-center justify-between gap-3 rounded-xl border bg-muted/40 px-3 py-2 text-sm">
                 <div className="min-w-0">
                   <div className="truncate font-semibold text-foreground">{companyName.trim()}</div>
@@ -325,7 +437,7 @@ export default function FinstapSignup() {
                   type="button"
                   onClick={() => {
                     setError("")
-                    setStep(1)
+                    setStep(2)
                   }}
                   className="shrink-0 font-medium text-[#5f5cff] underline-offset-4 hover:underline dark:text-[#8b8aff]"
                   disabled={isLoading}
@@ -345,18 +457,23 @@ export default function FinstapSignup() {
                   disabled={isLoading}
                 />
               </Field>
+              {/* The email confirmed on step 1; changing it means confirming the new one */}
               <Field>
                 <FieldLabel htmlFor="email">Work email</FieldLabel>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@company.com"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
-                />
+                <div className="flex items-center justify-between gap-3 rounded-xl border bg-muted/40 px-3 py-2 text-sm">
+                  <span id="email" className="flex min-w-0 items-center gap-1.5 text-foreground">
+                    <IconCircleCheck className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <span className="truncate">{email}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={changeEmail}
+                    className="shrink-0 font-medium text-[#5f5cff] underline-offset-4 hover:underline dark:text-[#8b8aff]"
+                    disabled={isLoading}
+                  >
+                    Change
+                  </button>
+                </div>
               </Field>
               <Field>
                 <FieldLabel htmlFor="password">Password</FieldLabel>
@@ -378,7 +495,7 @@ export default function FinstapSignup() {
                   disabled={isLoading}
                   onClick={() => {
                     setError("")
-                    setStep(1)
+                    setStep(2)
                   }}
                 >
                   <IconArrowLeft className="size-4" /> Back
@@ -400,6 +517,7 @@ export default function FinstapSignup() {
           )}
         </FieldGroup>
       </form>
+      )}
     </AuthLayout>
   )
 }

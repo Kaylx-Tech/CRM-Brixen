@@ -9,8 +9,21 @@ import { getDeviceId } from "@/lib/device"
  * Second sign-in step: the 6-digit code we emailed. `challenge` comes from /auth/login; a right code
  * returns the same session as a normal login (passed to onSuccess). `headers` are extra request
  * headers (the Finstap workspace). `heading={false}` leaves the title to the page around it.
+ * `verifyPath` / `resendPath` / `submitLabel` reuse it for other emailed codes (Finstap signup).
  */
-export function LoginCodeStep({ apiUrl, challenge, emailHint, resendAfter = 60, headers = {}, heading = true, onSuccess, onBack }) {
+export function LoginCodeStep({
+  apiUrl,
+  challenge,
+  emailHint,
+  resendAfter = 60,
+  headers = {},
+  heading = true,
+  verifyPath = "/auth/login/verify",
+  resendPath = "/auth/login/resend",
+  submitLabel = "Verify and sign in",
+  onSuccess,
+  onBack,
+}) {
   const [code, setCode] = useState("")
   const [error, setError] = useState("")
   const [info, setInfo] = useState("")
@@ -46,7 +59,7 @@ export function LoginCodeStep({ apiUrl, challenge, emailHint, resendAfter = 60, 
     setError("")
     setInfo("")
     try {
-      const { ok, data } = await post("/auth/login/verify", { challenge, code: value, device_id: getDeviceId() })
+      const { ok, data } = await post(verifyPath, { challenge, code: value, device_id: getDeviceId() })
       if (ok) {
         onSuccess(data)
         return
@@ -67,7 +80,7 @@ export function LoginCodeStep({ apiUrl, challenge, emailHint, resendAfter = 60, 
     setError("")
     setInfo("")
     try {
-      const { ok, data } = await post("/auth/login/resend", { challenge })
+      const { ok, data } = await post(resendPath, { challenge })
       if (ok) {
         setInfo("A new code is on its way. The old one no longer works.")
         setWait(data.data?.resend_after || 60)
@@ -130,7 +143,7 @@ export function LoginCodeStep({ apiUrl, challenge, emailHint, resendAfter = 60, 
       />
 
       <Button type="submit" disabled={busy || code.length !== 6}>
-        {busy ? "Checking…" : "Verify and sign in"}
+        {busy ? "Checking…" : submitLabel}
       </Button>
 
       <div className="flex items-center justify-between text-sm">

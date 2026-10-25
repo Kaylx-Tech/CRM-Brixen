@@ -25,6 +25,26 @@
       "port": 5060
     },
     {
+      "name": "finstap-api-nomail",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["backend/main.py"],
+      "env": {
+        "PORT": "5060",
+        "FINSTAP_DATA_DIR": "D:\\tmp-build\\finstap-local",
+        "DATABASE_URL": "D:\\tmp-build\\finstap-local\\no-default.db",
+        "STORAGE_PATH": "D:\\tmp-build\\finstap-local\\storage",
+        "CRM_ENV": "development",
+        "DEV_AUTH_BYPASS": "0",
+        "COOKIE_SECURE": "false",
+        "SMTP_USER": "",
+        "SMTP_PASS": "",
+        "PYTHONUNBUFFERED": "1",
+        "TEMP": "D:\\tmp-build",
+        "TMP": "D:\\tmp-build"
+      },
+      "port": 5060
+    },
+    {
       "name": "finstap-web",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "frontend", "run", "dev", "--", "--port", "5180", "--strictPort"],

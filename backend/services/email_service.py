@@ -91,13 +91,15 @@ def last_failure_reason():
 
 
 def send_email(recipient, subject, html_content, text_content=None, *, category=None, user_id=None,
-               order_id=None, company_id=None, triggered_by=None, log=True, store_body=True, logo=None):
+               order_id=None, company_id=None, triggered_by=None, log=True, store_body=True, logo=None,
+               sender_name=None):
     """Send an HTML transactional email via SMTP. Returns True only on real send.
 
     Every attempt is written to the email log (status sent / failed / not_configured / invalid_recipient)
     together with what it was about, so admins can see and resend it. store_body=False keeps secrets
     (password reset links) out of the log; such an email cannot be resent from the log.
     logo=(image bytes, 'png'|'jpeg'|...) is the image behind cid:brand-logo instead of the bundled logo.
+    sender_name is the From name instead of the company's (e.g. "Finstap" for signup emails).
     """
     meta = {'category': category, 'user_id': user_id, 'order_id': order_id, 'company_id': company_id,
             'triggered_by': triggered_by}
@@ -106,7 +108,8 @@ def send_email(recipient, subject, html_content, text_content=None, *, category=
     if category != 'SECURITY' and not emails_enabled():
         ok, status, error = False, 'suppressed', 'Emails are turned off in Settings > Email'
     else:
-        ok, status, error = _deliver(recipient, subject, html_content, text_content, logo=logo)
+        ok, status, error = _deliver(recipient, subject, html_content, text_content, logo=logo,
+                                     sender_name=sender_name)
     _last_failure['status'], _last_failure['error'] = ('', '') if ok else (status, error)
     if log:
         _log_email((recipient or '').strip(), subject,
@@ -161,7 +164,7 @@ def _build_message(subject, sender, recipient, html_content, text_content, logo=
     return msg
 
 
-def _deliver(recipient, subject, html_content, text_content, logo=None):
+def _deliver(recipient, subject, html_content, text_content, logo=None, sender_name=None):
     """Hand the message to the SMTP server. Returns (ok, status, error)."""
     recipient = (recipient or '').strip()
     if not recipient or '@' not in recipient:
@@ -180,7 +183,8 @@ def _deliver(recipient, subject, html_content, text_content, logo=None):
     from email.utils import formataddr
     from services.portal_compat import brand_name
     # Sent in the company's own name (its Settings > company name)
-    msg = _build_message(subject, formataddr((brand_name(), from_email)), recipient, html_content, text_content, logo=logo)
+    msg = _build_message(subject, formataddr((sender_name or brand_name(), from_email)), recipient, html_content,
+                         text_content, logo=logo)
 
     try:
         if smtp_port == 465:
