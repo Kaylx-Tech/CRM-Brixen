@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis, Area, AreaChart, Label, LabelList, Pie, PieChart, Rectangle } from "recharts"
+import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis, Area, AreaChart, Label, LabelList, Pie, PieChart, Rectangle, Sector } from "recharts"
 
 import {
   Card,
@@ -68,21 +68,29 @@ function RevenueDot({ cx, cy, index, lastIndex, peakIndex, payload }) {
     return (
       <g>
         <circle cx={cx} cy={cy} r={3.5} fill="var(--background)" stroke="var(--primary)" strokeWidth={2} />
-        <BestDayTag x={cx} y={cy - 9} value={payload.revenue} />
+        <BestDayTag x={cx} y={cy - 9} value={payload.revenue} align={tagAlign(index, lastIndex + 1)} />
       </g>
     )
   }
   return <g />
 }
 
-// Small theme-colour pill, centred on x, sitting just above y
-function BestDayTag({ x, y, value }) {
+// Near the chart's edges the tag leans inwards, so it is never cut off
+function tagAlign(index, count) {
+  if (count <= 1) return "middle"
+  const at = index / (count - 1)
+  return at > 0.8 ? "end" : at < 0.2 ? "start" : "middle"
+}
+
+// Small theme-colour pill sitting just above y: centred on x, or ending / starting just past it
+function BestDayTag({ x, y, value, align = "middle" }) {
   const label = `Best day · ${shortMoney(value)}`
   const w = label.length * 5.6 + 14
+  const left = align === "end" ? x + 10 - w : align === "start" ? x - 10 : x - w / 2
   return (
     <g>
-      <rect x={x - w / 2} y={y - 18} width={w} height={18} rx={9} fill="var(--primary)" />
-      <text x={x} y={y - 5.5} textAnchor="middle" fontSize={10} fontWeight={600} fill="var(--primary-foreground)">{label}</text>
+      <rect x={left} y={y - 18} width={w} height={18} rx={9} fill="var(--primary)" />
+      <text x={left + w / 2} y={y - 5.5} textAnchor="middle" fontSize={10} fontWeight={600} fill="var(--primary-foreground)">{label}</text>
     </g>
   )
 }
@@ -258,7 +266,14 @@ export function ChartRevenueOverTime({
                       radius={[6, 6, 2, 2]}
                       fill={isPeak ? "url(#revenueBarPeak)" : "url(#revenueBarSoft)"}
                     />
-                    {isPeak && <BestDayTag x={props.x + props.width / 2} y={props.y - 6} value={peakPoint.revenue} />}
+                    {isPeak && (
+                      <BestDayTag
+                        x={props.x + props.width / 2}
+                        y={props.y - 6}
+                        value={peakPoint.revenue}
+                        align={tagAlign(peakIndex, displayData.length)}
+                      />
+                    )}
                   </g>
                 )
               }}
@@ -335,13 +350,53 @@ const pieChartConfig = {
   tickets: { label: "Tickets", color: "var(--chart-4)" },
 }
 
+// Slices in the theme colour: the biggest in full strength, the rest lighter tints of it
+function sliceColor(index, count) {
+  if (count <= 1) return "var(--primary)"
+  const strength = Math.round(100 - (index * 68) / (count - 1))
+  return `color-mix(in srgb, var(--primary) ${strength}%, var(--card))`
+}
+
+// Counts up from 0 to the value (straight to it when the user prefers less motion)
+function useCountUp(value, duration = 900) {
+  const [shown, setShown] = React.useState(reduceMotion() ? value : 0)
+  React.useEffect(() => {
+    if (reduceMotion()) {
+      setShown(value)
+      return undefined
+    }
+    let frame
+    const start = performance.now()
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / duration)
+      setShown(Math.round(value * (1 - Math.pow(1 - t, 3))))
+      if (t < 1) frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [value, duration])
+  return shown
+}
+
+// The hovered slice pops out a little
+function ActiveSlice(props) {
+  return <Sector {...props} outerRadius={props.outerRadius + 6} />
+}
+
+const legendList = { hidden: {}, show: { transition: { staggerChildren: 0.07, delayChildren: 0.35 } } }
+const legendItem = { hidden: { opacity: 0, x: 10 }, show: { opacity: 1, x: 0 } }
+
 export function ChartPieSeparatorNone({ data = [], isLoading = false }) {
+  const source = data && data.length > 0 ? data : []
+  const pieData = source.map((d, i) => ({ ...d, fill: sliceColor(i, source.length) }))
+  const total = pieData.reduce((acc, curr) => acc + (curr.value || 0), 0)
+  const shownTotal = useCountUp(total)
+  // One slice is a full ring: no gap or edge line where it starts and ends
+  const single = pieData.filter((d) => (d.value || 0) > 0).length <= 1
+
   if (isLoading) {
     return <Skeleton className="w-full h-[360px] rounded-xl" />
   }
-
-  const pieData = data && data.length > 0 ? data : []
-  const total = pieData.reduce((acc, curr) => acc + (curr.value || 0), 0)
 
   return (
     <MotionCard {...cardMotion} className="flex flex-col h-full">
@@ -364,21 +419,25 @@ export function ChartPieSeparatorNone({ data = [], isLoading = false }) {
               <Pie
                 data={pieData}
                 dataKey="value"
-                nameKey="category"
+                nameKey="label"
                 innerRadius="58%"
                 outerRadius="92%"
-                paddingAngle={2}
-                cornerRadius={6}
+                paddingAngle={single ? 0 : 2}
+                cornerRadius={single ? 0 : 6}
                 stroke="var(--card)"
-                strokeWidth={2}
+                strokeWidth={single ? 0 : 2}
+                startAngle={90}
+                endAngle={-270}
+                activeShape={ActiveSlice}
                 {...CHART_ANIMATION}
+                animationDuration={1100}
               >
                 <Label
                   content={({ viewBox }) =>
                     viewBox?.cx != null ? (
                       <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
                         <tspan x={viewBox.cx} y={viewBox.cy - 6} className="fill-foreground text-2xl font-bold">
-                          {total.toLocaleString("en-GB")}
+                          {shownTotal.toLocaleString("en-GB")}
                         </tspan>
                         <tspan x={viewBox.cx} y={viewBox.cy + 16} className="fill-muted-foreground text-xs">
                           Total
@@ -391,18 +450,27 @@ export function ChartPieSeparatorNone({ data = [], isLoading = false }) {
             </PieChart>
           </ChartContainer>
         </CardContent>
-        <div className="flex-[2] flex flex-col items-start gap-2.5 text-sm px-2 sm:px-0 mt-6 sm:mt-0">
+        <m.div
+          variants={legendList}
+          initial="hidden"
+          animate="show"
+          className="flex-[2] flex flex-col items-start gap-2.5 text-sm px-2 sm:px-0 mt-6 sm:mt-0"
+        >
           {pieData.map((item, index) => {
             const pct = item.pct ?? (total > 0 ? Math.round((item.value / total) * 100) : 0)
             return (
-              <div key={index} className="flex w-full max-w-56 items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted/50">
+              <m.div
+                key={index}
+                variants={legendItem}
+                className="flex w-full max-w-56 items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/50"
+              >
                 <span className="w-2.5 h-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.fill }}></span>
                 <span className="text-foreground font-medium truncate">{item.label}</span>
                 <span className="ml-auto text-muted-foreground tabular-nums">{pct}%</span>
-              </div>
+              </m.div>
             )
           })}
-        </div>
+        </m.div>
       </div>
     </MotionCard>
   )
