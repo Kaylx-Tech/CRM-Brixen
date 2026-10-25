@@ -25,3 +25,9 @@ export function plainAmount(value) {
   const n = Math.round(toNumber(value) * 100) / 100
   return Number.isInteger(n) ? String(n) : n.toFixed(2)
 }
+
+/** The same, in the given currency: "£49" for GBP, "Rs 12,500" for PKR. */
+export function formatMoney(value, currency = "GBP") {
+  if (currency !== "PKR") return formatGBP(value)
+  return formatGBP(value).replace("£", "Rs ")
+}

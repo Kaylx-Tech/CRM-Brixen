@@ -105,6 +105,8 @@ const PAGE_ACCESS = {
   intake: { roles: "internal", departments: ["Documents", "Compliance"] },
   accountancy: { roles: "internal", departments: ["Accountancy", "Accounts", "Compliance"] },
   payments: { roles: ["SUPER_ADMIN", "ADMIN", "MANAGER"] },
+  // Revenue & Balance Sheet: the company's cash, admins only
+  "balance-sheet": { roles: ["SUPER_ADMIN", "ADMIN"] },
   logs: { roles: ["SUPER_ADMIN", "ADMIN"] },
   "email-log": { roles: ["SUPER_ADMIN", "ADMIN"] },
   tickets: { roles: "internal", departments: ["Support"] },

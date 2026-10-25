@@ -18,6 +18,7 @@ import Orders from './Pages/Orders/Orders'
 import Tasks from './Pages/Tasks/Tasks'
 import Services from './Pages/Services/Services'
 import Payments from './Pages/Payments/Payments'
+import BalanceSheet from './Pages/Finance/BalanceSheet'
 import Documents from './Pages/Documents/Documents'
 import Intake from './Pages/Intake/Intake'
 import AuditLogs from './Pages/AuditLogs/AuditLogs'
@@ -147,6 +148,7 @@ const App = () => {
                 <Route path="tasks" element={IS_FINSTAP ? <FinstapTeam /> : <Tasks />} />
                 <Route path="services" element={<PageGuard page="services"><Services /></PageGuard>} />
                 <Route path="payments" element={<PageGuard page="payments"><Payments /></PageGuard>} />
+                <Route path="balance-sheet" element={<PageGuard page="balance-sheet"><BalanceSheet /></PageGuard>} />
                 <Route path="documents" element={<PageGuard page="documents"><Documents /></PageGuard>} />
                 <Route path="intake" element={<PageGuard page="intake"><Intake /></PageGuard>} />
                 <Route path="logs" element={<PageGuard page="logs"><AuditLogs /></PageGuard>} />
