@@ -28,6 +28,7 @@ const ROUTE_LABELS = {
   'smart-operations': 'Smart Operations',
   services: 'Services',
   payments: 'Finance',
+  'balance-sheet': 'Revenue & Balance Sheet',
   documents: 'Documents',
   intake: 'Intake',
   logs: 'Audit Logs',

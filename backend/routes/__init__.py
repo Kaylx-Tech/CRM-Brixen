@@ -23,6 +23,7 @@ from .ticket_routes import handle_ticket_routes
 from .website_routes import handle_website_routes
 from .smart_link_routes import handle_smart_link_routes
 from .ai_routes import handle_ai_routes
+from .finance_routes import handle_finance_routes
 
 
 # Accounts file integration
@@ -66,6 +67,11 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
 
     # 5. Invoices & Billing
     res = handle_invoice_routes(environ, start_response, path, method, user, body, query)
+    if res is not None:
+        return res
+
+    # 5b. Revenue & Balance Sheet (admins)
+    res = handle_finance_routes(environ, start_response, path, method, user, body, query)
     if res is not None:
         return res
 

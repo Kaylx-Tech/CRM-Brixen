@@ -856,7 +856,7 @@ export default function Payments() {
     <div className="flex flex-col gap-4 w-full pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Payment/Invoices</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Finance</h2>
           <p className="text-sm text-muted-foreground mt-0.5">Showing {monthLabel}</p>
         </div>
         <div className="flex items-center gap-2">

@@ -708,6 +708,34 @@ def ensure_schema():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE INDEX IF NOT EXISTS idx_smart_links_category ON smart_links(category, sort_order);
+        CREATE TABLE IF NOT EXISTS finance_expenses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            spent_on DATE NOT NULL,
+            category TEXT NOT NULL,
+            description TEXT,
+            amount REAL NOT NULL,
+            currency TEXT NOT NULL DEFAULT 'GBP',
+            created_by INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_finance_expenses_date ON finance_expenses(spent_on);
+        CREATE TABLE IF NOT EXISTS finance_opening_balances (
+            currency TEXT PRIMARY KEY,
+            amount REAL NOT NULL DEFAULT 0,
+            start_month TEXT NOT NULL,
+            updated_by INTEGER,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS finance_invoice_receipts (
+            invoice_id INTEGER PRIMARY KEY,
+            currency TEXT NOT NULL,
+            gbp_amount REAL NOT NULL,
+            amount REAL,
+            rate REAL,
+            edited INTEGER NOT NULL DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
         CREATE TABLE IF NOT EXISTS roles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE NOT NULL,
