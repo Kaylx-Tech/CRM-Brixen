@@ -288,7 +288,7 @@ def _build_admin_dashboard(user, month_param):
         else:
             last_day = (datetime.date(next_year, next_month, 1) - datetime.timedelta(days=1)).day
         charts['orders_daily'] = [
-            {'label': str(d), 'cnt': int((by_day.get(d) or {}).get('cnt') or 0),
+            {'label': str(d), 'date': f'{year:04d}-{month:02d}-{d:02d}', 'cnt': int((by_day.get(d) or {}).get('cnt') or 0),
              'revenue': round(float((by_day.get(d) or {}).get('rev') or 0), 2)}
             for d in range(1, last_day + 1)]
         # The same days of the month before (a shorter month leaves the last days empty)
@@ -307,7 +307,8 @@ def _build_admin_dashboard(user, month_param):
             day = today - datetime.timedelta(days=off)
             r = by_d.get(day.isoformat()) or {}
             charts['orders_daily'].append(
-                {'label': str(day.day), 'cnt': int(r.get('cnt') or 0), 'revenue': round(float(r.get('rev') or 0), 2)})
+                {'label': str(day.day), 'date': day.isoformat(), 'cnt': int(r.get('cnt') or 0),
+                 'revenue': round(float(r.get('rev') or 0), 2)})
         # The 30 days before those
         prev = _daily_revenue(today - datetime.timedelta(days=59), 30)
         charts['orders_daily_prev'] = [{'label': p['label'], 'revenue': prev[i]}
@@ -323,6 +324,15 @@ def _build_admin_dashboard(user, month_param):
         r = by_d.get(day.isoformat()) or {}
         charts['orders_weekly'].append(
             {'label': day.strftime('%a'), 'cnt': int(r.get('cnt') or 0), 'revenue': round(float(r.get('rev') or 0), 2)})
+    for days in (7, 30, 90):
+        start = today - datetime.timedelta(days=days - 1)
+        cur = _daily_revenue(start, days)
+        prev = _daily_revenue(start - datetime.timedelta(days=days), days)
+        points = [start + datetime.timedelta(days=i) for i in range(days)]
+        charts[f'orders_{days}d'] = [{'label': f"{d:%b} {d.day}", 'date': d.isoformat(), 'revenue': cur[i]}
+                                      for i, d in enumerate(points)]
+        charts[f'orders_{days}d_prev'] = [{'label': f"{d:%b} {d.day}", 'revenue': prev[i]} for i, d in enumerate(points)]
+
     prev = _daily_revenue(today - datetime.timedelta(days=13), 7)
     charts['orders_weekly_prev'] = [{'label': p['label'], 'revenue': prev[i]}
                                     for i, p in enumerate(charts['orders_weekly'])]
@@ -440,7 +450,8 @@ def _build_admin_dashboard(user, month_param):
 
     if not can_revenue:  # hide money from staff without revenue access
         for series in (charts['orders_daily'], charts['orders_weekly'], charts['orders_yearly'],
-                       charts['orders_daily_prev'], charts['orders_weekly_prev'], charts['orders_yearly_prev']):
+                       charts['orders_daily_prev'], charts['orders_weekly_prev'], charts['orders_yearly_prev'],
+                       *(charts[f'orders_{n}d{suffix}'] for n in (7, 30, 90) for suffix in ('', '_prev'))):
             for p in series:
                 p['revenue'] = 0
         for p in charts['monthly']:
