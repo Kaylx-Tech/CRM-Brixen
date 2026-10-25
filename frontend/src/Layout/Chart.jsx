@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis, Area, AreaChart, Label, LabelList, Pie, PieChart } from "recharts"
+import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis, Area, AreaChart, Label, LabelList, Pie, PieChart, Rectangle } from "recharts"
 
 import {
   Card,
@@ -17,6 +17,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { m, fadeUp } from "@/lib/motion"
 import { formatGBP } from "@/lib/money"
+import { IconChartBar, IconChartLine } from "@tabler/icons-react"
 
 // Bars / areas / slices grow in smoothly (shorter and softer than the Recharts default)
 const CHART_ANIMATION = { isAnimationActive: true, animationBegin: 120, animationDuration: 850, animationEasing: "ease-out" }
@@ -64,17 +65,36 @@ function RevenueDot({ cx, cy, index, lastIndex, peakIndex, payload }) {
     )
   }
   if (index === peakIndex && (payload?.revenue || 0) > 0) {
-    const label = `Best day · ${shortMoney(payload.revenue)}`
-    const w = label.length * 5.6 + 14
     return (
       <g>
         <circle cx={cx} cy={cy} r={3.5} fill="var(--background)" stroke="var(--primary)" strokeWidth={2} />
-        <rect x={cx - w / 2} y={cy - 27} width={w} height={18} rx={9} fill="var(--primary)" />
-        <text x={cx} y={cy - 14.5} textAnchor="middle" fontSize={10} fontWeight={600} fill="var(--primary-foreground)">{label}</text>
+        <BestDayTag x={cx} y={cy - 9} value={payload.revenue} />
       </g>
     )
   }
   return <g />
+}
+
+// Small theme-colour pill, centred on x, sitting just above y
+function BestDayTag({ x, y, value }) {
+  const label = `Best day · ${shortMoney(value)}`
+  const w = label.length * 5.6 + 14
+  return (
+    <g>
+      <rect x={x - w / 2} y={y - 18} width={w} height={18} rx={9} fill="var(--primary)" />
+      <text x={x} y={y - 5.5} textAnchor="middle" fontSize={10} fontWeight={600} fill="var(--primary-foreground)">{label}</text>
+    </g>
+  )
+}
+
+// Line or bars: remembered per browser
+const CHART_KIND_KEY = "brixen.dashboard.revenueChart"
+function savedChartKind() {
+  try {
+    return localStorage.getItem(CHART_KIND_KEY) === "line" ? "line" : "bars"
+  } catch {
+    return "bars"
+  }
 }
 
 // Dark pill: the day's revenue and the date
@@ -95,9 +115,9 @@ function TitleDot({ className }) {
 }
 
 /**
- * Revenue: a glowing theme-colour line that deepens towards today over a fading wash, a pulsing dot on
- * the latest day and a "Best day" tag on the peak, with the total and the change against the same span
- * before. Opens on this month.
+ * Revenue as theme-colour bars (the best day in full colour) or a glowing line that deepens towards
+ * today, with a "Best day" tag, the total and the change against the same span before. Opens on this
+ * month, as bars; the Line / Bars choice is remembered per browser.
  */
 export function ChartRevenueOverTime({
   data = [],
@@ -105,6 +125,16 @@ export function ChartRevenueOverTime({
   onTimeFilterChange,
   isLoading = false,
 }) {
+  const [kind, setKind] = React.useState(savedChartKind)
+  const chooseKind = (next) => {
+    setKind(next)
+    try {
+      localStorage.setItem(CHART_KIND_KEY, next)
+    } catch {
+      // Private window: the choice just isn't remembered
+    }
+  }
+
   if (isLoading) {
     return <Skeleton className="w-full h-[360px] rounded-xl" />
   }
@@ -118,6 +148,7 @@ export function ChartRevenueOverTime({
   const lastIndex = displayData.length - 1
   // The best day gets a small label (only when there was some revenue)
   const peakIndex = displayData.reduce((best, d, i) => ((d.revenue || 0) > (displayData[best]?.revenue || 0) ? i : best), 0)
+  const peakPoint = displayData[peakIndex]
 
   return (
     <MotionCard {...cardMotion} className="flex flex-col chart-revenue-privacy relative">
@@ -126,6 +157,28 @@ export function ChartRevenueOverTime({
           <CardTitle className="text-sm font-semibold">Revenue</CardTitle>
           <p className="text-xs text-muted-foreground">All orders, net of cancellations and refunds</p>
         </div>
+        <div className="flex items-center gap-1.5">
+          <div className="flex rounded-lg border bg-muted/60 p-0.5" role="tablist" aria-label="Chart style">
+            {[
+              { value: "bars", label: "Bars", Icon: IconChartBar },
+              { value: "line", label: "Line", Icon: IconChartLine },
+            ].map(({ value, label, Icon }) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={kind === value}
+                aria-label={label}
+                title={label}
+                onClick={() => chooseKind(value)}
+                className={`rounded-md p-1 transition-colors ${
+                  kind === value ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="size-3.5" />
+              </button>
+            ))}
+          </div>
         {onTimeFilterChange && (
           <div className="flex rounded-lg border bg-muted/60 p-0.5" role="tablist" aria-label="Revenue range">
             {REVENUE_RANGES.map((r) => (
@@ -146,6 +199,7 @@ export function ChartRevenueOverTime({
             ))}
           </div>
         )}
+        </div>
         <div className="flex w-full flex-wrap items-baseline gap-x-2.5 gap-y-1 pt-1">
           <span className="text-4xl font-semibold tracking-tight tabular-nums">{formatGBP(total)}</span>
           {change !== null && (
@@ -160,6 +214,58 @@ export function ChartRevenueOverTime({
       </CardHeader>
       <CardContent className="flex-1 pt-3">
         <ChartContainer config={revenueChartConfig}>
+          {kind === "bars" ? (
+          <BarChart accessibilityLayer data={displayData} margin={{ top: 28, right: 14, left: 0, bottom: 0 }}>
+            <defs>
+              {/* The best day in full theme colour, the rest a lighter tint of it */}
+              <linearGradient id="revenueBarPeak" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--primary)" stopOpacity={1} />
+                <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.7} />
+              </linearGradient>
+              <linearGradient id="revenueBarSoft" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.5} />
+                <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.18} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="2 6" />
+            <XAxis
+              dataKey="month"
+              tickLine={false}
+              tickMargin={8}
+              axisLine={false}
+              minTickGap={20}
+              tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
+            />
+            <YAxis
+              width={44}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={6}
+              tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
+              tickFormatter={shortMoney}
+            />
+            <ChartTooltip cursor={{ fill: "var(--primary)", fillOpacity: 0.07, radius: 6 }} content={<RevenueTooltip />} />
+            <Bar
+              dataKey="revenue"
+              maxBarSize={30}
+              shape={(props) => {
+                // Matched by its point, so the tag always sits on the best day's bar
+                const isPeak = props.payload?.month === peakPoint?.month && (peakPoint?.revenue || 0) > 0
+                return (
+                  <g>
+                    <Rectangle
+                      {...props}
+                      radius={[6, 6, 2, 2]}
+                      fill={isPeak ? "url(#revenueBarPeak)" : "url(#revenueBarSoft)"}
+                    />
+                    {isPeak && <BestDayTag x={props.x + props.width / 2} y={props.y - 6} value={peakPoint.revenue} />}
+                  </g>
+                )
+              }}
+              {...CHART_ANIMATION}
+            />
+          </BarChart>
+          ) : (
           <AreaChart accessibilityLayer data={displayData} margin={{ top: 28, right: 14, left: 0, bottom: 0 }}>
             <defs>
               {/* Soft wash under the line, fading to nothing */}
@@ -214,6 +320,7 @@ export function ChartRevenueOverTime({
               {...CHART_ANIMATION}
             />
           </AreaChart>
+          )}
         </ChartContainer>
       </CardContent>
     </MotionCard>
