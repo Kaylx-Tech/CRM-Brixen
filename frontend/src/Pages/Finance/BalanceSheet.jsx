@@ -27,6 +27,7 @@ import { SectionCards } from "../../Layout/StatsCard"
 import { toast } from "sonner"
 import { apiRequest } from "@/lib/api"
 import { formatMoney, plainAmount } from "@/lib/money"
+import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 /**
  * Revenue & Balance Sheet (admins), the Balance Sheet tab on the Finance page: for each currency, what the company held at the start of the month,
@@ -98,6 +99,7 @@ export default function BalanceSheet({ embedded = false }) {
   }, [month])
 
   useEffect(() => { load() }, [load])
+  useRefreshOnReturn(() => load(true))
 
   const save = async (path, method, body, label) => {
     const res = await apiRequest(path, { method, body, label, silent: true })
@@ -295,7 +297,7 @@ export default function BalanceSheet({ embedded = false }) {
             {monthName(month)} · GBP and PKR kept separate · each month opens with last month&apos;s closing balance
           </p>
         </div>
-        {/* Small, quiet controls; the sheet reloads itself after every change, so no Refresh button */}
+        {/* Small, quiet controls; the sheet reloads after every change and when you come back, so no Refresh button */}
         <div className="flex flex-wrap items-center gap-1.5">
           <Select value={month} onValueChange={(v) => setMonth(v || CURRENT_MONTH)}>
             <SelectTrigger size="sm" className="text-[13px]">

@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   IconBell,
-  IconRefresh,
   IconTrash,
   IconChecks,
   IconAlertCircle,
@@ -25,6 +24,7 @@ import {
   toastDone,
   toastFail,
 } from '@/lib/toastActions'
+import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 function formatWhen(dateStr) {
   if (!dateStr) return '—'
@@ -110,6 +110,7 @@ export default function NotificationsPage() {
       setIsLoading(false)
     }
   }, [])
+  useRefreshOnReturn(loadNotifications)
 
   useEffect(() => {
     loadNotifications()
@@ -211,10 +212,6 @@ export default function NotificationsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={loadNotifications} disabled={isLoading}>
-            <IconRefresh className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
           {unreadCount > 0 && (
             <Button variant="outline" onClick={markAllRead} disabled={!!acting}>
               {acting === 'read' ? (

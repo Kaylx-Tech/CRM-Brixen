@@ -37,7 +37,7 @@ export const TablePagination = ({
                 <div className="flex items-center space-x-2">
                     <Button
                         variant="outline"
-                        className="h-8 w-8 p-0"
+                        className="h-7 w-7 p-0"
                         onClick={() => onPageChange(currentPage - 1)}
                         disabled={currentPage <= 1}
                     >
@@ -46,7 +46,7 @@ export const TablePagination = ({
                     </Button>
                     <Button
                         variant="outline"
-                        className="h-8 w-8 p-0"
+                        className="h-7 w-7 p-0"
                         onClick={() => onPageChange(currentPage + 1)}
                         disabled={currentPage >= totalPages}
                     >

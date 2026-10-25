@@ -18,7 +18,7 @@ export function PrivacyToggle() {
           onClick={togglePrivacy}
           variant="outline"
           size="icon"
-          className="relative h-8 w-8 cursor-pointer"
+          className="relative h-7 w-7 cursor-pointer"
           aria-label={isPrivate ? 'Show payments and amounts' : 'Hide payments and amounts'}
         >
           {isPrivate ? (

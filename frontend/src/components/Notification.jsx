@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react"
 import {
   IconBell,
   IconBellRinging,
-  IconRefresh,
   IconTrash,
   IconChecks,
   IconAlertCircle,
@@ -61,14 +60,12 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
 
   const apiUrl = import.meta.env.VITE_API_URL || "/api"
 
   // Fetch notifications from backend
-  const fetchNotifications = useCallback(async (showRefreshIndicator = false) => {
-    if (showRefreshIndicator) setIsRefreshing(true)
+  const fetchNotifications = useCallback(async () => {
     try {
       const res = await fetch(`${apiUrl}/client/notifications`, {
         credentials: "include",
@@ -85,7 +82,6 @@ export default function Notifications() {
       console.error("Failed to fetch notifications:", err)
     } finally {
       setIsLoading(false)
-      setIsRefreshing(false)
     }
   }, [apiUrl])
 
@@ -259,16 +255,6 @@ export default function Notifications() {
                 Clear
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
-              onClick={() => fetchNotifications(true)}
-              disabled={isRefreshing}
-              title="Refresh"
-            >
-              <IconRefresh className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
-            </Button>
           </div>
         </div>
 
@@ -298,16 +284,6 @@ export default function Notifications() {
             <p className="text-sm text-muted-foreground max-w-56 leading-relaxed mb-4">
               You're completely caught up! New alerts and updates will appear here.
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-sm gap-1.5 cursor-pointer"
-              onClick={() => fetchNotifications(true)}
-              disabled={isRefreshing}
-            >
-              <IconRefresh className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
           </div>
         ) : (
           <div className="max-h-[400px] overflow-y-auto overscroll-contain">
@@ -373,7 +349,7 @@ export default function Notifications() {
           <Button
             variant="ghost"
             size="sm"
-            className="w-full h-8 text-sm justify-center cursor-pointer"
+            className="w-full h-[26px] text-[13px] justify-center cursor-pointer"
             onClick={() => {
               setIsOpen(false)
               navigate("/admin/notifications")

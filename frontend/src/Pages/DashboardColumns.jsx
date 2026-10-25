@@ -306,7 +306,7 @@ export const dashboardColumns = columnHelper.columns([
     cell: () => (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="flex size-8 text-muted-foreground" size="icon">
+          <Button variant="ghost" className="flex size-7 text-muted-foreground" size="icon">
             <IconDotsVertical />
             <span className="sr-only">Open menu</span>
           </Button>

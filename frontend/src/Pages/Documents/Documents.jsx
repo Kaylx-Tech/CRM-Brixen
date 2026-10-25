@@ -14,7 +14,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import {
-  IconRefresh,
   IconUpload,
   IconEye,
   IconDownload,
@@ -48,6 +47,7 @@ import {
   toastFail,
   toastWithAction,
 } from "@/lib/toastActions"
+import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 const col = createColumnHelper()
 
@@ -164,6 +164,7 @@ export default function Documents() {
       setIsLoading(false)
     }
   }, [stage])
+  useRefreshOnReturn(loadDocuments)
 
   useEffect(() => {
     loadDocuments()
@@ -505,10 +506,6 @@ export default function Documents() {
           <h2 className="text-2xl font-bold tracking-tight">Documents Lifecycle</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={loadDocuments} disabled={isLoading}>
-            <IconRefresh className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
           <Button variant="outline" onClick={() => setRelinkOpen(true)}>
             <IconUpload className="mr-2 h-4 w-4" />
             Re-attach files
@@ -831,7 +828,7 @@ export default function Documents() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 text-sm gap-1.5"
+                className="h-[26px] text-[13px] gap-1.5"
                 onClick={() =>
                   previewDoc &&
                   downloadDocument(previewDoc.id, previewDoc.name).catch((e) => toast.error(e.message || 'Download failed'))
@@ -845,7 +842,7 @@ export default function Documents() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 text-sm gap-1.5"
+                  className="h-[26px] text-[13px] gap-1.5"
                   asChild
                 >
                   <a href={previewDoc.drive_web_link} target="_blank" rel="noopener noreferrer">

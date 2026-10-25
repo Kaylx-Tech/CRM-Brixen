@@ -34,7 +34,6 @@ import DeleteConfirmation from '../../components/DeleteConfirmation'
 import { OverflowTooltip } from '@/components/OverflowTooltip'
 import {
   IconPlus,
-  IconRefresh,
   IconDotsVertical,
   IconPlayerPlay,
   IconCircleCheck,
@@ -62,6 +61,7 @@ import {
   toastDone,
   toastFail,
 } from '@/lib/toastActions'
+import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 const columnHelper = createColumnHelper()
 
@@ -320,6 +320,7 @@ const Tasks = ({ view } = {}) => {
       setStaffLoading(false)
     }
   }, [])
+  useRefreshOnReturn(() => (activeTab === 'Tasks' ? loadTasks() : loadStaff()))
 
   // The Team page needs no tasks; GOV Forms still loads the team (for "assign to")
   useEffect(() => {
@@ -781,22 +782,6 @@ const Tasks = ({ view } = {}) => {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() =>
-              activeTab === 'Tasks' ? loadTasks() : loadStaff()
-            }
-            disabled={activeTab === 'Tasks' ? isLoading : staffLoading}
-          >
-            <IconRefresh
-              className={`size-4 ${
-                (activeTab === 'Tasks' ? isLoading : staffLoading)
-                  ? 'animate-spin'
-                  : ''
-              }`}
-            />
-            Refresh
-          </Button>
           {activeTab === 'Tasks' ? (
             canManageTasks ? (
               <Button onClick={openCreateTask}>

@@ -13,10 +13,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { SectionCards } from '@/Layout/StatsCard'
-import { IconRefresh, IconLoader2, IconBolt } from '@tabler/icons-react'
+import { IconLoader2, IconBolt } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { apiRequest } from '@/lib/api'
 import { getCurrentUser, isManagerOrAbove } from '@/lib/permissions'
+import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 function gradeBadgeClass(grade) {
   if (grade === 'A+' || grade === 'A') return 'badge-green'
@@ -64,6 +65,7 @@ export function MyPerformance() {
       setIsLoading(false)
     }
   }, [])
+  useRefreshOnReturn(load)
 
   useEffect(() => {
     load()
@@ -102,10 +104,6 @@ export function MyPerformance() {
             <h3 className="font-semibold">My orders</h3>
             <p className="text-sm text-muted-foreground">Orders assigned to you (or added by you) still to finish</p>
           </div>
-          <Button variant="outline" size="sm" onClick={load} disabled={isLoading}>
-            <IconRefresh className={`size-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
         </div>
         {isLoading && !data ? (
           <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
@@ -175,6 +173,7 @@ function TeamIncentives() {
       setIsLoading(false)
     }
   }, [month])
+  useRefreshOnReturn(load)
 
   useEffect(() => {
     load()
@@ -189,10 +188,6 @@ function TeamIncentives() {
         </div>
         <div className="flex items-center gap-2">
           <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="w-40" aria-label="Month" />
-          <Button variant="outline" size="sm" onClick={load} disabled={isLoading}>
-            <IconRefresh className={`size-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
         </div>
       </div>
       {isLoading ? (

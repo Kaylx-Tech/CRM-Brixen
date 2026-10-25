@@ -13,7 +13,6 @@ import {
   IconFolderOpen,
   IconTrash,
   IconDotsVertical,
-  IconRefresh,
   IconNote,
 } from "@tabler/icons-react"
 import { formatGBP } from "@/lib/money"
@@ -30,6 +29,7 @@ import QuickCrmOrder from "./QuickCrmOrder"
 import ViewOrder from "./ViewOrder"
 import DeleteConfirmation from "@/components/DeleteConfirmation"
 import { isAdminRole, canViewRevenue, getRole } from "@/lib/permissions"
+import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 const columnHelper = createColumnHelper()
 
@@ -257,6 +257,7 @@ export default function Orders() {
       setIsLoading(false)
     }
   }, [search, statusFilter, statusGroup, productFilter, companyFilter, paymentFilter, datePreset, addedByFilter, clientType, b2bClientId])
+  useRefreshOnReturn(() => fetchOrders(pagination.page || 1))
 
   function applyPayload(data, page) {
     const list = data.orders || []
@@ -673,10 +674,6 @@ export default function Orders() {
           <h2 className="text-2xl font-bold tracking-tight">Admin Orders Manager</h2>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" onClick={() => fetchOrders(pagination.page || 1)}>
-            <IconRefresh className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
           <Button onClick={() => setCreateOpen(true)}>
             <IconPlus className="mr-2 h-4 w-4" />
             Create Order

@@ -45,6 +45,7 @@ import { isAdminRole, isManagerOrAbove } from '@/lib/permissions'
 import { needsAttention } from './attention'
 import { m, spring } from '@/lib/motion'
 import { apiRequest, getApiBase, toastApiEmpty } from '@/lib/api'
+import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 const Companies = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
@@ -135,6 +136,7 @@ const Companies = () => {
       setIsLoading(false)
     }
   }
+  useRefreshOnReturn(fetchCompanies)
 
   useEffect(() => {
     fetchCompanies()
@@ -282,15 +284,6 @@ const Companies = () => {
           <h2 className="text-2xl font-bold tracking-tight">Registered Companies</h2>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={fetchCompanies}
-            disabled={isLoading}
-            title="Refresh list"
-          >
-            <IconRefresh className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </Button>
           <Button variant="outline" onClick={() => setIsWebfilingModalOpen(true)}>
             <IconUpload className="mr-2 h-4 w-4" />
             Import WebFiling
@@ -400,7 +393,7 @@ const Companies = () => {
               <Button
                 variant="destructive"
                 size="sm"
-                className="text-sm h-8"
+                className="text-[13px] h-[26px]"
                 onClick={() => {
                   setSingleDeleteId(null)
                   setDeleteConfirmOpen(true)
