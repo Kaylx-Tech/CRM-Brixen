@@ -4,7 +4,8 @@ import Login from './Pages/Login'
 import ForgotPassword from './Pages/ForgotPassword'
 import FinstapSignup from './Pages/FinstapSignup'
 import FinstapWelcome from './Pages/FinstapWelcome'
-import { IS_FINSTAP } from './lib/workspace'
+import FinstapLanding from './Pages/FinstapLanding'
+import { IS_FINSTAP, subdomainWorkspace } from './lib/workspace'
 import { loadBranding } from './lib/branding'
 import ResetPassword from './Pages/ResetPassword'
 // import SignUp from './Pages/SignUp'
@@ -39,8 +40,10 @@ import PortalDocuments from './Pages/Portal/PortalDocuments'
 import PortalSupport, { PortalMessages } from './Pages/Portal/PortalSupport'
 import { PortalServices, PortalAddresses, PortalAccountancy } from './Pages/Portal/PortalMisc'
 
-// "/" sends each user to their own home (customers -> portal, team -> CRM)
+// "/" sends each user to their own home (customers -> portal, team -> CRM). Finstap's main address
+// (finstap.com, not a company's acme.finstap.com) shows the public landing page to visitors.
 function HomeRedirect() {
+  if (IS_FINSTAP && !subdomainWorkspace() && !localStorage.getItem('token')) return <FinstapLanding />
   return <Navigate to={homePath()} replace />
 }
 
