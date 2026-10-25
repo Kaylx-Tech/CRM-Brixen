@@ -46,6 +46,7 @@ import { apiRequest, getApiBase } from "@/lib/api"
 import { canViewRevenue, getCurrentUser } from "@/lib/permissions"
 import { formatGBP } from "@/lib/money"
 import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
+import { m, spring } from "@/lib/motion"
 
 // ==========================================
 // Dashboard layout: which cards each user wants to see
@@ -262,6 +263,71 @@ const formatOperationsData = (rings) => {
 // Dashboard Component
 // ==========================================
 
+// "Good morning / afternoon / evening" by the local time
+function greetingFor(date) {
+  const h = date.getHours()
+  if (h >= 5 && h < 12) return 'Good morning'
+  if (h >= 12 && h < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
+function firstName(user) {
+  const full = String(user?.full_name || user?.name || '').trim()
+  if (full) return full.split(/\s+/)[0]
+  return String(user?.email || '').split('@')[0] || ''
+}
+
+const greetWord = {
+  hidden: { opacity: 0, y: 10, filter: 'blur(4px)' },
+  show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: spring },
+}
+
+/** Dashboard heading: a time-of-day greeting with the signed-in person's first name, words easing in one by one and a small wave. */
+function DashboardGreeting({ monthLabel }) {
+  const [now, setNow] = useState(() => new Date())
+  // Follows the clock, so the greeting changes from morning to afternoon while the page is open
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(timer)
+  }, [])
+  const name = firstName(getCurrentUser())
+  const words = `${greetingFor(now)}${name ? `, ${name}` : ''}`.split(' ')
+
+  return (
+    <div>
+      <m.h2
+        key={words.join(' ')}
+        className="flex flex-wrap items-center gap-x-[0.3em] text-2xl font-bold tracking-tight"
+        initial="hidden"
+        animate="show"
+        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } } }}
+        aria-label={words.join(' ')}
+      >
+        {words.map((word, i) => (
+          <m.span key={i} variants={greetWord} className="inline-block" aria-hidden="true">{word}</m.span>
+        ))}
+        <m.span
+          className="inline-block origin-[70%_70%]"
+          aria-hidden="true"
+          initial={{ opacity: 0, rotate: 0 }}
+          animate={{ opacity: 1, rotate: [0, 18, -8, 18, -4, 10, 0] }}
+          transition={{ opacity: { delay: 0.35 }, rotate: { delay: 0.5, duration: 1.4, ease: 'easeInOut' } }}
+        >
+          👋
+        </m.span>
+      </m.h2>
+      <m.p
+        className="text-sm text-muted-foreground mt-0.5"
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ ...spring, delay: 0.3 }}
+      >
+        Showing statistics for {monthLabel}
+      </m.p>
+    </div>
+  )
+}
+
 const Dashboard = () => {
   const navigate = useNavigate()
   const [selectedMonth, setSelectedMonth] = useState("Current")
@@ -462,12 +528,7 @@ const Dashboard = () => {
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Showing statistics for {monthLabel}
-          </p>
-        </div>
+        <DashboardGreeting monthLabel={monthLabel} />
         <div className="flex items-center gap-2">
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
             <SelectTrigger className="w-47.5 hidden sm:flex">
