@@ -14,14 +14,6 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectGroup,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { m, fadeUp } from "@/lib/motion"
 import { formatGBP } from "@/lib/money"
@@ -34,16 +26,39 @@ const MotionCard = m.create(Card)
 const cardMotion = { variants: fadeUp, initial: "hidden", animate: "show" }
 
 const revenueChartConfig = {
-  revenue: { label: "This period", color: "var(--foreground)" },
+  revenue: { label: "This period", color: "var(--primary)" },
   previous: { label: "Previous period", color: "var(--muted-foreground)" },
 }
 
-// What each range compares, under the big total
-const RANGE_LABEL = { "This Month": "This month", "This Week": "Last 7 days", "This Year": "Last 12 months" }
-const RANGE_NOTE = {
-  "This Month": "This month so far, compared with the same days last month",
-  "This Week": "Last 7 days, compared with the 7 days before",
-  "This Year": "Last 12 months, compared with the 12 months before",
+// Range buttons, and what each one is compared with
+const REVENUE_RANGES = [
+  { value: "This Month", label: "This month", versus: "vs the same days last month" },
+  { value: "7d", label: "7 days", versus: "vs the 7 days before" },
+  { value: "30d", label: "30 days", versus: "vs the 30 days before" },
+  { value: "90d", label: "90 days", versus: "vs the 90 days before" },
+]
+
+const shortMoney = (val) => `£${val >= 1000 ? `${(val / 1000).toFixed(val % 1000 === 0 ? 0 : 1)}k` : Math.round(val)}`
+
+// "Sun, Oct 4" for a "2026-10-04" point
+function tooltipDate(iso, fallback) {
+  const d = new Date(`${iso}T00:00:00`)
+  return Number.isNaN(d.getTime()) ? fallback : d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
+}
+
+// Dark pill: the day's revenue, the date, and last period's figure under it
+function RevenueTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null
+  const point = payload[0].payload
+  return (
+    <div className="rounded-lg bg-foreground px-2.5 py-1.5 text-background shadow-lg">
+      <div className="text-sm font-semibold tabular-nums">{formatGBP(point.revenue)}</div>
+      <div className="text-[11px] opacity-70">{tooltipDate(point.date, point.month)}</div>
+      {point.previous != null && (
+        <div className="mt-0.5 text-[11px] opacity-60 tabular-nums">Before: {formatGBP(point.previous)}</div>
+      )}
+    </div>
+  )
 }
 
 // Small coloured square that sits before each chart title
@@ -52,8 +67,8 @@ function TitleDot({ className }) {
 }
 
 /**
- * Revenue over time: this period as a solid line over a soft fill, the previous period as a dashed
- * line, with the period's total and the change against the same span before. Opens on this month.
+ * Revenue: the chosen range in the theme colour (line over a soft fill, a dot on the latest day), last
+ * period as a faint dashed line, the total and the change against the same span before. Opens on this month.
  */
 export function ChartRevenueOverTime({
   data = [],
@@ -70,65 +85,64 @@ export function ChartRevenueOverTime({
   const previousTotal = displayData.reduce((sum, d) => sum + (d.previous || 0), 0)
   const change = previousTotal > 0 ? ((total - previousTotal) / previousTotal) * 100 : null
   const up = change === null || change >= 0
+  const range = REVENUE_RANGES.find((r) => r.value === timeFilter) || REVENUE_RANGES[0]
+  const lastIndex = displayData.length - 1
 
   return (
     <MotionCard {...cardMotion} className="flex flex-col chart-revenue-privacy relative">
-      <CardHeader className="flex flex-row items-start justify-between gap-3 pb-0">
-        <div className="space-y-1.5">
-          <CardTitle className="text-sm font-medium">Revenue over time</CardTitle>
-          <div className="flex items-center gap-2">
-            <span className="text-3xl font-semibold tracking-tight tabular-nums">{formatGBP(total)}</span>
-            {change !== null && (
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-[11px] font-medium tabular-nums ${
-                  up
-                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-                    : "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400"
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 pb-0">
+        <div className="space-y-0.5">
+          <CardTitle className="text-sm font-semibold">Revenue</CardTitle>
+          <p className="text-xs text-muted-foreground">All orders, cancelled and refunded left out</p>
+        </div>
+        {onTimeFilterChange && (
+          <div className="flex rounded-full bg-muted p-0.5" role="tablist" aria-label="Revenue range">
+            {REVENUE_RANGES.map((r) => (
+              <button
+                key={r.value}
+                type="button"
+                role="tab"
+                aria-selected={r.value === range.value}
+                onClick={() => onTimeFilterChange(r.value)}
+                className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                  r.value === range.value
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="flex w-full flex-wrap items-baseline gap-x-2.5 gap-y-1 pt-1">
+          <span className="text-3xl font-semibold tracking-tight tabular-nums">{formatGBP(total)}</span>
+          {change !== null && (
+            <span className="text-xs text-muted-foreground">
+              <span className={`font-semibold tabular-nums ${up ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
                 {up ? "↑" : "↓"} {Math.abs(change).toFixed(1)}%
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">{RANGE_NOTE[timeFilter] || ""}</p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          {onTimeFilterChange && (
-            <Select value={timeFilter} onValueChange={onTimeFilterChange}>
-              <SelectTrigger size="sm" className="text-xs">
-                <SelectValue placeholder="Range">{RANGE_LABEL[timeFilter] || timeFilter}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="This Month">This month</SelectItem>
-                  <SelectItem value="This Week">Last 7 days</SelectItem>
-                  <SelectItem value="This Year">Last 12 months</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+              </span>{" "}
+              {range.versus}
+            </span>
           )}
-          <div className="hidden items-center gap-3 text-[11px] text-muted-foreground sm:flex">
-            <span className="flex items-center gap-1.5"><span className="h-0.5 w-3.5 rounded-full bg-foreground" />This period</span>
-            <span className="flex items-center gap-1.5"><span className="w-3.5 border-t-2 border-dashed border-muted-foreground" />Previous period</span>
-          </div>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 pt-2">
+      <CardContent className="flex-1 pt-3">
         <ChartContainer config={revenueChartConfig}>
-          <ComposedChart accessibilityLayer data={displayData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
+          <ComposedChart accessibilityLayer data={displayData} margin={{ top: 12, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--foreground)" stopOpacity={0.14} />
-                <stop offset="100%" stopColor="var(--foreground)" stopOpacity={0.02} />
+                <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.32} />
+                <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.04} />
               </linearGradient>
             </defs>
-            <CartesianGrid vertical={false} stroke="var(--border)" />
+            <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.7} />
             <XAxis
               dataKey="month"
               tickLine={false}
               tickMargin={8}
               axisLine={false}
-              minTickGap={16}
+              minTickGap={20}
               tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
             />
             <YAxis
@@ -137,40 +151,35 @@ export function ChartRevenueOverTime({
               axisLine={false}
               tickMargin={6}
               tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
-              tickFormatter={(val) => `£${val >= 1000 ? `${(val / 1000).toFixed(val % 1000 === 0 ? 0 : 1)}k` : val}`}
+              tickFormatter={shortMoney}
             />
-            <ChartTooltip
-              cursor={{ stroke: "var(--border)" }}
-              content={
-                <ChartTooltipContent
-                  formatter={(value, name) => (
-                    <div className="flex items-center justify-between w-full min-w-[150px] gap-2">
-                      <span className="text-muted-foreground">{name === "previous" ? "Previous period" : "This period"}</span>
-                      <span className="font-medium text-foreground tabular-nums">{formatGBP(value)}</span>
-                    </div>
-                  )}
-                />
-              }
-            />
-            <Area
-              type="monotone"
-              dataKey="revenue"
-              stroke="var(--foreground)"
-              strokeWidth={2}
-              fill="url(#revenueFill)"
-              dot={false}
-              activeDot={{ r: 3.5 }}
-              {...CHART_ANIMATION}
-            />
+            <ChartTooltip cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "3 3" }} content={<RevenueTooltip />} />
             <Line
               type="monotone"
               dataKey="previous"
               stroke="var(--muted-foreground)"
-              strokeWidth={1.5}
-              strokeDasharray="5 5"
+              strokeOpacity={0.45}
+              strokeWidth={1.25}
+              strokeDasharray="4 4"
               dot={false}
-              activeDot={{ r: 3 }}
+              activeDot={false}
               connectNulls={false}
+              {...CHART_ANIMATION}
+            />
+            <Area
+              type="monotone"
+              dataKey="revenue"
+              stroke="var(--primary)"
+              strokeWidth={2}
+              fill="url(#revenueFill)"
+              dot={(props) =>
+                props.index === lastIndex ? (
+                  <circle key="last" cx={props.cx} cy={props.cy} r={4} fill="var(--background)" stroke="var(--primary)" strokeWidth={2} />
+                ) : (
+                  <g key={props.index} />
+                )
+              }
+              activeDot={{ r: 4.5, fill: "var(--background)", stroke: "var(--primary)", strokeWidth: 2 }}
               {...CHART_ANIMATION}
             />
           </ComposedChart>

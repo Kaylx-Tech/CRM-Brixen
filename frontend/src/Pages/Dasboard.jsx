@@ -197,7 +197,7 @@ const getTrend = (trendObj, defaultVal = "+0%") => {
 }
 
 // Revenue over time: each point of the chosen range with the same point one period earlier
-const RANGE_SERIES = { "This Month": "orders_daily", "This Week": "orders_weekly", "This Year": "orders_yearly" }
+const RANGE_SERIES = { "This Month": "orders_daily", "7d": "orders_7d", "30d": "orders_30d", "90d": "orders_90d" }
 const toNumber = (v) => (typeof v === 'number' ? v : (parseFloat(v) || 0))
 const formatBarChartData = (charts, filter) => {
   const key = RANGE_SERIES[filter]
@@ -205,6 +205,7 @@ const formatBarChartData = (charts, filter) => {
   const previous = Array.isArray(charts[`${key}_prev`]) ? charts[`${key}_prev`] : []
   return charts[key].map((d, i) => ({
     month: d.label,
+    date: d.date,
     revenue: toNumber(d.revenue),
     previous: previous[i]?.revenue == null ? null : toNumber(previous[i].revenue),
     orders: d.cnt || 0,
