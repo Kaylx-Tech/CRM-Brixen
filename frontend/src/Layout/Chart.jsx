@@ -26,7 +26,7 @@ const MotionCard = m.create(Card)
 const cardMotion = { variants: fadeUp, initial: "hidden", animate: "show" }
 
 const revenueChartConfig = {
-  revenue: { label: "Revenue", color: "var(--foreground)" },
+  revenue: { label: "Revenue", color: "var(--primary)" },
 }
 
 // Range buttons, and what each one is compared with
@@ -43,6 +43,38 @@ const shortMoney = (val) => `£${val >= 1000 ? `${(val / 1000).toFixed(val % 100
 function tooltipDate(iso, fallback) {
   const d = new Date(`${iso}T00:00:00`)
   return Number.isNaN(d.getTime()) ? fallback : d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
+}
+
+// Dots on the revenue line: a pulsing ring on the latest day and a small "Best day" tag on the peak
+const reduceMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+
+function RevenueDot({ cx, cy, index, lastIndex, peakIndex, payload }) {
+  if (cx == null || cy == null) return <g />
+  if (index === lastIndex) {
+    return (
+      <g>
+        {!reduceMotion() && (
+          <circle cx={cx} cy={cy} r={5} fill="var(--primary)" opacity={0.35}>
+            <animate attributeName="r" values="5;13;5" dur="2.4s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.35;0;0.35" dur="2.4s" repeatCount="indefinite" />
+          </circle>
+        )}
+        <circle cx={cx} cy={cy} r={5} fill="var(--primary)" stroke="var(--background)" strokeWidth={2} />
+      </g>
+    )
+  }
+  if (index === peakIndex && (payload?.revenue || 0) > 0) {
+    const label = `Best day · ${shortMoney(payload.revenue)}`
+    const w = label.length * 5.6 + 14
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={3.5} fill="var(--background)" stroke="var(--primary)" strokeWidth={2} />
+        <rect x={cx - w / 2} y={cy - 27} width={w} height={18} rx={9} fill="var(--primary)" />
+        <text x={cx} y={cy - 14.5} textAnchor="middle" fontSize={10} fontWeight={600} fill="var(--primary-foreground)">{label}</text>
+      </g>
+    )
+  }
+  return <g />
 }
 
 // Dark pill: the day's revenue and the date
@@ -63,8 +95,9 @@ function TitleDot({ className }) {
 }
 
 /**
- * Revenue: a dark line over a flat fill in the theme colour, a dot on the latest day, the total and the
- * change against the same span before. Opens on this month.
+ * Revenue: a glowing theme-colour line that deepens towards today over a fading wash, a pulsing dot on
+ * the latest day and a "Best day" tag on the peak, with the total and the change against the same span
+ * before. Opens on this month.
  */
 export function ChartRevenueOverTime({
   data = [],
@@ -83,6 +116,8 @@ export function ChartRevenueOverTime({
   const up = change === null || change >= 0
   const range = REVENUE_RANGES.find((r) => r.value === timeFilter) || REVENUE_RANGES[0]
   const lastIndex = displayData.length - 1
+  // The best day gets a small label (only when there was some revenue)
+  const peakIndex = displayData.reduce((best, d, i) => ((d.revenue || 0) > (displayData[best]?.revenue || 0) ? i : best), 0)
 
   return (
     <MotionCard {...cardMotion} className="flex flex-col chart-revenue-privacy relative">
@@ -125,14 +160,28 @@ export function ChartRevenueOverTime({
       </CardHeader>
       <CardContent className="flex-1 pt-3">
         <ChartContainer config={revenueChartConfig}>
-          <AreaChart accessibilityLayer data={displayData} margin={{ top: 12, right: 10, left: 0, bottom: 0 }}>
+          <AreaChart accessibilityLayer data={displayData} margin={{ top: 28, right: 14, left: 0, bottom: 0 }}>
             <defs>
+              {/* Soft wash under the line, fading to nothing */}
               <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.22} />
+                <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.28} />
+                <stop offset="70%" stopColor="var(--primary)" stopOpacity={0.06} />
+                <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
               </linearGradient>
+              {/* The line deepens towards today */}
+              <linearGradient id="revenueStroke" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="var(--primary)" stopOpacity={1} />
+              </linearGradient>
+              <filter id="revenueGlow" x="-5%" y="-30%" width="110%" height="160%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
             </defs>
-            <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.7} />
+            <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="2 6" />
             <XAxis
               dataKey="month"
               tickLine={false}
@@ -149,21 +198,19 @@ export function ChartRevenueOverTime({
               tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
               tickFormatter={shortMoney}
             />
-            <ChartTooltip cursor={{ stroke: "var(--foreground)", strokeOpacity: 0.25 }} content={<RevenueTooltip />} />
+            <ChartTooltip cursor={{ stroke: "var(--primary)", strokeOpacity: 0.45, strokeDasharray: "3 4" }} content={<RevenueTooltip />} />
+            <Area type="monotone" dataKey="revenue" stroke="none" fill="url(#revenueFill)" activeDot={false} {...CHART_ANIMATION} />
             <Area
               type="monotone"
               dataKey="revenue"
-              stroke="var(--foreground)"
-              strokeWidth={2}
-              fill="url(#revenueFill)"
-              dot={(props) =>
-                props.index === lastIndex ? (
-                  <circle key="last" cx={props.cx} cy={props.cy} r={4.5} fill="var(--primary)" stroke="var(--foreground)" strokeWidth={1.5} />
-                ) : (
-                  <g key={props.index} />
-                )
-              }
-              activeDot={{ r: 4.5, fill: "var(--primary)", stroke: "var(--foreground)", strokeWidth: 1.5 }}
+              stroke="url(#revenueStroke)"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              fill="none"
+              filter="url(#revenueGlow)"
+              dot={(props) => <RevenueDot key={props.index} {...props} lastIndex={lastIndex} peakIndex={peakIndex} />}
+              activeDot={{ r: 5, fill: "var(--background)", stroke: "var(--primary)", strokeWidth: 2.5 }}
+              tooltipType="none"
               {...CHART_ANIMATION}
             />
           </AreaChart>
