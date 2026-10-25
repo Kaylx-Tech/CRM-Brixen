@@ -241,6 +241,24 @@ def handle_catalog_routes(environ, start_response, path, method, user, body, que
 
         return success_response(start_response, message=f"Successfully deleted {deleted} service(s).", data={"deleted": deleted})
 
+    # ── POST /api/catalog/services/import-starter (ready-made services, no prices) ──
+    if path in ('/api/catalog/services/import-starter', '/api/admin/services/import-starter') and method == 'POST':
+        denied = _require_staff()
+        if denied:
+            return denied
+        if user.get('role') not in ('SUPER_ADMIN', 'ADMIN'):
+            return error_response(start_response, "Only an admin can add services.", 403)
+        try:
+            from services.starter_catalog import import_starter_catalog
+            added, skipped = import_starter_catalog()
+        except Exception as e:
+            return error_response(start_response, f"Could not import the starter catalog: {str(e)}", 500)
+        if added:
+            message = f"Added {added} starter service(s). Set a price on each before taking orders."
+        else:
+            message = "You already have every starter service."
+        return success_response(start_response, message=message, data={"added": added, "skipped": skipped})
+
     # ── PUT/PATCH/DELETE /api/catalog/services/<id> and /api/admin/services/<id>
     match_svc = re.match(r'^/api/(?:catalog/services|admin/services)/(\d+)$', path)
     if match_svc and method in ('PUT', 'PATCH', 'DELETE'):

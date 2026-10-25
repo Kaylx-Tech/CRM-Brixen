@@ -457,6 +457,12 @@ def create_tenant(company_name, slug, owner_name, owner_email, password):
                 VALUES (?, ?, ?, 'SUPER_ADMIN', 'Active');
             """, (owner_email, hash_password(password), owner_name))
             seed_workspace_settings(tenant)
+            try:
+                from services.starter_catalog import import_starter_catalog
+                import_starter_catalog()
+            except Exception as exc:
+                # The workspace still works without it; the admin can import it from Services
+                print(f"[Tenancy] Starter catalog for '{slug}' was not added: {exc}")
     except Exception as exc:
         # Keep the file for inspection; the workspace just never goes Active
         _platform_execute("UPDATE tenants SET status = 'Failed', updated_at = datetime('now') WHERE id = ?;",

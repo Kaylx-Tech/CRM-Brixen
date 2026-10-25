@@ -35,7 +35,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { IconPlus, IconDotsVertical, IconLoader2, IconTag, IconCrown } from "@tabler/icons-react";
+import { IconPlus, IconDotsVertical, IconLoader2, IconTag, IconCrown, IconCategoryPlus } from "@tabler/icons-react";
 import { SectionCards } from "../../Layout/StatsCard";
 import { toast } from "sonner";
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api";
@@ -259,6 +259,36 @@ const Services = () => {
     });
   };
 
+  // ── Import the ready-made starter services (no prices; existing names are skipped) ──
+  const [isImporting, setIsImporting] = useState(false);
+  const importStarterCatalog = async () => {
+    setIsImporting(true);
+    const toastId = toastProcessing("Adding starter services…");
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || "/api";
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${apiUrl}/catalog/services/import-starter`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({}),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toastDone(toastId, json.message || "Starter services added");
+        fetchServices();
+      } else {
+        toastFail(toastId, json.message || json.error || "Could not import the starter catalog");
+      }
+    } catch (error) {
+      toastFail(toastId, "Network error: " + error.message);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   // ── Confirm Bulk Delete (optimistic + Undo) ──
   const confirmBulkDelete = () => {
     if (!bulkDeleteRows || bulkDeleteRows.length === 0) return;
@@ -448,10 +478,20 @@ const Services = () => {
         </div>
 
         {canManageCatalog && (
-          <Button onClick={() => setIsAddOpen(true)}>
-            <IconPlus className="mr-2 h-4 w-4" />
-            Add Service
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={importStarterCatalog} disabled={isImporting}>
+              {isImporting ? (
+                <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <IconCategoryPlus className="mr-2 h-4 w-4" />
+              )}
+              Import starter catalog
+            </Button>
+            <Button onClick={() => setIsAddOpen(true)}>
+              <IconPlus className="mr-2 h-4 w-4" />
+              Add Service
+            </Button>
+          </div>
         )}
         <AddService
           isOpen={isAddOpen}

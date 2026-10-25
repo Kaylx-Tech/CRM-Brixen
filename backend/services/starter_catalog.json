@@ -1,0 +1,3427 @@
+[
+  {
+    "name": "Same Day Incorporation",
+    "category": "Solutions",
+    "description": "Register a new UK limited company with Companies House on the same working day.",
+    "estimated_delivery_time": "Same Day",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "proposed_company_name",
+        "label": "Proposed company name",
+        "type": "company_name",
+        "required": true,
+        "placeholder": "e.g. ACME ENTERPRISES LIMITED"
+      },
+      {
+        "id": "company_type",
+        "label": "Company Structure / Type",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "Private Limited Company by Shares (LTD)",
+          "Limited Liability Partnership (LLP)",
+          "Public Limited Company (PLC)",
+          "Company Limited by Guarantee",
+          "Sole Trader / Partnership"
+        ]
+      },
+      {
+        "id": "sic_code",
+        "label": "SIC Code / Business Activity",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "62020 - Information technology consultancy activities",
+          "70229 - Management consultancy activities",
+          "68209 - Letting and operating of real estate",
+          "47910 - E-Commerce / Online Retail",
+          "82990 - General Business Support Services",
+          "Other Business Activity"
+        ]
+      },
+      {
+        "id": "has_existing_company",
+        "label": "Do you already have a registered company number?",
+        "type": "radio",
+        "required": false,
+        "placeholder": "",
+        "options": [
+          "NO",
+          "YES"
+        ],
+        "option_fields": [
+          [],
+          [
+            {
+              "id": "company_number",
+              "label": "Companies House Company Number",
+              "type": "text",
+              "required": false,
+              "placeholder": "e.g. 12345678"
+            }
+          ]
+        ]
+      },
+      {
+        "id": "registered_office_address",
+        "label": "Registered Office Address",
+        "type": "text",
+        "required": true,
+        "placeholder": "Address Line 1, City, Postcode, Country"
+      },
+      {
+        "id": "full_name",
+        "label": "Director 1 – Full Name",
+        "type": "text",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "email",
+        "label": "Director 1 – Email Address",
+        "type": "text",
+        "required": true,
+        "placeholder": "name@example.com"
+      },
+      {
+        "id": "phone",
+        "label": "Director 1 – Phone Number",
+        "type": "text",
+        "required": false,
+        "placeholder": "e.g. +44 7700 900000"
+      },
+      {
+        "id": "dob",
+        "label": "Director 1 – Date of Birth",
+        "type": "text",
+        "required": true,
+        "placeholder": "DD/MM/YYYY"
+      },
+      {
+        "id": "nationality",
+        "label": "Director 1 – Nationality",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. British / Pakistani"
+      },
+      {
+        "id": "country_of_residence",
+        "label": "Director 1 – Country of Residence",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. United Kingdom"
+      },
+      {
+        "id": "residential_address",
+        "label": "Director 1 – Residential Address",
+        "type": "text",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "add_second_director",
+        "label": "Add a second director",
+        "type": "checkbox",
+        "required": false,
+        "placeholder": "",
+        "fields": [
+          {
+            "id": "full_name_2",
+            "label": "Director 2 – Full Name",
+            "type": "text",
+            "required": true,
+            "placeholder": ""
+          },
+          {
+            "id": "email_2",
+            "label": "Director 2 – Email Address",
+            "type": "text",
+            "required": true,
+            "placeholder": "name@example.com"
+          },
+          {
+            "id": "phone_2",
+            "label": "Director 2 – Phone Number",
+            "type": "text",
+            "required": false,
+            "placeholder": "e.g. +44 7700 900000"
+          },
+          {
+            "id": "dob_2",
+            "label": "Director 2 – Date of Birth",
+            "type": "text",
+            "required": true,
+            "placeholder": "DD/MM/YYYY"
+          },
+          {
+            "id": "nationality_2",
+            "label": "Director 2 – Nationality",
+            "type": "text",
+            "required": true,
+            "placeholder": "e.g. British / Pakistani"
+          },
+          {
+            "id": "country_of_residence_2",
+            "label": "Director 2 – Country of Residence",
+            "type": "text",
+            "required": true,
+            "placeholder": "e.g. United Kingdom"
+          },
+          {
+            "id": "residential_address_2",
+            "label": "Director 2 – Residential Address",
+            "type": "text",
+            "required": true,
+            "placeholder": ""
+          }
+        ]
+      },
+      {
+        "id": "full_name_3",
+        "label": "Shareholder 1 – Name",
+        "type": "text",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "number_of_shares",
+        "label": "Shareholder 1 – Number of Shares",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. 100"
+      },
+      {
+        "id": "share_class",
+        "label": "Shareholder 1 – Share Class",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. Ordinary £1.00"
+      },
+      {
+        "id": "currency",
+        "label": "Shareholder 1 – Currency",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "GBP (£)",
+          "USD ($)",
+          "EUR (€)"
+        ]
+      },
+      {
+        "id": "add_second_shareholder",
+        "label": "Add a second shareholder",
+        "type": "checkbox",
+        "required": false,
+        "placeholder": "",
+        "fields": [
+          {
+            "id": "full_name_4",
+            "label": "Shareholder 2 – Name",
+            "type": "text",
+            "required": true,
+            "placeholder": ""
+          },
+          {
+            "id": "number_of_shares_2",
+            "label": "Shareholder 2 – Number of Shares",
+            "type": "text",
+            "required": true,
+            "placeholder": "e.g. 100"
+          },
+          {
+            "id": "share_class_2",
+            "label": "Shareholder 2 – Share Class",
+            "type": "text",
+            "required": true,
+            "placeholder": "e.g. Ordinary £1.00"
+          },
+          {
+            "id": "currency_2",
+            "label": "Shareholder 2 – Currency",
+            "type": "radio",
+            "required": true,
+            "placeholder": "",
+            "options": [
+              "GBP (£)",
+              "USD ($)",
+              "EUR (€)"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Digital Package",
+    "category": "Digital",
+    "description": "Company formation with a business bank account and a digital starter setup.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "12 Months",
+    "renewal_period": "Annual",
+    "form_fields": [
+      {
+        "id": "proposed_company_name",
+        "label": "Proposed company name",
+        "type": "company_name",
+        "required": true,
+        "placeholder": "e.g. ACME ENTERPRISES LIMITED"
+      },
+      {
+        "id": "company_type",
+        "label": "Company Structure / Type",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "Private Limited Company by Shares (LTD)",
+          "Limited Liability Partnership (LLP)",
+          "Public Limited Company (PLC)",
+          "Company Limited by Guarantee",
+          "Sole Trader / Partnership"
+        ]
+      },
+      {
+        "id": "sic_code",
+        "label": "SIC Code / Business Activity",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "62020 - Information technology consultancy activities",
+          "70229 - Management consultancy activities",
+          "68209 - Letting and operating of real estate",
+          "47910 - E-Commerce / Online Retail",
+          "82990 - General Business Support Services",
+          "Other Business Activity"
+        ]
+      },
+      {
+        "id": "has_existing_company",
+        "label": "Do you already have a registered company number?",
+        "type": "radio",
+        "required": false,
+        "placeholder": "",
+        "options": [
+          "NO",
+          "YES"
+        ],
+        "option_fields": [
+          [],
+          [
+            {
+              "id": "company_number",
+              "label": "Companies House Company Number",
+              "type": "text",
+              "required": false,
+              "placeholder": "e.g. 12345678"
+            }
+          ]
+        ]
+      },
+      {
+        "id": "registered_office_address",
+        "label": "Registered Office Address",
+        "type": "text",
+        "required": true,
+        "placeholder": "Address Line 1, City, Postcode, Country"
+      },
+      {
+        "id": "full_name",
+        "label": "Director 1 – Full Name",
+        "type": "text",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "email",
+        "label": "Director 1 – Email Address",
+        "type": "text",
+        "required": true,
+        "placeholder": "name@example.com"
+      },
+      {
+        "id": "phone",
+        "label": "Director 1 – Phone Number",
+        "type": "text",
+        "required": false,
+        "placeholder": "e.g. +44 7700 900000"
+      },
+      {
+        "id": "dob",
+        "label": "Director 1 – Date of Birth",
+        "type": "text",
+        "required": true,
+        "placeholder": "DD/MM/YYYY"
+      },
+      {
+        "id": "nationality",
+        "label": "Director 1 – Nationality",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. British / Pakistani"
+      },
+      {
+        "id": "country_of_residence",
+        "label": "Director 1 – Country of Residence",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. United Kingdom"
+      },
+      {
+        "id": "residential_address",
+        "label": "Director 1 – Residential Address",
+        "type": "text",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "add_second_director",
+        "label": "Add a second director",
+        "type": "checkbox",
+        "required": false,
+        "placeholder": "",
+        "fields": [
+          {
+            "id": "full_name_2",
+            "label": "Director 2 – Full Name",
+            "type": "text",
+            "required": true,
+            "placeholder": ""
+          },
+          {
+            "id": "email_2",
+            "label": "Director 2 – Email Address",
+            "type": "text",
+            "required": true,
+            "placeholder": "name@example.com"
+          },
+          {
+            "id": "phone_2",
+            "label": "Director 2 – Phone Number",
+            "type": "text",
+            "required": false,
+            "placeholder": "e.g. +44 7700 900000"
+          },
+          {
+            "id": "dob_2",
+            "label": "Director 2 – Date of Birth",
+            "type": "text",
+            "required": true,
+            "placeholder": "DD/MM/YYYY"
+          },
+          {
+            "id": "nationality_2",
+            "label": "Director 2 – Nationality",
+            "type": "text",
+            "required": true,
+            "placeholder": "e.g. British / Pakistani"
+          },
+          {
+            "id": "country_of_residence_2",
+            "label": "Director 2 – Country of Residence",
+            "type": "text",
+            "required": true,
+            "placeholder": "e.g. United Kingdom"
+          },
+          {
+            "id": "residential_address_2",
+            "label": "Director 2 – Residential Address",
+            "type": "text",
+            "required": true,
+            "placeholder": ""
+          }
+        ]
+      },
+      {
+        "id": "full_name_3",
+        "label": "Shareholder 1 – Name",
+        "type": "text",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "number_of_shares",
+        "label": "Shareholder 1 – Number of Shares",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. 100"
+      },
+      {
+        "id": "share_class",
+        "label": "Shareholder 1 – Share Class",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. Ordinary £1.00"
+      },
+      {
+        "id": "currency",
+        "label": "Shareholder 1 – Currency",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "GBP (£)",
+          "USD ($)",
+          "EUR (€)"
+        ]
+      },
+      {
+        "id": "add_second_shareholder",
+        "label": "Add a second shareholder",
+        "type": "checkbox",
+        "required": false,
+        "placeholder": "",
+        "fields": [
+          {
+            "id": "full_name_4",
+            "label": "Shareholder 2 – Name",
+            "type": "text",
+            "required": true,
+            "placeholder": ""
+          },
+          {
+            "id": "number_of_shares_2",
+            "label": "Shareholder 2 – Number of Shares",
+            "type": "text",
+            "required": true,
+            "placeholder": "e.g. 100"
+          },
+          {
+            "id": "share_class_2",
+            "label": "Shareholder 2 – Share Class",
+            "type": "text",
+            "required": true,
+            "placeholder": "e.g. Ordinary £1.00"
+          },
+          {
+            "id": "currency_2",
+            "label": "Shareholder 2 – Currency",
+            "type": "radio",
+            "required": true,
+            "placeholder": "",
+            "options": [
+              "GBP (£)",
+              "USD ($)",
+              "EUR (€)"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Professional Package",
+    "category": "Professional",
+    "description": "Company formation with registered office, director service address and business bank support.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "12 Months",
+    "renewal_period": "Annual",
+    "form_fields": [
+      {
+        "id": "proposed_company_name",
+        "label": "Proposed company name",
+        "type": "company_name",
+        "required": true,
+        "placeholder": "e.g. ACME ENTERPRISES LIMITED"
+      },
+      {
+        "id": "company_type",
+        "label": "Company Structure / Type",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "Private Limited Company by Shares (LTD)",
+          "Limited Liability Partnership (LLP)",
+          "Public Limited Company (PLC)",
+          "Company Limited by Guarantee",
+          "Sole Trader / Partnership"
+        ]
+      },
+      {
+        "id": "sic_code",
+        "label": "SIC Code / Business Activity",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "62020 - Information technology consultancy activities",
+          "70229 - Management consultancy activities",
+          "68209 - Letting and operating of real estate",
+          "47910 - E-Commerce / Online Retail",
+          "82990 - General Business Support Services",
+          "Other Business Activity"
+        ]
+      },
+      {
+        "id": "has_existing_company",
+        "label": "Do you already have a registered company number?",
+        "type": "radio",
+        "required": false,
+        "placeholder": "",
+        "options": [
+          "NO",
+          "YES"
+        ],
+        "option_fields": [
+          [],
+          [
+            {
+              "id": "company_number",
+              "label": "Companies House Company Number",
+              "type": "text",
+              "required": false,
+              "placeholder": "e.g. 12345678"
+            }
+          ]
+        ]
+      },
+      {
+        "id": "registered_office_address",
+        "label": "Registered Office Address",
+        "type": "text",
+        "required": true,
+        "placeholder": "Address Line 1, City, Postcode, Country"
+      },
+      {
+        "id": "full_name",
+        "label": "Director 1 – Full Name",
+        "type": "text",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "email",
+        "label": "Director 1 – Email Address",
+        "type": "text",
+        "required": true,
+        "placeholder": "name@example.com"
+      },
+      {
+        "id": "phone",
+        "label": "Director 1 – Phone Number",
+        "type": "text",
+        "required": false,
+        "placeholder": "e.g. +44 7700 900000"
+      },
+      {
+        "id": "dob",
+        "label": "Director 1 – Date of Birth",
+        "type": "text",
+        "required": true,
+        "placeholder": "DD/MM/YYYY"
+      },
+      {
+        "id": "nationality",
+        "label": "Director 1 – Nationality",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. British / Pakistani"
+      },
+      {
+        "id": "country_of_residence",
+        "label": "Director 1 – Country of Residence",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. United Kingdom"
+      },
+      {
+        "id": "residential_address",
+        "label": "Director 1 – Residential Address",
+        "type": "text",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "add_second_director",
+        "label": "Add a second director",
+        "type": "checkbox",
+        "required": false,
+        "placeholder": "",
+        "fields": [
+          {
+            "id": "full_name_2",
+            "label": "Director 2 – Full Name",
+            "type": "text",
+            "required": true,
+            "placeholder": ""
+          },
+          {
+            "id": "email_2",
+            "label": "Director 2 – Email Address",
+            "type": "text",
+            "required": true,
+            "placeholder": "name@example.com"
+          },
+          {
+            "id": "phone_2",
+            "label": "Director 2 – Phone Number",
+            "type": "text",
+            "required": false,
+            "placeholder": "e.g. +44 7700 900000"
+          },
+          {
+            "id": "dob_2",
+            "label": "Director 2 – Date of Birth",
+            "type": "text",
+            "required": true,
+            "placeholder": "DD/MM/YYYY"
+          },
+          {
+            "id": "nationality_2",
+            "label": "Director 2 – Nationality",
+            "type": "text",
+            "required": true,
+            "placeholder": "e.g. British / Pakistani"
+          },
+          {
+            "id": "country_of_residence_2",
+            "label": "Director 2 – Country of Residence",
+            "type": "text",
+            "required": true,
+            "placeholder": "e.g. United Kingdom"
+          },
+          {
+            "id": "residential_address_2",
+            "label": "Director 2 – Residential Address",
+            "type": "text",
+            "required": true,
+            "placeholder": ""
+          }
+        ]
+      },
+      {
+        "id": "full_name_3",
+        "label": "Shareholder 1 – Name",
+        "type": "text",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "number_of_shares",
+        "label": "Shareholder 1 – Number of Shares",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. 100"
+      },
+      {
+        "id": "share_class",
+        "label": "Shareholder 1 – Share Class",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. Ordinary £1.00"
+      },
+      {
+        "id": "currency",
+        "label": "Shareholder 1 – Currency",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "GBP (£)",
+          "USD ($)",
+          "EUR (€)"
+        ]
+      },
+      {
+        "id": "add_second_shareholder",
+        "label": "Add a second shareholder",
+        "type": "checkbox",
+        "required": false,
+        "placeholder": "",
+        "fields": [
+          {
+            "id": "full_name_4",
+            "label": "Shareholder 2 – Name",
+            "type": "text",
+            "required": true,
+            "placeholder": ""
+          },
+          {
+            "id": "number_of_shares_2",
+            "label": "Shareholder 2 – Number of Shares",
+            "type": "text",
+            "required": true,
+            "placeholder": "e.g. 100"
+          },
+          {
+            "id": "share_class_2",
+            "label": "Shareholder 2 – Share Class",
+            "type": "text",
+            "required": true,
+            "placeholder": "e.g. Ordinary £1.00"
+          },
+          {
+            "id": "currency_2",
+            "label": "Shareholder 2 – Currency",
+            "type": "radio",
+            "required": true,
+            "placeholder": "",
+            "options": [
+              "GBP (£)",
+              "USD ($)",
+              "EUR (€)"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "All Inclusive",
+    "category": "Professional",
+    "description": "Complete company formation package: addresses, bank account, website, email and compliance setup.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "12 Months",
+    "renewal_period": "Annual",
+    "form_fields": [
+      {
+        "id": "proposed_company_name",
+        "label": "Proposed company name",
+        "type": "company_name",
+        "required": true,
+        "placeholder": "e.g. ACME ENTERPRISES LIMITED"
+      },
+      {
+        "id": "company_type",
+        "label": "Company Structure / Type",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "Private Limited Company by Shares (LTD)",
+          "Limited Liability Partnership (LLP)",
+          "Public Limited Company (PLC)",
+          "Company Limited by Guarantee",
+          "Sole Trader / Partnership"
+        ]
+      },
+      {
+        "id": "sic_code",
+        "label": "SIC Code / Business Activity",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "62020 - Information technology consultancy activities",
+          "70229 - Management consultancy activities",
+          "68209 - Letting and operating of real estate",
+          "47910 - E-Commerce / Online Retail",
+          "82990 - General Business Support Services",
+          "Other Business Activity"
+        ]
+      },
+      {
+        "id": "has_existing_company",
+        "label": "Do you already have a registered company number?",
+        "type": "radio",
+        "required": false,
+        "placeholder": "",
+        "options": [
+          "NO",
+          "YES"
+        ],
+        "option_fields": [
+          [],
+          [
+            {
+              "id": "company_number",
+              "label": "Companies House Company Number",
+              "type": "text",
+              "required": false,
+              "placeholder": "e.g. 12345678"
+            }
+          ]
+        ]
+      },
+      {
+        "id": "registered_office_address",
+        "label": "Registered Office Address",
+        "type": "text",
+        "required": true,
+        "placeholder": "Address Line 1, City, Postcode, Country"
+      },
+      {
+        "id": "full_name",
+        "label": "Director 1 – Full Name",
+        "type": "text",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "email",
+        "label": "Director 1 – Email Address",
+        "type": "text",
+        "required": true,
+        "placeholder": "name@example.com"
+      },
+      {
+        "id": "phone",
+        "label": "Director 1 – Phone Number",
+        "type": "text",
+        "required": false,
+        "placeholder": "e.g. +44 7700 900000"
+      },
+      {
+        "id": "dob",
+        "label": "Director 1 – Date of Birth",
+        "type": "text",
+        "required": true,
+        "placeholder": "DD/MM/YYYY"
+      },
+      {
+        "id": "nationality",
+        "label": "Director 1 – Nationality",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. British / Pakistani"
+      },
+      {
+        "id": "country_of_residence",
+        "label": "Director 1 – Country of Residence",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. United Kingdom"
+      },
+      {
+        "id": "residential_address",
+        "label": "Director 1 – Residential Address",
+        "type": "text",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "add_second_director",
+        "label": "Add a second director",
+        "type": "checkbox",
+        "required": false,
+        "placeholder": "",
+        "fields": [
+          {
+            "id": "full_name_2",
+            "label": "Director 2 – Full Name",
+            "type": "text",
+            "required": true,
+            "placeholder": ""
+          },
+          {
+            "id": "email_2",
+            "label": "Director 2 – Email Address",
+            "type": "text",
+            "required": true,
+            "placeholder": "name@example.com"
+          },
+          {
+            "id": "phone_2",
+            "label": "Director 2 – Phone Number",
+            "type": "text",
+            "required": false,
+            "placeholder": "e.g. +44 7700 900000"
+          },
+          {
+            "id": "dob_2",
+            "label": "Director 2 – Date of Birth",
+            "type": "text",
+            "required": true,
+            "placeholder": "DD/MM/YYYY"
+          },
+          {
+            "id": "nationality_2",
+            "label": "Director 2 – Nationality",
+            "type": "text",
+            "required": true,
+            "placeholder": "e.g. British / Pakistani"
+          },
+          {
+            "id": "country_of_residence_2",
+            "label": "Director 2 – Country of Residence",
+            "type": "text",
+            "required": true,
+            "placeholder": "e.g. United Kingdom"
+          },
+          {
+            "id": "residential_address_2",
+            "label": "Director 2 – Residential Address",
+            "type": "text",
+            "required": true,
+            "placeholder": ""
+          }
+        ]
+      },
+      {
+        "id": "full_name_3",
+        "label": "Shareholder 1 – Name",
+        "type": "text",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "number_of_shares",
+        "label": "Shareholder 1 – Number of Shares",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. 100"
+      },
+      {
+        "id": "share_class",
+        "label": "Shareholder 1 – Share Class",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. Ordinary £1.00"
+      },
+      {
+        "id": "currency",
+        "label": "Shareholder 1 – Currency",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "GBP (£)",
+          "USD ($)",
+          "EUR (€)"
+        ]
+      },
+      {
+        "id": "add_second_shareholder",
+        "label": "Add a second shareholder",
+        "type": "checkbox",
+        "required": false,
+        "placeholder": "",
+        "fields": [
+          {
+            "id": "full_name_4",
+            "label": "Shareholder 2 – Name",
+            "type": "text",
+            "required": true,
+            "placeholder": ""
+          },
+          {
+            "id": "number_of_shares_2",
+            "label": "Shareholder 2 – Number of Shares",
+            "type": "text",
+            "required": true,
+            "placeholder": "e.g. 100"
+          },
+          {
+            "id": "share_class_2",
+            "label": "Shareholder 2 – Share Class",
+            "type": "text",
+            "required": true,
+            "placeholder": "e.g. Ordinary £1.00"
+          },
+          {
+            "id": "currency_2",
+            "label": "Shareholder 2 – Currency",
+            "type": "radio",
+            "required": true,
+            "placeholder": "",
+            "options": [
+              "GBP (£)",
+              "USD ($)",
+              "EUR (€)"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Registered Office Address",
+    "category": "Forms",
+    "description": "A registered office address for Companies House, with official mail scanned and forwarded.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "12 Months",
+    "renewal_period": "Annual",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "contact_person",
+        "label": "Primary Contact Person",
+        "type": "text",
+        "required": true,
+        "placeholder": "Full Name"
+      },
+      {
+        "id": "forwarding_email",
+        "label": "Official Notification & Scan Forwarding Email",
+        "type": "text",
+        "required": true,
+        "placeholder": "contact@company.co.uk"
+      }
+    ],
+    "document_requirements": []
+  },
+  {
+    "name": "Directors Service Address",
+    "category": "Forms",
+    "description": "A service address for directors so their home address stays off the public register.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "12 Months",
+    "renewal_period": "Annual",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "cs_period",
+        "label": "Confirmation Statement Due Date / Period",
+        "type": "text",
+        "required": true,
+        "placeholder": "DD/MM/YYYY"
+      },
+      {
+        "id": "has_capital_changes",
+        "label": "Any changes to officers, share capital, or PSCs in the last 12 months?",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "NO",
+          "YES"
+        ],
+        "option_fields": [
+          [],
+          [
+            {
+              "id": "changes_details",
+              "label": "Details of Changes to Report",
+              "type": "text",
+              "required": false,
+              "placeholder": "Describe any director, address, or shareholder changes..."
+            }
+          ]
+        ]
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Business Mail Forwarding Address",
+    "category": "Forms",
+    "description": "A business mailing address with letters scanned or forwarded to the client.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "12 Months",
+    "renewal_period": "Annual",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "forwarding_frequency",
+        "label": "Scan & Mail Forwarding Frequency",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "Daily Digital Scan",
+          "Weekly Mail Forwarding",
+          "Monthly Digest"
+        ]
+      },
+      {
+        "id": "forwarding_physical_address",
+        "label": "Physical Mail Delivery Address",
+        "type": "text",
+        "required": true,
+        "placeholder": "Address Line 1, City, Postcode, Country"
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Company Secretary Service",
+    "category": "Forms",
+    "description": "Ongoing company secretarial support: statutory registers, filings and Companies House updates.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "12 Months",
+    "renewal_period": "Annual",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "service_notes",
+        "label": "Instructions for Company Secretary Service",
+        "type": "text",
+        "required": false,
+        "placeholder": "Anything the fulfilment team needs to complete this order..."
+      }
+    ],
+    "document_requirements": []
+  },
+  {
+    "name": "Confirmation Statement Service",
+    "category": "Forms",
+    "description": "Prepare and file the company's annual confirmation statement with Companies House.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "One-off",
+    "renewal_period": "Annual",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "cs_period",
+        "label": "Confirmation Statement Due Date / Period",
+        "type": "text",
+        "required": true,
+        "placeholder": "DD/MM/YYYY"
+      },
+      {
+        "id": "has_capital_changes",
+        "label": "Any changes to officers, share capital, or PSCs in the last 12 months?",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "NO",
+          "YES"
+        ],
+        "option_fields": [
+          [],
+          [
+            {
+              "id": "changes_details",
+              "label": "Details of Changes to Report",
+              "type": "text",
+              "required": false,
+              "placeholder": "Describe any director, address, or shareholder changes..."
+            }
+          ]
+        ]
+      },
+      {
+        "id": "cs_supporting_doc",
+        "label": "Previous Confirmation Statement / Accounts",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "cs_supporting_doc",
+        "name": "Previous Confirmation Statement / Accounts",
+        "description": "Optional prior year filing copy.",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Dormant company accounts service",
+    "category": "Forms",
+    "description": "Prepare and file dormant company accounts with Companies House.",
+    "estimated_delivery_time": "3-5 Working Days",
+    "duration": "One-off",
+    "renewal_period": "Annual",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "cs_period",
+        "label": "Confirmation Statement Due Date / Period",
+        "type": "text",
+        "required": true,
+        "placeholder": "DD/MM/YYYY"
+      },
+      {
+        "id": "has_capital_changes",
+        "label": "Any changes to officers, share capital, or PSCs in the last 12 months?",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "NO",
+          "YES"
+        ],
+        "option_fields": [
+          [],
+          [
+            {
+              "id": "changes_details",
+              "label": "Details of Changes to Report",
+              "type": "text",
+              "required": false,
+              "placeholder": "Describe any director, address, or shareholder changes..."
+            }
+          ]
+        ]
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Directors Appointment or Resignation",
+    "category": "Forms",
+    "description": "Appoint a new director or file a director's resignation at Companies House.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "cs_period",
+        "label": "Confirmation Statement Due Date / Period",
+        "type": "text",
+        "required": true,
+        "placeholder": "DD/MM/YYYY"
+      },
+      {
+        "id": "has_capital_changes",
+        "label": "Any changes to officers, share capital, or PSCs in the last 12 months?",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "NO",
+          "YES"
+        ],
+        "option_fields": [
+          [],
+          [
+            {
+              "id": "changes_details",
+              "label": "Details of Changes to Report",
+              "type": "text",
+              "required": false,
+              "placeholder": "Describe any director, address, or shareholder changes..."
+            }
+          ]
+        ]
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Company name change service",
+    "category": "Forms",
+    "description": "Change the company's registered name at Companies House.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "cs_period",
+        "label": "Confirmation Statement Due Date / Period",
+        "type": "text",
+        "required": true,
+        "placeholder": "DD/MM/YYYY"
+      },
+      {
+        "id": "has_capital_changes",
+        "label": "Any changes to officers, share capital, or PSCs in the last 12 months?",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "NO",
+          "YES"
+        ],
+        "option_fields": [
+          [],
+          [
+            {
+              "id": "changes_details",
+              "label": "Details of Changes to Report",
+              "type": "text",
+              "required": false,
+              "placeholder": "Describe any director, address, or shareholder changes..."
+            }
+          ]
+        ]
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Company Dissolution Service",
+    "category": "Forms",
+    "description": "Apply to strike off and close a company that is no longer needed.",
+    "estimated_delivery_time": "3-5 Working Days",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "cs_period",
+        "label": "Confirmation Statement Due Date / Period",
+        "type": "text",
+        "required": true,
+        "placeholder": "DD/MM/YYYY"
+      },
+      {
+        "id": "has_capital_changes",
+        "label": "Any changes to officers, share capital, or PSCs in the last 12 months?",
+        "type": "radio",
+        "required": true,
+        "placeholder": "",
+        "options": [
+          "NO",
+          "YES"
+        ],
+        "option_fields": [
+          [],
+          [
+            {
+              "id": "changes_details",
+              "label": "Details of Changes to Report",
+              "type": "text",
+              "required": false,
+              "placeholder": "Describe any director, address, or shareholder changes..."
+            }
+          ]
+        ]
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Certification of Good Standing Service",
+    "category": "Forms",
+    "description": "Obtain an official certificate of good standing for the company from Companies House.",
+    "estimated_delivery_time": "3-5 Working Days",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "service_notes",
+        "label": "Instructions for Certification of Good Standing Service",
+        "type": "text",
+        "required": false,
+        "placeholder": "Anything the fulfilment team needs to complete this order..."
+      }
+    ],
+    "document_requirements": []
+  },
+  {
+    "name": "Apostilled Documents Service",
+    "category": "Forms",
+    "description": "Get company documents certified and apostilled for use abroad.",
+    "estimated_delivery_time": "5-7 Working Days",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "service_notes",
+        "label": "Instructions for Apostilled Documents Service",
+        "type": "text",
+        "required": false,
+        "placeholder": "Anything the fulfilment team needs to complete this order..."
+      }
+    ],
+    "document_requirements": []
+  },
+  {
+    "name": "VAT Registration",
+    "category": "Forms",
+    "description": "Register the business for VAT with HMRC.",
+    "estimated_delivery_time": "5-10 Working Days",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "estimated_turnover",
+        "label": "Estimated 12-Month Turnover (£)",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. 90000"
+      },
+      {
+        "id": "business_bank_details",
+        "label": "Business Bank Account Name & Sort Code",
+        "type": "text",
+        "required": true,
+        "placeholder": "Bank Name, Sort Code: XX-XX-XX, Account: XXXXXXXX"
+      },
+      {
+        "id": "cert_inc",
+        "label": "Certificate of Incorporation",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "bank_statement_header",
+        "label": "Business Bank Statement Header",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "cert_inc",
+        "name": "Certificate of Incorporation",
+        "description": "Official Companies House incorporation certificate.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf"
+        ]
+      },
+      {
+        "id": "bank_statement_header",
+        "name": "Business Bank Statement Header",
+        "description": "Recent bank statement showing company name and account number.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".png"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Identity Verification",
+    "category": "Forms",
+    "description": "Companies House identity verification for directors and people with significant control.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "full_name",
+        "label": "Person to Verify",
+        "type": "text",
+        "required": true,
+        "placeholder": "Full legal name"
+      },
+      {
+        "id": "dob",
+        "label": "Date of Birth",
+        "type": "text",
+        "required": true,
+        "placeholder": "DD/MM/YYYY"
+      },
+      {
+        "id": "nationality",
+        "label": "Nationality",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. British / Pakistani"
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "KYC Verification",
+    "category": "Forms",
+    "description": "Know-your-customer checks on the client's identity and address documents.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "full_name",
+        "label": "Person to Verify",
+        "type": "text",
+        "required": true,
+        "placeholder": "Full legal name"
+      },
+      {
+        "id": "dob",
+        "label": "Date of Birth",
+        "type": "text",
+        "required": true,
+        "placeholder": "DD/MM/YYYY"
+      },
+      {
+        "id": "nationality",
+        "label": "Nationality",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. British / Pakistani"
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Tide Business Bank",
+    "category": "Forms",
+    "description": "Help opening a Tide business bank account for the company.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "trading_proof",
+        "label": "Business Trading Proof (Website or Selling Platform)",
+        "type": "text",
+        "required": false,
+        "placeholder": "Enter website URL or platform name"
+      },
+      {
+        "id": "email",
+        "label": "Email Address",
+        "type": "text",
+        "required": true,
+        "placeholder": "Enter your email address"
+      },
+      {
+        "id": "uk_contact",
+        "label": "UK Contact Phone Number",
+        "type": "text",
+        "required": true,
+        "placeholder": "Enter your UK contact number (+44...)"
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "TapTap Business Bank",
+    "category": "Forms",
+    "description": "Help opening a TapTap business bank account for the company.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "trading_proof",
+        "label": "Business Trading Proof (Website or Selling Platform)",
+        "type": "text",
+        "required": false,
+        "placeholder": "Enter website URL or platform name"
+      },
+      {
+        "id": "email",
+        "label": "Email Address",
+        "type": "text",
+        "required": true,
+        "placeholder": "Enter your email address"
+      },
+      {
+        "id": "uk_contact",
+        "label": "UK Contact Phone Number",
+        "type": "text",
+        "required": true,
+        "placeholder": "Enter your UK contact number (+44...)"
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Wise Business Bank",
+    "category": "Forms",
+    "description": "Help opening a Wise business account for the company.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "trading_proof",
+        "label": "Business Trading Proof (Website or Selling Platform)",
+        "type": "text",
+        "required": false,
+        "placeholder": "Enter website URL or platform name"
+      },
+      {
+        "id": "email",
+        "label": "Email Address",
+        "type": "text",
+        "required": true,
+        "placeholder": "Enter your email address"
+      },
+      {
+        "id": "uk_contact",
+        "label": "UK Contact Phone Number",
+        "type": "text",
+        "required": true,
+        "placeholder": "Enter your UK contact number (+44...)"
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Monzo Business Bank",
+    "category": "Forms",
+    "description": "Help opening a Monzo business bank account for the company.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "trading_proof",
+        "label": "Business Trading Proof (Website or Selling Platform)",
+        "type": "text",
+        "required": false,
+        "placeholder": "Enter website URL or platform name"
+      },
+      {
+        "id": "email",
+        "label": "Email Address",
+        "type": "text",
+        "required": true,
+        "placeholder": "Enter your email address"
+      },
+      {
+        "id": "uk_contact",
+        "label": "UK Contact Phone Number",
+        "type": "text",
+        "required": true,
+        "placeholder": "Enter your UK contact number (+44...)"
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Zempler Business Bank",
+    "category": "Forms",
+    "description": "Help opening a Zempler business bank account for the company.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "trading_proof",
+        "label": "Business Trading Proof (Website or Selling Platform)",
+        "type": "text",
+        "required": false,
+        "placeholder": "Enter website URL or platform name"
+      },
+      {
+        "id": "email",
+        "label": "Email Address",
+        "type": "text",
+        "required": true,
+        "placeholder": "Enter your email address"
+      },
+      {
+        "id": "uk_contact",
+        "label": "UK Contact Phone Number",
+        "type": "text",
+        "required": true,
+        "placeholder": "Enter your UK contact number (+44...)"
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Countingup Business Bank",
+    "category": "Forms",
+    "description": "Help opening a Countingup business account for the company.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "trading_proof",
+        "label": "Business Trading Proof (Website or Selling Platform)",
+        "type": "text",
+        "required": false,
+        "placeholder": "Enter website URL or platform name"
+      },
+      {
+        "id": "email",
+        "label": "Email Address",
+        "type": "text",
+        "required": true,
+        "placeholder": "Enter your email address"
+      },
+      {
+        "id": "uk_contact",
+        "label": "UK Contact Phone Number",
+        "type": "text",
+        "required": true,
+        "placeholder": "Enter your UK contact number (+44...)"
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Ifast Business Bank",
+    "category": "Forms",
+    "description": "Help opening an iFAST business bank account for the company.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "trading_proof",
+        "label": "Business Trading Proof (Website or Selling Platform)",
+        "type": "text",
+        "required": false,
+        "placeholder": "Enter website URL or platform name"
+      },
+      {
+        "id": "email",
+        "label": "Email Address",
+        "type": "text",
+        "required": true,
+        "placeholder": "Enter your email address"
+      },
+      {
+        "id": "uk_contact",
+        "label": "UK Contact Phone Number",
+        "type": "text",
+        "required": true,
+        "placeholder": "Enter your UK contact number (+44...)"
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Transwap Business Bank",
+    "category": "Forms",
+    "description": "Help opening a Transwap business account for the company.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "trading_proof",
+        "label": "Business Trading Proof (Website or Selling Platform)",
+        "type": "text",
+        "required": false,
+        "placeholder": "Enter website URL or platform name"
+      },
+      {
+        "id": "email",
+        "label": "Email Address",
+        "type": "text",
+        "required": true,
+        "placeholder": "Enter your email address"
+      },
+      {
+        "id": "uk_contact",
+        "label": "UK Contact Phone Number",
+        "type": "text",
+        "required": true,
+        "placeholder": "Enter your UK contact number (+44...)"
+      },
+      {
+        "id": "id_document",
+        "label": "ID Document (Passport / Driving Licence / Photo ID)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "proof_of_address",
+        "label": "Proof of Address (Utility bill / Bank statement)",
+        "type": "file",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "additional_documents",
+        "label": "Additional Documents",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "id_document",
+        "name": "ID Document (Passport / Driving Licence / Photo ID)",
+        "description": "Valid passport, national ID, or driving licence. Accepted: PDF, JPG, PNG, DOC, DOCX.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "proof_of_address",
+        "name": "Proof of Address (Utility bill / Bank statement)",
+        "description": "Proof of residential or business address issued within the last 3 months.",
+        "required": true,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx"
+        ]
+      },
+      {
+        "id": "additional_documents",
+        "name": "Additional Documents",
+        "description": "Optional extra supporting files for this service (certificates, forms, briefs).",
+        "required": false,
+        "allowed_extensions": [
+          ".pdf",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".doc",
+          ".docx",
+          ".zip"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Business Website",
+    "category": "Forms",
+    "description": "Design and build a business website on the client's domain.",
+    "estimated_delivery_time": "5-7 Working Days",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "domain_name",
+        "label": "Desired domain",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. yourcompany.co.uk"
+      },
+      {
+        "id": "access_email",
+        "label": "Email address",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. info@yourcompany.co.uk"
+      },
+      {
+        "id": "access_email_password",
+        "label": "Email password",
+        "type": "text",
+        "required": true,
+        "placeholder": "Mailbox password / access code"
+      },
+      {
+        "id": "logo",
+        "label": "Company logo",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "logo",
+        "name": "Company Logo",
+        "description": "Optional brand logo (PNG, JPG, SVG, WEBP, PDF).",
+        "required": false,
+        "allowed_extensions": [
+          ".png",
+          ".jpg",
+          ".jpeg",
+          ".svg",
+          ".webp",
+          ".pdf"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Business Email and Website",
+    "category": "Solutions",
+    "description": "A business website plus professional email addresses on the client's domain.",
+    "estimated_delivery_time": "5-7 Working Days",
+    "duration": "12 Months",
+    "renewal_period": "Annual",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "domain_name",
+        "label": "Desired domain",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. yourcompany.co.uk"
+      },
+      {
+        "id": "access_email",
+        "label": "Email address",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. info@yourcompany.co.uk"
+      },
+      {
+        "id": "access_email_password",
+        "label": "Email password",
+        "type": "text",
+        "required": true,
+        "placeholder": "Mailbox password / access code"
+      },
+      {
+        "id": "logo",
+        "label": "Company logo",
+        "type": "file",
+        "required": false,
+        "placeholder": ""
+      }
+    ],
+    "document_requirements": [
+      {
+        "id": "logo",
+        "name": "Company Logo",
+        "description": "Optional brand logo (PNG, JPG, SVG, WEBP, PDF).",
+        "required": false,
+        "allowed_extensions": [
+          ".png",
+          ".jpg",
+          ".jpeg",
+          ".svg",
+          ".webp",
+          ".pdf"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Business Telephone Services",
+    "category": "Solutions",
+    "description": "A business phone number with call forwarding or call answering.",
+    "estimated_delivery_time": "24-48 Hours",
+    "duration": "12 Months",
+    "renewal_period": "Annual",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "service_notes",
+        "label": "Instructions for Business Telephone Services",
+        "type": "text",
+        "required": false,
+        "placeholder": "Anything the fulfilment team needs to complete this order..."
+      }
+    ],
+    "document_requirements": []
+  },
+  {
+    "name": "Accountancy Services",
+    "category": "Solutions",
+    "description": "Bookkeeping, year-end accounts and tax returns for the company.",
+    "estimated_delivery_time": "Ongoing",
+    "duration": "12 Months",
+    "renewal_period": "Annual",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "service_notes",
+        "label": "Instructions for Accountancy Services",
+        "type": "text",
+        "required": false,
+        "placeholder": "Anything the fulfilment team needs to complete this order..."
+      }
+    ],
+    "document_requirements": []
+  },
+  {
+    "name": "Company Seal",
+    "category": "Solutions",
+    "description": "A company seal (common seal) engraved with the company name and number.",
+    "estimated_delivery_time": "3-5 Working Days",
+    "duration": "One-off",
+    "renewal_period": "One-off",
+    "form_fields": [
+      {
+        "id": "company",
+        "label": "Company name or number",
+        "type": "company",
+        "required": true,
+        "placeholder": "Search Companies House"
+      },
+      {
+        "id": "service_notes",
+        "label": "Instructions for Company Seal",
+        "type": "text",
+        "required": false,
+        "placeholder": "Anything the fulfilment team needs to complete this order..."
+      }
+    ],
+    "document_requirements": []
+  }
+]
