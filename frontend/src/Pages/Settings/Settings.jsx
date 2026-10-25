@@ -51,6 +51,8 @@ const EMPTY_FORM = {
   smtp_user: '',
   smtp_pass: '',
   smtp_from: '',
+  login_smtp_user: '',
+  login_smtp_pass: '',
   companies_house_api_key: '',
   getaddress_api_key: '',
   google_drive_root_folder: 'Brixen-CRM',
@@ -137,6 +139,7 @@ export default function Settings() {
   })
   const [flags, setFlags] = useState({
     smtp_pass_set: false,
+    login_smtp_pass_set: false,
     companies_house_api_key_set: false,
     google_service_account_json_set: false,
     wordpress_webhook_secret_set: false,
@@ -216,6 +219,8 @@ export default function Settings() {
         smtp_user: smtp.smtp_user || '',
         smtp_pass: '',
         smtp_from: smtp.smtp_from || '',
+        login_smtp_user: smtp.login_smtp_user || '',
+        login_smtp_pass: '',
         companies_house_api_key: '',
         getaddress_api_key: '',
         google_drive_root_folder: drive.google_drive_root_folder || 'Brixen-CRM',
@@ -242,6 +247,7 @@ export default function Settings() {
 
       setFlags({
         smtp_pass_set: !!smtp.smtp_pass_set,
+        login_smtp_pass_set: !!smtp.login_smtp_pass_set,
         companies_house_api_key_set: !!ch.companies_house_api_key_set,
         google_service_account_json_set: !!drive.google_service_account_json_set,
         wordpress_webhook_secret_set: !!webhooks.wordpress_webhook_secret_set,
@@ -349,6 +355,7 @@ export default function Settings() {
         smtp_port: form.smtp_port.trim(),
         smtp_user: form.smtp_user.trim(),
         smtp_from: form.smtp_from.trim(),
+        login_smtp_user: form.login_smtp_user.trim(),
         google_drive_root_folder: form.google_drive_root_folder.trim(),
         wordpress_url: form.wordpress_url.trim(),
         compliance_alerts_enabled: form.compliance_alerts_enabled ? '1' : '0',
@@ -366,6 +373,7 @@ export default function Settings() {
 
       // Secrets: only send when user typed a new value (blank = keep current)
       if (form.smtp_pass.trim()) payload.smtp_pass = form.smtp_pass.trim()
+      if (form.login_smtp_pass.trim()) payload.login_smtp_pass = form.login_smtp_pass.trim()
       if (form.companies_house_api_key.trim()) {
         payload.companies_house_api_key = form.companies_house_api_key.trim()
       }
@@ -401,6 +409,7 @@ export default function Settings() {
     setTesting(kind)
     const labels = {
       smtp: 'Testing SMTP…',
+      login: 'Sending a test from the login code mailbox…',
       ch: 'Testing Companies House…',
       drive: 'Testing Google Drive…',
       wp: 'Testing WordPress connection…',
@@ -420,6 +429,19 @@ export default function Settings() {
             smtp_user: form.smtp_user,
             smtp_from: form.smtp_from,
             ...(form.smtp_pass.trim() ? { smtp_pass: form.smtp_pass.trim() } : {}),
+          },
+        }
+      } else if (kind === 'login') {
+        // The login code mailbox (same host / port), sent to the signed-in admin
+        path = '/admin/settings/test-smtp'
+        body = {
+          sender: 'login',
+          test_email: profile.email || undefined,
+          smtp_config: {
+            smtp_host: form.smtp_host,
+            smtp_port: form.smtp_port,
+            smtp_user: form.login_smtp_user,
+            ...(form.login_smtp_pass.trim() ? { smtp_pass: form.login_smtp_pass.trim() } : {}),
           },
         }
       } else if (kind === 'ch') {
@@ -710,6 +732,57 @@ export default function Settings() {
                   )}
                   Send test email
                 </Button>
+              </div>
+            </Section>
+
+            <Section
+              title="Login code emails"
+              description={
+                form.login_smtp_user && flags.login_smtp_pass_set
+                  ? `Login codes are sent from ${form.login_smtp_user} (same SMTP host and port as above). Leave the password blank to keep it.`
+                  : 'The 6-digit login codes are sent from their own mailbox, e.g. noreply@. Until one is set here they go out from the SMTP account above.'
+              }
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field id="login_smtp_user" label="Mailbox (send from)" hint="The full email address of the mailbox, e.g. noreply@yourcompany.com">
+                  <Input
+                    id="login_smtp_user"
+                    type="email"
+                    value={form.login_smtp_user}
+                    onChange={(e) => setField('login_smtp_user', e.target.value)}
+                    placeholder="noreply@brixenconsultants.com"
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="login_smtp_pass" label="Mailbox password">
+                  <Input
+                    id="login_smtp_pass"
+                    type="password"
+                    value={form.login_smtp_pass}
+                    onChange={(e) => setField('login_smtp_pass', e.target.value)}
+                    placeholder={flags.login_smtp_pass_set ? '•••••••• (unchanged)' : 'Password of this mailbox'}
+                    autoComplete="new-password"
+                    disabled={isLoading}
+                  />
+                </Field>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-sm"
+                  disabled={!!testing || isLoading || !form.login_smtp_user.trim()}
+                  onClick={() => runTest('login')}
+                >
+                  {testing === 'login' ? (
+                    <IconLoader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <IconMail className="mr-1.5 h-3.5 w-3.5" />
+                  )}
+                  Send test to me
+                </Button>
+                <span className="text-xs text-muted-foreground">Save Settings to start sending login codes from this mailbox.</span>
               </div>
             </Section>
           </TabsContent>

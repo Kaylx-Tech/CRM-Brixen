@@ -137,8 +137,9 @@ def _send_code(user, code):
       <p style="margin:0 0 8px;color:#555">It works for {CODE_MINUTES} minutes.</p>
       <p style="margin:0;color:#555">If you did not try to sign in, change your password: someone knows it.</p>
     </div>"""
+    # From the login code mailbox (e.g. noreply@) when one is set up in Settings > Email
     sent = send_email(user.get('email'), subject, html, text, category='SECURITY',
-                      user_id=user.get('id'), store_body=False)
+                      user_id=user.get('id'), store_body=False, sender='login')
     if not sent:
         from config import IS_PRODUCTION
         if not IS_PRODUCTION:

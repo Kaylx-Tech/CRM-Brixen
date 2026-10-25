@@ -78,6 +78,12 @@ def handle_settings_routes(environ, start_response, path, method, user, body, qu
         if isinstance(body, dict):
             test_email = body.get('test_email') or body.get('email') or user.get('email')
             custom_cfg = body.get('smtp_config')
+            if body.get('sender') == 'login':
+                # The login code mailbox (e.g. noreply@): typed values first, else the saved ones
+                cfg = dict(custom_cfg or {})
+                login_user = (cfg.get('smtp_user') or get_setting('login_smtp_user') or '').strip()
+                custom_cfg = {**cfg, 'smtp_user': login_user, 'smtp_from': login_user,
+                              'smtp_pass': cfg.get('smtp_pass') or get_setting('login_smtp_pass') or ''}
 
         result = test_smtp_connection(test_email=test_email, custom_cfg=custom_cfg)
         if result.get('success'):

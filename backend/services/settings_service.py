@@ -18,6 +18,7 @@ from services.audit_service import log_activity
 # Sensitive keys that must be masked when returned to the client
 SENSITIVE_KEYS = {
     'smtp_pass',
+    'login_smtp_pass',
     'google_service_account_json',
     'google_service_account_base64',
     'companies_house_api_key',
@@ -51,6 +52,10 @@ DEFAULT_SETTINGS = {
     'smtp_pass': '',
     'smtp_from': 'notifications@brixenconsultants.com',
     'smtp_secure': 'tls',
+    # Login code (OTP) emails from their own mailbox, e.g. noreply@ (same SMTP host / port);
+    # empty = they go out with the SMTP account above
+    'login_smtp_user': '',
+    'login_smtp_pass': '',
 
     # ── Google Drive Cloud Storage ────────────────────────
     'google_drive_root_folder': 'Brixen-CRM',
@@ -156,7 +161,9 @@ def get_all_settings(raw: bool = False):
             'smtp_pass': merged.get('smtp_pass', '') if raw else mask_value(merged.get('smtp_pass', '')),
             'smtp_pass_set': bool(merged.get('smtp_pass')),
             'smtp_from': merged.get('smtp_from', 'notifications@brixenconsultants.com'),
-            'smtp_secure': merged.get('smtp_secure', 'tls')
+            'smtp_secure': merged.get('smtp_secure', 'tls'),
+            'login_smtp_user': merged.get('login_smtp_user', ''),
+            'login_smtp_pass_set': bool(merged.get('login_smtp_pass')),
         },
         'google_drive': {
             'google_drive_root_folder': merged.get('google_drive_root_folder', 'Brixen-CRM'),

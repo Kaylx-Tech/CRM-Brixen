@@ -10,7 +10,29 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 
-def _smtp_config():
+def _login_sender():
+    """(user, password) of the mailbox for login code emails (Settings > Email > Login code emails,
+    or LOGIN_SMTP_USER / LOGIN_SMTP_PASS); ('', '') when not set up."""
+    user = os.environ.get('LOGIN_SMTP_USER', '')
+    password = os.environ.get('LOGIN_SMTP_PASS', '')
+    try:
+        from services.settings_service import get_setting
+        user = get_setting('login_smtp_user', user) or user
+        password = get_setting('login_smtp_pass', password) or password
+    except Exception:
+        pass
+    user, password = (user or '').strip(), (password or '').strip()
+    return (user, password) if user and password else ('', '')
+
+
+def _smtp_config(sender=None):
+    """SMTP host, port, user, password and From. sender='login' uses the login code mailbox when one
+    is set up (same host and port), so login codes come from e.g. noreply@."""
+    if sender == 'login':
+        login_user, login_pass = _login_sender()
+        if login_user:
+            host, port, _user, _pass, _from = _smtp_config()
+            return host, port, login_user, login_pass, login_user
     host = os.environ.get('SMTP_HOST', '')
     port = os.environ.get('SMTP_PORT', '')
     user = os.environ.get('SMTP_USER', '')
@@ -91,7 +113,7 @@ def last_failure_reason():
 
 
 def send_email(recipient, subject, html_content, text_content=None, *, category=None, user_id=None,
-               order_id=None, company_id=None, triggered_by=None, log=True, store_body=True):
+               order_id=None, company_id=None, triggered_by=None, log=True, store_body=True, sender=None):
     """Send an HTML transactional email via SMTP. Returns True only on real send.
 
     Every attempt is written to the email log (status sent / failed / not_configured / invalid_recipient)
@@ -105,7 +127,7 @@ def send_email(recipient, subject, html_content, text_content=None, *, category=
     if category != 'SECURITY' and not emails_enabled():
         ok, status, error = False, 'suppressed', 'Emails are turned off in Settings > Email'
     else:
-        ok, status, error = _deliver(recipient, subject, html_content, text_content)
+        ok, status, error = _deliver(recipient, subject, html_content, text_content, sender=sender)
     _last_failure['status'], _last_failure['error'] = ('', '') if ok else (status, error)
     if log:
         _log_email((recipient or '').strip(), subject,
@@ -156,14 +178,14 @@ def _build_message(subject, sender, recipient, html_content, text_content):
     return msg
 
 
-def _deliver(recipient, subject, html_content, text_content):
+def _deliver(recipient, subject, html_content, text_content, sender=None):
     """Hand the message to the SMTP server. Returns (ok, status, error)."""
     recipient = (recipient or '').strip()
     if not recipient or '@' not in recipient:
         print("[Email Service] Skipped: invalid recipient")
         return False, 'invalid_recipient', 'No valid recipient address'
 
-    smtp_host, smtp_port, smtp_user, smtp_pass, from_email = _smtp_config()
+    smtp_host, smtp_port, smtp_user, smtp_pass, from_email = _smtp_config(sender)
 
     if not smtp_user or not smtp_pass:
         print(
