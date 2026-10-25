@@ -24,7 +24,9 @@ import {
   IconDownload,
 } from "@tabler/icons-react"
 import DeleteConfirmation from "@/components/DeleteConfirmation"
-import { isAdminRole } from "@/lib/permissions"
+import { isAdminRole, canOpenPage } from "@/lib/permissions"
+import { useSearchParams } from "react-router-dom"
+import BalanceSheet from "../Finance/BalanceSheet"
 import { openInvoice, downloadInvoice } from "@/lib/invoices"
 import { createColumnHelper } from "@tanstack/react-table"
 import { DataTable } from "../../Layout/DataTable"
@@ -185,7 +187,11 @@ function ProductCell({ name }) {
 }
 
 export default function Payments() {
-  const [activeTab, setActiveTab] = useState('invoices')
+  // Balance Sheet tab: admins only (?tab=balance opens it straight away)
+  const canSeeBalance = useMemo(() => canOpenPage('balance-sheet'), [])
+  const [searchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState(() =>
+    searchParams.get('tab') === 'balance' && canOpenPage('balance-sheet') ? 'balance' : 'invoices')
 
   // Invoices
   const [invoices, setInvoices] = useState([])
@@ -857,9 +863,10 @@ export default function Payments() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Finance</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">Showing {monthLabel}</p>
+          {activeTab !== 'balance' && <p className="text-sm text-muted-foreground mt-0.5">Showing {monthLabel}</p>}
         </div>
-        <div className="flex items-center gap-2">
+        {/* The Balance Sheet tab has its own month and refresh */}
+        {activeTab !== 'balance' && <div className="flex items-center gap-2">
           <Select value={selectedMonth} onValueChange={(v) => setSelectedMonth(v || CURRENT_MONTH)}>
             <SelectTrigger className="w-[220px] text-sm">
               <IconCalendarWeek className="h-4 w-4 shrink-0" />
@@ -879,7 +886,7 @@ export default function Payments() {
             <IconRefresh className="mr-2 h-4 w-4" />
             Refresh
           </Button>
-        </div>
+        </div>}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -890,6 +897,11 @@ export default function Payments() {
           <TabsTrigger value="revenue" className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             Revenue
           </TabsTrigger>
+          {canSeeBalance && (
+            <TabsTrigger value="balance" className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Balance Sheet
+            </TabsTrigger>
+          )}
         </TabsList>
       </Tabs>
 
@@ -915,6 +927,8 @@ export default function Payments() {
           </div>
         </>
       )}
+
+      {activeTab === 'balance' && <BalanceSheet embedded />}
 
       {activeTab === 'revenue' && (
         <>
