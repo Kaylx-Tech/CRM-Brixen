@@ -5,7 +5,7 @@ import ForgotPassword from './Pages/ForgotPassword'
 import FinstapSignup from './Pages/FinstapSignup'
 import FinstapWelcome from './Pages/FinstapWelcome'
 import FinstapLanding from './Pages/FinstapLanding'
-import { IS_FINSTAP, subdomainWorkspace } from './lib/workspace'
+import { IS_FINSTAP, onSharedHost, subdomainWorkspace } from './lib/workspace'
 import { loadBranding } from './lib/branding'
 import ResetPassword from './Pages/ResetPassword'
 // import SignUp from './Pages/SignUp'
@@ -41,9 +41,13 @@ import PortalSupport, { PortalMessages } from './Pages/Portal/PortalSupport'
 import { PortalServices, PortalAddresses, PortalAccountancy } from './Pages/Portal/PortalMisc'
 
 // "/" sends each user to their own home (customers -> portal, team -> CRM). Finstap's main address
-// (finstap.com, not a company's acme.finstap.com) shows the public landing page to visitors.
+// (finstap.com, not a company's acme.finstap.com) always shows the public landing page: logins live on
+// the company addresses, so a token left there from before subdomains must not send visitors to /login.
+// Without subdomains (local tests) it shows to visitors who are not signed in.
 function HomeRedirect() {
-  if (IS_FINSTAP && !subdomainWorkspace() && !localStorage.getItem('token')) return <FinstapLanding />
+  if (IS_FINSTAP && (onSharedHost() || (!subdomainWorkspace() && !localStorage.getItem('token')))) {
+    return <FinstapLanding />
+  }
   return <Navigate to={homePath()} replace />
 }
 
