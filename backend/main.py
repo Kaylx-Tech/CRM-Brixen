@@ -194,6 +194,14 @@ def run_server():
         filled = seed_workspace_settings(tenant)
         if filled:
             print(f"[Tenancy] {tenant['slug']}: filled {filled} starting settings")
+        # Existing workspaces get new starter services and refreshed (unedited) starter forms, once per version
+        try:
+            from services.starter_catalog import sync_workspace_catalog
+            synced = sync_workspace_catalog(tenant)
+            if synced:
+                print(f"[Tenancy] {tenant['slug']}: starter catalog +{synced[0]} services, {synced[1]} forms updated")
+        except Exception as exc:
+            print(f"[Tenancy] {tenant['slug']}: starter catalog sync skipped: {exc}")
         try:
             from services.permanent_purge import enforce_live_database
             enforce_live_database()
