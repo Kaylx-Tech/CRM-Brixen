@@ -485,10 +485,13 @@ def handle_stats_routes(environ, start_response, path, method, user, body, query
         if not is_staff:
             return error_response(start_response, "Insufficient permissions", status_code=403)
         status_in = ','.join('?' for _ in ACTIVE_ORDER_STATUSES)
+        # STAFF see only the orders they created (as on the Orders page), so they count only those
+        own_only = str(user.get('role', '')).upper() == 'STAFF'
         counts = {
             'orders': _count(
-                f"SELECT COUNT(*) AS c FROM orders WHERE COALESCE(is_draft, 0) = 0 AND status IN ({status_in});",
-                ACTIVE_ORDER_STATUSES),
+                f"SELECT COUNT(*) AS c FROM orders WHERE COALESCE(is_draft, 0) = 0 AND status IN ({status_in})"
+                + (" AND created_by_id = ?;" if own_only else ";"),
+                tuple(ACTIVE_ORDER_STATUSES) + ((user_id,) if own_only else ())),
             'documents': _count(
                 "SELECT COUNT(*) AS c FROM documents WHERE status IN ('Pending Review', 'Pending') "
                 "OR overall_status IN ('REVIEW_REQUIRED', 'PENDING');"),
