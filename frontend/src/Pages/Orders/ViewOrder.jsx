@@ -863,7 +863,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               type="button"
                               size="sm"
                               variant="outline"
-                              className="text-sm h-8 gap-1.5"
+                              className="text-[13px] h-[26px] gap-1.5"
                               onClick={() => setIsEditingDetails(true)}
                             >
                               <IconPencil className="w-3.5 h-3.5" />
@@ -875,7 +875,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                className="text-sm h-8 gap-1"
+                                className="text-[13px] h-[26px] gap-1"
                                 onClick={() => setAddFieldOpen(true)}
                               >
                                 <IconPlus className="w-3.5 h-3.5" />
@@ -884,7 +884,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               <Button
                                 type="button"
                                 size="sm"
-                                className="text-sm h-8 gap-1"
+                                className="text-[13px] h-[26px] gap-1"
                                 disabled={isSavingDetails}
                                 onClick={handleSaveDetails}
                               >
@@ -895,7 +895,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                 type="button"
                                 size="sm"
                                 variant="ghost"
-                                className="text-sm h-8"
+                                className="text-[13px] h-[26px]"
                                 disabled={isSavingDetails}
                                 onClick={() => {
                                   setIsEditingDetails(false)
@@ -1181,7 +1181,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="text-sm h-8 gap-1.5"
+                              className="text-[13px] h-[26px] gap-1.5"
                               onClick={() => setIsEditingCreds(true)}
                             >
                               <IconPencil className="w-3.5 h-3.5" />
@@ -1192,7 +1192,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               <Button
                                 type="button"
                                 size="sm"
-                                className="text-sm h-8 gap-1"
+                                className="text-[13px] h-[26px] gap-1"
                                 disabled={isSavingCreds}
                                 onClick={handleSaveCredentials}
                               >
@@ -1203,7 +1203,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="text-sm h-8"
+                                className="text-[13px] h-[26px]"
                                 disabled={isSavingCreds}
                                 onClick={() => {
                                   setIsEditingCreds(false)
@@ -1350,7 +1350,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                           type="button"
                           size="sm"
                           variant="outline"
-                          className="text-sm h-8 gap-1.5"
+                          className="text-[13px] h-[26px] gap-1.5"
                           onClick={() => setShowProductPicker((v) => !v)}
                         >
                           <IconPlus className="w-3.5 h-3.5" />
@@ -1457,7 +1457,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                   type="button"
                                   size="icon"
                                   variant="ghost"
-                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
                                   title="Remove product"
                                   onClick={() => setRemoveTarget(item)}
                                 >
@@ -1497,7 +1497,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="text-sm h-8 gap-1.5"
+                            className="text-[13px] h-[26px] gap-1.5"
                             disabled={isUploadingDoc}
                             onClick={() => fileInputRef.current?.click()}
                           >
@@ -1610,7 +1610,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 text-sm gap-1.5"
+                className="h-[26px] text-[13px] gap-1.5"
                 onClick={() => previewDoc && handleDownloadDoc(previewDoc)}
               >
                 <IconDownload className="w-3.5 h-3.5" />
@@ -1621,7 +1621,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 text-sm gap-1.5"
+                  className="h-[26px] text-[13px] gap-1.5"
                   asChild
                 >
                   <a href={previewDoc.drive_web_link} target="_blank" rel="noopener noreferrer">

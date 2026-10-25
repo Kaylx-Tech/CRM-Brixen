@@ -7,7 +7,6 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
-  IconRefresh,
   IconSearch,
   IconSend,
   IconLoader2,
@@ -21,6 +20,7 @@ import {
 import { SectionCards } from '../../Layout/StatsCard'
 import { apiRequest } from '@/lib/api'
 import { toast } from 'sonner'
+import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 const STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed']
 const FILTERS = [
@@ -265,6 +265,7 @@ export default function Tickets() {
       setIsLoading(false)
     }
   }, [filter, search])
+  useRefreshOnReturn(load)
 
   useEffect(() => {
     const t = setTimeout(load, 250)
@@ -288,10 +289,6 @@ export default function Tickets() {
             {waiting ? <span className="text-primary"> · {waiting} waiting for a reply</span> : null}
           </p>
         </div>
-        <Button variant="outline" onClick={load} disabled={isLoading}>
-          <IconRefresh className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
       </div>
 
       <SectionCards

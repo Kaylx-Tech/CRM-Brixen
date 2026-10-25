@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { IconLoader2, IconRefresh, IconAlertCircle } from "@tabler/icons-react"
+import { IconLoader2, IconAlertCircle } from "@tabler/icons-react"
 import { apiRequest } from "@/lib/api"
 import { formatGBP } from "@/lib/money"
+import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 /** GET an endpoint and return { data, isLoading, error, reload }; `data` is the response's `data` object. */
 export function usePortalData(path) {
@@ -60,7 +61,9 @@ export function StatusBadge({ status }) {
   return <Badge className={STATUS_TONES[text.toLowerCase()] || "bg-muted text-muted-foreground"}>{text}</Badge>
 }
 
-export function PageHeader({ title, description, onRefresh, isLoading, children }) {
+// onRefresh reloads the page's data when the customer comes back to the tab (no Refresh button)
+export function PageHeader({ title, description, onRefresh, children }) {
+  useRefreshOnReturn(onRefresh)
   return (
     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
@@ -69,12 +72,6 @@ export function PageHeader({ title, description, onRefresh, isLoading, children 
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {children}
-        {onRefresh ? (
-          <Button variant="outline" onClick={onRefresh} disabled={isLoading}>
-            <IconRefresh className={`size-4 ${isLoading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
-        ) : null}
       </div>
     </div>
   )

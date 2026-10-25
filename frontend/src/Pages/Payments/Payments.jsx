@@ -17,7 +17,6 @@ import {
   IconMail,
   IconPencil,
   IconLoader2,
-  IconRefresh,
   IconCalendarWeek,
   IconTrash,
   IconFileText,
@@ -36,6 +35,7 @@ import { toast } from "sonner"
 import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 import { formatGBP, plainAmount } from "@/lib/money"
+import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 const invoiceCol = createColumnHelper()
 const costCol = createColumnHelper()
@@ -213,7 +213,7 @@ export default function Payments() {
   const [orders, setOrders] = useState([])
   const [isLoadingOrders, setIsLoadingOrders] = useState(false)
   const [ordersError, setOrdersError] = useState(null)
-  // One month picker for both tabs (next to Refresh); opens on the current month
+  // One month picker for both tabs; opens on the current month
   const [selectedMonth, setSelectedMonth] = useState(CURRENT_MONTH)
   const [revenueFilter, setRevenueFilter] = useState('all')
   // The order whose cost is being saved (only that row's box waits)
@@ -852,11 +852,10 @@ export default function Payments() {
     },
   ]
 
-  const refresh = () => {
+  useRefreshOnReturn(() => {
     fetchInvoices()
     if (activeTab === 'revenue') fetchOrders()
-    toast.success('Data refreshed')
-  }
+  })
 
   return (
     <div className="flex flex-col gap-4 w-full pb-10">
@@ -882,10 +881,6 @@ export default function Payments() {
               </SelectGroup>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={refresh}>
-            <IconRefresh className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
         </div>}
       </div>
 

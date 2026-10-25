@@ -3,10 +3,11 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { createColumnHelper } from '@tanstack/react-table'
 import { DataTable } from '../../Layout/DataTable'
-import { IconRefresh, IconArrowsSort } from '@tabler/icons-react'
+import { IconArrowsSort } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { apiRequest, getApiBase, toastApiEmpty } from '@/lib/api'
 import { OverflowTooltip } from '@/components/OverflowTooltip'
+import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 const columnHelper = createColumnHelper()
 
@@ -107,6 +108,7 @@ const AuditLogs = () => {
       setIsLoading(false)
     }
   }, [])
+  useRefreshOnReturn(loadLogs)
 
   useEffect(() => {
     loadLogs()
@@ -229,10 +231,6 @@ const AuditLogs = () => {
             Staff activity trail · {total} event{total === 1 ? '' : 's'}
           </p>
         </div>
-        <Button variant="outline" onClick={loadLogs} disabled={isLoading}>
-          <IconRefresh className="mr-2 h-4 w-4" />
-          Refresh
-        </Button>
       </div>
 
       {loadError && (

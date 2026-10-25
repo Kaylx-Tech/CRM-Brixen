@@ -31,7 +31,6 @@ import DeleteConfirmation from "../../components/DeleteConfirmation"
 import {
   IconDotsVertical,
   IconArrowsSort,
-  IconRefresh,
   IconEye,
   IconCheck,
   IconAlertTriangle,
@@ -42,6 +41,7 @@ import {
 import { toast } from "sonner"
 import { toastUndoableDelete, toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
+import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 const columnHelper = createColumnHelper()
 
@@ -136,6 +136,7 @@ const Accountancy = () => {
       setIsLoading(false)
     }
   }
+  useRefreshOnReturn(loadAccountancyData)
 
   useEffect(() => {
     loadAccountancyData()
@@ -457,7 +458,7 @@ const Accountancy = () => {
             <Button
               variant="outline"
               size="sm"
-              className="h-8 text-sm font-medium"
+              className="h-[26px] text-[13px] font-medium"
               onClick={() => {
                 setSelectedRecord(targetComp)
                 setIsBooksModalOpen(true)
@@ -606,7 +607,7 @@ const Accountancy = () => {
             <Button
               variant="outline"
               size="sm"
-              className="h-8 text-sm font-medium"
+              className="h-[26px] text-[13px] font-medium"
               onClick={() => {
                 setSelectedRecord(targetComp)
                 setIsBooksModalOpen(true)
@@ -823,14 +824,6 @@ const Accountancy = () => {
           <h2 className="text-2xl font-bold tracking-tight">Accountancy</h2>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={loadAccountancyData}
-            disabled={isLoading}
-          >
-            <IconRefresh className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
           <Button
             onClick={() => {
               if (filings.length > 0) {

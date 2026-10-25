@@ -386,7 +386,7 @@ const Services = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-muted-foreground"
+                    className="h-7 w-7 text-muted-foreground"
                     aria-label="Service actions"
                   />
                 }

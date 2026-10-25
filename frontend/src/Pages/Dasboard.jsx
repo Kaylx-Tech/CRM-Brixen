@@ -32,7 +32,6 @@ import {
   IconFileDescription,
   IconLayoutDashboard,
   IconPackage,
-  IconRefresh,
   IconShoppingBag,
   IconShoppingCart,
   IconSparkles,
@@ -46,6 +45,7 @@ import { toast } from "sonner"
 import { apiRequest, getApiBase } from "@/lib/api"
 import { canViewRevenue, getCurrentUser } from "@/lib/permissions"
 import { formatGBP } from "@/lib/money"
+import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 // ==========================================
 // Dashboard layout: which cards each user wants to see
@@ -351,6 +351,7 @@ const Dashboard = () => {
       setIsLoading(false)
     }
   }, [selectedMonth])
+  useRefreshOnReturn(fetchDashboardData)
 
   useEffect(() => {
     fetchDashboardData()
@@ -498,15 +499,6 @@ const Dashboard = () => {
             </SelectContent>
           </Select>
 
-          <Button 
-            variant="outline" 
-            onClick={fetchDashboardData}
-            title="Refresh statistics"
-            disabled={isLoading}
-          >
-            <IconRefresh className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
 
           <CustomizeDashboard hidden={hidden} onToggle={toggleCard} onReset={showAll} />
         </div>

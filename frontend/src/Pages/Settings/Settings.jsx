@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { isAdminRole } from '@/lib/permissions'
-import { IconRefresh, IconDeviceFloppy, IconLoader2, IconMail, IconBuilding, IconCloud, IconWorld, IconWebhook } from '@tabler/icons-react'
+import { IconDeviceFloppy, IconLoader2, IconMail, IconBuilding, IconCloud, IconWorld, IconWebhook } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import { apiRequest } from '@/lib/api'
@@ -490,10 +490,6 @@ export default function Settings() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={loadSettings} disabled={isLoading || isSaving}>
-            <IconRefresh className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
           <Button onClick={handleSave} disabled={isLoading || isSaving}>
             {isSaving ? (
               <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />

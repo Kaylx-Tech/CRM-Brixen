@@ -214,7 +214,7 @@ export default function AiChatPanel({
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    className="size-8 rounded-full text-muted-foreground"
+                    className="size-7 rounded-full text-muted-foreground"
                     aria-label="Close chat"
                   />
                 }

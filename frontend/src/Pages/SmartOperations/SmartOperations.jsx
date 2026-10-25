@@ -22,7 +22,6 @@ import {
   IconLoader2,
   IconPencil,
   IconPlus,
-  IconRefresh,
   IconSearch,
   IconTrash,
 } from '@tabler/icons-react'
@@ -33,6 +32,7 @@ import Tasks from '@/Pages/Tasks/Tasks'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
 import { m, spring } from '@/lib/motion'
 import { apiRequest } from '@/lib/api'
+import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 // Each company / provider gets its own colour, in a fixed order
 const GROUP_TONES = [
@@ -145,6 +145,7 @@ export default function SmartOperations() {
       setIsLoading(false)
     }
   }, [])
+  useRefreshOnReturn(load)
 
   useEffect(() => {
     load()
@@ -233,10 +234,6 @@ export default function SmartOperations() {
           )}
         </div>
         <div className={`flex items-center gap-2 ${govForms ? 'hidden' : ''}`}>
-          <Button variant="outline" onClick={load} disabled={isLoading}>
-            <IconRefresh className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
           {canManage && (
             <Button onClick={() => openNew()}>
               <IconPlus className="h-4 w-4" />

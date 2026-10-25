@@ -10,11 +10,12 @@ import {
 } from '@/components/ui/dialog'
 import { createColumnHelper } from '@tanstack/react-table'
 import { DataTable } from '../../Layout/DataTable'
-import { IconRefresh, IconEye, IconSend, IconLoader2, IconMailCheck, IconMailX, IconMailPause } from '@tabler/icons-react'
+import { IconEye, IconSend, IconLoader2, IconMailCheck, IconMailX, IconMailPause } from '@tabler/icons-react'
 import { SectionCards } from '../../Layout/StatsCard'
 import { apiRequest } from '@/lib/api'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import { OverflowTooltip } from '@/components/OverflowTooltip'
+import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 const columnHelper = createColumnHelper()
 
@@ -166,6 +167,7 @@ export default function EmailLog() {
       setIsLoading(false)
     }
   }, [])
+  useRefreshOnReturn(load)
 
   useEffect(() => {
     load()
@@ -282,10 +284,6 @@ export default function EmailLog() {
             {counts.suppressed ? <span className="text-amber-600"> · {counts.suppressed} held (emails off)</span> : null}
           </p>
         </div>
-        <Button variant="outline" onClick={load} disabled={isLoading}>
-          <IconRefresh className="mr-2 h-4 w-4" />
-          Refresh
-        </Button>
       </div>
 
       <SectionCards
