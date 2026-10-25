@@ -168,6 +168,13 @@ def run_server():
     """Start the multi-threaded WSGI server (Waitress in production)."""
     ensure_schema()
     try:
+        from routes.catalog_routes import upgrade_date_of_birth_fields
+        changed = upgrade_date_of_birth_fields()
+        if changed:
+            print(f"[Catalog] {changed} order form(s): date of birth questions now use the calendar")
+    except Exception as exc:
+        print(f"[Catalog] Date of birth upgrade skipped: {exc}")
+    try:
         from services.permanent_purge import enforce_live_database
         enforce_live_database()
         print("[PermanentPurge] Live database enforcement complete")
