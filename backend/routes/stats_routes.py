@@ -263,7 +263,19 @@ def _build_admin_dashboard(user, month_param):
 
     # ── Charts ─────────────────────────────────────────────────
     rev_expr = "COALESCE(SUM(CASE WHEN status NOT IN ('Cancelled', 'Refunded') THEN total ELSE 0 END), 0)"
-    charts = {'orders_daily': [], 'orders_weekly': [], 'orders_yearly': [], 'monthly': []}
+    charts = {'orders_daily': [], 'orders_weekly': [], 'orders_yearly': [], 'monthly': [],
+              # The same span one period earlier, point for point, for the dashed "previous period" line
+              'orders_daily_prev': [], 'orders_weekly_prev': [], 'orders_yearly_prev': []}
+
+    def _daily_revenue(start, days):
+        """Revenue per day for `days` days from `start` (a date), zero on days without orders."""
+        found = query_db(
+            f"""SELECT date(created_at) AS d, {rev_expr} AS rev FROM orders
+                WHERE COALESCE(is_draft, 0) = 0 AND date(created_at) >= date(?) AND date(created_at) < date(?)
+                GROUP BY date(created_at);""",
+            (start.isoformat(), (start + datetime.timedelta(days=days)).isoformat())) or []
+        by_date = {str(r['d']): float(r.get('rev') or 0) for r in found if r.get('d')}
+        return [round(by_date.get((start + datetime.timedelta(days=i)).isoformat(), 0.0), 2) for i in range(days)]
 
     if not is_all_time:
         rows = query_db(
@@ -279,6 +291,12 @@ def _build_admin_dashboard(user, month_param):
             {'label': str(d), 'cnt': int((by_day.get(d) or {}).get('cnt') or 0),
              'revenue': round(float((by_day.get(d) or {}).get('rev') or 0), 2)}
             for d in range(1, last_day + 1)]
+        # The same days of the month before (a shorter month leaves the last days empty)
+        py, pm = _shift_month(year, month, -1)
+        prev_len = (datetime.date(year, month, 1) - datetime.timedelta(days=1)).day
+        prev = _daily_revenue(datetime.date(py, pm, 1), min(last_day, prev_len))
+        charts['orders_daily_prev'] = [
+            {'label': str(d), 'revenue': prev[d - 1] if d <= len(prev) else None} for d in range(1, last_day + 1)]
     else:
         rows = query_db(
             f"""SELECT date(created_at) AS d, COUNT(*) AS cnt, {rev_expr} AS rev FROM orders
@@ -290,6 +308,10 @@ def _build_admin_dashboard(user, month_param):
             r = by_d.get(day.isoformat()) or {}
             charts['orders_daily'].append(
                 {'label': str(day.day), 'cnt': int(r.get('cnt') or 0), 'revenue': round(float(r.get('rev') or 0), 2)})
+        # The 30 days before those
+        prev = _daily_revenue(today - datetime.timedelta(days=59), 30)
+        charts['orders_daily_prev'] = [{'label': p['label'], 'revenue': prev[i]}
+                                       for i, p in enumerate(charts['orders_daily'])]
 
     rows = query_db(
         f"""SELECT date(created_at) AS d, COUNT(*) AS cnt, {rev_expr} AS rev FROM orders
@@ -301,6 +323,9 @@ def _build_admin_dashboard(user, month_param):
         r = by_d.get(day.isoformat()) or {}
         charts['orders_weekly'].append(
             {'label': day.strftime('%a'), 'cnt': int(r.get('cnt') or 0), 'revenue': round(float(r.get('rev') or 0), 2)})
+    prev = _daily_revenue(today - datetime.timedelta(days=13), 7)
+    charts['orders_weekly_prev'] = [{'label': p['label'], 'revenue': prev[i]}
+                                    for i, p in enumerate(charts['orders_weekly'])]
 
     rows = query_db(
         f"""SELECT strftime('%Y-%m', created_at) AS month, COUNT(*) AS cnt, {rev_expr} AS rev
@@ -312,6 +337,10 @@ def _build_admin_dashboard(user, month_param):
         charts['orders_yearly'].append(
             {'label': datetime.date(y, m, 1).strftime('%b %y'), 'cnt': int(r.get('cnt') or 0),
              'revenue': round(float(r.get('rev') or 0), 2)})
+        y, m = _shift_month(year, month, -off - 12)
+        r = by_m.get(f'{y:04d}-{m:02d}') or {}
+        charts['orders_yearly_prev'].append(
+            {'label': charts['orders_yearly'][-1]['label'], 'revenue': round(float(r.get('rev') or 0), 2)})
     # last 6 months ending at the selected month (old app's `monthly` series)
     for off in range(5, -1, -1):
         y, m = _shift_month(year, month, -off)
@@ -410,7 +439,8 @@ def _build_admin_dashboard(user, month_param):
         month_options.append({'value': f'{y:04d}-{m:02d}', 'label': datetime.date(y, m, 1).strftime('%B %Y')})
 
     if not can_revenue:  # hide money from staff without revenue access
-        for series in (charts['orders_daily'], charts['orders_weekly'], charts['orders_yearly']):
+        for series in (charts['orders_daily'], charts['orders_weekly'], charts['orders_yearly'],
+                       charts['orders_daily_prev'], charts['orders_weekly_prev'], charts['orders_yearly_prev']):
             for p in series:
                 p['revenue'] = 0
         for p in charts['monthly']:

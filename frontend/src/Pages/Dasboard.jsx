@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { SectionCards } from '../Layout/StatsCard'
-import { ChartBarMultiple, ChartPieSeparatorNone, ChartAreaSalesTrend, ChartTopPerformer } from '../Layout/Chart'
+import { ChartRevenueOverTime, ChartPieSeparatorNone, ChartAreaSalesTrend, ChartTopPerformer } from '../Layout/Chart'
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -68,7 +68,7 @@ const WORK_CARDS = [
 ]
 
 const SECTIONS = [
-  { key: "chart:sales", label: "Sales Revenue chart" },
+  { key: "chart:sales", label: "Revenue over time chart" },
   { key: "chart:portfolio", label: "Portfolio chart" },
   { key: "chart:trend", label: "Sales Trend chart" },
   { key: "chart:operations", label: "Operations chart" },
@@ -195,31 +195,19 @@ const getTrend = (trendObj, defaultVal = "+0%") => {
   return { trendValue: defaultVal, trendDirection: "up" }
 }
 
-// Format Bar Chart Data (Sales Revenue Analytics)
+// Revenue over time: each point of the chosen range with the same point one period earlier
+const RANGE_SERIES = { "This Month": "orders_daily", "This Week": "orders_weekly", "This Year": "orders_yearly" }
+const toNumber = (v) => (typeof v === 'number' ? v : (parseFloat(v) || 0))
 const formatBarChartData = (charts, filter) => {
-  if (!charts) return []
-  if (filter === "This Year" && Array.isArray(charts.orders_yearly) && charts.orders_yearly.length > 0) {
-    return charts.orders_yearly.map(d => ({
-      month: d.label,
-      revenue: typeof d.revenue === 'number' ? d.revenue : (parseFloat(d.revenue) || 0),
-      orders: d.cnt || 0,
-    }))
-  }
-  if (filter === "This Week" && Array.isArray(charts.orders_weekly) && charts.orders_weekly.length > 0) {
-    return charts.orders_weekly.map(d => ({
-      month: d.label,
-      revenue: typeof d.revenue === 'number' ? d.revenue : (parseFloat(d.revenue) || 0),
-      orders: d.cnt || 0,
-    }))
-  }
-  if (filter === "This Month" && Array.isArray(charts.orders_daily) && charts.orders_daily.length > 0) {
-    return charts.orders_daily.map(d => ({
-      month: d.label,
-      revenue: typeof d.revenue === 'number' ? d.revenue : (parseFloat(d.revenue) || 0),
-      orders: d.cnt || 0,
-    }))
-  }
-  return []
+  const key = RANGE_SERIES[filter]
+  if (!charts || !key || !Array.isArray(charts[key])) return []
+  const previous = Array.isArray(charts[`${key}_prev`]) ? charts[`${key}_prev`] : []
+  return charts[key].map((d, i) => ({
+    month: d.label,
+    revenue: toNumber(d.revenue),
+    previous: previous[i]?.revenue == null ? null : toNumber(previous[i].revenue),
+    orders: d.cnt || 0,
+  }))
 }
 
 // Format Pie Chart Data (Portfolio Distribution)
@@ -277,7 +265,7 @@ const formatOperationsData = (rings) => {
 const Dashboard = () => {
   const navigate = useNavigate()
   const [selectedMonth, setSelectedMonth] = useState("Current")
-  const [barTimeFilter, setBarTimeFilter] = useState("This Year")
+  const [barTimeFilter, setBarTimeFilter] = useState("This Month")
   const [dashboardData, setDashboardData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [hidden, setHidden] = useState(loadHidden)
@@ -520,7 +508,7 @@ const Dashboard = () => {
       {chartsShown > 0 && (
         <div className={`grid grid-cols-1 gap-6 ${chartsShown > 1 ? "lg:grid-cols-2" : ""}`}>
           {shown("chart:sales") && (
-            <ChartBarMultiple
+            <ChartRevenueOverTime
               data={barChartData}
               timeFilter={barTimeFilter}
               onTimeFilterChange={setBarTimeFilter}
