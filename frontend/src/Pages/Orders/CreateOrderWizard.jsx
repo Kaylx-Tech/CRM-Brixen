@@ -957,10 +957,14 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
     setStep((s) => Math.max(firstStep, s - 1))
   }
 
+  // A product is told apart by its id; the built-in list (shown while a workspace has no services) has
+  // no ids, so its products go by name, otherwise ticking one ticked them all
+  const productKey = (p) => (p.id != null ? `id:${p.id}` : `name:${p.name}`)
   const toggleProduct = (product) => {
     setSelectedProducts((prev) => {
-      const exists = prev.some((p) => p.id === product.id)
-      if (exists) return prev.filter((p) => p.id !== product.id)
+      const key = productKey(product)
+      const exists = prev.some((p) => productKey(p) === key)
+      if (exists) return prev.filter((p) => productKey(p) !== key)
       return [...prev, product]
     })
   }
@@ -1353,10 +1357,10 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                     {filteredProducts.length ? (
                       filteredProducts.map((p) => {
-                        const selected = selectedProducts.some((x) => x.id === p.id)
+                        const selected = selectedProducts.some((x) => productKey(x) === productKey(p))
                         return (
                           <button
-                            key={p.id}
+                            key={productKey(p)}
                             type="button"
                             onClick={() => toggleProduct(p)}
                             className={`text-left rounded-xl border-2 p-4 space-y-3 transition-all ${
