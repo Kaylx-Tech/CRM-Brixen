@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis, Area, AreaChart, ComposedChart, Line, Label, LabelList, Pie, PieChart } from "recharts"
+import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis, Area, AreaChart, Label, LabelList, Pie, PieChart } from "recharts"
 
 import {
   Card,
@@ -26,8 +26,7 @@ const MotionCard = m.create(Card)
 const cardMotion = { variants: fadeUp, initial: "hidden", animate: "show" }
 
 const revenueChartConfig = {
-  revenue: { label: "This period", color: "var(--primary)" },
-  previous: { label: "Previous period", color: "var(--muted-foreground)" },
+  revenue: { label: "Revenue", color: "var(--foreground)" },
 }
 
 // Range buttons, and what each one is compared with
@@ -38,7 +37,7 @@ const REVENUE_RANGES = [
   { value: "90d", label: "90 days", versus: "vs the 90 days before" },
 ]
 
-const shortMoney = (val) => `£${val >= 1000 ? `${(val / 1000).toFixed(val % 1000 === 0 ? 0 : 1)}k` : Math.round(val)}`
+const shortMoney = (val) => `£${val >= 1000 ? `${(val / 1000).toFixed(val % 1000 === 0 ? 0 : 1)}k` : Math.round(val || 0)}`
 
 // "Sun, Oct 4" for a "2026-10-04" point
 function tooltipDate(iso, fallback) {
@@ -46,17 +45,14 @@ function tooltipDate(iso, fallback) {
   return Number.isNaN(d.getTime()) ? fallback : d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
 }
 
-// Dark pill: the day's revenue, the date, and last period's figure under it
+// Dark pill: the day's revenue and the date
 function RevenueTooltip({ active, payload }) {
   if (!active || !payload?.length) return null
   const point = payload[0].payload
   return (
     <div className="rounded-lg bg-foreground px-2.5 py-1.5 text-background shadow-lg">
-      <div className="text-sm font-semibold tabular-nums">{formatGBP(point.revenue)}</div>
+      <div className="text-sm font-semibold tabular-nums">{shortMoney(point.revenue)}</div>
       <div className="text-[11px] opacity-70">{tooltipDate(point.date, point.month)}</div>
-      {point.previous != null && (
-        <div className="mt-0.5 text-[11px] opacity-60 tabular-nums">Before: {formatGBP(point.previous)}</div>
-      )}
     </div>
   )
 }
@@ -67,8 +63,8 @@ function TitleDot({ className }) {
 }
 
 /**
- * Revenue: the chosen range in the theme colour (line over a soft fill, a dot on the latest day), last
- * period as a faint dashed line, the total and the change against the same span before. Opens on this month.
+ * Revenue: a dark line over a flat fill in the theme colour, a dot on the latest day, the total and the
+ * change against the same span before. Opens on this month.
  */
 export function ChartRevenueOverTime({
   data = [],
@@ -93,10 +89,10 @@ export function ChartRevenueOverTime({
       <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 pb-0">
         <div className="space-y-0.5">
           <CardTitle className="text-sm font-semibold">Revenue</CardTitle>
-          <p className="text-xs text-muted-foreground">All orders, cancelled and refunded left out</p>
+          <p className="text-xs text-muted-foreground">All orders, net of cancellations and refunds</p>
         </div>
         {onTimeFilterChange && (
-          <div className="flex rounded-full bg-muted p-0.5" role="tablist" aria-label="Revenue range">
+          <div className="flex rounded-lg border bg-muted/60 p-0.5" role="tablist" aria-label="Revenue range">
             {REVENUE_RANGES.map((r) => (
               <button
                 key={r.value}
@@ -104,9 +100,9 @@ export function ChartRevenueOverTime({
                 role="tab"
                 aria-selected={r.value === range.value}
                 onClick={() => onTimeFilterChange(r.value)}
-                className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
                   r.value === range.value
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-foreground text-background shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -116,7 +112,7 @@ export function ChartRevenueOverTime({
           </div>
         )}
         <div className="flex w-full flex-wrap items-baseline gap-x-2.5 gap-y-1 pt-1">
-          <span className="text-3xl font-semibold tracking-tight tabular-nums">{formatGBP(total)}</span>
+          <span className="text-4xl font-semibold tracking-tight tabular-nums">{formatGBP(total)}</span>
           {change !== null && (
             <span className="text-xs text-muted-foreground">
               <span className={`font-semibold tabular-nums ${up ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
@@ -129,11 +125,11 @@ export function ChartRevenueOverTime({
       </CardHeader>
       <CardContent className="flex-1 pt-3">
         <ChartContainer config={revenueChartConfig}>
-          <ComposedChart accessibilityLayer data={displayData} margin={{ top: 12, right: 10, left: 0, bottom: 0 }}>
+          <AreaChart accessibilityLayer data={displayData} margin={{ top: 12, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.32} />
-                <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.04} />
+                <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.22} />
               </linearGradient>
             </defs>
             <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.7} />
@@ -153,36 +149,24 @@ export function ChartRevenueOverTime({
               tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
               tickFormatter={shortMoney}
             />
-            <ChartTooltip cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "3 3" }} content={<RevenueTooltip />} />
-            <Line
-              type="monotone"
-              dataKey="previous"
-              stroke="var(--muted-foreground)"
-              strokeOpacity={0.45}
-              strokeWidth={1.25}
-              strokeDasharray="4 4"
-              dot={false}
-              activeDot={false}
-              connectNulls={false}
-              {...CHART_ANIMATION}
-            />
+            <ChartTooltip cursor={{ stroke: "var(--foreground)", strokeOpacity: 0.25 }} content={<RevenueTooltip />} />
             <Area
               type="monotone"
               dataKey="revenue"
-              stroke="var(--primary)"
+              stroke="var(--foreground)"
               strokeWidth={2}
               fill="url(#revenueFill)"
               dot={(props) =>
                 props.index === lastIndex ? (
-                  <circle key="last" cx={props.cx} cy={props.cy} r={4} fill="var(--background)" stroke="var(--primary)" strokeWidth={2} />
+                  <circle key="last" cx={props.cx} cy={props.cy} r={4.5} fill="var(--primary)" stroke="var(--foreground)" strokeWidth={1.5} />
                 ) : (
                   <g key={props.index} />
                 )
               }
-              activeDot={{ r: 4.5, fill: "var(--background)", stroke: "var(--primary)", strokeWidth: 2 }}
+              activeDot={{ r: 4.5, fill: "var(--primary)", stroke: "var(--foreground)", strokeWidth: 1.5 }}
               {...CHART_ANIMATION}
             />
-          </ComposedChart>
+          </AreaChart>
         </ChartContainer>
       </CardContent>
     </MotionCard>
