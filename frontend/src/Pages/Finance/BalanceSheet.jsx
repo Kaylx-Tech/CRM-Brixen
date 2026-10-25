@@ -30,7 +30,7 @@ import { apiRequest } from "@/lib/api"
 import { formatMoney, plainAmount } from "@/lib/money"
 
 /**
- * Revenue & Balance Sheet (admins): for each currency, what the company held at the start of the month,
+ * Revenue & Balance Sheet (admins), the Balance Sheet tab on the Finance page: for each currency, what the company held at the start of the month,
  * the paid invoices that came in, the expenses that went out, and what is left. GBP and PKR are kept
  * apart. Each month opens with the previous month's closing balance; the owner enters a starting
  * balance once per currency.
@@ -75,7 +75,7 @@ function todayISO() {
 
 const EMPTY_EXPENSE = { spent_on: '', category: 'Salary', description: '', amount: '', currency: 'GBP' }
 
-export default function BalanceSheet() {
+export default function BalanceSheet({ embedded = false }) {
   const [month, setMonth] = useState(CURRENT_MONTH)
   const [sheet, setSheet] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -293,7 +293,7 @@ export default function BalanceSheet() {
     <div className="flex flex-col gap-4 w-full pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Revenue &amp; Balance Sheet</h2>
+          {!embedded && <h2 className="text-2xl font-bold tracking-tight">Revenue &amp; Balance Sheet</h2>}
           <p className="text-sm text-muted-foreground mt-0.5">
             {monthName(month)} · GBP and PKR kept separate · each month opens with last month&apos;s closing balance
           </p>

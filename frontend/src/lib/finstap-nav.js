@@ -15,7 +15,6 @@ import {
   IconFileCheck,
   IconBrain,
   IconFileInvoice,
-  IconScale,
   IconUsersGroup,
   IconTrophy,
   IconHeadset,
@@ -45,7 +44,6 @@ export const FINSTAP_NAV_GROUPS = [
     label: "Business",
     items: [
       { title: "Finance", url: "/admin/payments", icon: IconFileInvoice },
-      { title: "Revenue & Balance Sheet", url: "/admin/balance-sheet", icon: IconScale },
       // Team members list: admins and managers (staff's tasks are GOV Forms in Smart Operations)
       { title: "Team", url: "/admin/tasks", icon: IconUsersGroup, managerOnly: true },
       { title: "Performance", url: "/admin/performance", icon: IconTrophy },
