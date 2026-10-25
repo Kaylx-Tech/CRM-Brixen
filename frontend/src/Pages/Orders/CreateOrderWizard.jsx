@@ -495,7 +495,8 @@ function ServiceFileInput({ field, file, onFile, hint }) {
           id={id}
           type="file"
           accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
-          className="text-sm"
+          // A picked file turns the box green
+          className={`text-sm ${file ? "border-solid border-emerald-500/60 bg-emerald-500/5 hover:border-emerald-500 hover:bg-emerald-500/10" : ""}`}
           onChange={(e) => {
             const picked = e.target.files?.[0]
             if (!picked) return
@@ -508,11 +509,29 @@ function ServiceFileInput({ field, file, onFile, hint }) {
           }}
         />
         {file ? (
-          <Button type="button" variant="ghost" size="sm" onClick={() => onFile(null)}>Remove</Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="animate-in fade-in zoom-in-95 duration-300 text-muted-foreground hover:text-destructive"
+            onClick={() => {
+              const input = document.getElementById(id)
+              if (input) input.value = ""
+              onFile(null)
+            }}
+          >
+            Remove
+          </Button>
         ) : null}
       </div>
       {file ? (
-        <p className="text-[11px] text-emerald-600">{file.name} · {(file.size / 1024 / 1024).toFixed(2)} MB</p>
+        <p
+          key={file.name}
+          className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 animate-in fade-in slide-in-from-top-1 duration-300"
+        >
+          <IconCircleCheck className="size-3.5 shrink-0" />
+          {file.name} · {(file.size / 1024 / 1024).toFixed(2)} MB
+        </p>
       ) : (
         <p className="text-[11px] text-muted-foreground">PDF, image or Word, up to 15 MB. Saved in the order's documents.</p>
       )}
