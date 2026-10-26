@@ -21,7 +21,15 @@ import {
   IconTrash,
   IconFileText,
   IconDownload,
+  IconDots,
 } from "@tabler/icons-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import DeleteConfirmation from "@/components/DeleteConfirmation"
 import { isAdminRole, canOpenPage } from "@/lib/permissions"
 import { useSearchParams } from "react-router-dom"
@@ -692,54 +700,65 @@ export default function Payments() {
         const inv = row.original
         const isSending = sendingId === inv.id
         const paid = inv.money.status === 'Paid'
+        const canSend = inv.status !== 'Cancelled'
         return (
+          // One main action that fits the invoice (unpaid → Send, paid or cancelled → View), the rest in ⋯
           <div className="flex items-center gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-sm gap-1"
-              onClick={() => openInvoice(inv.id)}
-              title="Open the invoice PDF"
-            >
-              <IconFileText className="w-3.5 h-3.5" />
-              View
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => downloadInvoice(inv.id, inv.invoice_number)}
-              aria-label="Download invoice PDF"
-              title="Download PDF"
-            >
-              <IconDownload className="w-3.5 h-3.5" />
-            </Button>
-            {inv.status !== 'Cancelled' && (
+            {canSend && !paid ? (
               <Button
                 variant="outline"
                 size="sm"
                 className="h-7 text-sm gap-1"
                 disabled={isSending}
                 onClick={() => handleSendInvoice(inv)}
+                title="Email the invoice with its PDF"
               >
                 {isSending ? <IconLoader2 className="w-3.5 h-3.5 animate-spin" /> : <IconMail className="w-3.5 h-3.5" />}
-                {paid ? 'Thank you' : 'Send'}
+                Send
               </Button>
-            )}
-            <Button variant="outline" size="sm" className="h-7 text-sm gap-1" onClick={() => openEdit(inv)}>
-              <IconPencil className="w-3.5 h-3.5" />
-              Edit
-            </Button>
-            {canDeleteInvoices && inv.order_status === 'Cancelled' && (
+            ) : (
               <Button
-                variant="destructive"
+                variant="outline"
                 size="sm"
                 className="h-7 text-sm gap-1"
-                onClick={() => setInvoiceToDelete(inv)}
+                onClick={() => openInvoice(inv.id)}
+                title="Open the invoice PDF"
               >
-                <IconTrash className="w-3.5 h-3.5" />
-                Delete
+                <IconFileText className="w-3.5 h-3.5" />
+                View
               </Button>
             )}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<Button variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label="More invoice actions" />}
+              >
+                <IconDots className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => openInvoice(inv.id)}>
+                  <IconFileText className="size-4" /> View PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => downloadInvoice(inv.id, inv.invoice_number)}>
+                  <IconDownload className="size-4" /> Download PDF
+                </DropdownMenuItem>
+                {canSend && (
+                  <DropdownMenuItem disabled={isSending} onClick={() => handleSendInvoice(inv)}>
+                    <IconMail className="size-4" /> {paid ? 'Send thank-you' : 'Send invoice'}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => openEdit(inv)}>
+                  <IconPencil className="size-4" /> Edit
+                </DropdownMenuItem>
+                {canDeleteInvoices && inv.order_status === 'Cancelled' && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onClick={() => setInvoiceToDelete(inv)}>
+                      <IconTrash className="size-4" /> Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )
       },

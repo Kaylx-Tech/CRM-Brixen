@@ -5,6 +5,7 @@ Never reports success when SMTP is not configured.
 import smtplib
 import ssl
 import os
+from email.mime.application import MIMEApplication
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -92,7 +93,7 @@ def last_failure_reason():
 
 def send_email(recipient, subject, html_content, text_content=None, *, category=None, user_id=None,
                order_id=None, company_id=None, triggered_by=None, log=True, store_body=True, logo=None,
-               sender_name=None, images=None):
+               sender_name=None, images=None, attachments=None):
     """Send an HTML transactional email via SMTP. Returns True only on real send.
 
     Every attempt is written to the email log (status sent / failed / not_configured / invalid_recipient)
@@ -101,6 +102,8 @@ def send_email(recipient, subject, html_content, text_content=None, *, category=
     logo=(image bytes, 'png'|'jpeg'|...) is the image behind cid:brand-logo instead of the bundled logo;
     images=[(cid, bytes, subtype)] are more pictures shown inside the email (cid:<cid>).
     sender_name is the From name instead of the company's (e.g. "Finstap" for signup emails).
+    attachments=[(filename, bytes, 'application/pdf')] are files attached to the email (not kept in the log,
+    so a resend from the log goes without them).
     """
     meta = {'category': category, 'user_id': user_id, 'order_id': order_id, 'company_id': company_id,
             'triggered_by': triggered_by}
@@ -110,7 +113,7 @@ def send_email(recipient, subject, html_content, text_content=None, *, category=
         ok, status, error = False, 'suppressed', 'Emails are turned off in Settings > Email'
     else:
         ok, status, error = _deliver(recipient, subject, html_content, text_content, logo=logo,
-                                     sender_name=sender_name, images=images)
+                                     sender_name=sender_name, images=images, attachments=attachments)
     _last_failure['status'], _last_failure['error'] = ('', '') if ok else (status, error)
     if log:
         _log_email((recipient or '').strip(), subject,
@@ -137,7 +140,7 @@ def resend_logged_email(log_id, actor_id=None):
     return ok, status, error
 
 
-def _build_message(subject, sender, recipient, html_content, text_content, logo=None, images=None):
+def _build_message(subject, sender, recipient, html_content, text_content, logo=None, images=None, attachments=None):
     """Text + HTML; an HTML email that shows the bundled logo (cid:) carries the logo image inside it."""
     from services.email_engine import BUNDLED_LOGO_PATH, EMAIL_LOGO_CID
 
@@ -164,13 +167,21 @@ def _build_message(subject, sender, recipient, html_content, text_content, logo=
             image.add_header('Content-ID', f'<{cid}>')
             image.add_header('Content-Disposition', 'inline', filename=f'{cid}.{subtype}')
             msg.attach(image)
+    if attachments:
+        content, msg = msg, MIMEMultipart('mixed')
+        msg.attach(content)
+        for filename, data, mimetype in attachments:
+            part = MIMEApplication(data, (mimetype or 'application/octet-stream').split('/', 1)[-1])
+            part.add_header('Content-Disposition', 'attachment', filename=filename)
+            msg.attach(part)
     msg['Subject'] = subject
     msg['From'] = sender
     msg['To'] = recipient
     return msg
 
 
-def _deliver(recipient, subject, html_content, text_content, logo=None, sender_name=None, images=None):
+def _deliver(recipient, subject, html_content, text_content, logo=None, sender_name=None, images=None,
+             attachments=None):
     """Hand the message to the SMTP server. Returns (ok, status, error)."""
     recipient = (recipient or '').strip()
     if not recipient or '@' not in recipient:
@@ -190,7 +201,7 @@ def _deliver(recipient, subject, html_content, text_content, logo=None, sender_n
     from services.portal_compat import brand_name
     # Sent in the company's own name (its Settings > company name)
     msg = _build_message(subject, formataddr((sender_name or brand_name(), from_email)), recipient, html_content,
-                         text_content, logo=logo, images=images)
+                         text_content, logo=logo, images=images, attachments=attachments)
 
     try:
         if smtp_port == 465:

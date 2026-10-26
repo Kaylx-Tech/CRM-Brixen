@@ -57,7 +57,10 @@ def account_title(account):
     return f"{account['country']} ({currency})" if currency else account['country']
 
 
-def payment_request_copy():
+def payment_request_copy(attached=False):
+    if attached:
+        # Short email: the bank details are in the attached PDF
+        return f'Thank you for your order with {brand_name()}. Your invoice is attached.'
     mode, _text = payment_methods()
     lines = [f'Thank you for your order with {brand_name()}.', '', 'Your invoice details are below.']
     if mode == 'brixen':
@@ -239,6 +242,38 @@ def _build_sections(invoice, order, *, include_bank):
     return ''.join(sections)
 
 
+def _invoice_pdf(invoice):
+    """(filename, pdf bytes, document payload) to attach, or None when the PDF cannot be drawn."""
+    try:
+        from services.invoice_document import document_payload, download_filename, render_pdf
+        payload = document_payload(invoice['id'])
+        if not payload:
+            return None
+        number = str(payload['invoice'].get('invoice_number') or f"INV-{invoice['id']}")
+        return download_filename(number), render_pdf(payload), payload
+    except Exception as exc:
+        print(f"[Invoice Mail] Could not attach the invoice PDF: {exc}")
+        return None
+
+
+def _short_sections(invoice, order, payload):
+    """Short payment email: invoice, amount due and the pay links; bank details stay in the attached PDF."""
+    rows = [('Invoice', str(invoice.get('invoice_number') or '').strip()),
+            ('Service', str(order.get('service_name') or '').strip()),
+            ('Amount due', payload.get('amount_due_display') or '')]
+    sections = [_section_html('Invoice', [(label, value) for label, value in rows if value])]
+    mode, _text = payment_methods()
+    links = invoice_links() if mode == 'custom' else []
+    if mode == 'brixen':
+        links = [{'label': 'Pay now in GBP', 'url': INVOICE_BANK_GBP['pay_url']}]
+    if links:
+        sections.append(_links_html(links))
+    if mode != 'none':
+        sections.append('<p style="margin:14px 0 0;font-size:13px;line-height:1.5;color:#6b7280;">'
+                        'Bank details for payment are in the attached invoice (PDF).</p>')
+    return ''.join(sections)
+
+
 def _compose_email(*, subject, greeting, intro, sections_html, category):
     brand = brand_settings()
     brand_for_sig = {
@@ -290,15 +325,19 @@ def send_payment_requested(invoice, order):
     else:
         subject = f"Invoice — {company}"
 
+    # The invoice PDF goes with the email; without it the email carries the full bank details
+    pdf = _invoice_pdf(invoice)
     subject, text, html = _compose_email(
         subject=subject,
         greeting=_greeting_name(invoice, order),
-        intro=payment_request_copy(),
-        sections_html=_build_sections(invoice, order, include_bank=True),
+        intro=payment_request_copy(attached=bool(pdf)),
+        sections_html=(_short_sections(invoice, order, pdf[2]) if pdf
+                       else _build_sections(invoice, order, include_bank=True)),
         category='INVOICE',
     )
     ok = send_email(to, subject, html, text_content=text, category='INVOICE',
-                    user_id=invoice.get('user_id'), order_id=invoice.get('order_id'))
+                    user_id=invoice.get('user_id'), order_id=invoice.get('order_id'),
+                    attachments=[(pdf[0], pdf[1], 'application/pdf')] if pdf else None)
     return {
         'email_sent': bool(ok),
         'email_status': 'sent' if ok else 'SMTP send failed or not configured',
@@ -340,8 +379,11 @@ def send_payment_received(invoice, order):
         sections_html=_build_sections(invoice, order, include_bank=False),
         category='PAYMENT',
     )
+    # The paid invoice goes with the thank-you as a receipt
+    pdf = _invoice_pdf(invoice)
     ok = send_email(to, subject, html, text_content=text, category='INVOICE',
-                    user_id=invoice.get('user_id'), order_id=invoice.get('order_id'))
+                    user_id=invoice.get('user_id'), order_id=invoice.get('order_id'),
+                    attachments=[(pdf[0], pdf[1], 'application/pdf')] if pdf else None)
     return {
         'email_sent': bool(ok),
         'email_status': 'sent' if ok else 'SMTP send failed or not configured',
