@@ -15,7 +15,8 @@ import urllib.request
 
 from db import query_db
 from services.invoice_service import invoice_money_state
-from services.invoice_mail import INVOICE_BANK_GBP, INVOICE_BANK_PKR, payment_methods
+from services.invoice_mail import (INVOICE_BANK_GBP, INVOICE_BANK_PKR, account_title, invoice_accounts,
+                                   invoice_links, payment_methods)
 from services.portal_compat import _workspace_name, brand_settings
 
 LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', 'img', 'brixen-logo.png')
@@ -383,10 +384,54 @@ def _render_pdf(payload, s=1.0):
     pdf.cell(0, 8 * s, 'PAYMENT METHODS' if mode == 'brixen' else 'HOW TO PAY', new_x='LMARGIN', new_y='NEXT')
     pdf.ln(2 * s)
 
+    def pill(x, y, label, url):
+        """A rounded "button" linking to url; returns its width."""
+        pdf.set_font('Helvetica', 'B', 10)
+        pill_w, pill_h = pdf.get_string_width(label) + 10, 7.5
+        pdf.set_fill_color(*navy)
+        try:
+            pdf.rounded_rect(x, y, pill_w, pill_h, pill_h / 2, style='F')
+        except Exception:
+            pdf.rect(x, y, pill_w, pill_h, style='F')
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_xy(x, y + 0.6)
+        pdf.cell(pill_w, pill_h - 1.2, label, align='C', link=url)
+        pdf.set_text_color(*ink)
+        return pill_w
+
     if mode == 'custom':
-        # The company's own payment details (Settings), one line each
-        pdf.set_font('Helvetica', '', 10)
-        pdf.multi_cell(0, 5.5, latin(details), align='L')
+        # Settings > Invoices: each country's bank account (three details per row), the free-text notes,
+        # then the links as buttons
+        for account in invoice_accounts():
+            pdf.set_font('Helvetica', 'B', 10)
+            pdf.cell(0, max(6 * s, 4.5), latin(account_title(account)), new_x='LMARGIN', new_y='NEXT')
+            fields = account['fields']
+            for start in range(0, len(fields), 3):
+                row_y = row_bottom = pdf.get_y()
+                for index, field in enumerate(fields[start:start + 3]):
+                    x = 16 + index * 60
+                    pdf.set_xy(x, row_y)
+                    pdf.set_font('Helvetica', 'B', 9)
+                    pdf.cell(58, 5, latin(field['label']), new_x='LMARGIN', new_y='NEXT')
+                    pdf.set_x(x)
+                    pdf.set_font('Helvetica', '', 10)
+                    pdf.multi_cell(58, 5, latin(field['value']), align='L')
+                    row_bottom = max(row_bottom, pdf.get_y())
+                pdf.set_y(row_bottom + 1.5 * s)
+            pdf.ln(2.5 * s)
+        if details:
+            pdf.set_font('Helvetica', '', 10)
+            pdf.multi_cell(0, 5.5, latin(details), align='L')
+            pdf.ln(3 * s)
+        x, y = 16, pdf.get_y()
+        for link in invoice_links():
+            label = latin(link['label'])
+            pdf.set_font('Helvetica', 'B', 10)
+            if x > 16 and x + pdf.get_string_width(label) + 10 > 194:
+                x, y = 16, y + 10
+            x += pill(x, y, label, link['url']) + 4
+        if x > 16:
+            pdf.set_y(y + 7.5)
         return bytes(pdf.output()), pdf.page_no()
 
     def bank_block(title, fields):
@@ -406,19 +451,9 @@ def _render_pdf(payload, s=1.0):
     bank_block('GBP', (('Account title', gbp['account_name']), ('Account number', gbp['account_number']),
                        ('Sort code', gbp['sort_code'])))
     # "Pay now" pill linking to the Tide payment page
-    label = 'Pay now in GBP'
-    pdf.set_font('Helvetica', 'B', 10)
-    pill_w, pill_h, pill_y = pdf.get_string_width(label) + 10, 7.5, pdf.get_y()
-    pdf.set_fill_color(*navy)
-    try:
-        pdf.rounded_rect(16, pill_y, pill_w, pill_h, pill_h / 2, style='F')
-    except Exception:
-        pdf.rect(16, pill_y, pill_w, pill_h, style='F')
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_xy(16, pill_y + 0.6)
-    pdf.cell(pill_w, pill_h - 1.2, label, align='C', link=gbp['pay_url'])
-    pdf.set_text_color(*ink)
-    pdf.set_y(pill_y + pill_h + 8 * s)
+    pill_y = pdf.get_y()
+    pill(16, pill_y, 'Pay now in GBP', gbp['pay_url'])
+    pdf.set_y(pill_y + 7.5 + 8 * s)
 
     bank_block('PKR', (('Account title', pkr['account_name']), ('Bank name', pkr['bank_name']), ('IBAN', pkr['iban'])))
 

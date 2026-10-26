@@ -34,9 +34,27 @@ def payment_methods():
     from services.settings_service import get_setting
     from services.portal_compat import _workspace_name
     text = str(get_setting('invoice_payment_details') or '').strip()
-    if text:
+    if text or invoice_accounts() or invoice_links():
         return 'custom', text
     return ('none', '') if _workspace_name() else ('brixen', '')
+
+
+def invoice_accounts():
+    """Settings > Invoices bank accounts, one per country: [{country, currency, fields: [{label, value}]}]."""
+    from services.settings_service import invoice_list
+    return invoice_list('invoice_bank_accounts')
+
+
+def invoice_links():
+    """Settings > Invoices links (payment page, website, terms…): [{label, url}]."""
+    from services.settings_service import invoice_list
+    return invoice_list('invoice_links')
+
+
+def account_title(account):
+    """'United Kingdom (GBP)' heading for a saved bank account."""
+    currency = account.get('currency')
+    return f"{account['country']} ({currency})" if currency else account['country']
 
 
 def payment_request_copy():
@@ -161,6 +179,21 @@ def _section_html(title, rows):
     )
 
 
+def _links_html(links):
+    """Settings > Invoices links as buttons (one per link)."""
+    buttons = ''.join(
+        f'<a href="{html_escape(link["url"], quote=True)}" style="display:inline-block;margin:10px 8px 0 0;'
+        f'padding:9px 16px;border-radius:999px;background:#003971;color:#ffffff;font-size:13px;font-weight:600;'
+        f'text-decoration:none;">{html_escape(link["label"])}</a>'
+        for link in links
+    )
+    return (
+        f'<div style="margin:16px 0 0;padding:14px 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">'
+        f'<p style="margin:0 0 2px;font-size:12px;font-weight:700;letter-spacing:0.04em;'
+        f'text-transform:uppercase;color:#003971;">Links</p>{buttons}</div>'
+    )
+
+
 def _build_sections(invoice, order, *, include_bank):
     invoice_number = str(invoice.get('invoice_number') or '').strip()
     service = str(order.get('service_name') or 'Your order').strip()
@@ -177,10 +210,19 @@ def _build_sections(invoice, order, *, include_bank):
     sections = [_section_html('Invoice', summary)]
     mode, text = payment_methods()
     if include_bank and mode == 'custom':
-        sections.append(_section_html('How to pay', [
-            (line.split(':', 1)[0].strip(), line.split(':', 1)[1].strip()) if ':' in line else ('', line.strip())
-            for line in text.splitlines() if line.strip()
-        ]))
+        # Settings > Invoices: each country's bank account, the free-text notes, then the links
+        accounts = invoice_accounts()
+        for account in accounts:
+            sections.append(_section_html(f"Pay in {account_title(account)}",
+                                          [(f['label'], f['value']) for f in account['fields']]))
+        if text:
+            sections.append(_section_html('Other payment notes' if accounts else 'How to pay', [
+                (line.split(':', 1)[0].strip(), line.split(':', 1)[1].strip()) if ':' in line else ('', line.strip())
+                for line in text.splitlines() if line.strip()
+            ]))
+        links = invoice_links()
+        if links:
+            sections.append(_links_html(links))
     elif include_bank and mode == 'brixen':
         gbp = INVOICE_BANK_GBP
         pkr = INVOICE_BANK_PKR

@@ -15,10 +15,14 @@ import { apiRequest } from '@/lib/api'
 import { IS_FINSTAP } from '@/lib/workspace'
 import { loadBranding } from '@/lib/branding'
 import BrandingTab from './BrandingTab'
+import InvoicesTab from './InvoicesTab'
+import { accountsFromSaved, accountsToSaved, linksFromSaved, linksToSaved } from './invoiceSettings'
 
 const MIN_PASSWORD = 10
-// Branding (logo, icon, accent colour) is a Finstap company setting; Brixen keeps its own look
-const SETTINGS_TABS = new Set(['general', ...(IS_FINSTAP ? ['branding'] : []), 'email', 'integrations', 'compliance', 'profile'])
+// Branding (logo, icon, accent colour) and Invoices (bank accounts per country, links) are Finstap company
+// settings; Brixen keeps its own look and its own bank details
+const SETTINGS_TABS = new Set(['general', ...(IS_FINSTAP ? ['branding'] : []), 'email', 'integrations', 'compliance',
+  ...(IS_FINSTAP ? ['invoices'] : []), 'profile'])
 
 function syncLocalUser(user) {
   if (!user) return
@@ -48,6 +52,8 @@ const EMPTY_FORM = {
   registered_office: '',
   ico_number: '',
   invoice_payment_details: '',
+  invoice_bank_accounts: [],
+  invoice_links: [],
   team_notification_emails: '',
   currency: '£',
   order_prefix: '',
@@ -224,6 +230,8 @@ export default function Settings() {
         registered_office: flat.registered_office || '',
         ico_number: flat.ico_number || '',
         invoice_payment_details: brand.invoice_payment_details || flat.invoice_payment_details || '',
+        invoice_bank_accounts: accountsFromSaved(flat.invoice_bank_accounts),
+        invoice_links: linksFromSaved(flat.invoice_links),
         team_notification_emails: flat.team_notification_emails || '',
         currency: brand.currency || flat.currency || '£',
         order_prefix: brand.order_prefix || flat.order_prefix || '',
@@ -402,6 +410,8 @@ export default function Settings() {
           brand_icon: form.brand_icon,
           accent_color: form.accent_color,
           accent_auto: form.accent_auto ? '1' : '0',
+          invoice_bank_accounts: accountsToSaved(form.invoice_bank_accounts),
+          invoice_links: linksToSaved(form.invoice_links),
         })
       }
 
@@ -506,7 +516,8 @@ export default function Settings() {
           <h2 className="text-2xl font-bold tracking-tight">{canManageSettings ? 'System Settings' : 'My Profile'}</h2>
           <p className="text-sm text-muted-foreground mt-1">
             {canManageSettings
-              ? 'Branding, email, integrations, compliance, and your profile'
+              ? (IS_FINSTAP ? 'Branding, email, integrations, compliance, invoices, and your profile'
+                : 'Branding, email, integrations, compliance, and your profile')
               : 'Your details and password'}
           </p>
         </div>
@@ -536,6 +547,7 @@ export default function Settings() {
             ['email', 'Email (SMTP)'],
             ['integrations', 'Integrations'],
             ['compliance', 'Compliance'],
+            ...(IS_FINSTAP ? [['invoices', 'Invoices']] : []),
             ['profile', 'Profile & Password'],
           ].filter(([value]) => canManageSettings || value === 'profile').map(([value, label]) => (
             <TabsTrigger
@@ -696,7 +708,8 @@ export default function Settings() {
                     disabled={isLoading}
                   />
                 </Field>
-                <div className="md:col-span-2">
+                {/* Finstap: payment details live in the Invoices tab */}
+                {!IS_FINSTAP && <div className="md:col-span-2">
                   <Field
                     id="invoice_payment_details"
                     label="Payment details"
@@ -711,7 +724,7 @@ export default function Settings() {
                       disabled={isLoading}
                     />
                   </Field>
-                </div>
+                </div>}
               </div>
             </Section>
           </TabsContent>
@@ -1079,6 +1092,12 @@ export default function Settings() {
               </div>
             </Section>
           </TabsContent>
+
+          {IS_FINSTAP && (
+            <TabsContent value="invoices" className="mt-0 space-y-4">
+              <InvoicesTab form={form} setField={setField} disabled={isLoading || isSaving} />
+            </TabsContent>
+          )}
 
           <TabsContent value="profile" className="mt-0 space-y-4">
             <Section title="Account" description="Your staff login details. Email cannot be changed here.">

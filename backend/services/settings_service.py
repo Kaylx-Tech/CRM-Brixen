@@ -36,6 +36,10 @@ DEFAULT_SETTINGS = {
     # Free text printed on invoices and payment emails (bank account, payment link…); empty = Brixen's own
     # bank details in Brixen's database, nothing in a Finstap workspace
     'invoice_payment_details': '',
+    # Settings → Invoices (JSON lists): bank accounts per country [{country, currency, fields: [{label, value}]}]
+    # and links [{label, url}], printed on invoices and invoice emails
+    'invoice_bank_accounts': '[]',
+    'invoice_links': '[]',
     # Printed on a Finstap company's invoices when filled in (Brixen's invoices carry Brixen's own)
     'company_number': '',
     'registered_office': '',
@@ -138,6 +142,57 @@ def _check_branding_value(key, val_str):
             raise ValueError('Upload a PNG, JPG, WebP, SVG or ICO image.')
     elif key == 'accent_color' and not _HEX_COLOR.match(val_str):
         raise ValueError('Accent colour must look like #6559ff.')
+
+
+INVOICE_LIST_KEYS = ('invoice_bank_accounts', 'invoice_links')
+_LINK_URL = re.compile(r'^(https?://|mailto:)\S+$', re.IGNORECASE)
+
+
+def _text(value, limit):
+    return str(value or '').strip()[:limit]
+
+
+def clean_invoice_list(key, value):
+    """Settings → Invoices lists, cleaned (blank rows dropped, lengths capped). Raises ValueError on a bad link."""
+    if isinstance(value, str):
+        try:
+            value = json.loads(value or '[]')
+        except ValueError:
+            value = []
+    if not isinstance(value, list):
+        return []
+    rows = []
+    if key == 'invoice_bank_accounts':
+        for item in value[:20]:
+            if not isinstance(item, dict):
+                continue
+            fields = []
+            for field in (item.get('fields') or [])[:12]:
+                if isinstance(field, dict) and _text(field.get('value'), 200):
+                    fields.append({'key': _text(field.get('key'), 40), 'label': _text(field.get('label'), 60) or 'Detail',
+                                   'value': _text(field.get('value'), 200)})
+            if fields:
+                rows.append({'code': _text(item.get('code'), 10), 'country': _text(item.get('country'), 60) or 'Bank account',
+                             'currency': _text(item.get('currency'), 10).upper(), 'fields': fields})
+    else:
+        for item in value[:10]:
+            if not isinstance(item, dict):
+                continue
+            url = _text(item.get('url'), 500)
+            if not url:
+                continue
+            if not _LINK_URL.match(url):
+                raise ValueError(f'Invoice link "{url}" must start with https:// (or mailto:).')
+            rows.append({'label': _text(item.get('label'), 60) or url, 'url': url})
+    return rows
+
+
+def invoice_list(key):
+    """A saved Settings → Invoices list (empty when unset or unreadable)."""
+    try:
+        return clean_invoice_list(key, get_setting(key) or '[]')
+    except ValueError:
+        return []
 
 
 def _platform_ch_key():
@@ -316,6 +371,10 @@ def update_settings(payload: dict, user_id=None, ip_address=None):
     for key, value in flat_updates.items():
         if key in BRAND_IMAGE_KEYS or key == 'accent_color':
             _check_branding_value(key, str(value).strip() if value is not None else '')
+
+    for key in INVOICE_LIST_KEYS:
+        if key in flat_updates:
+            flat_updates[key] = json.dumps(clean_invoice_list(key, flat_updates[key]))
 
     saved_keys = []
     for key, value in flat_updates.items():
