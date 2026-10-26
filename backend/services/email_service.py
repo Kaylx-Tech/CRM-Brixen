@@ -113,12 +113,13 @@ def last_failure_reason():
 
 
 def send_email(recipient, subject, html_content, text_content=None, *, category=None, user_id=None,
-               order_id=None, company_id=None, triggered_by=None, log=True, store_body=True, sender=None):
+               order_id=None, company_id=None, triggered_by=None, log=True, store_body=True, sender=None, logo=None):
     """Send an HTML transactional email via SMTP. Returns True only on real send.
 
     Every attempt is written to the email log (status sent / failed / not_configured / invalid_recipient)
     together with what it was about, so admins can see and resend it. store_body=False keeps secrets
     (password reset links) out of the log; such an email cannot be resent from the log.
+    logo=(image bytes, 'png'|'jpeg'|...) is the image behind cid:brand-logo instead of the bundled logo.
     """
     meta = {'category': category, 'user_id': user_id, 'order_id': order_id, 'company_id': company_id,
             'triggered_by': triggered_by}
@@ -127,7 +128,7 @@ def send_email(recipient, subject, html_content, text_content=None, *, category=
     if category != 'SECURITY' and not emails_enabled():
         ok, status, error = False, 'suppressed', 'Emails are turned off in Settings > Email'
     else:
-        ok, status, error = _deliver(recipient, subject, html_content, text_content, sender=sender)
+        ok, status, error = _deliver(recipient, subject, html_content, text_content, sender=sender, logo=logo)
     _last_failure['status'], _last_failure['error'] = ('', '') if ok else (status, error)
     if log:
         _log_email((recipient or '').strip(), subject,
@@ -154,7 +155,7 @@ def resend_logged_email(log_id, actor_id=None):
     return ok, status, error
 
 
-def _build_message(subject, sender, recipient, html_content, text_content):
+def _build_message(subject, sender, recipient, html_content, text_content, logo=None):
     """Text + HTML; an HTML email that shows the bundled logo (cid:) carries the logo image inside it."""
     from services.email_engine import BUNDLED_LOGO_PATH, EMAIL_LOGO_CID
 
@@ -164,21 +165,25 @@ def _build_message(subject, sender, recipient, html_content, text_content):
     if html_content:
         body.attach(MIMEText(html_content, 'html'))
     msg = body
-    if html_content and f'cid:{EMAIL_LOGO_CID}' in html_content and os.path.isfile(BUNDLED_LOGO_PATH):
+    if html_content and f'cid:{EMAIL_LOGO_CID}' in html_content and (logo or os.path.isfile(BUNDLED_LOGO_PATH)):
         msg = MIMEMultipart('related')
         msg.attach(body)
-        with open(BUNDLED_LOGO_PATH, 'rb') as fh:
-            logo = MIMEImage(fh.read(), 'png')
-        logo.add_header('Content-ID', f'<{EMAIL_LOGO_CID}>')
-        logo.add_header('Content-Disposition', 'inline', filename='logo.png')
-        msg.attach(logo)
+        if logo:
+            data, subtype = logo
+        else:
+            with open(BUNDLED_LOGO_PATH, 'rb') as fh:
+                data, subtype = fh.read(), 'png'
+        image = MIMEImage(data, subtype)
+        image.add_header('Content-ID', f'<{EMAIL_LOGO_CID}>')
+        image.add_header('Content-Disposition', 'inline', filename=f'logo.{subtype}')
+        msg.attach(image)
     msg['Subject'] = subject
     msg['From'] = sender
     msg['To'] = recipient
     return msg
 
 
-def _deliver(recipient, subject, html_content, text_content, sender=None):
+def _deliver(recipient, subject, html_content, text_content, sender=None, logo=None):
     """Hand the message to the SMTP server. Returns (ok, status, error)."""
     recipient = (recipient or '').strip()
     if not recipient or '@' not in recipient:
@@ -194,7 +199,7 @@ def _deliver(recipient, subject, html_content, text_content, sender=None):
         )
         return False, 'not_configured', 'SMTP is not configured (Settings > Email)'
 
-    msg = _build_message(subject, f"Brixen Consultants <{from_email}>", recipient, html_content, text_content)
+    msg = _build_message(subject, f"Brixen Consultants <{from_email}>", recipient, html_content, text_content, logo=logo)
 
     try:
         if smtp_port == 465:
