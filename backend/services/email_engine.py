@@ -535,6 +535,8 @@ def email_issue_card_html(blocks):
 # The company logo at the top of every client/team email. The bundled logo travels inside the email
 # (cid:, attached by email_service), so it shows without the reader allowing remote images.
 EMAIL_LOGO_CID = 'brand-logo'
+# A Finstap company's own logo (Settings > Branding) inside an email, e.g. invoice emails
+COMPANY_LOGO_CID = 'company-logo'
 BUNDLED_LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                  'static', 'img', 'brixen-logo.png')
 
@@ -550,7 +552,12 @@ def email_logo_src(brand):
 
 
 def email_html_for_preview(html):
-    """The bundled logo as an inline image, for showing a sent email in the browser (Email log)."""
+    """The bundled logo as an inline image, for showing a sent email in the browser (Email log); a company's
+    own logo comes from its Settings > Branding."""
+    company = f'cid:{COMPANY_LOGO_CID}'
+    if html and company in html:
+        from services.settings_service import get_setting
+        html = html.replace(company, str(get_setting('brand_logo') or ''))
     marker = f'cid:{EMAIL_LOGO_CID}'
     if not html or marker not in html or not os.path.isfile(BUNDLED_LOGO_PATH):
         return html
@@ -560,13 +567,15 @@ def email_html_for_preview(html):
     return html.replace(marker, f'data:image/png;base64,{data}')
 
 
-def email_brand_header_html(brand, headline):
-    """Hero row: the logo (or the company name when there is none) above the email's headline."""
+def email_brand_header_html(brand, headline, logo_src=None, logo_height=36):
+    """Hero row: the logo (or the company name when there is none) above the email's headline.
+    logo_src (e.g. cid:brand-logo for a company's own logo sent with the email) replaces the Settings logo."""
     name = (brand or {}).get('company_name') or _company_name()
-    src = email_logo_src(brand)
+    src = logo_src or email_logo_src(brand)
     if src:
-        top = (f'<img src="{html_escape(src)}" alt="{html_escape(name)}" height="36" '
-               'style="display:block;height:36px;width:auto;max-width:200px;border:0;outline:none;text-decoration:none;">')
+        top = (f'<img src="{html_escape(src)}" alt="{html_escape(name)}" height="{logo_height}" '
+               f'style="display:block;height:{logo_height}px;width:auto;max-width:220px;border:0;outline:none;'
+               'text-decoration:none;">')
     else:
         top = (f'<p style="margin:0;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#003971;'
                f'font-weight:700;">{html_escape(name)}</p>')

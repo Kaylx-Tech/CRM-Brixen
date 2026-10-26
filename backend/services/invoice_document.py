@@ -15,8 +15,8 @@ import urllib.request
 
 from db import query_db
 from services.invoice_service import invoice_money_state
-from services.invoice_mail import (INVOICE_BANK_GBP, INVOICE_BANK_PKR, account_title, invoice_accounts,
-                                   invoice_links, payment_methods)
+from services.invoice_mail import (INVOICE_BANK_GBP, INVOICE_BANK_PKR, account_title, button_colours,
+                                   company_logo, invoice_accounts, invoice_links, payment_methods)
 from services.portal_compat import _workspace_name, brand_settings
 
 LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', 'img', 'brixen-logo.png')
@@ -250,6 +250,44 @@ def render_pdf(payload):
     return body
 
 
+def _pill_path(pdf, x, y, w, h, op='f'):
+    """A pill shape (fully round ends) in the current colours: op 'f' fills, 'B' fills and strokes.
+    fpdf's own rounded corners stay tiny here, so the curves are written out directly."""
+    k, page_h, r = pdf.k, pdf.h, h / 2
+    c = 0.5523 * r  # Bezier handle for a quarter circle
+
+    def point(px, py):
+        return f'{px * k:.2f} {(page_h - py) * k:.2f}'
+
+    pdf._out(' '.join([
+        f'{point(x + r, y)} m', f'{point(x + w - r, y)} l',
+        f'{point(x + w - r + c, y)} {point(x + w, y + r - c)} {point(x + w, y + r)} c',
+        f'{point(x + w, y + r + c)} {point(x + w - r + c, y + h)} {point(x + w - r, y + h)} c',
+        f'{point(x + r, y + h)} l',
+        f'{point(x + r - c, y + h)} {point(x, y + r + c)} {point(x, y + r)} c',
+        f'{point(x, y + r - c)} {point(x + r - c, y)} {point(x + r, y)} c', op]))
+
+
+def _draw_company_logo(pdf, x, y, s):
+    """A Finstap company's logo (Settings > Branding) at the top left, up to 62 x 22 mm; False when it has
+    none that a PDF can show."""
+    logo = company_logo()
+    if not logo:
+        return False
+    try:
+        import io
+        from PIL import Image
+        with Image.open(io.BytesIO(logo[0])) as image:
+            ratio = image.width / max(image.height, 1)
+        max_w, max_h = (62, 22) if s >= 0.8 else (52, 18)
+        w = min(max_w, max_h * ratio)
+        pdf.image(io.BytesIO(logo[0]), x=x, y=y, w=w, h=w / ratio)
+        return True
+    except Exception as exc:
+        print(f"[Invoice PDF] Company logo not drawn: {exc}")
+        return False
+
+
 def _render_pdf(payload, s=1.0):
     """Draw the invoice; s scales vertical spacing (1 = normal). Returns (pdf bytes, page count)."""
     from fpdf import FPDF
@@ -285,8 +323,10 @@ def _render_pdf(payload, s=1.0):
             pdf.image(LOGO_PATH, x=left, y=top, w=48 if s >= 0.8 else 40)
         except Exception:
             pass
+    elif not payload.get('own_logo') and _draw_company_logo(pdf, left, top, s):
+        pass
     elif not payload.get('own_logo'):
-        # A Finstap company: its name in place of a logo
+        # A Finstap company without a logo it can print: its name instead
         pdf.set_xy(left, top)
         pdf.set_font('Helvetica', 'B', 16)
         pdf.set_text_color(*ink)
@@ -385,15 +425,25 @@ def _render_pdf(payload, s=1.0):
     pdf.ln(2 * s)
 
     def pill(x, y, label, url):
-        """A rounded "button" linking to url; returns its width."""
+        """A glossy pill button in the company's colour linking to url (Apple-style: soft shadow, a light
+        sheen on the top half and a fine darker edge); returns its width."""
+        fill, text = button_colours()
+        rgb = tuple(int(fill[i:i + 2], 16) for i in (1, 3, 5))
         pdf.set_font('Helvetica', 'B', 10)
-        pill_w, pill_h = pdf.get_string_width(label) + 10, 7.5
-        pdf.set_fill_color(*navy)
-        try:
-            pdf.rounded_rect(x, y, pill_w, pill_h, pill_h / 2, style='F')
-        except Exception:
-            pdf.rect(x, y, pill_w, pill_h, style='F')
-        pdf.set_text_color(255, 255, 255)
+        pill_w, pill_h = pdf.get_string_width(label) + 14, 8.5
+        with pdf.local_context(fill_opacity=0.16):
+            pdf.set_fill_color(*rgb)
+            _pill_path(pdf, x + 0.6, y + 1.1, pill_w - 1.2, pill_h)
+        pdf.set_fill_color(*rgb)
+        pdf.set_draw_color(*(round(c * 0.82) for c in rgb))
+        pdf.set_line_width(0.25)
+        _pill_path(pdf, x, y, pill_w, pill_h, 'B')
+        with pdf.local_context(fill_opacity=0.2):
+            pdf.set_fill_color(255, 255, 255)
+            _pill_path(pdf, x + 1.2, y + 0.55, pill_w - 2.4, pill_h * 0.45)
+        pdf.set_draw_color(*rule)
+        pdf.set_line_width(0.2)
+        pdf.set_text_color(*(int(text[i:i + 2], 16) for i in (1, 3, 5)))
         pdf.set_xy(x, y + 0.6)
         pdf.cell(pill_w, pill_h - 1.2, label, align='C', link=url)
         pdf.set_text_color(*ink)
@@ -427,11 +477,11 @@ def _render_pdf(payload, s=1.0):
         for link in invoice_links():
             label = latin(link['label'])
             pdf.set_font('Helvetica', 'B', 10)
-            if x > 16 and x + pdf.get_string_width(label) + 10 > 194:
-                x, y = 16, y + 10
-            x += pill(x, y, label, link['url']) + 4
+            if x > 16 and x + pdf.get_string_width(label) + 14 > 194:
+                x, y = 16, y + 12
+            x += pill(x, y, label, link['url']) + 5
         if x > 16:
-            pdf.set_y(y + 7.5)
+            pdf.set_y(y + 10)
         return bytes(pdf.output()), pdf.page_no()
 
     def bank_block(title, fields):
@@ -453,7 +503,7 @@ def _render_pdf(payload, s=1.0):
     # "Pay now" pill linking to the Tide payment page
     pill_y = pdf.get_y()
     pill(16, pill_y, 'Pay now in GBP', gbp['pay_url'])
-    pdf.set_y(pill_y + 7.5 + 8 * s)
+    pdf.set_y(pill_y + 8.5 + 8 * s)
 
     bank_block('PKR', (('Account title', pkr['account_name']), ('Bank name', pkr['bank_name']), ('IBAN', pkr['iban'])))
 

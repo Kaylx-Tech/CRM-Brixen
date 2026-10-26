@@ -45,6 +45,22 @@ import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 import { formatGBP, plainAmount } from "@/lib/money"
 import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
+// Invoice row buttons: Apple-style frosted glass that lifts a little on hover and presses in on click
+const GLASS_BUTTON =
+  "h-8 gap-1.5 rounded-full px-3.5 text-[13px] font-medium border border-black/[0.08] " +
+  "bg-gradient-to-b from-white/90 to-slate-50/70 backdrop-blur-md " +
+  "shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_3px_rgba(15,23,42,0.10)] transition-all duration-200 ease-out " +
+  "hover:-translate-y-px hover:border-black/[0.12] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_20px_-6px_rgba(15,23,42,0.22)] " +
+  "active:translate-y-0 active:scale-[0.97] dark:border-white/15 dark:from-white/15 dark:to-white/5"
+// The main "Send" action in the company's colour: tinted glass that fills with the colour on hover
+const GLASS_BUTTON_PRIMARY =
+  "h-8 gap-1.5 rounded-full px-3.5 text-[13px] font-semibold text-primary border border-primary/25 " +
+  "bg-gradient-to-b from-primary/15 to-primary/5 backdrop-blur-md " +
+  "shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_1px_2px_rgba(15,23,42,0.08)] transition-all duration-200 ease-out " +
+  "hover:-translate-y-px hover:from-primary hover:to-primary hover:text-primary-foreground hover:border-primary " +
+  "hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_20px_-6px_var(--primary)] " +
+  "active:translate-y-0 active:scale-[0.97]"
+
 const invoiceCol = createColumnHelper()
 const costCol = createColumnHelper()
 const profitCol = createColumnHelper()
@@ -706,9 +722,8 @@ export default function Payments() {
           <div className="flex items-center gap-1.5">
             {canSend && !paid ? (
               <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-sm gap-1"
+                variant="ghost"
+                className={GLASS_BUTTON_PRIMARY}
                 disabled={isSending}
                 onClick={() => handleSendInvoice(inv)}
                 title="Email the invoice with its PDF"
@@ -718,9 +733,8 @@ export default function Payments() {
               </Button>
             ) : (
               <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-sm gap-1"
+                variant="ghost"
+                className={GLASS_BUTTON}
                 onClick={() => openInvoice(inv.id)}
                 title="Open the invoice PDF"
               >
@@ -730,7 +744,7 @@ export default function Payments() {
             )}
             <DropdownMenu>
               <DropdownMenuTrigger
-                render={<Button variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label="More invoice actions" />}
+                render={<Button variant="ghost" className={`${GLASS_BUTTON} w-8 px-0 text-muted-foreground hover:text-foreground`} aria-label="More invoice actions" />}
               >
                 <IconDots className="size-4" />
               </DropdownMenuTrigger>
