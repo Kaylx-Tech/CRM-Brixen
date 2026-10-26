@@ -12,6 +12,19 @@ def handle_invoice_routes(environ, start_response, path, method, user, body, que
     if not (path.startswith('/api/invoices') or path.startswith('/api/admin/invoices')):
         return None
 
+    # ── GET /api/invoices/shared/<code> (PDF from a private link in an invoice email, no sign-in) ──
+    match_shared = re.match(r'^/api/invoices/shared/([^/]+)$', path)
+    if match_shared and method == 'GET':
+        from services.invoice_share import invoice_for_token
+        from services.invoice_document import pdf_response
+        invoice_id, problem = invoice_for_token(match_shared.group(1))
+        if problem == 'expired':
+            return error_response(start_response, "This invoice link has expired", status_code=410)
+        if not invoice_id or not query_db("SELECT id FROM invoices WHERE id = ?;", (invoice_id,), one=True):
+            return error_response(start_response, "This invoice link is not valid", status_code=404)
+        download = (query.get('download') or [''])[0] in ('1', 'true')
+        return pdf_response(start_response, invoice_id, inline=not download)
+
     if not user:
         return error_response(start_response, "Authentication required", status_code=401)
 

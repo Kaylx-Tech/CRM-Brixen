@@ -5,6 +5,7 @@ import ForgotPassword from './Pages/ForgotPassword'
 import FinstapSignup from './Pages/FinstapSignup'
 import FinstapWelcome from './Pages/FinstapWelcome'
 import FinstapLanding from './Pages/FinstapLanding'
+import SharedInvoice from './Pages/SharedInvoice'
 import { IS_FINSTAP, onSharedHost, subdomainWorkspace } from './lib/workspace'
 import { loadBranding } from './lib/branding'
 import ResetPassword from './Pages/ResetPassword'
@@ -109,6 +110,9 @@ const App = () => {
 
             {/* Finstap: just after signup, the company's subdomain signs in with a one-time code */}
             {IS_FINSTAP && <Route path="/welcome" element={<FinstapWelcome />} />}
+
+            {/* Finstap: an invoice from the private link in an invoice email (no sign-in) */}
+            {IS_FINSTAP && <Route path="/invoice/:token" element={<SharedInvoice />} />}
 
             {/* Finstap: companies create their own workspace; the Brixen build has no signup */}
             <Route

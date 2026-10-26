@@ -222,12 +222,17 @@ def _section_html(title, rows):
     )
 
 
-def invoice_view_url():
-    """Where the client sees their invoices: the workspace's portal (or Brixen's), '' when unknown."""
+def invoice_view_url(invoice_id):
+    """The "View invoice" link: in a Finstap workspace a private no-login link to this invoice's PDF
+    (services/invoice_share.py), in Brixen the client portal's invoices; '' when unknown."""
     from tenancy import current_tenant, workspace_url
     from services.portal_compat import _workspace_name, portal_base_url
     if _workspace_name():
-        return workspace_url((current_tenant() or {}).get('slug'), '/portal/invoices')
+        slug = (current_tenant() or {}).get('slug')
+        if not workspace_url(slug):
+            return ''
+        from services.invoice_share import create_share_token
+        return workspace_url(slug, f'/invoice/{create_share_token(invoice_id)}')
     base = portal_base_url()
     return f'{base}/portal/invoices' if base else ''
 
@@ -316,7 +321,7 @@ def _short_sections(invoice, order, payload):
     sections = [_section_html('Invoice', [(label, value) for label, value in rows if value])]
     # One button to the client's invoices in the portal; pay links (Settings > Invoices) stay on the PDF
     mode, _text = payment_methods()
-    view_url = invoice_view_url()
+    view_url = invoice_view_url(invoice['id'])
     if view_url:
         sections.append(_links_html([{'label': 'View invoice', 'url': view_url}]))
     if mode != 'none':
