@@ -58,43 +58,14 @@ def account_title(account):
 
 
 def company_logo():
-    """(image bytes, subtype) of a Finstap company's logo from Settings > Branding, or None (Brixen keeps its
-    bundled logo; an SVG or ICO logo cannot go into emails or PDFs)."""
-    from services.portal_compat import _workspace_name
-    if not _workspace_name():
-        return None
-    from services.login_otp import _image_from_data_url
-    from services.settings_service import get_setting
-    return _image_from_data_url(get_setting('brand_logo'))
+    """The company's logo for the invoice PDF (email_engine.company_logo_image)."""
+    return eng.company_logo_image()
 
 
 def button_colours():
-    """(fill, text) hex colours of pay buttons: the company's accent colour (Brixen navy otherwise), with
-    dark text on a very light accent."""
-    import re
-    from services.portal_compat import _workspace_name
-    from services.settings_service import get_setting
-    accent = str(get_setting('accent_color') or '').strip() if _workspace_name() else ''
-    if not re.match(r'^#[0-9a-fA-F]{6}$', accent):
-        accent = '#003971'
-    r, g, b = (int(accent[i:i + 2], 16) for i in (1, 3, 5))
-    return accent, ('#111827' if (0.299 * r + 0.587 * g + 0.114 * b) > 186 else '#ffffff')
-
-
-def _shade(hex_colour, amount):
-    """hex_colour mixed towards white (amount > 0) or black (amount < 0)."""
-    r, g, b = (int(hex_colour[i:i + 2], 16) for i in (1, 3, 5))
-    target = 255 if amount > 0 else 0
-    mix = lambda c: round(c + (target - c) * abs(amount))
-    return f'#{mix(r):02x}{mix(g):02x}{mix(b):02x}'
-
-
-GLASS_BUTTON_CSS = (
-    '.glass-btn{transition:transform .18s ease,box-shadow .18s ease,filter .18s ease;}'
-    '.glass-btn:hover{transform:translateY(-1px);filter:brightness(1.06);'
-    'box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 6px 14px rgba(17,24,39,.18)!important;}'
-    '.glass-btn:active{transform:translateY(0) scale(.98);}'
-)
+    """(fill, text) hex colours of pay buttons: the company's accent colour (Brixen navy otherwise)."""
+    accent = eng.brand_accent()
+    return accent, eng.text_on(accent)
 
 
 def payment_request_copy(attached=False):
@@ -216,7 +187,7 @@ def _section_html(title, rows):
     return (
         f'<div style="margin:16px 0 0;padding:14px 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">'
         f'<p style="margin:0 0 4px;font-size:12px;font-weight:700;letter-spacing:0.04em;'
-        f'text-transform:uppercase;color:#003971;">{html_escape(title)}</p>'
+        f'text-transform:uppercase;color:{eng.brand_accent()};">{html_escape(title)}</p>'
         f'{_rows_html(rows)}'
         f'</div>'
     )
@@ -238,20 +209,8 @@ def invoice_view_url(invoice_id):
 
 
 def _links_html(links):
-    """Links as glossy pill buttons in the company's colour (Apple-style: a soft top highlight, a fine
-    edge and a coloured shadow; mail apps that support it lift the button on hover)."""
-    fill, text = button_colours()
-    r, g, b = (int(fill[i:i + 2], 16) for i in (1, 3, 5))
-    buttons = ''.join(
-        f'<a href="{html_escape(link["url"], quote=True)}" class="glass-btn" style="display:inline-block;'
-        f'margin:0 8px 8px 0;padding:9px 18px;border-radius:999px;background-color:{fill};'
-        f'background-image:linear-gradient(180deg,{_shade(fill, 0.16)} 0%,{fill} 55%,{_shade(fill, -0.06)} 100%);'
-        f'border:1px solid {_shade(fill, -0.18)};color:{text};font-size:13px;font-weight:600;letter-spacing:-0.01em;'
-        f'line-height:1;text-decoration:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),'
-        f'0 2px 6px rgba({r},{g},{b},.22);">{html_escape(link["label"])}</a>'
-        for link in links
-    )
-    return f'<div style="margin:16px 0 0;">{buttons}</div>'
+    """Links as glossy pill buttons in the company's colour (the same buttons as every email)."""
+    return eng.email_buttons_html([(link['url'], link['label']) for link in links])
 
 
 def _build_sections(invoice, order, *, include_bank):
@@ -330,7 +289,7 @@ def _short_sections(invoice, order, payload):
     return ''.join(sections)
 
 
-def _compose_email(*, subject, greeting, intro, sections_html, category, logo=None):
+def _compose_email(*, subject, greeting, intro, sections_html, category):
     brand = brand_settings()
     brand_for_sig = {
         **brand,
@@ -344,13 +303,10 @@ def _compose_email(*, subject, greeting, intro, sections_html, category, logo=No
         f'{sections_html}'
     )
     head = (
-        f'<head><meta charset="utf-8"><title>{html_escape(subject)}</title>'
-        f'<style>{GLASS_BUTTON_CSS}</style></head>'
+        f'<head><meta charset="utf-8"><title>{html_escape(subject)}</title></head>'
     )
-    # The company's own logo (sent inside the email as cid:company-logo), a little larger than the default
-    hero = (eng.email_brand_header_html(brand, subject.split(" — ")[0], logo_src=f'cid:{eng.COMPANY_LOGO_CID}',
-                                        logo_height=44)
-            if logo else eng.email_brand_header_html(brand, subject.split(" — ")[0]))
+    # The company's logo above the headline (email_engine; email_service attaches the image)
+    hero = eng.email_brand_header_html(brand, subject.split(" — ")[0])
     disclaimer = eng.category_disclaimer(category)
     html = eng.build_transactional_shell_html(
         subject=subject,
@@ -387,7 +343,6 @@ def send_payment_requested(invoice, order):
 
     # The invoice PDF goes with the email; without it the email carries the full bank details
     pdf = _invoice_pdf(invoice)
-    logo = company_logo()
     subject, text, html = _compose_email(
         subject=subject,
         greeting=_greeting_name(invoice, order),
@@ -395,11 +350,9 @@ def send_payment_requested(invoice, order):
         sections_html=(_short_sections(invoice, order, pdf[2]) if pdf
                        else _build_sections(invoice, order, include_bank=True)),
         category='INVOICE',
-        logo=logo,
     )
     ok = send_email(to, subject, html, text_content=text, category='INVOICE',
                     user_id=invoice.get('user_id'), order_id=invoice.get('order_id'),
-                    images=[(eng.COMPANY_LOGO_CID, logo[0], logo[1])] if logo else None,
                     attachments=[(pdf[0], pdf[1], 'application/pdf')] if pdf else None)
     return {
         'email_sent': bool(ok),
@@ -434,7 +387,6 @@ def send_payment_received(invoice, order):
     service = str(order.get('service_name') or '').strip()
     ref = invoice_number or order_number or service or 'invoice'
     subject = f"{title} — {ref} — {company}"
-    logo = company_logo()
 
     subject, text, html = _compose_email(
         subject=subject,
@@ -442,13 +394,11 @@ def send_payment_received(invoice, order):
         intro=intro,
         sections_html=_build_sections(invoice, order, include_bank=False),
         category='PAYMENT',
-        logo=logo,
     )
     # The paid invoice goes with the thank-you as a receipt
     pdf = _invoice_pdf(invoice)
     ok = send_email(to, subject, html, text_content=text, category='INVOICE',
                     user_id=invoice.get('user_id'), order_id=invoice.get('order_id'),
-                    images=[(eng.COMPANY_LOGO_CID, logo[0], logo[1])] if logo else None,
                     attachments=[(pdf[0], pdf[1], 'application/pdf')] if pdf else None)
     return {
         'email_sent': bool(ok),

@@ -159,6 +159,13 @@ def _build_message(subject, sender, recipient, html_content, text_content, logo=
                 data, subtype = fh.read(), 'png'
         inline.append((EMAIL_LOGO_CID, data, subtype))
     inline += [i for i in (images or []) if html_content and f'cid:{i[0]}' in html_content]
+    # A company's own logo in the header (email_engine.email_brand_header_html): attached here, so every
+    # email (and a resend from the Email log) carries it
+    from services.email_engine import COMPANY_LOGO_CID, company_logo_image
+    if html_content and f'cid:{COMPANY_LOGO_CID}' in html_content and not any(i[0] == COMPANY_LOGO_CID for i in inline):
+        company_logo = company_logo_image()
+        if company_logo:
+            inline.append((COMPANY_LOGO_CID, company_logo[0], company_logo[1]))
     if inline:
         msg = MIMEMultipart('related')
         msg.attach(body)

@@ -450,17 +450,17 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
                     reset_link = f"{_frontend_base_url()}{reset_path}"
                     if tenant:
                         reset_link += f"&workspace={urllib.parse.quote(tenant['slug'])}"
-                send_email(
-                    recipient=email,
-                    subject=f"{brand_name()} - Password Reset Request",
-                    html_content=(
-                        f"<p>Hello {user_row['full_name'] or 'Client'},</p>"
-                        f"<p>You requested a password reset. Click below:</p>"
-                        f"<p><a href='{reset_link}'>{reset_link}</a></p>"
-                        f"<p>This link expires in 2 hours.</p>"
-                    ),
-                    category='SECURITY', user_id=user_row['id'], store_body=False,
-                )
+                # Same design as every email: the company's logo, a glossy button in its colour
+                from services.client_mail import compose_client_email
+                subj, text, html = compose_client_email(
+                    subject=f"{brand_name()} - Password Reset Request", headline='Reset your password',
+                    greeting=str(user_row.get('full_name') or 'there').split()[0],
+                    message='You asked to reset your password. The button below opens a page where you can '
+                            'choose a new one. It works for 2 hours.\n\n'
+                            'If you did not ask for this, you can ignore this email: your password stays the same.',
+                    cta_label='Reset password', cta_url=reset_link, category='SECURITY')
+                send_email(email, subj, html, text_content=text, category='SECURITY', user_id=user_row['id'],
+                           store_body=False)
             except Exception as e:
                 print(f"[Email Error] Failed to send reset link: {e}")
 

@@ -102,10 +102,15 @@ def company_attention_issues(company):
 
 
 def build_client_notification_email(client, headline, intro, **kwargs):
-    """Simple HTML/text email builder used by compliance render path."""
+    """Compliance alerts and other client notices in the same design as every email: the company's logo,
+    the headline, the message (structured_html when given, e.g. compliance issue blocks), glossy buttons
+    in the company's colour, signature and footer note. Returns (subject, text, html)."""
+    from html import escape as html_escape
+    from services import email_engine as eng
     subject = kwargs.get('subject') or headline
     badge = kwargs.get('badge') or ''
     extra = kwargs.get('extra_message') or ''
+    structured = kwargs.get('structured_html') or ''
     cta_label = kwargs.get('cta_label') or ''
     cta_url = kwargs.get('cta_url') or ''
     footer_note = kwargs.get('footer_note') or ''
@@ -116,24 +121,39 @@ def build_client_notification_email(client, headline, intro, **kwargs):
     body_text = f"Hello {greeting},\n\n{intro}\n\n{extra}\n"
     if cta_url:
         body_text += f"\n{cta_label or 'Open link'}: {cta_url}\n"
+    if kwargs.get('extra_cta_url'):
+        body_text += f"\n{kwargs.get('extra_cta_label') or 'Open link'}: {kwargs['extra_cta_url']}\n"
     if footer_note:
         body_text += f"\n{footer_note}\n"
 
+    accent = eng.brand_accent()
+    # The intro may already greet the client ("Hi Sam,<br><br>…"); otherwise it gets "Hello …,"
+    greets = str(intro).lstrip().lower().startswith(('hi ', 'hello ', 'dear '))
     parts = [
-        f"<p>Hello {greeting},</p>",
-        f"<p><strong>{badge}</strong></p>" if badge else '',
-        f"<p>{intro}</p>",
-        f"<div>{extra.replace(chr(10), '<br>')}</div>" if extra else '',
+        '' if greets else (f'<p style="margin:0 0 12px;font-size:15px;line-height:1.55;color:#111827;">'
+                           f'Hello {html_escape(str(greeting))},</p>'),
+        (f'<p style="margin:0 0 12px;"><span style="display:inline-block;padding:4px 10px;border-radius:999px;'
+         f'background:{eng.shade(accent, 0.88)};color:{accent};font-size:12px;font-weight:700;letter-spacing:0.02em;">'
+         f'{html_escape(badge)}</span></p>') if badge else '',
+        f'<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#374151;">{intro}</p>',
+        structured or (f'<p style="margin:0;font-size:15px;line-height:1.6;color:#374151;">'
+                       f'{html_escape(extra).replace(chr(10), "<br>")}</p>' if extra else ''),
+        eng.email_details_box_html('', [('Company', kwargs.get('company_name')),
+                                        ('Company number', kwargs.get('company_number'))]),
+        eng.email_buttons_html([(cta_url, cta_label or 'Continue'),
+                                (kwargs.get('extra_cta_url'), kwargs.get('extra_cta_label') or 'Open',
+                                 kwargs.get('extra_cta_background'))]),
     ]
-    if cta_url:
-        parts.append(
-            f'<p><a href="{cta_url}" style="display:inline-block;padding:10px 16px;'
-            f'background:#003971;color:#fff;text-decoration:none;border-radius:6px;">'
-            f'{cta_label or "Continue"}</a></p>'
-        )
-    if footer_note:
-        parts.append(f'<p style="color:#6b7280;font-size:12px;">{footer_note}</p>')
-    body_html = ''.join(p for p in parts if p)
+    brand = brand_settings()
+    brand_for_sig = {**brand, 'legal_name': brand.get('legal_name') or brand.get('company_name')}
+    body_html = eng.build_transactional_shell_html(
+        subject=subject,
+        head_html=f'<head><meta charset="utf-8"><title>{html_escape(subject)}</title></head>',
+        hero_html=eng.email_brand_header_html(brand, headline),
+        body_inner_html=''.join(p for p in parts if p),
+        signature_html=eng.email_signature_html(brand_for_sig),
+        disclaimer_html=eng.email_disclaimer_html(footer_note),
+    )
     return subject, body_text, body_html
 
 

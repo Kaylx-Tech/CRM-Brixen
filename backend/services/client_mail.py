@@ -96,22 +96,9 @@ def compose_client_email(*, subject, headline, greeting, message, points=None, d
     points_html = ''.join(
         f'<p style="margin:6px 0 0;font-size:14px;line-height:1.5;color:#111827;">{html_escape(p)}</p>'
         for p in points)
-    details_html = ''
-    if details:
-        rows = ''.join(
-            f'<tr><td style="padding:6px 0;color:#6b7280;font-size:13px;vertical-align:top;">{html_escape(str(k))}</td>'
-            f'<td style="padding:6px 0 6px 16px;color:#111827;font-size:13px;font-weight:600;text-align:right;">'
-            f'{html_escape(str(v))}</td></tr>' for k, v in details)
-        details_html = (
-            '<div style="margin:16px 0 0;padding:14px 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">'
-            '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" '
-            f'style="width:100%;border-collapse:collapse;">{rows}</table></div>')
-    cta_html = ''
-    if cta_label and cta_url:
-        cta_html = (
-            f'<p style="margin:20px 0 0;"><a href="{html_escape(cta_url)}" '
-            'style="display:inline-block;padding:11px 18px;background:#003971;color:#ffffff;text-decoration:none;'
-            f'border-radius:8px;font-size:14px;font-weight:600;">{html_escape(cta_label)}</a></p>')
+    details_html = eng.email_details_box_html('', details)
+    # A glossy button in the company's colour (the same button in every email)
+    cta_html = eng.email_buttons_html([(cta_url, cta_label)]) if cta_label and cta_url else ''
 
     body_inner = (
         f'<p style="margin:0 0 12px;font-size:15px;line-height:1.55;color:#111827;">Hello {html_escape(greeting)},</p>'

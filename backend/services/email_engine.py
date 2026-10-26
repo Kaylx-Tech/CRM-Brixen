@@ -459,6 +459,11 @@ def email_graphic_footer_html(brand, wordmark_url=None, disclaimer=''):
 def email_slim_brand_bar_html(gold='#c5a572'):
     """Thin brand accent only — not a signature block."""
     gold = html_escape(gold or '#c5a572')
+    accent = brand_accent()
+    if accent != BRIXEN_NAVY:
+        # A company's own colour: one bar in its accent (Brixen keeps navy + gold)
+        return (f'<tr><td bgcolor="{accent}" style="height:4px;line-height:4px;font-size:0;'
+                f'background-color:{accent};">&nbsp;</td></tr>')
     return (
         f'<tr><td bgcolor="#003971" style="height:4px;line-height:4px;font-size:0;'
         f'background-color:#003971;">&nbsp;</td></tr>'
@@ -473,7 +478,7 @@ def email_cta_stack_html(buttons, apple_button_fn):
     for index, item in enumerate(buttons or []):
         if not item:
             continue
-        url, label, background = item[0], item[1], (item[2] if len(item) > 2 else '#003971')
+        url, label, background = item[0], item[1], (item[2] if len(item) > 2 else brand_accent())
         if not url or not label:
             continue
         gap = '<div style="height:8px;line-height:8px;font-size:0;">&nbsp;</div>' if parts else ''
@@ -541,6 +546,99 @@ BUNDLED_LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath
                                  'static', 'img', 'brixen-logo.png')
 
 
+# ── Company look (Finstap: each company's own logo and accent colour; Brixen keeps navy and its logo) ──
+
+BRIXEN_NAVY = '#003971'
+
+# Hover lift for the glossy buttons, in mail apps that read <style> (Apple Mail, iOS Mail…)
+GLASS_BUTTON_CSS = (
+    '.glass-btn{transition:transform .18s ease,box-shadow .18s ease,filter .18s ease;}'
+    '.glass-btn:hover{transform:translateY(-1px);filter:brightness(1.06);'
+    'box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 6px 14px rgba(17,24,39,.18)!important;}'
+    '.glass-btn:active{transform:translateY(0) scale(.98);}'
+)
+
+
+def _in_workspace():
+    from services.portal_compat import _workspace_name
+    return bool(_workspace_name())
+
+
+def brand_accent():
+    """The company's accent colour (Settings > Branding) as #rrggbb; Brixen navy otherwise."""
+    if not _in_workspace():
+        return BRIXEN_NAVY
+    from services.settings_service import get_setting
+    accent = str(get_setting('accent_color') or '').strip()
+    return accent if re.match(r'^#[0-9a-fA-F]{6}$', accent) else BRIXEN_NAVY
+
+
+def _rgb(hex_colour):
+    return tuple(int(hex_colour[i:i + 2], 16) for i in (1, 3, 5))
+
+
+def text_on(hex_colour):
+    """White text on the colour, or near-black on a very light one."""
+    r, g, b = _rgb(hex_colour)
+    return '#111827' if (0.299 * r + 0.587 * g + 0.114 * b) > 186 else '#ffffff'
+
+
+def shade(hex_colour, amount):
+    """hex_colour mixed towards white (amount > 0) or black (amount < 0)."""
+    target = 255 if amount > 0 else 0
+    return '#' + ''.join(f'{round(c + (target - c) * abs(amount)):02x}' for c in _rgb(hex_colour))
+
+
+def company_logo_image():
+    """(image bytes, subtype) of a Finstap company's logo from Settings > Branding, or None (Brixen keeps
+    its bundled logo; an SVG or ICO logo cannot go into emails)."""
+    if not _in_workspace():
+        return None
+    from services.login_otp import _image_from_data_url
+    from services.settings_service import get_setting
+    return _image_from_data_url(get_setting('brand_logo'))
+
+
+def email_button_html(url, label, colour=None):
+    """A glossy pill button (Apple-style: soft top highlight, fine edge, coloured shadow) in the company's
+    colour; mail apps that support it lift it on hover (GLASS_BUTTON_CSS)."""
+    fill = colour if re.match(r'^#[0-9a-fA-F]{6}$', str(colour or '')) else brand_accent()
+    r, g, b = _rgb(fill)
+    return (
+        f'<a href="{html_escape(str(url), quote=True)}" class="glass-btn" style="display:inline-block;'
+        f'margin:0 8px 8px 0;padding:9px 18px;border-radius:999px;background-color:{fill};'
+        f'background-image:linear-gradient(180deg,{shade(fill, 0.16)} 0%,{fill} 55%,{shade(fill, -0.06)} 100%);'
+        f'border:1px solid {shade(fill, -0.18)};color:{text_on(fill)};font-family:{EMAIL_FONT_STACK};'
+        f'font-size:13px;font-weight:600;letter-spacing:-0.01em;line-height:1;text-decoration:none;'
+        f'box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 2px 6px rgba({r},{g},{b},.22);">'
+        f'{html_escape(str(label))}</a>'
+    )
+
+
+def email_buttons_html(buttons):
+    """A row of email_button_html for [(url, label) or (url, label, colour)]; '' when none has a url."""
+    parts = [email_button_html(b[0], b[1], b[2] if len(b) > 2 else None) for b in (buttons or []) if b and b[0] and b[1]]
+    return f'<div style="margin:18px 0 0;">{"".join(parts)}</div>' if parts else ''
+
+
+def email_details_box_html(title, rows):
+    """A light box with a small coloured title and label / value rows (empty values left out)."""
+    rows = [(k, v) for k, v in (rows or []) if str(v or '').strip()]
+    if not rows and not title:
+        return ''
+    body = ''.join(
+        f'<tr><td style="padding:6px 0;color:#6b7280;font-size:13px;vertical-align:top;">{html_escape(str(k))}</td>'
+        f'<td style="padding:6px 0 6px 16px;color:#111827;font-size:13px;font-weight:600;text-align:right;">'
+        f'{html_escape(str(v))}</td></tr>' for k, v in rows)
+    heading = (f'<p style="margin:0 0 4px;font-size:12px;font-weight:700;letter-spacing:0.04em;'
+               f'text-transform:uppercase;color:{brand_accent()};">{html_escape(title)}</p>') if title else ''
+    return (
+        '<div style="margin:16px 0 0;padding:14px 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">'
+        f'{heading}<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" '
+        f'style="width:100%;border-collapse:collapse;margin:{8 if title else 0}px 0 0;">{body}</table></div>'
+    )
+
+
 def email_logo_src(brand):
     """<img src> for the brand logo: a full image URL from Settings, the bundled logo, or '' (name only)."""
     url = str((brand or {}).get('logo_url') or '').strip()
@@ -571,14 +669,17 @@ def email_brand_header_html(brand, headline, logo_src=None, logo_height=36):
     """Hero row: the logo (or the company name when there is none) above the email's headline.
     logo_src (e.g. cid:brand-logo for a company's own logo sent with the email) replaces the Settings logo."""
     name = (brand or {}).get('company_name') or _company_name()
+    if not logo_src and company_logo_image():
+        # The company's own logo goes inside the email as cid:company-logo (email_service attaches it)
+        logo_src, logo_height = f'cid:{COMPANY_LOGO_CID}', 44
     src = logo_src or email_logo_src(brand)
     if src:
         top = (f'<img src="{html_escape(src)}" alt="{html_escape(name)}" height="{logo_height}" '
                f'style="display:block;height:{logo_height}px;width:auto;max-width:220px;border:0;outline:none;'
                'text-decoration:none;">')
     else:
-        top = (f'<p style="margin:0;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#003971;'
-               f'font-weight:700;">{html_escape(name)}</p>')
+        top = (f'<p style="margin:0;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;'
+               f'color:{brand_accent()};font-weight:700;">{html_escape(name)}</p>')
     return (
         f'<tr><td style="padding:24px 24px 8px;background:#ffffff;">{top}'
         f'<h1 style="margin:{16 if src else 8}px 0 0;font-size:22px;line-height:1.3;color:#111827;">'
@@ -598,6 +699,8 @@ def build_transactional_shell_html(
     ivory='#f9fafb',
 ):
     closing = footer_html or email_slim_brand_bar_html()
+    if 'glass-btn{' not in (head_html or '') and '</head>' in (head_html or ''):
+        head_html = head_html.replace('</head>', f'<style>{GLASS_BUTTON_CSS}</style></head>')
     return f"""<!DOCTYPE html>
 <html lang="en">
 {head_html}
@@ -638,9 +741,9 @@ def email_signature_html(brand, *, align='left'):
         f'<p style="margin:0;font-weight:600;color:#111827;">The {html_escape(bname)} Team</p>'
         f'<p style="margin:0;">{html_escape(cname)}</p>'
         f'<p style="margin:8px 0 0;font-size:14px;">'
-        f'<a href="mailto:{html_escape(c["email"])}" style="color:#003971;text-decoration:none;">{html_escape(c["email"])}</a><br>'
+        f'<a href="mailto:{html_escape(c["email"])}" style="color:{brand_accent()};text-decoration:none;">{html_escape(c["email"])}</a><br>'
         f'{html_escape(c["phone"])}<br>'
-        f'<a href="{html_escape(c["website"])}" style="color:#003971;text-decoration:none;">{html_escape(c["website"])}</a>'
+        f'<a href="{html_escape(c["website"])}" style="color:{brand_accent()};text-decoration:none;">{html_escape(c["website"])}</a>'
         f'</p></div>'
     )
 
