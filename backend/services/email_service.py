@@ -92,13 +92,14 @@ def last_failure_reason():
 
 def send_email(recipient, subject, html_content, text_content=None, *, category=None, user_id=None,
                order_id=None, company_id=None, triggered_by=None, log=True, store_body=True, logo=None,
-               sender_name=None):
+               sender_name=None, images=None):
     """Send an HTML transactional email via SMTP. Returns True only on real send.
 
     Every attempt is written to the email log (status sent / failed / not_configured / invalid_recipient)
     together with what it was about, so admins can see and resend it. store_body=False keeps secrets
     (password reset links) out of the log; such an email cannot be resent from the log.
-    logo=(image bytes, 'png'|'jpeg'|...) is the image behind cid:brand-logo instead of the bundled logo.
+    logo=(image bytes, 'png'|'jpeg'|...) is the image behind cid:brand-logo instead of the bundled logo;
+    images=[(cid, bytes, subtype)] are more pictures shown inside the email (cid:<cid>).
     sender_name is the From name instead of the company's (e.g. "Finstap" for signup emails).
     """
     meta = {'category': category, 'user_id': user_id, 'order_id': order_id, 'company_id': company_id,
@@ -109,7 +110,7 @@ def send_email(recipient, subject, html_content, text_content=None, *, category=
         ok, status, error = False, 'suppressed', 'Emails are turned off in Settings > Email'
     else:
         ok, status, error = _deliver(recipient, subject, html_content, text_content, logo=logo,
-                                     sender_name=sender_name)
+                                     sender_name=sender_name, images=images)
     _last_failure['status'], _last_failure['error'] = ('', '') if ok else (status, error)
     if log:
         _log_email((recipient or '').strip(), subject,
@@ -136,7 +137,7 @@ def resend_logged_email(log_id, actor_id=None):
     return ok, status, error
 
 
-def _build_message(subject, sender, recipient, html_content, text_content, logo=None):
+def _build_message(subject, sender, recipient, html_content, text_content, logo=None, images=None):
     """Text + HTML; an HTML email that shows the bundled logo (cid:) carries the logo image inside it."""
     from services.email_engine import BUNDLED_LOGO_PATH, EMAIL_LOGO_CID
 
@@ -146,25 +147,30 @@ def _build_message(subject, sender, recipient, html_content, text_content, logo=
     if html_content:
         body.attach(MIMEText(html_content, 'html'))
     msg = body
+    inline = []
     if html_content and f'cid:{EMAIL_LOGO_CID}' in html_content and (logo or os.path.isfile(BUNDLED_LOGO_PATH)):
-        msg = MIMEMultipart('related')
-        msg.attach(body)
         if logo:
             data, subtype = logo
         else:
             with open(BUNDLED_LOGO_PATH, 'rb') as fh:
                 data, subtype = fh.read(), 'png'
-        image = MIMEImage(data, subtype)
-        image.add_header('Content-ID', f'<{EMAIL_LOGO_CID}>')
-        image.add_header('Content-Disposition', 'inline', filename=f'logo.{subtype}')
-        msg.attach(image)
+        inline.append((EMAIL_LOGO_CID, data, subtype))
+    inline += [i for i in (images or []) if html_content and f'cid:{i[0]}' in html_content]
+    if inline:
+        msg = MIMEMultipart('related')
+        msg.attach(body)
+        for cid, data, subtype in inline:
+            image = MIMEImage(data, subtype)
+            image.add_header('Content-ID', f'<{cid}>')
+            image.add_header('Content-Disposition', 'inline', filename=f'{cid}.{subtype}')
+            msg.attach(image)
     msg['Subject'] = subject
     msg['From'] = sender
     msg['To'] = recipient
     return msg
 
 
-def _deliver(recipient, subject, html_content, text_content, logo=None, sender_name=None):
+def _deliver(recipient, subject, html_content, text_content, logo=None, sender_name=None, images=None):
     """Hand the message to the SMTP server. Returns (ok, status, error)."""
     recipient = (recipient or '').strip()
     if not recipient or '@' not in recipient:
@@ -184,7 +190,7 @@ def _deliver(recipient, subject, html_content, text_content, logo=None, sender_n
     from services.portal_compat import brand_name
     # Sent in the company's own name (its Settings > company name)
     msg = _build_message(subject, formataddr((sender_name or brand_name(), from_email)), recipient, html_content,
-                         text_content, logo=logo)
+                         text_content, logo=logo, images=images)
 
     try:
         if smtp_port == 465:
