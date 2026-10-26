@@ -224,7 +224,8 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
         if login_otp.otp_enabled() and not login_otp.device_trusted(user_row['id'], device_id):
             full = query_db("SELECT id, email, full_name FROM users WHERE id = ?;", (user_row['id'],), one=True)
             challenge, err = login_otp.start_challenge(dict(full or user_row), device_id,
-                                                       environ.get('HTTP_USER_AGENT', ''))
+                                                       environ.get('HTTP_USER_AGENT', ''),
+                                                       login_otp.sign_in_details(environ))
             if err:
                 reason = login_otp.email_failure_reason()
                 print(f"[Login code] could not email {user_row['email']}: {reason}")
@@ -255,7 +256,7 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
 
     # ── POST /api/auth/login/resend (a new login code for the same sign-in) ──
     if path == '/api/auth/login/resend' and method == 'POST':
-        ok, err, wait = login_otp.resend_code(body.get('challenge'))
+        ok, err, wait = login_otp.resend_code(body.get('challenge'), login_otp.sign_in_details(environ))
         if not ok:
             return error_response(start_response, err, status_code=429 if wait else 400,
                                   details={'resend_after': wait} if wait else None)

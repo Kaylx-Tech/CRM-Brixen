@@ -17,6 +17,7 @@ stores hashes of the device id and the code.
 import hashlib
 import hmac
 import os
+import re
 import secrets
 import uuid
 
@@ -121,29 +122,142 @@ def trust_device(user_id, device_id, user_agent=''):
     """, (user_id, device, f'+{TRUST_HOURS} hours', (user_agent or '')[:250]))
 
 
-def code_email_html(brand, logo_src, code):
-    """The login code email: logo (or the name), headline, the code in a large box, and why it came."""
+FINSTAP_ICON_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                 'static', 'img', 'finstap-icon.png')
+FINSTAP_ACCENT = '#6559ff'
+
+
+def _image_from_data_url(data_url):
+    """(bytes, subtype) of a PNG/JPG/GIF/WebP data: URL; None for SVG, ICO or anything else."""
+    import base64
+    found = re.match(r'^data:image/(png|jpeg|jpg|gif|webp);base64,(.+)$', str(data_url or '').strip(), re.I | re.S)
+    if not found:
+        return None
+    try:
+        return base64.b64decode(found.group(2)), found.group(1).lower().replace('jpg', 'jpeg')
+    except ValueError:
+        return None
+
+
+def _email_branding():
+    """Who the code email is from: the company's name, its app icon from Settings > Branding (Finstap's
+    when it has no branding at all; none when its icon is one email apps cannot show) and its accent."""
+    from services.portal_compat import brand_settings
+    from services.settings_service import get_setting
+    settings = brand_settings()
+    brand_icon, brand_logo = get_setting('brand_icon') or '', get_setting('brand_logo') or ''
+    icon = _image_from_data_url(brand_icon)
+    if not icon and not brand_icon and not brand_logo:
+        with open(FINSTAP_ICON_PATH, 'rb') as fh:
+            icon = (fh.read(), 'png')
+    accent = str(get_setting('accent_color') or '').strip() or FINSTAP_ACCENT
+    return {'brand': settings.get('brand_name') or 'your CRM', 'icon': icon, 'accent': accent,
+            'support_email': settings.get('support_email') or ''}
+
+
+def _device_label(user_agent):
+    """'Chrome on macOS' from a browser's user agent ('' when unknown)."""
+    ua = str(user_agent or '')
+    browser = next((name for key, name in (('Edg/', 'Edge'), ('OPR/', 'Opera'), ('Firefox/', 'Firefox'),
+                                           ('CriOS', 'Chrome'), ('Chrome/', 'Chrome'), ('Safari/', 'Safari'))
+                    if key in ua), '')
+    system = next((name for key, name in (('iPhone', 'iOS'), ('iPad', 'iPadOS'), ('Android', 'Android'),
+                                          ('Windows', 'Windows'), ('Mac OS X', 'macOS'), ('Linux', 'Linux'))
+                   if key in ua), '')
+    return ' on '.join(p for p in (browser, system) if p)
+
+
+def sign_in_details(environ):
+    """Where the sign-in came from, for the code email: device, location (city and country, when the
+    proxy in front sends them, e.g. Cloudflare's visitor location headers), IP address, time and the
+    address of the CRM it was made on."""
+    from datetime import datetime, timezone
+    from urllib.parse import unquote
+    environ = environ or {}
+    ip = (environ.get('HTTP_CF_CONNECTING_IP') or environ.get('HTTP_X_REAL_IP')
+          or (environ.get('HTTP_X_FORWARDED_FOR') or '').split(',')[0] or environ.get('REMOTE_ADDR') or '').strip()
+    city = unquote(environ.get('HTTP_CF_IPCITY') or '').strip()
+    country = (environ.get('HTTP_CF_IPCOUNTRY') or '').strip().upper()
+    if country in ('XX', 'T1'):
+        country = ''
+    try:
+        from zoneinfo import ZoneInfo
+        now = datetime.now(ZoneInfo('Europe/London'))
+    except Exception:
+        now = datetime.now(timezone.utc)
+    origin = (environ.get('HTTP_ORIGIN') or '').strip().rstrip('/')
+    return {
+        'device': _device_label(environ.get('HTTP_USER_AGENT')),
+        'location': ', '.join(p for p in (city, country) if p),
+        'ip': ip,
+        'time': f"{now.strftime('%-d %b %Y, %H:%M')} {now.tzname()}",
+        'origin': origin if origin.startswith(('https://', 'http://')) else '',
+    }
+
+
+def code_email_html(brand, code, *, icon_src='', accent='#111827', details=None, support_email=''):
+    """The login code email: small icon and name, where the sign-in came from, the code, and what to do
+    if it was not you. Inter like the CRM (email apps without it fall back to their system font)."""
     from html import escape
     name = escape(brand)
-    if logo_src:
-        top = (f'<img src="{escape(logo_src)}" alt="{name}" height="48" style="display:block;height:48px;'
-               'width:auto;max-width:240px;border:0;outline:none;text-decoration:none;">')
-    else:
-        top = f'<p style="margin:0;font-size:22px;font-weight:700;color:#111827;">{name}</p>'
-    font = "font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;"
+    details = details or {}
+    accent = accent if re.match(r'^#[0-9a-fA-F]{6}$', str(accent or '')) else '#111827'
+    sans = "font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;"
+    mono = "font-family:'SF Mono',SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;"
+    icon = (f'<img src="{escape(icon_src)}" alt="" width="36" height="36" style="display:block;width:36px;'
+            'height:36px;border:0;border-radius:9px;outline:none;text-decoration:none;">' if icon_src else '')
+    rows = [(label, details.get(key)) for label, key in
+            (('Device', 'device'), ('Location', 'location'), ('IP address', 'ip'), ('Time', 'time'))]
+    rows = [(label, value) for label, value in rows if value]
+    detail_rows = ''.join(
+        f'<tr><td style="padding:14px 0;{"border-top:1px solid #ececef;" if i else ""}font-size:11px;'
+        f'font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#71717a;">{label}</td>'
+        f'<td align="right" style="padding:14px 0;{"border-top:1px solid #ececef;" if i else ""}{mono}'
+        f'font-size:13px;color:#18181b;">{escape(str(value))}</td></tr>'
+        for i, (label, value) in enumerate(rows))
+    detail_box = (f'<tr><td style="padding:0 0 32px;"><table role="presentation" width="100%" cellpadding="0" '
+                  f'cellspacing="0" style="background:#fafafa;border:1px solid #ececef;border-radius:12px;">'
+                  f'<tr><td style="padding:6px 24px;"><table role="presentation" width="100%" cellpadding="0" '
+                  f'cellspacing="0">{detail_rows}</table></td></tr></table></td></tr>') if rows else ''
+    spaced = f'{code[:3]}&nbsp;{code[3:]}'
+    secure = (f' <a href="{escape(details["origin"])}/forgot-password" style="color:{accent};font-weight:600;'
+              f'text-decoration:underline;">Secure your account&nbsp;&rarr;</a>') if details.get('origin') else ''
+    help_line = (f'<br>Need help? <a href="mailto:{escape(support_email)}" style="color:#71717a;">'
+                 f'{escape(support_email)}</a>') if support_email else ''
     return f"""<!doctype html>
-<html><body style="margin:0;padding:0;background:#ffffff;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;">
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;">
+<div style="display:none;max-height:0;overflow:hidden;">Someone is signing in to your {name} account. Your code works for {CODE_MINUTES} minutes.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;">
   <tr><td align="center" style="padding:40px 16px;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;{font}color:#111827;">
-      <tr><td style="padding:0 0 40px;">{top}</td></tr>
-      <tr><td style="padding:0 0 20px;font-size:30px;line-height:1.25;font-weight:700;">Finish signing in to {name}.</td></tr>
-      <tr><td style="padding:0 0 24px;font-size:16px;line-height:1.5;color:#4b5563;">Use this one-time login code to confirm it's you:</td></tr>
-      <tr><td align="center" style="background:#f1f4f8;border-radius:16px;padding:32px 16px;font-size:44px;line-height:1;font-weight:500;letter-spacing:6px;color:#111827;">{code}</td></tr>
-      <tr><td style="padding:16px 0 32px;font-size:14px;line-height:1.5;color:#6b7280;">The code works for {CODE_MINUTES} minutes. Never share it with anyone.</td></tr>
-      <tr><td style="border:1px solid #e5e7eb;border-radius:16px;padding:24px;">
-        <p style="margin:0 0 12px;font-size:20px;font-weight:700;color:#111827;">Why did I get this email?</p>
-        <p style="margin:0;font-size:15px;line-height:1.6;color:#4b5563;">Someone signed in to {name} with your email and password. If this wasn't you, change your password now, because someone else knows it.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #e4e4e7;border-radius:16px;{sans}color:#18181b;">
+      <tr><td style="height:4px;line-height:4px;font-size:0;background:{accent};border-radius:16px 16px 0 0;">&nbsp;</td></tr>
+      <tr><td style="padding:40px 40px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:0 0 36px;">
+            <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+              {f'<td style="padding:0 12px 0 0;vertical-align:middle;">{icon}</td>' if icon else ''}
+              <td style="vertical-align:middle;font-size:17px;font-weight:600;letter-spacing:-0.01em;color:#18181b;">{name}</td>
+            </tr></table>
+          </td></tr>
+          <tr><td style="padding:0 0 12px;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-0.02em;color:#18181b;">Verify your sign-in</td></tr>
+          <tr><td style="padding:0 0 28px;font-size:15px;line-height:1.6;color:#52525b;">We noticed a new sign-in to your {name} account. If this was you, enter the code below to continue.</td></tr>
+          {detail_box}
+          <tr><td align="center" style="padding:0 0 10px;font-size:13px;color:#71717a;">Your one-time code</td></tr>
+          <tr><td align="center" style="padding:0 0 10px;{mono}font-size:40px;line-height:1.1;font-weight:600;letter-spacing:10px;color:#18181b;">{spaced}</td></tr>
+          <tr><td align="center" style="padding:0 0 32px;font-size:13px;color:#71717a;">Expires in {CODE_MINUTES} minutes &middot; never share it with anyone</td></tr>
+          <tr><td style="padding:0 0 40px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;">
+              <tr><td style="padding:16px 20px;font-size:14px;line-height:1.6;color:#78350f;">&#9888;&#65039;&nbsp; If you didn't try to sign in, someone knows your password.{secure}</td></tr>
+            </table>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td align="center" style="padding:24px 40px 28px;border-top:1px solid #ececef;font-size:12px;line-height:1.7;color:#a1a1aa;">
+        You're receiving this because of a sign-in to your {name} account.{help_line}
       </td></tr>
     </table>
   </td></tr>
@@ -151,41 +265,22 @@ def code_email_html(brand, logo_src, code):
 </body></html>"""
 
 
-FINSTAP_LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                 'static', 'img', 'finstap-logo.png')
-
-
-def _email_logo():
-    """(img src, (bytes, subtype) or None) for the code email: the company's logo from Settings > Branding,
-    Finstap's logo when it has none, and the company name ('') when its logo is one email apps cannot show (SVG, ICO)."""
-    import base64
-    import re
-    from services.settings_service import get_setting
-    data_url = str(get_setting('brand_logo') or '').strip()
-    if not data_url:
-        with open(FINSTAP_LOGO_PATH, 'rb') as fh:
-            return 'cid:brand-logo', (fh.read(), 'png')
-    found = re.match(r'^data:image/(png|jpeg|jpg|gif|webp);base64,(.+)$', data_url, re.I | re.S)
-    if not found:
-        return '', None
-    try:
-        return 'cid:brand-logo', (base64.b64decode(found.group(2)), found.group(1).lower().replace('jpg', 'jpeg'))
-    except ValueError:
-        return '', None
-
-
-def _send_code(user, code):
+def _send_code(user, code, details=None):
     """Email the code; True when it went out (or, outside production, when it was printed instead)."""
     from services.email_service import send_email
-    from services.portal_compat import brand_settings
-    brand = brand_settings().get('brand_name') or 'your CRM'
-    subject = f"{code} is your {brand} login code"
-    text = (f"Your login code is {code}.\n\nIt works for {CODE_MINUTES} minutes. If you did not try to "
-            f"sign in, change your password, because someone knows it.")
-    logo_src, logo = _email_logo()
-    html = code_email_html(brand, logo_src, code)
+    branding = _email_branding()
+    brand = branding['brand']
+    subject = f"Verify your sign-in to {brand}"
+    text = (f"Verify your sign-in to {brand}\n\nYour one-time code: {code}\nIt expires in {CODE_MINUTES} minutes.\n\n"
+            + ''.join(f"{label}: {details[key]}\n" for label, key in
+                      (('Device', 'device'), ('Location', 'location'), ('IP address', 'ip'), ('Time', 'time'))
+                      if (details or {}).get(key))
+            + "\nIf you didn't try to sign in, someone knows your password: change it now.")
+    html = code_email_html(brand, code, icon_src='cid:brand-logo' if branding['icon'] else '',
+                           accent=branding['accent'], details=details, support_email=branding['support_email'])
+    # From the login code mailbox (e.g. noreply@) when one is set up in Settings > Email
     sent = send_email(user.get('email'), subject, html, text, category='SECURITY',
-                      user_id=user.get('id'), store_body=False, logo=logo)
+                      user_id=user.get('id'), store_body=False, logo=branding['icon'])
     if not sent:
         from config import IS_PRODUCTION
         if not IS_PRODUCTION:
@@ -201,7 +296,7 @@ def email_failure_reason():
     return last_failure_reason() or 'the email could not be sent'
 
 
-def start_challenge(user, device_id, user_agent=''):
+def start_challenge(user, device_id, user_agent='', details=None):
     """Email a new code. Returns (challenge, error); on error email_failure_reason() says why."""
     _ensure_tables()
     challenge = uuid.uuid4().hex
@@ -211,7 +306,7 @@ def start_challenge(user, device_id, user_agent=''):
         VALUES (?, ?, ?, ?, datetime('now', ?), ?);
     """, (challenge, user['id'], _device_hash(device_id), _code_hash(challenge, code),
           f'+{CODE_MINUTES} minutes', (user_agent or '')[:250]))
-    if not _send_code(user, code):
+    if not _send_code(user, code, details):
         execute_db("UPDATE login_otps SET used_at = datetime('now') WHERE challenge = ?;", (challenge,))
         return None, "We could not email your login code. Please try again in a few minutes or contact support."
     return challenge, None
@@ -226,7 +321,7 @@ def _open_challenge(challenge):
     """, (str(challenge or ''),), one=True)
 
 
-def resend_code(challenge):
+def resend_code(challenge, details=None):
     """A new code for the same sign-in. Returns (ok, error, wait_seconds)."""
     row = _open_challenge(challenge)
     if not row:
@@ -245,7 +340,7 @@ def resend_code(challenge):
                               expires_at = datetime('now', ?)
         WHERE id = ?;
     """, (_code_hash(challenge, code), f'+{CODE_MINUTES} minutes', row['id']))
-    if not _send_code(dict(user), code):
+    if not _send_code(dict(user), code, details):
         return False, "We could not email your login code. Please try again in a few minutes.", 0
     return True, None, RESEND_SECONDS
 
