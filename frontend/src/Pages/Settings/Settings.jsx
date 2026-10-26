@@ -509,6 +509,82 @@ export default function Settings() {
     }
   }
 
+  // Invoice business details: General tab for Brixen, Invoices tab (with the invoice prefix) for Finstap
+  const invoiceDetails = (
+    <Section
+      title={IS_FINSTAP ? 'Business details' : 'Invoices'}
+      description={IS_FINSTAP
+        ? 'Printed at the top of your invoices.'
+        : 'Your business details and how customers pay, printed on invoices and payment emails.'}
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {IS_FINSTAP && (
+          <Field id="invoice_prefix" label="Invoice prefix">
+            <Input
+              id="invoice_prefix"
+              value={form.invoice_prefix}
+              onChange={(e) => setField('invoice_prefix', e.target.value)}
+              disabled={isLoading}
+            />
+          </Field>
+        )}
+        <Field id="legal_name" label="Registered business name">
+          <Input
+            id="legal_name"
+            value={form.legal_name}
+            onChange={(e) => setField('legal_name', e.target.value)}
+            placeholder="Acme Accountants Ltd"
+            disabled={isLoading}
+          />
+        </Field>
+        <Field id="company_number" label="Company number">
+          <Input
+            id="company_number"
+            value={form.company_number}
+            onChange={(e) => setField('company_number', e.target.value)}
+            placeholder="12345678"
+            disabled={isLoading}
+          />
+        </Field>
+        <Field id="registered_office" label="Registered office">
+          <Input
+            id="registered_office"
+            value={form.registered_office}
+            onChange={(e) => setField('registered_office', e.target.value)}
+            placeholder="1 High Street, London, EC1A 1AA"
+            disabled={isLoading}
+          />
+        </Field>
+        <Field id="ico_number" label="ICO registration number">
+          <Input
+            id="ico_number"
+            value={form.ico_number}
+            onChange={(e) => setField('ico_number', e.target.value)}
+            placeholder="ZA123456"
+            disabled={isLoading}
+          />
+        </Field>
+        {/* Finstap: payment details live in the Invoices tab */}
+        {!IS_FINSTAP && <div className="md:col-span-2">
+          <Field
+            id="invoice_payment_details"
+            label="Payment details"
+            hint="One per line, e.g. “Account name: Acme Ltd”. Left empty, invoices show no payment details."
+          >
+            <Textarea
+              id="invoice_payment_details"
+              rows={4}
+              value={form.invoice_payment_details}
+              onChange={(e) => setField('invoice_payment_details', e.target.value)}
+              placeholder={'Account name: Acme Accountants Ltd\nAccount number: 12345678\nSort code: 00-00-00'}
+              disabled={isLoading}
+            />
+          </Field>
+        </div>}
+      </div>
+    </Section>
+  )
+
   return (
     <div className="flex flex-col gap-4 w-full pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
@@ -630,14 +706,16 @@ export default function Settings() {
                     disabled={isLoading}
                   />
                 </Field>
-                <Field id="invoice_prefix" label="Invoice prefix">
-                  <Input
-                    id="invoice_prefix"
-                    value={form.invoice_prefix}
-                    onChange={(e) => setField('invoice_prefix', e.target.value)}
-                    disabled={isLoading}
-                  />
-                </Field>
+                {!IS_FINSTAP && (
+                  <Field id="invoice_prefix" label="Invoice prefix">
+                    <Input
+                      id="invoice_prefix"
+                      value={form.invoice_prefix}
+                      onChange={(e) => setField('invoice_prefix', e.target.value)}
+                      disabled={isLoading}
+                    />
+                  </Field>
+                )}
                 <Field id="frontend_url" label="Admin URL">
                   <Input
                     id="frontend_url"
@@ -670,63 +748,7 @@ export default function Settings() {
               </div>
             </Section>
 
-            <Section title="Invoices" description="Your business details and how customers pay, printed on invoices and payment emails.">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field id="legal_name" label="Registered business name">
-                  <Input
-                    id="legal_name"
-                    value={form.legal_name}
-                    onChange={(e) => setField('legal_name', e.target.value)}
-                    placeholder="Acme Accountants Ltd"
-                    disabled={isLoading}
-                  />
-                </Field>
-                <Field id="company_number" label="Company number">
-                  <Input
-                    id="company_number"
-                    value={form.company_number}
-                    onChange={(e) => setField('company_number', e.target.value)}
-                    placeholder="12345678"
-                    disabled={isLoading}
-                  />
-                </Field>
-                <Field id="registered_office" label="Registered office">
-                  <Input
-                    id="registered_office"
-                    value={form.registered_office}
-                    onChange={(e) => setField('registered_office', e.target.value)}
-                    placeholder="1 High Street, London, EC1A 1AA"
-                    disabled={isLoading}
-                  />
-                </Field>
-                <Field id="ico_number" label="ICO registration number">
-                  <Input
-                    id="ico_number"
-                    value={form.ico_number}
-                    onChange={(e) => setField('ico_number', e.target.value)}
-                    placeholder="ZA123456"
-                    disabled={isLoading}
-                  />
-                </Field>
-                {/* Finstap: payment details live in the Invoices tab */}
-                {!IS_FINSTAP && <div className="md:col-span-2">
-                  <Field
-                    id="invoice_payment_details"
-                    label="Payment details"
-                    hint="One per line, e.g. “Account name: Acme Ltd”. Left empty, invoices show no payment details."
-                  >
-                    <Textarea
-                      id="invoice_payment_details"
-                      rows={4}
-                      value={form.invoice_payment_details}
-                      onChange={(e) => setField('invoice_payment_details', e.target.value)}
-                      placeholder={'Account name: Acme Accountants Ltd\nAccount number: 12345678\nSort code: 00-00-00'}
-                      disabled={isLoading}
-                    />
-                  </Field>
-                </div>}
-              </div>
-            </Section>
+            {!IS_FINSTAP && invoiceDetails}
           </TabsContent>
 
           {IS_FINSTAP && (
@@ -1095,6 +1117,7 @@ export default function Settings() {
 
           {IS_FINSTAP && (
             <TabsContent value="invoices" className="mt-0 space-y-4">
+              {invoiceDetails}
               <InvoicesTab form={form} setField={setField} disabled={isLoading || isSaving} />
             </TabsContent>
           )}

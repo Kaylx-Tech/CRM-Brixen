@@ -28,7 +28,7 @@ export default function InvoicesTab({ form, setField, disabled }) {
         <div>
           <h3 className="text-sm font-semibold">Bank accounts</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Choose a country and add the account your clients there should pay into. Every account you add is printed on invoices and invoice emails.
+            Choose a country and add the account your clients there should pay into. Every account you add is printed on your invoices (the PDF sent with invoice emails).
           </p>
         </div>
 
@@ -134,7 +134,7 @@ export default function InvoicesTab({ form, setField, disabled }) {
         <div>
           <h3 className="text-sm font-semibold">Links on invoices</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Shown as buttons under the payment details, e.g. a pay-online page, your website or your terms.
+            Shown as buttons on the invoice PDF, under the payment details, e.g. a pay-online page, your website or your terms.
           </p>
         </div>
         {links.map((link) => (

@@ -430,15 +430,15 @@ def _render_pdf(payload, s=1.0):
         fill, text = button_colours()
         rgb = tuple(int(fill[i:i + 2], 16) for i in (1, 3, 5))
         pdf.set_font('Helvetica', 'B', 10)
-        pill_w, pill_h = pdf.get_string_width(label) + 14, 8.5
-        with pdf.local_context(fill_opacity=0.16):
+        pill_w, pill_h = pdf.get_string_width(label) + 12, 7.5
+        with pdf.local_context(fill_opacity=0.12):
             pdf.set_fill_color(*rgb)
-            _pill_path(pdf, x + 0.6, y + 1.1, pill_w - 1.2, pill_h)
+            _pill_path(pdf, x + 0.6, y + 0.8, pill_w - 1.2, pill_h)
         pdf.set_fill_color(*rgb)
         pdf.set_draw_color(*(round(c * 0.82) for c in rgb))
         pdf.set_line_width(0.25)
         _pill_path(pdf, x, y, pill_w, pill_h, 'B')
-        with pdf.local_context(fill_opacity=0.2):
+        with pdf.local_context(fill_opacity=0.16):
             pdf.set_fill_color(255, 255, 255)
             _pill_path(pdf, x + 1.2, y + 0.55, pill_w - 2.4, pill_h * 0.45)
         pdf.set_draw_color(*rule)
@@ -477,11 +477,11 @@ def _render_pdf(payload, s=1.0):
         for link in invoice_links():
             label = latin(link['label'])
             pdf.set_font('Helvetica', 'B', 10)
-            if x > 16 and x + pdf.get_string_width(label) + 14 > 194:
-                x, y = 16, y + 12
+            if x > 16 and x + pdf.get_string_width(label) + 12 > 194:
+                x, y = 16, y + 11
             x += pill(x, y, label, link['url']) + 5
         if x > 16:
-            pdf.set_y(y + 10)
+            pdf.set_y(y + 9)
         return bytes(pdf.output()), pdf.page_no()
 
     def bank_block(title, fields):
@@ -503,7 +503,7 @@ def _render_pdf(payload, s=1.0):
     # "Pay now" pill linking to the Tide payment page
     pill_y = pdf.get_y()
     pill(16, pill_y, 'Pay now in GBP', gbp['pay_url'])
-    pdf.set_y(pill_y + 8.5 + 8 * s)
+    pdf.set_y(pill_y + 7.5 + 8 * s)
 
     bank_block('PKR', (('Account title', pkr['account_name']), ('Bank name', pkr['bank_name']), ('IBAN', pkr['iban'])))
 

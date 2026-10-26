@@ -91,8 +91,8 @@ def _shade(hex_colour, amount):
 
 GLASS_BUTTON_CSS = (
     '.glass-btn{transition:transform .18s ease,box-shadow .18s ease,filter .18s ease;}'
-    '.glass-btn:hover{transform:translateY(-1px);filter:brightness(1.07) saturate(1.05);'
-    'box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 10px 24px rgba(17,24,39,.22)!important;}'
+    '.glass-btn:hover{transform:translateY(-1px);filter:brightness(1.06);'
+    'box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 6px 14px rgba(17,24,39,.18)!important;}'
     '.glass-btn:active{transform:translateY(0) scale(.98);}'
 )
 
@@ -222,21 +222,31 @@ def _section_html(title, rows):
     )
 
 
+def invoice_view_url():
+    """Where the client sees their invoices: the workspace's portal (or Brixen's), '' when unknown."""
+    from tenancy import current_tenant, workspace_url
+    from services.portal_compat import _workspace_name, portal_base_url
+    if _workspace_name():
+        return workspace_url((current_tenant() or {}).get('slug'), '/portal/invoices')
+    base = portal_base_url()
+    return f'{base}/portal/invoices' if base else ''
+
+
 def _links_html(links):
-    """Settings > Invoices links as glossy pill buttons in the company's colour (Apple-style: a soft top
-    highlight, a fine edge and a coloured shadow; mail apps that support it lift the button on hover)."""
+    """Links as glossy pill buttons in the company's colour (Apple-style: a soft top highlight, a fine
+    edge and a coloured shadow; mail apps that support it lift the button on hover)."""
     fill, text = button_colours()
     r, g, b = (int(fill[i:i + 2], 16) for i in (1, 3, 5))
     buttons = ''.join(
         f'<a href="{html_escape(link["url"], quote=True)}" class="glass-btn" style="display:inline-block;'
-        f'margin:0 10px 10px 0;padding:12px 24px;border-radius:999px;background-color:{fill};'
-        f'background-image:linear-gradient(180deg,{_shade(fill, 0.28)} 0%,{fill} 52%,{_shade(fill, -0.12)} 100%);'
-        f'border:1px solid {_shade(fill, -0.18)};color:{text};font-size:14px;font-weight:600;letter-spacing:-0.01em;'
-        f'line-height:1;text-decoration:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.45),'
-        f'0 6px 16px rgba({r},{g},{b},.30);">{html_escape(link["label"])}</a>'
+        f'margin:0 8px 8px 0;padding:9px 18px;border-radius:999px;background-color:{fill};'
+        f'background-image:linear-gradient(180deg,{_shade(fill, 0.16)} 0%,{fill} 55%,{_shade(fill, -0.06)} 100%);'
+        f'border:1px solid {_shade(fill, -0.18)};color:{text};font-size:13px;font-weight:600;letter-spacing:-0.01em;'
+        f'line-height:1;text-decoration:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),'
+        f'0 2px 6px rgba({r},{g},{b},.22);">{html_escape(link["label"])}</a>'
         for link in links
     )
-    return f'<div style="margin:18px 0 0;">{buttons}</div>'
+    return f'<div style="margin:16px 0 0;">{buttons}</div>'
 
 
 def _build_sections(invoice, order, *, include_bank):
@@ -304,12 +314,11 @@ def _short_sections(invoice, order, payload):
             ('Service', str(order.get('service_name') or '').strip()),
             ('Amount due', payload.get('amount_due_display') or '')]
     sections = [_section_html('Invoice', [(label, value) for label, value in rows if value])]
+    # One button to the client's invoices in the portal; pay links (Settings > Invoices) stay on the PDF
     mode, _text = payment_methods()
-    links = invoice_links() if mode == 'custom' else []
-    if mode == 'brixen':
-        links = [{'label': 'Pay now in GBP', 'url': INVOICE_BANK_GBP['pay_url']}]
-    if links:
-        sections.append(_links_html(links))
+    view_url = invoice_view_url()
+    if view_url:
+        sections.append(_links_html([{'label': 'View invoice', 'url': view_url}]))
     if mode != 'none':
         sections.append('<p style="margin:14px 0 0;font-size:13px;line-height:1.5;color:#6b7280;">'
                         'Bank details for payment are in the attached invoice (PDF).</p>')
