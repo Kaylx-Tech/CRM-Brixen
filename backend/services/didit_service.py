@@ -224,7 +224,36 @@ def summarise_decision(decision):
     aml = summarise_aml(_first(decision, 'aml_screenings', 'aml'))
     if aml:
         summary['aml'] = aml
+    poa = summarise_poa(_first(decision, 'poa_verifications', 'poa'))
+    if poa:
+        summary['poa'] = poa
     return summary
+
+
+def _readable(code):
+    """ELECTRICITY_BILL → Electricity bill ('' for UNKNOWN)."""
+    code = str(code or '').strip()
+    return '' if not code or code == 'UNKNOWN' else code.replace('_', ' ').capitalize()
+
+
+def summarise_poa(poa):
+    """Proof of address (utility bill, bank statement …): which document, from whom, when, and the address on it.
+    The document image stays in Didit."""
+    if not isinstance(poa, dict) or not poa:
+        return {}
+    parsed = poa.get('poa_parsed_address') if isinstance(poa.get('poa_parsed_address'), dict) else {}
+    address = poa.get('poa_formatted_address') or parsed.get('formatted_address') or poa.get('poa_address') or ''
+    warnings = [str(w.get('short_description') or w.get('log_type') or '').strip()
+                for w in (poa.get('warnings') or []) if isinstance(w, dict)]
+    return {k: v for k, v in {
+        'status': poa.get('status'),
+        'document': _readable(poa.get('document_subtype')) or _readable(poa.get('document_type')),
+        'issuer': poa.get('issuer'),
+        'issue_date': poa.get('issue_date'),
+        'address': address,
+        'name_on_document': poa.get('name_on_document'),
+        'warnings': [w for w in warnings if w][:3],
+    }.items() if v not in (None, '', [])}
 
 
 def summarise_aml(aml):

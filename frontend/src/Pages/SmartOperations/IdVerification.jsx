@@ -132,13 +132,48 @@ function AmlResult({ aml }) {
   )
 }
 
+// "Electricity bill from British Gas, 12 Sep 2026"
+function poaEvidence(poa) {
+  if (!poa?.document) return ''
+  return `${poa.document}${poa.issuer ? ` from ${poa.issuer}` : ''}${poa.issue_date ? `, ${shortDate(poa.issue_date)}` : ''}`
+}
+
+function PoaResult({ poa }) {
+  return (
+    <div className="rounded-lg border p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold">Proof of address</p>
+        <Badge className={checkTone(poa.status)}>{poa.status || 'Not Started'}</Badge>
+      </div>
+      <dl className="mt-2 space-y-1 text-xs">
+        {[
+          ['Document', poaEvidence(poa)],
+          ['Address', poa.address],
+          ['Name on it', poa.name_on_document],
+        ].filter(([, v]) => v).map(([k, v]) => (
+          <div key={k} className="grid grid-cols-[90px_1fr] gap-2">
+            <dt className="text-muted-foreground">{k}</dt>
+            <dd className="font-medium">{v}</dd>
+          </div>
+        ))}
+      </dl>
+      {(poa.warnings || []).length > 0 && (
+        <p className="mt-2 text-xs text-amber-600">{poa.warnings.join(' · ')}</p>
+      )}
+    </div>
+  )
+}
+
 // What the ACSP enters in "Tell Companies House you have verified someone's identity"
 function acspPack(person) {
   const r = person.result || {}
+  const poa = r.poa || {}
   return [
     ['Full name', r.full_name || person.full_name],
     ['Date of birth', r.date_of_birth],
-    ['Home address', r.address],
+    // The address on the proof of address is the evidence; the ID's address is the fallback
+    ['Home address', poa.address || r.address],
+    ['Address evidence', poaEvidence(poa)],
     ['Email', person.email],
     ['Nationality', r.nationality],
     ['Document checked', [r.document_type, r.issuing_country].filter(Boolean).join(', ')],
@@ -148,6 +183,7 @@ function acspPack(person) {
       r.id_status && `ID document ${r.id_status.toLowerCase()}`,
       r.liveness_status && `liveness ${r.liveness_status.toLowerCase()}`,
       r.face_match_status && `face match ${r.face_match_status.toLowerCase()}`,
+      poa.status && `proof of address ${poa.status.toLowerCase()}`,
       r.aml && `AML screening ${amlLabel(r.aml).toLowerCase()}`,
     ].filter(Boolean).join(', ')],
     ['Verified with', `Didit${r.session_number ? ` session ${r.session_number}` : ''}${r.verified_at ? ` on ${shortDate(r.verified_at)}` : ''}`],
@@ -168,14 +204,22 @@ function PersonRow({ person, busy, onAction, onOpen }) {
           {person.link_sent_at ? ` · link emailed ${shortDate(person.link_sent_at)}` : ''}
           {person.ch_personal_code ? ` · CH code ${person.ch_personal_code}` : ''}
         </p>
+        {/* Overall result, then proof of address and AML, on their own line */}
+        <span className="mt-1 flex flex-wrap gap-1">
+          <Badge className={`${checkTone(person.status)} whitespace-nowrap`}>{person.status || 'Not Started'}</Badge>
+          {person.result?.poa && (
+            <Badge className={`${checkTone(person.result.poa.status)} whitespace-nowrap`} title="Proof of address">
+              Address: {person.result.poa.status || 'Not Started'}
+            </Badge>
+          )}
+          {person.result?.aml && (
+            <Badge className={`${amlTone(person.result.aml)} whitespace-nowrap`} title="AML screening">
+              AML: {amlLabel(person.result.aml)}
+            </Badge>
+          )}
+        </span>
       </button>
       <div className="flex flex-wrap items-center gap-1">
-        <Badge className={`${checkTone(person.status)} whitespace-nowrap`}>{person.status || 'Not Started'}</Badge>
-        {person.result?.aml && (
-          <Badge className={`${amlTone(person.result.aml)} whitespace-nowrap`} title="AML screening">
-            AML: {amlLabel(person.result.aml)}
-          </Badge>
-        )}
         {started ? (
           <>
             <Button variant="outline" size="xs" className="h-7 gap-1" title="Copy verification link" onClick={() => copyText(person.session_url, 'Link')}>
@@ -548,6 +592,7 @@ export default function IdVerification() {
           )}
 
           {/* AML can hold a verification In Review, so it shows whatever the overall status */}
+          {viewing?.result?.poa && <PoaResult poa={viewing.result.poa} />}
           {viewing?.result?.aml && <AmlResult aml={viewing.result.aml} />}
 
           <DialogFooter>
