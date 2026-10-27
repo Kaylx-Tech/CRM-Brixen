@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { IconArrowLeft, IconExternalLink, IconLoader2 } from "@tabler/icons-react"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { PlanUsage } from "@/components/plan-usage"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { money, ownerApi, shortDate } from "@/lib/owner"
-import { LoadError, Panel, PlanBadge, SELECT, StatusBadge } from "./ownerUi"
+import { Button, LoadError, Panel, PlanBadge, SELECT, StatusBadge } from "./ownerUi"
 
 const LIMIT_LABELS = {
   users: "Team users",
@@ -262,13 +261,13 @@ export default function OwnerWorkspace() {
 
   return (
     <>
-      <Link to="/owner/workspaces" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Button variant="ghost" size="lg" className="-ml-2 mb-4 text-muted-foreground" nativeButton={false} render={<Link to="/owner/workspaces" />}>
         <IconArrowLeft className="size-4" /> Workspaces
-      </Link>
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      </Button>
+      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">{data.name}</h1>
+            <h1 className="text-[26px] font-bold tracking-tight">{data.name}</h1>
             <PlanBadge plan={data.plan} />
             <StatusBadge workspace={data} />
           </div>
@@ -277,9 +276,9 @@ export default function OwnerWorkspace() {
           </p>
         </div>
         {data.url && (
-          <a href={data.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+          <Button variant="outline" size="lg" nativeButton={false} render={<a href={data.url} target="_blank" rel="noreferrer" />}>
             {data.url.replace(/^https?:\/\//, "")} <IconExternalLink className="size-4" />
-          </a>
+          </Button>
         )}
       </div>
 

@@ -1,4 +1,11 @@
 import { cn } from "cn"
+import { Button as UiButton } from "@/components/ui/button"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+/** The owner portal's button: the app's Button, a size larger by default so it sits well next to inputs. */
+export function Button({ size = "lg", ...props }) {
+  return <UiButton size={size} {...props} />
+}
 
 const PLAN_TONE = {
   trial: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
@@ -48,23 +55,23 @@ export function StatusBadge({ workspace }) {
 
 export function PageTitle({ title, description, children }) {
   return (
-    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0">
+        <h1 className="text-[26px] font-bold leading-tight tracking-tight">{title}</h1>
+        {description && <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">{description}</p>}
       </div>
-      {children}
+      {children && <div className="flex shrink-0 flex-wrap items-center gap-2">{children}</div>}
     </div>
   )
 }
 
 export function Panel({ title, description, action, className, children }) {
   return (
-    <section className={cn("rounded-2xl border bg-card p-5 shadow-xs", className)}>
+    <section className={cn("rounded-2xl border bg-card p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:p-6", className)}>
       {(title || action) && (
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            {title && <h2 className="font-semibold">{title}</h2>}
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            {title && <h2 className="text-[15px] font-semibold">{title}</h2>}
             {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
           </div>
           {action}
@@ -75,15 +82,63 @@ export function Panel({ title, description, action, className, children }) {
   )
 }
 
+// Soft colour behind each stat's icon, picked from the icon's text colour
+const STAT_BG = {
+  "text-primary": "bg-primary/10",
+  "text-emerald-600": "bg-emerald-500/10",
+  "text-sky-600": "bg-sky-500/10",
+  "text-amber-600": "bg-amber-500/15",
+  "text-violet-600": "bg-violet-500/10",
+  "text-destructive": "bg-destructive/10",
+  "text-muted-foreground": "bg-muted",
+}
+
 export function Stat({ label, value, hint, icon: Icon, tone = "text-primary" }) {
   return (
-    <div className="rounded-2xl border bg-card p-5 shadow-xs">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm text-muted-foreground">{label}</span>
-        {Icon && <Icon className={cn("size-5", tone)} />}
+    <div className="group relative overflow-hidden rounded-2xl border bg-card p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition hover:shadow-md">
+      <span aria-hidden className="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full bg-primary/5 blur-2xl transition group-hover:bg-primary/10" />
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[13px] font-medium text-muted-foreground">{label}</div>
+          <div className="mt-2 text-[26px] font-bold leading-none tabular-nums tracking-tight">{value}</div>
+        </div>
+        {Icon && (
+          <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", STAT_BG[tone] || "bg-primary/10")}>
+            <Icon className={cn("size-5", tone)} />
+          </span>
+        )}
       </div>
-      <div className="mt-2 text-2xl font-bold tabular-nums tracking-tight">{value}</div>
-      {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
+      {hint && <div className="relative mt-3 text-xs text-muted-foreground">{hint}</div>}
+    </div>
+  )
+}
+
+/** Filter chips as real tabs: options = [[value, label], ...] ("" = all). */
+export function FilterTabs({ value, onChange, options, className }) {
+  return (
+    <Tabs value={value || "all"} onValueChange={(v) => onChange(v === "all" ? "" : v)} className={className}>
+      <TabsList className="bg-muted/70">
+        {options.map(([v, label]) => (
+          <TabsTrigger key={label} value={v || "all"} className="px-3">
+            {label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
+  )
+}
+
+/** A friendly empty state inside a panel. */
+export function Empty({ icon: Icon, title, children }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed px-6 py-10 text-center">
+      {Icon && (
+        <span className="mb-3 flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <Icon className="size-5" />
+        </span>
+      )}
+      {title && <p className="font-medium">{title}</p>}
+      {children && <div className="mt-1 max-w-sm text-sm text-muted-foreground">{children}</div>}
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import {
+  IconArrowRight,
   IconAlertTriangle,
   IconBuildingSkyscraper,
   IconCash,
@@ -8,7 +9,7 @@ import {
   IconUserPlus,
 } from "@tabler/icons-react"
 import { money, ownerApi, shortDate } from "@/lib/owner"
-import { LoadError, PageTitle, Panel, PlanBadge, Stat, StatusBadge } from "./ownerUi"
+import { Button, LoadError, PageTitle, Panel, PlanBadge, Stat, StatusBadge } from "./ownerUi"
 
 const PLAN_KEYS = ["trial", "starter", "pro", "business", "enterprise"]
 
@@ -151,9 +152,9 @@ export default function OwnerOverview() {
         title="Latest workspaces"
         className="mt-4"
         action={
-          <Link to="/owner/workspaces" className="text-sm font-medium text-primary hover:underline">
-            See all
-          </Link>
+          <Button variant="outline" size="lg" nativeButton={false} render={<Link to="/owner/workspaces" />}>
+            See all <IconArrowRight className="size-4" />
+          </Button>
         }
       >
         {data.recent.length ? (

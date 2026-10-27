@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
-import { IconArrowLeft, IconExternalLink, IconPlus } from "@tabler/icons-react"
+import { IconArrowLeft, IconArticle, IconExternalLink, IconPencil, IconPlus } from "@tabler/icons-react"
 import { cn } from "cn"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { PlainText } from "@/lib/plainText"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { ownerApi, shortDate } from "@/lib/owner"
 import { TENANT_DOMAIN } from "@/lib/workspace"
-import { LoadError, PageTitle, Panel } from "./ownerUi"
+import { Button, Empty, LoadError, PageTitle, Panel } from "./ownerUi"
 
 /** Where a post is read: finstap.com/blog/<slug> (or this site when subdomains are off). */
 function publicUrl(slug) {
@@ -65,16 +64,28 @@ export default function OwnerBlog() {
                 <div className="flex shrink-0 items-center gap-3">
                   <StatusPill status={p.status} />
                   {p.status === "Published" && (
-                    <a href={publicUrl(p.slug)} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary" aria-label="Open">
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      aria-label="Open on the website"
+                      title="Open on the website"
+                      nativeButton={false}
+                      render={<a href={publicUrl(p.slug)} target="_blank" rel="noreferrer" />}
+                    >
                       <IconExternalLink className="size-4" />
-                    </a>
+                    </Button>
                   )}
+                  <Button variant="outline" size="lg" nativeButton={false} render={<Link to={`/owner/content/blog/${p.id}`} />}>
+                    <IconPencil className="size-4" /> Edit
+                  </Button>
                 </div>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">No posts yet. Write the first one.</p>
+          <Empty icon={IconArticle} title="No posts yet">
+            Write the first post. It shows on finstap.com/blog once you publish it.
+          </Empty>
         )}
       </Panel>
     </>
@@ -121,9 +132,9 @@ export function OwnerBlogEditor() {
 
   return (
     <>
-      <Link to="/owner/content/blog" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Button variant="ghost" size="lg" className="-ml-2 mb-4 text-muted-foreground" nativeButton={false} render={<Link to="/owner/content/blog" />}>
         <IconArrowLeft className="size-4" /> Blogs
-      </Link>
+      </Button>
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold tracking-tight">{isNew ? "New post" : "Edit post"}</h1>

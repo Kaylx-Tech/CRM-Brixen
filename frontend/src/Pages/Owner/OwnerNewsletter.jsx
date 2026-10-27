@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from "react"
 import { IconDownload, IconMailForward, IconSend, IconUserMinus, IconUsers } from "@tabler/icons-react"
 import { cn } from "cn"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { ownerApi, shortDate } from "@/lib/owner"
-import { LoadError, PageTitle, Panel, Stat } from "./ownerUi"
+import { Button, Empty, LoadError, PageTitle, Panel, Stat } from "./ownerUi"
 
 const EMPTY = { id: null, subject: "", body: "" }
 
@@ -168,7 +167,7 @@ export default function OwnerNewsletter() {
         title="Subscribers"
         className="mt-4"
         action={
-          <Button variant="outline" size="sm" disabled={!data.subscribers.length} onClick={() => downloadCsv(data.subscribers)}>
+          <Button variant="outline" disabled={!data.subscribers.length} onClick={() => downloadCsv(data.subscribers)}>
             <IconDownload className="size-4" /> CSV
           </Button>
         }
@@ -195,7 +194,9 @@ export default function OwnerNewsletter() {
             </table>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Nobody has subscribed yet. The sign-up box is on the finstap.com footer and blog.</p>
+          <Empty icon={IconUsers} title="No subscribers yet">
+            The sign-up box is in the finstap.com footer and on the blog.
+          </Empty>
         )}
       </Panel>
     </>

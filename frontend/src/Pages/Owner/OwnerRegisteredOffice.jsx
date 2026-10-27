@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { IconMapPin, IconPlus, IconTrash } from "@tabler/icons-react"
+import { IconCash, IconMapPin, IconPlus, IconRefresh, IconTrash } from "@tabler/icons-react"
 import { cn } from "cn"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { money, ownerApi, shortDate } from "@/lib/owner"
-import { LoadError, PageTitle, Panel, SELECT, Stat } from "./ownerUi"
+import { Button, Empty, FilterTabs, LoadError, PageTitle, Panel, SELECT, Stat } from "./ownerUi"
 import { useServiceSettings } from "./useServiceSettings"
 
 const EMPTY_ADDRESS = { label: "", line1: "", line2: "", city: "", postal_code: "", country: "United Kingdom" }
@@ -69,7 +68,7 @@ function OfficeSettings({ settings, save, saving }) {
             </Button>
           </div>
         ))}
-        <Button type="button" variant="outline" size="sm" onClick={() => setAddresses((list) => [...list, EMPTY_ADDRESS])}>
+        <Button type="button" variant="outline" onClick={() => setAddresses((list) => [...list, EMPTY_ADDRESS])}>
           <IconPlus className="size-4" /> Add address
         </Button>
       </div>
@@ -152,17 +151,16 @@ function RequestActions({ request, offices, defaultPrice, onDone }) {
       <div className="flex flex-wrap items-center gap-2">
         <Button
           variant={request.paid ? "outline" : "default"}
-          size="sm"
           disabled={busy}
           onClick={() => run("paid", { paid: !request.paid }, "Saving…")}
         >
-          {request.paid ? "Mark unpaid" : "Mark paid"}
+          <IconCash className="size-4" /> {request.paid ? "Mark unpaid" : "Mark paid"}
         </Button>
-        <Button variant="outline" size="sm" disabled={busy} onClick={() => run("renew", { months: 12 }, "Renewing…")}>
-          Renew 12 months
+        <Button variant="outline" disabled={busy} onClick={() => run("renew", { months: 12 }, "Renewing…")}>
+          <IconRefresh className="size-4" /> Renew 12 months
         </Button>
-        <Input className="h-8 min-w-48 flex-1" placeholder="Reason to end it" value={reason} onChange={(e) => setReason(e.target.value)} />
-        <Button variant="destructive" size="sm" disabled={busy || !reason.trim()} onClick={() => run("end", { reason }, "Ending…")}>
+        <Input className="min-w-48 flex-1" placeholder="Reason to end it" value={reason} onChange={(e) => setReason(e.target.value)} />
+        <Button variant="destructive" disabled={busy || !reason.trim()} onClick={() => run("end", { reason }, "Ending…")}>
           End
         </Button>
       </div>
@@ -207,7 +205,7 @@ export default function OwnerRegisteredOffice() {
         title="Registered office"
         description="Workspaces ask for Finstap's address for a client's company. Confirm it here and it appears in the client's portal."
       >
-        <Button variant="outline" onClick={() => setShowSettings((v) => !v)}>
+        <Button variant="outline" size="lg" onClick={() => setShowSettings((v) => !v)}>
           <IconMapPin className="size-4" /> Prices & addresses
         </Button>
       </PageTitle>
@@ -226,28 +224,14 @@ export default function OwnerRegisteredOffice() {
         <Stat label="Unpaid" value={money(stats.unpaid)} hint={settings?.ro_price_year ? `${money(settings.ro_price_year)} a year` : "No price set"} />
       </div>
 
-      <div className="mt-4 mb-3 flex gap-1">
-        {FILTERS.map(([value, label]) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => setFilter(value)}
-            className={cn(
-              "rounded-full px-3 py-1.5 text-sm font-medium transition",
-              filter === value ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <FilterTabs value={filter} onChange={setFilter} options={FILTERS} className="mt-8 mb-4" />
 
       <div className="space-y-3">
         {rows === null && !error && <p className="text-sm text-muted-foreground">Loading…</p>}
         {rows !== null && !shown.length && (
-          <Panel>
-            <p className="text-sm text-muted-foreground">Nothing here.</p>
-          </Panel>
+          <Empty icon={IconMapPin} title={filter === "Pending" ? "No requests waiting" : "Nothing here"}>
+            Workspaces ask for a registered office from Smart Operations → Registered Office.
+          </Empty>
         )}
         {shown.map((r) => {
           const left = daysLeft(r.expiry_date)

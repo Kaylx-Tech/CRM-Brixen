@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { IconAlertTriangle, IconCash, IconClockHour4, IconReceipt2 } from "@tabler/icons-react"
+import { IconAlertTriangle, IconCash, IconClockHour4, IconId, IconMapPin, IconReceipt2 } from "@tabler/icons-react"
 import { cn } from "cn"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { money, ownerApi, shortDate } from "@/lib/owner"
-import { LoadError, PageTitle, Panel, PlanBadge, SELECT, Stat } from "./ownerUi"
+import { Button, FilterTabs, LoadError, PageTitle, Panel, PlanBadge, SELECT, Stat } from "./ownerUi"
 
 const STATE = {
   paid: ["Paid", "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"],
@@ -63,10 +62,10 @@ function PaymentForm({ workspace, methods, onDone, onCancel }) {
       </select>
       <Input className="sm:col-span-3" placeholder="Note (e.g. bank reference)" value={form.note} onChange={set("note")} />
       <div className="flex gap-2 sm:col-span-6">
-        <Button type="submit" size="sm" disabled={busy}>
+        <Button type="submit" size="lg" disabled={busy}>
           Save payment
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
+        <Button type="button" size="lg" variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
       </div>
@@ -125,21 +124,7 @@ export default function OwnerBilling() {
         />
       </div>
 
-      <div className="mt-6 mb-3 flex flex-wrap gap-1">
-        {FILTERS.map(([value, label]) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => setFilter(value)}
-            className={cn(
-              "rounded-full px-3 py-1.5 text-sm font-medium transition",
-              filter === value ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <FilterTabs value={filter} onChange={setFilter} options={FILTERS} className="mt-8 mb-4" />
 
       <div className="space-y-2">
         {!rows.length && (
@@ -179,20 +164,20 @@ export default function OwnerBilling() {
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
                   {w.subscription_due > 0 && <span className="text-sm font-semibold text-destructive">{money(w.subscription_due)} due</span>}
-                  {!["trial", "no_price"].includes(w.state) && paying !== w.slug && (
-                    <Button size="sm" variant={w.state === "overdue" ? "default" : "outline"} onClick={() => setPaying(w.slug)}>
-                      Record payment
+                  {w.ro_unpaid > 0 && (
+                    <Button variant="outline" size="lg" nativeButton={false} render={<Link to="/owner/registered-office" />}>
+                      <IconMapPin className="size-4" /> Registered office
                     </Button>
                   )}
-                  {w.ro_unpaid > 0 && (
-                    <Link to="/owner/registered-office" className="text-sm font-medium text-primary hover:underline">
-                      Registered office
-                    </Link>
-                  )}
                   {w.kyc_unpaid > 0 && (
-                    <Link to="/owner/kyc" className="text-sm font-medium text-primary hover:underline">
-                      KYC
-                    </Link>
+                    <Button variant="outline" size="lg" nativeButton={false} render={<Link to="/owner/kyc" />}>
+                      <IconId className="size-4" /> KYC
+                    </Button>
+                  )}
+                  {!["trial", "no_price"].includes(w.state) && paying !== w.slug && (
+                    <Button size="lg" variant={w.state === "overdue" ? "default" : "outline"} onClick={() => setPaying(w.slug)}>
+                      <IconCash className="size-4" /> Record payment
+                    </Button>
                   )}
                 </div>
               </div>

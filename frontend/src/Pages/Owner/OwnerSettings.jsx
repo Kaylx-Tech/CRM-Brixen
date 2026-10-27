@@ -1,10 +1,9 @@
 import { useState } from "react"
 import { IconLoader2 } from "@tabler/icons-react"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { ownerApi, shortDate } from "@/lib/owner"
-import { PageTitle, Panel } from "./ownerUi"
+import { Button, PageTitle, Panel } from "./ownerUi"
 
 const MIN_PASSWORD = 12
 
