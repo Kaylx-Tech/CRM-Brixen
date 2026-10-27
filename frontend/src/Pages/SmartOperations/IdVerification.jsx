@@ -31,6 +31,7 @@ import {
 import { toast } from 'sonner'
 import { apiRequest } from '@/lib/api'
 import { useRefreshOnReturn } from '@/lib/useRefreshOnReturn'
+import { amlLabel, amlTone, checkTone, openHits, shortDate } from './idvStatus'
 
 const PERSON_ROLES = ['Director', 'PSC', 'Director & PSC', 'Secretary', 'Member', 'Presenter', 'Other']
 const ACSP_SERVICE_URL = 'https://www.gov.uk/guidance/tell-companies-house-you-have-verified-someones-identity'
@@ -45,24 +46,6 @@ function statusTone(status) {
   return 'badge-amber'
 }
 
-// Didit session statuses
-function checkTone(status) {
-  const s = String(status || 'Not Started')
-  if (s === 'Approved') return 'badge-green'
-  if (['Declined', 'Abandoned', 'Expired', 'Kyc Expired'].includes(s)) return 'bg-destructive/15 text-destructive'
-  if (['In Review', 'Resubmitted', 'Awaiting User'].includes(s)) return 'badge-amber'
-  if (s === 'In Progress') return 'badge-sky'
-  return 'bg-muted text-muted-foreground'
-}
-
-function shortDate(value) {
-  if (!value) return '—'
-  const d = new Date(String(value).replace(' ', 'T'))
-  return Number.isNaN(d.getTime())
-    ? '—'
-    : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-}
-
 // The KYC product(s) of an order: its KYC line items, or the service name for a one-product order
 const kycProduct = (o) => o.kyc_products || o.service_name
 
@@ -75,26 +58,6 @@ async function copyText(text, label) {
   }
 }
 
-// AML screening (PEP, sanctions, adverse media) in a few words, and its colour.
-// Matches already marked False Positive in Didit do not count.
-const openHits = (aml) => aml.open_hits ?? aml.total_hits ?? 0
-
-function amlLabel(aml) {
-  if (!aml) return ''
-  const open = openHits(aml)
-  if (open > 0) return `${open} possible match${open === 1 ? '' : 'es'}`
-  if (aml.status === 'Approved') return 'Clear'
-  if (aml.status === 'Not Finished') return 'Not finished'
-  return aml.status || 'Clear'
-}
-
-function amlTone(aml) {
-  if (!aml) return 'bg-muted text-muted-foreground'
-  if (aml.status === 'Declined') return 'bg-destructive/15 text-destructive'
-  if (openHits(aml) > 0 || aml.status === 'In Review') return 'badge-amber'
-  if (aml.status === 'Approved') return 'badge-green'
-  return 'bg-muted text-muted-foreground'
-}
 
 function AmlResult({ aml }) {
   return (

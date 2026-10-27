@@ -481,6 +481,9 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         # Thank-you email to the customer with the order number and next steps (respects the Send emails switch)
         from services.client_mail import notify_order_received
         notify_order_received(result.get('order_id') or result.get('id'), triggered_by=user_id)
+        # A KYC order starts the customer's Didit identity verification and emails them the link
+        from routes.id_verification_routes import auto_start_for_order
+        auto_start_for_order(result.get('order_id') or result.get('id'), triggered_by=user_id)
         if not is_manual:  # manual CRM orders notify from inside create_manual_crm_order
             notify_staff(
                 'New order',

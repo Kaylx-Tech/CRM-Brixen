@@ -11,6 +11,7 @@ import { apiRequest } from "@/lib/api"
 import { openDocument } from "@/lib/documents"
 import { usePortalData, PageHeader, PageState, StatusBadge, money, formatDate } from "./portalShared"
 import CreateOrderWizard from "@/Pages/Orders/CreateOrderWizard"
+import PortalIdVerification from "./PortalIdVerification"
 
 /** One order's progress, products and shared documents (customer-safe fields only). */
 export function OrderDetailDialog({ orderId, onClose }) {
@@ -56,6 +57,8 @@ export function OrderDetailDialog({ orderId, onClose }) {
               <div><p className="text-xs text-muted-foreground">Company</p><p className="truncate font-medium">{order.company_name || "—"}</p></div>
               <div><p className="text-xs text-muted-foreground">Total</p><p className="font-medium">{money(order.total)}</p></div>
             </div>
+
+            <PortalIdVerification orderId={orderId} />
 
             {items.length ? (
               <div>
