@@ -22,6 +22,7 @@ from .email_log_routes import handle_email_log_routes
 from .ticket_routes import handle_ticket_routes
 from .website_routes import handle_website_routes
 from .smart_link_routes import handle_smart_link_routes
+from .id_verification_routes import handle_id_verification_routes
 from .ai_routes import handle_ai_routes
 from .finance_routes import handle_finance_routes
 
@@ -137,6 +138,11 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
 
     # 14c. Smart Operations quick links (team)
     res = handle_smart_link_routes(environ, start_response, path, method, user, body, query)
+    if res is not None:
+        return res
+
+    # 14d. ID Verification (Didit) for KYC orders, and Didit's webhook
+    res = handle_id_verification_routes(environ, start_response, path, method, user, body, query)
     if res is not None:
         return res
 

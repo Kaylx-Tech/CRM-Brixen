@@ -8,15 +8,24 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { isAdminRole } from '@/lib/permissions'
-import { IconDeviceFloppy, IconLoader2, IconMail, IconBuilding, IconCloud, IconWorld, IconWebhook } from '@tabler/icons-react'
+import { IconDeviceFloppy, IconLoader2, IconMail, IconBuilding, IconCloud, IconWorld, IconWebhook, IconId, IconCopy } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
-import { apiRequest } from '@/lib/api'
-import { IS_FINSTAP } from '@/lib/workspace'
+import { apiRequest, getApiBase } from '@/lib/api'
+import { IS_FINSTAP, getWorkspace } from '@/lib/workspace'
 import { loadBranding } from '@/lib/branding'
 import BrandingTab from './BrandingTab'
 import InvoicesTab from './InvoicesTab'
 import { accountsFromSaved, accountsToSaved, linksFromSaved, linksToSaved } from './invoiceSettings'
+
+// Where Didit posts verification results (the API may live on another address than this page);
+// on Finstap it names the workspace, so the result is saved in that company's database
+function diditWebhookUrl() {
+  const url = new URL(`${getApiBase()}/webhooks/didit`, window.location.origin)
+  const workspace = IS_FINSTAP ? getWorkspace() : ''
+  if (workspace) url.searchParams.set('workspace', workspace)
+  return url.href
+}
 
 const MIN_PASSWORD = 10
 // Branding (logo, icon, accent colour) and Invoices (bank accounts per country, links) are Finstap company
@@ -68,6 +77,10 @@ const EMPTY_FORM = {
   smtp_pass: '',
   smtp_from: '',
   companies_house_api_key: '',
+  didit_api_key: '',
+  didit_webhook_secret: '',
+  didit_workflow_id: '',
+  didit_callback_url: '',
   getaddress_api_key: '',
   google_drive_root_folder: '',
   google_service_account_json: '',
@@ -160,6 +173,8 @@ export default function Settings() {
     smtp_pass_set: false,
     companies_house_api_key_set: false,
     companies_house_platform: false,
+    didit_api_key_set: false,
+    didit_webhook_secret_set: false,
     google_service_account_json_set: false,
     wordpress_webhook_secret_set: false,
     getaddress_configured: false,
@@ -215,6 +230,7 @@ export default function Settings() {
       const smtp = payload.smtp || {}
       const drive = payload.google_drive || {}
       const ch = payload.companies_house || {}
+      const didit = payload.didit || {}
       const webhooks = payload.webhooks || {}
       const compliance = payload.compliance || {}
       const flat = payload.flat || {}
@@ -246,6 +262,10 @@ export default function Settings() {
         smtp_pass: '',
         smtp_from: smtp.smtp_from || '',
         companies_house_api_key: '',
+        didit_api_key: '',
+        didit_webhook_secret: '',
+        didit_workflow_id: didit.didit_workflow_id || '',
+        didit_callback_url: didit.didit_callback_url || '',
         getaddress_api_key: '',
         google_drive_root_folder: drive.google_drive_root_folder || '',
         google_service_account_json: '',
@@ -278,6 +298,8 @@ export default function Settings() {
         smtp_pass_set: !!smtp.smtp_pass_set,
         companies_house_api_key_set: !!ch.companies_house_api_key_set,
         companies_house_platform: !!ch.companies_house_platform,
+        didit_api_key_set: !!didit.didit_api_key_set,
+        didit_webhook_secret_set: !!didit.didit_webhook_secret_set,
         google_service_account_json_set: !!drive.google_service_account_json_set,
         wordpress_webhook_secret_set: !!webhooks.wordpress_webhook_secret_set,
         getaddress_configured: !!flat.getaddress_api_key,
@@ -391,6 +413,8 @@ export default function Settings() {
         smtp_from: form.smtp_from.trim(),
         google_drive_root_folder: form.google_drive_root_folder.trim(),
         wordpress_url: form.wordpress_url.trim(),
+        didit_workflow_id: form.didit_workflow_id.trim(),
+        didit_callback_url: form.didit_callback_url.trim(),
         compliance_alerts_enabled: form.compliance_alerts_enabled ? '1' : '0',
         emails_enabled: form.emails_enabled ? 'true' : 'false',
         compliance_alerts_verified_only: form.compliance_alerts_verified_only ? '1' : '0',
@@ -420,6 +444,8 @@ export default function Settings() {
       if (form.companies_house_api_key.trim()) {
         payload.companies_house_api_key = form.companies_house_api_key.trim()
       }
+      if (form.didit_api_key.trim()) payload.didit_api_key = form.didit_api_key.trim()
+      if (form.didit_webhook_secret.trim()) payload.didit_webhook_secret = form.didit_webhook_secret.trim()
       if (form.getaddress_api_key.trim()) {
         payload.getaddress_api_key = form.getaddress_api_key.trim()
       }
@@ -480,6 +506,9 @@ export default function Settings() {
         body = form.companies_house_api_key.trim()
           ? { companies_house_api_key: form.companies_house_api_key.trim() }
           : {}
+      } else if (kind === 'didit') {
+        path = '/admin/settings/test-didit'
+        body = form.didit_api_key.trim() ? { didit_api_key: form.didit_api_key.trim() } : {}
       } else if (kind === 'drive') {
         path = '/admin/settings/test-google-drive'
         body = form.google_service_account_json.trim()
@@ -891,6 +920,94 @@ export default function Settings() {
                   <IconBuilding className="mr-1.5 h-3.5 w-3.5" />
                 )}
                 Test Companies House
+              </Button>
+            </Section>
+
+            <Section
+              title="Didit identity verification"
+              description={
+                flags.didit_api_key_set
+                  ? 'Didit is connected: Smart Operations > ID Verification starts verifications for KYC orders. Paste new keys only to replace them.'
+                  : 'Used by Smart Operations > ID Verification. Find the keys in the Didit console (business.didit.me) under API & Webhooks.'
+              }
+            >
+              <div className="grid gap-3 md:grid-cols-2">
+                <Field id="didit_api_key" label="API key">
+                  <Input
+                    id="didit_api_key"
+                    type="password"
+                    value={form.didit_api_key}
+                    onChange={(e) => setField('didit_api_key', e.target.value)}
+                    placeholder={flags.didit_api_key_set ? '•••••••• (unchanged)' : 'Paste API key'}
+                    autoComplete="off"
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="didit_webhook_secret" label="Webhook secret key">
+                  <Input
+                    id="didit_webhook_secret"
+                    type="password"
+                    value={form.didit_webhook_secret}
+                    onChange={(e) => setField('didit_webhook_secret', e.target.value)}
+                    placeholder={flags.didit_webhook_secret_set ? '•••••••• (unchanged)' : 'Paste webhook secret'}
+                    autoComplete="off"
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="didit_workflow_id" label="Workflow ID" hint="The workflow to run, e.g. ID document + liveness + face match.">
+                  <Input
+                    id="didit_workflow_id"
+                    value={form.didit_workflow_id}
+                    onChange={(e) => setField('didit_workflow_id', e.target.value)}
+                    placeholder="Workflow ID from the Didit console"
+                    autoComplete="off"
+                    disabled={isLoading}
+                  />
+                </Field>
+                <Field id="didit_callback_url" label="Finish page (optional)" hint="Where people land after verifying, e.g. your website's thank-you page.">
+                  <Input
+                    id="didit_callback_url"
+                    value={form.didit_callback_url}
+                    onChange={(e) => setField('didit_callback_url', e.target.value)}
+                    placeholder="https://"
+                    autoComplete="off"
+                    disabled={isLoading}
+                  />
+                </Field>
+              </div>
+              <Field id="didit_webhook_url" label="Webhook URL" hint="Paste this in the Didit console as the webhook address, so results arrive in the CRM by themselves.">
+                <div className="flex gap-2">
+                  <Input id="didit_webhook_url" readOnly value={diditWebhookUrl()} />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 shrink-0"
+                    onClick={() => {
+                      navigator.clipboard
+                        .writeText(diditWebhookUrl())
+                        .then(() => toast.success('Webhook URL copied'), () => toast.error('Could not copy'))
+                    }}
+                  >
+                    <IconCopy className="h-3.5 w-3.5" />
+                    Copy
+                  </Button>
+                </div>
+              </Field>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-sm"
+                disabled={!!testing || isLoading}
+                onClick={() => runTest('didit')}
+              >
+                {testing === 'didit' ? (
+                  <IconLoader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <IconId className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                Test Didit
               </Button>
             </Section>
 

@@ -25,7 +25,9 @@ SENSITIVE_KEYS = {
     'wordpress_webhook_secret',
     'secret_key',
     'ch_presenter_auth',
-    'ch_xml_gateway_password'
+    'ch_xml_gateway_password',
+    'didit_api_key',
+    'didit_webhook_secret',
 }
 
 DEFAULT_SETTINGS = {
@@ -84,6 +86,12 @@ DEFAULT_SETTINGS = {
     'ch_presenter_auth': '',
     'ch_xml_gateway_password': '',
     'ch_xml_gateway_url': 'https://xmlgw.companieshouse.gov.uk/V1-0/xmlgw/Gateway',
+
+    # ── Didit identity verification (Smart Operations > ID Verification) ──
+    'didit_api_key': '',
+    'didit_webhook_secret': '',
+    'didit_workflow_id': '',
+    'didit_callback_url': '',
 
     # ── WordPress & Webhooks ──────────────────────────────
     'wordpress_webhook_secret': '',
@@ -319,6 +327,12 @@ def get_all_settings(raw: bool = False):
             'ch_presenter_auth': merged.get('ch_presenter_auth', '') if raw else mask_value(merged.get('ch_presenter_auth', '')),
             'ch_presenter_auth_set': bool(merged.get('ch_presenter_auth')),
             'ch_xml_gateway_url': merged.get('ch_xml_gateway_url', 'https://xmlgw.companieshouse.gov.uk/V1-0/xmlgw/Gateway')
+        },
+        'didit': {
+            'didit_api_key_set': bool(merged.get('didit_api_key')),
+            'didit_webhook_secret_set': bool(merged.get('didit_webhook_secret')),
+            'didit_workflow_id': merged.get('didit_workflow_id', ''),
+            'didit_callback_url': merged.get('didit_callback_url', ''),
         },
         'webhooks': {
             'wordpress_webhook_secret': merged.get('wordpress_webhook_secret', '') if raw else mask_value(merged.get('wordpress_webhook_secret', '')),
