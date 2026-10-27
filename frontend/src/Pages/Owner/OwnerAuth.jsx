@@ -22,7 +22,7 @@ function OwnerCard({ title, subtitle, children, footer }) {
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-3">
-          <img src={finstapLogo} alt="Finstap" className="h-9 w-auto dark:hidden" />
+          <img src={finstapLogo} alt="Finstap" className="w-auto dark:hidden h-11" />
           <img src={finstapLogoLight} alt="Finstap" className="hidden h-9 w-auto dark:block" />
           <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
             <IconLock className="size-3.5" /> Owner portal
@@ -72,7 +72,10 @@ export function OwnerLogin({ onSignedIn }) {
 
   if (code) {
     return (
-      <OwnerCard title="Check your email" subtitle={`We sent a 6-digit code to ${code.email_hint}.`}>
+      <OwnerCard
+        title="Check your email"
+        subtitle={`We sent a 6-digit code to ${code.email_hint}.`}
+      >
         <LoginCodeStep
           heading={false}
           apiUrl={getApiBase()}
@@ -227,7 +230,10 @@ export function OwnerSetPassword() {
     if (password.length < MIN_PASSWORD) return setError(`Use at least ${MIN_PASSWORD} characters.`)
     if (password !== repeat) return setError("The two passwords are not the same.")
     setBusy(true)
-    const res = await ownerApi("/password", { method: "POST", body: { token, password, full_name: name } })
+    const res = await ownerApi("/password", {
+      method: "POST",
+      body: { token, password, full_name: name },
+    })
     setBusy(false)
     if (res.ok) navigate("/owner/login?ready=1", { replace: true })
     else setError(res.error)
@@ -260,7 +266,13 @@ export function OwnerSetPassword() {
             <ErrorBox error={error} />
             <Field>
               <FieldLabel htmlFor="owner-name">Your name</FieldLabel>
-              <Input id="owner-name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} disabled={busy} />
+              <Input
+                id="owner-name"
+                autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={busy}
+              />
             </Field>
             <Field>
               <FieldLabel htmlFor="owner-new-password">New password</FieldLabel>
