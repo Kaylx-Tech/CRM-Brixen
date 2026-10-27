@@ -3,7 +3,9 @@
 A verification session is started for one person on a KYC order; the person opens the session link,
 scans their ID and takes a selfie, and Didit posts the result to /api/webhooks/didit.
 
-Settings > Integrations (or env vars) hold the keys, never the code:
+Finstap: the server's own Didit account (DIDIT_API_KEY, DIDIT_WEBHOOK_SECRET, DIDIT_WORKFLOW_ID env) is
+used for every company workspace, like the Companies House key; one webhook URL serves them all.
+Without it, Settings > Integrations hold a workspace's own keys, never the code:
   didit_api_key         API key (x-api-key header)
   didit_webhook_secret  Webhook secret key, signs every webhook (X-Signature-V2)
   didit_workflow_id     The verification workflow to run (ID document + liveness + face match)
@@ -13,6 +15,7 @@ Settings > Integrations (or env vars) hold the keys, never the code:
 import hashlib
 import hmac
 import json
+import os
 import time
 import urllib.error
 import urllib.request
@@ -24,7 +27,31 @@ DEFAULT_API_BASE = 'https://verification.didit.me'
 FINAL_STATUSES = ('Approved', 'Declined', 'Abandoned', 'Expired', 'Kyc Expired')
 
 
+def _env(name):
+    value = os.environ.get(name, '').strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+        value = value[1:-1].strip()
+    return value
+
+
+def platform_config():
+    """Finstap's own Didit account (server env, like the Companies House key): it covers every company
+    workspace, so companies have nothing to set up. Empty when the server has no key."""
+    if not _env('DIDIT_API_KEY'):
+        return None
+    return {
+        'api_key': _env('DIDIT_API_KEY'),
+        'webhook_secret': _env('DIDIT_WEBHOOK_SECRET'),
+        'workflow_id': _env('DIDIT_WORKFLOW_ID'),
+        'callback_url': _env('DIDIT_CALLBACK_URL'),
+        'api_base': (_env('DIDIT_API_BASE') or DEFAULT_API_BASE).rstrip('/'),
+    }
+
+
 def config():
+    platform = platform_config()
+    if platform:
+        return platform
     return {
         'api_key': (get_setting('didit_api_key', '') or '').strip(),
         'webhook_secret': (get_setting('didit_webhook_secret', '') or '').strip(),

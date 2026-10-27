@@ -150,6 +150,10 @@ def app(environ, start_response):
         response = handle_platform_routes(environ, custom_start_response, path, method, body, query_params)
         if response is not None:
             return response
+        # Didit results for every company arrive at one address; the session names the workspace
+        if path == '/api/webhooks/didit' and method == 'POST':
+            from routes.id_verification_routes import handle_didit_webhook
+            return handle_didit_webhook(environ, custom_start_response, body)
         if tenant_error:
             return error_response(custom_start_response, tenant_error, status_code=404)
 

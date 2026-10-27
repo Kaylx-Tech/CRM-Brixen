@@ -208,6 +208,11 @@ def _platform_ch_key():
     return platform_ch_api_key()
 
 
+def _platform_didit():
+    from services.didit_service import platform_config
+    return platform_config()
+
+
 def _in_workspace():
     """True inside a Finstap company workspace (not Brixen's own database)."""
     try:
@@ -329,6 +334,8 @@ def get_all_settings(raw: bool = False):
             'ch_xml_gateway_url': merged.get('ch_xml_gateway_url', 'https://xmlgw.companieshouse.gov.uk/V1-0/xmlgw/Gateway')
         },
         'didit': {
+            # Finstap's own Didit account (server env) covers every company: nothing to set up, never shown
+            'didit_platform': bool(_platform_didit()),
             'didit_api_key_set': bool(merged.get('didit_api_key')),
             'didit_webhook_secret_set': bool(merged.get('didit_webhook_secret')),
             'didit_workflow_id': merged.get('didit_workflow_id', ''),

@@ -173,6 +173,7 @@ export default function Settings() {
     smtp_pass_set: false,
     companies_house_api_key_set: false,
     companies_house_platform: false,
+    didit_platform: false,
     didit_api_key_set: false,
     didit_webhook_secret_set: false,
     google_service_account_json_set: false,
@@ -298,6 +299,7 @@ export default function Settings() {
         smtp_pass_set: !!smtp.smtp_pass_set,
         companies_house_api_key_set: !!ch.companies_house_api_key_set,
         companies_house_platform: !!ch.companies_house_platform,
+        didit_platform: !!didit.didit_platform,
         didit_api_key_set: !!didit.didit_api_key_set,
         didit_webhook_secret_set: !!didit.didit_webhook_secret_set,
         google_service_account_json_set: !!drive.google_service_account_json_set,
@@ -926,11 +928,16 @@ export default function Settings() {
             <Section
               title="Didit identity verification"
               description={
-                flags.didit_api_key_set
+                flags.didit_platform
+                  ? 'Connected for your workspace: Smart Operations > ID Verification verifies identities for KYC orders. Nothing to set up.'
+                  : flags.didit_api_key_set
                   ? 'Didit is connected: Smart Operations > ID Verification starts verifications for KYC orders. Paste new keys only to replace them.'
                   : 'Used by Smart Operations > ID Verification. Find the keys in the Didit console (business.didit.me) under API & Webhooks.'
               }
             >
+              {/* Finstap's own Didit account covers every workspace: no keys or webhook to set up */}
+              {!flags.didit_platform && (
+              <>
               <div className="grid gap-3 md:grid-cols-2">
                 <Field id="didit_api_key" label="API key">
                   <Input
@@ -994,6 +1001,8 @@ export default function Settings() {
                   </Button>
                 </div>
               </Field>
+              </>
+              )}
               <Button
                 type="button"
                 variant="outline"

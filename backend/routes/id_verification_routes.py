@@ -195,6 +195,23 @@ def _handle_webhook(environ, start_response, body):
     return success_response(start_response, message="Received.")
 
 
+def handle_didit_webhook(environ, start_response, body):
+    """Finstap: one webhook URL for every company. vendor_data ("acme:idv-12") names the workspace,
+    so the result is saved in that company's database; without a name the request's own workspace is used."""
+    from tenancy import current_tenant, get_tenant, use_tenant
+    match = re.match(r'^([a-z0-9-]+):idv-\d+$', str((body or {}).get('vendor_data') or '')) \
+        if isinstance(body, dict) else None
+    if not match:
+        if not current_tenant():
+            return success_response(start_response, message="Unknown workspace.")
+        return _handle_webhook(environ, start_response, body)
+    tenant = get_tenant(match.group(1))
+    if not tenant or tenant.get('status') != 'Active':
+        return success_response(start_response, message="Unknown workspace.")
+    with use_tenant(tenant):
+        return _handle_webhook(environ, start_response, body)
+
+
 def handle_id_verification_routes(environ, start_response, path, method, user, body, query):
     if path == '/api/webhooks/didit' and method == 'POST':
         return _handle_webhook(environ, start_response, body)
