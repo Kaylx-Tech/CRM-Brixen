@@ -22,6 +22,11 @@
   GET  /registered-office?status=        → every workspace's registered office requests
   POST /registered-office/<id>/confirm {address_index, start_date, months, price} | reject {reason}
        | renew {months, price} | end {reason} | paid {paid}
+  GET  /billing                          → every workspace's subscription state and unpaid service charges
+  GET/POST /billing/<slug>/payments      {amount, method, note, periods} → records a payment
+  GET/POST /content/posts, /content/posts/<id>          blog posts
+  GET  /content/newsletter               → subscribers and newsletters
+  POST /content/newsletter/issues[/<id>[/test|/send]]   draft, save, test to yourself, send to all
   GET  /admins                           → owner accounts
 
 Every route except login needs "Authorization: Bearer owner.<token>". Nothing here deletes a workspace
@@ -37,6 +42,8 @@ from tenancy import _platform_execute, _platform_query, get_tenant, use_tenant, 
 from utils.response import success_response, error_response
 from services import plans
 from services import platform_services as svc
+from services import platform_billing as billing
+from services import platform_content as content
 from config import TENANT_BASE_DOMAIN
 from services.owner_auth import (
     OwnerAuthError, admin_for_token, audit, change_password, link_email, logout, request_password_link, resend,
@@ -102,15 +109,7 @@ def _workspace_usage(tenant, fresh=False):
 
 def _monthly_value(tenant):
     """What this workspace pays a month (0 on trial, cancelled, or Enterprise without a price)."""
-    plan = (tenant.get('plan') or '').lower()
-    if plan not in plans.PAID_PLANS or (tenant.get('subscription_status') or '') not in ('active', 'past_due'):
-        return 0.0
-    if tenant.get('price_override') not in (None, ''):
-        return float(tenant['price_override'])
-    info = plans.PLANS[plan]
-    if (tenant.get('billing_cycle') or 'monthly') == 'yearly' and info.get('price_year'):
-        return round(info['price_year'] / 12, 2)
-    return float(info.get('price_month') or 0)
+    return plans.monthly_value(tenant)
 
 
 def _all_tenants():
@@ -374,6 +373,62 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
             audit(admin, f"REGISTERED_OFFICE_{act.upper()}", row['tenant_slug'], f"{row['company_name']}: {message}")
             return success_response(start_response, data=row, message=message)
     except svc.ServiceError as exc:
+        return error_response(start_response, str(exc), status_code=400)
+
+    # ── billing: subscriptions and service charges (services/platform_billing.py) ──
+    try:
+        if sub == '/billing' and method == 'GET':
+            data = billing.overview()
+            data['payments'] = billing.payments(limit=50)
+            return success_response(start_response, data=data)
+        pay = re.match(r'^/billing/([a-z0-9-]+)/payments$', sub)
+        if pay and method == 'GET':
+            return success_response(start_response, data={'payments': billing.payments(pay.group(1))})
+        if pay and method == 'POST':
+            done = billing.record_payment(pay.group(1), admin, body.get('amount'), body.get('method'), body.get('note'),
+                                          body.get('periods'))
+            audit(admin, 'PAYMENT_RECORDED', pay.group(1),
+                  f"£{done['amount']} for {done['period_start']} – {done['period_end']}")
+            return success_response(start_response, data=done, message=f"Payment saved. Paid until {done['period_end']}.")
+    except billing.BillingError as exc:
+        return error_response(start_response, str(exc), status_code=400)
+
+    # ── content: blog posts and the newsletter (services/platform_content.py) ──
+    try:
+        if sub == '/content/posts' and method == 'GET':
+            return success_response(start_response, data={'posts': content.list_posts()})
+        if sub == '/content/posts' and method == 'POST':
+            post = content.save_post(body, admin)
+            audit(admin, 'BLOG_POST_CREATED', detail=post['title'])
+            return success_response(start_response, data=post, message="Post saved.", status_code=201)
+        post_match = re.match(r'^/content/posts/(\d+)$', sub)
+        if post_match and method == 'GET':
+            post = content.get_post(post_id=int(post_match.group(1)))
+            return (success_response(start_response, data=post) if post
+                    else error_response(start_response, "Post not found", status_code=404))
+        if post_match and method == 'POST':
+            post = content.save_post(body, admin, int(post_match.group(1)))
+            audit(admin, 'BLOG_POST_SAVED', detail=f"{post['title']} ({post['status']})")
+            return success_response(start_response, data=post, message="Post saved.")
+        if sub == '/content/newsletter' and method == 'GET':
+            return success_response(start_response, data={**content.subscribers(), 'issues': content.list_issues()})
+        if sub == '/content/newsletter/issues' and method == 'POST':
+            issue = content.save_issue(body, admin)
+            return success_response(start_response, data=issue, message="Draft saved.", status_code=201)
+        issue_match = re.match(r'^/content/newsletter/issues/(\d+)(/test|/send)?$', sub)
+        if issue_match and method == 'POST':
+            issue_id, act = int(issue_match.group(1)), issue_match.group(2)
+            if act == '/test':
+                content.send_test(issue_id, admin['email'])
+                return success_response(start_response, message=f"Test sent to {admin['email']}.")
+            if act == '/send':
+                count = content.send_issue(issue_id, f"https://{TENANT_BASE_DOMAIN}" if TENANT_BASE_DOMAIN
+                                           else (environ.get('HTTP_ORIGIN') or ''))
+                audit(admin, 'NEWSLETTER_SENT', detail=f"issue {issue_id} to {count} subscriber(s)")
+                return success_response(start_response, message=f"Sending to {count} subscriber(s)…")
+            issue = content.save_issue(body, admin, issue_id)
+            return success_response(start_response, data=issue, message="Draft saved.")
+    except content.ContentError as exc:
         return error_response(start_response, str(exc), status_code=400)
 
     match = re.match(r'^/workspaces/([a-z0-9-]+)(/[a-z]+)?$', sub)

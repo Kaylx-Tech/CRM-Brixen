@@ -10,6 +10,7 @@ import PrivacyPolicy from './Pages/Legal/PrivacyPolicy'
 import Terms from './Pages/Legal/Terms'
 import Security from './Pages/Legal/Security'
 import OwnerPortal from './Pages/Owner/OwnerPortal'
+import BlogList, { BlogPost, Unsubscribe } from './Pages/Blog/Blog'
 import { onOwnerHost, ownerPortalAllowed } from './lib/owner'
 import { IS_FINSTAP, onSharedHost, subdomainWorkspace } from './lib/workspace'
 import { loadBranding } from './lib/branding'
@@ -125,6 +126,11 @@ const App = () => {
             {IS_FINSTAP && <Route path="/privacy" element={<PrivacyPolicy />} />}
             {IS_FINSTAP && <Route path="/terms" element={<Terms />} />}
             {IS_FINSTAP && <Route path="/security" element={<Security />} />}
+
+            {/* Finstap: blog and newsletter (managed in the owner portal under Content) */}
+            {IS_FINSTAP && <Route path="/blog" element={<BlogList />} />}
+            {IS_FINSTAP && <Route path="/blog/:slug" element={<BlogPost />} />}
+            {IS_FINSTAP && <Route path="/unsubscribe" element={<Unsubscribe />} />}
 
             {/* Finstap owner portal: admin.finstap.com (or /owner when subdomains are off, for local tests) */}
             {ownerPortalAllowed() && <Route path="/owner/*" element={<OwnerPortal />} />}

@@ -162,6 +162,57 @@ CREATE TABLE IF NOT EXISTS ro_requests (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_ro_requests_tenant ON ro_requests(tenant_slug, status);
+-- Subscription payments recorded by the owner (services/platform_billing.py)
+CREATE TABLE IF NOT EXISTS subscription_payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tenant_slug TEXT NOT NULL,
+    amount REAL NOT NULL,
+    plan TEXT,
+    billing_cycle TEXT,
+    period_start DATE,
+    period_end DATE,
+    method TEXT,
+    note TEXT,
+    recorded_by TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_subscription_payments_tenant ON subscription_payments(tenant_slug, created_at);
+-- Finstap's own blog and newsletter (services/platform_content.py)
+CREATE TABLE IF NOT EXISTS blog_posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    excerpt TEXT,
+    body TEXT NOT NULL DEFAULT '',
+    cover_url TEXT,
+    status TEXT NOT NULL DEFAULT 'Draft',
+    author TEXT,
+    published_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL DEFAULT 'Subscribed',
+    token TEXT NOT NULL,
+    source TEXT,
+    ip TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    unsubscribed_at TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS newsletter_issues (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject TEXT NOT NULL,
+    body TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Draft',
+    recipients INTEGER NOT NULL DEFAULT 0,
+    sent_count INTEGER NOT NULL DEFAULT 0,
+    failed_count INTEGER NOT NULL DEFAULT 0,
+    created_by TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sent_at TIMESTAMP
+);
 -- Emailed one-time links that let an owner set (or reset) their own password
 CREATE TABLE IF NOT EXISTS platform_password_links (
     token_hash TEXT PRIMARY KEY,

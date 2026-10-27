@@ -267,6 +267,27 @@ def guard(tenant, path, method, user, body):
         check_limit(tenant, 'ai_month')
 
 
+def cycle_amount(tenant):
+    """What one billing period costs this workspace (a month, or a year when billed yearly); 0 when
+    there is no price (trial, or Enterprise without a special price)."""
+    plan = ((tenant or {}).get('plan') or '').lower()
+    if plan not in PAID_PLANS:
+        return 0.0
+    yearly = ((tenant or {}).get('billing_cycle') or 'monthly') == 'yearly'
+    if (tenant or {}).get('price_override') not in (None, ''):
+        return round(float(tenant['price_override']) * (12 if yearly else 1), 2)
+    info = PLANS[plan]
+    return float((info.get('price_year') if yearly else info.get('price_month')) or 0)
+
+
+def monthly_value(tenant):
+    """What this workspace pays a month (0 on trial, cancelled, or Enterprise without a price)."""
+    if (tenant or {}).get('subscription_status') not in ('active', 'past_due'):
+        return 0.0
+    amount = cycle_amount(tenant)
+    return round(amount / 12, 2) if (tenant.get('billing_cycle') or 'monthly') == 'yearly' else amount
+
+
 def summary(tenant):
     """Plan, limits, usage and trial for one workspace (inside its database)."""
     plan = effective(tenant)

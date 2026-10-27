@@ -21,6 +21,7 @@ from routes.auth_routes import _client_ip, _public_user, _session_cookie
 from routes.owner_routes import handle_owner_routes
 from services import signup_email
 from services.plans import public_plans
+from services import platform_content as content
 from services.signup_email import SignupEmailError
 
 # Signup flood guard: max workspaces per IP inside the window
@@ -58,6 +59,23 @@ def handle_platform_routes(environ, start_response, path, method, body, query=No
     # Plans, prices and limits for the landing page (services/plans.py)
     if path == '/api/platform/plans' and method == 'GET':
         return success_response(start_response, data=public_plans())
+
+    # Finstap blog and newsletter, for finstap.com (services/platform_content.py)
+    if path == '/api/platform/blog' and method == 'GET':
+        return success_response(start_response, data={'posts': content.list_posts(published_only=True)})
+    if path.startswith('/api/platform/blog/') and method == 'GET':
+        post = content.get_post(slug=path.rsplit('/', 1)[-1], published_only=True)
+        return (success_response(start_response, data=post) if post
+                else error_response(start_response, "Post not found", status_code=404))
+    if path in ('/api/platform/newsletter/subscribe', '/api/platform/newsletter/unsubscribe') and method == 'POST':
+        try:
+            if path.endswith('/subscribe'):
+                content.subscribe((body or {}).get('email'), (body or {}).get('source'), _client_ip(environ))
+                return success_response(start_response, message="Thanks! You're subscribed.")
+            email = content.unsubscribe((body or {}).get('token'))
+            return success_response(start_response, data={'email': email}, message="You're unsubscribed.")
+        except content.ContentError as exc:
+            return error_response(start_response, str(exc), status_code=400)
 
     if path == '/api/platform/workspace' and method == 'GET':
         tenant = get_tenant(_query_value(query, 'slug'))

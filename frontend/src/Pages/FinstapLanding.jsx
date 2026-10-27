@@ -29,6 +29,7 @@ import {
 import finstapLogo from "@/assets/finstap-logo.svg"
 import { LegalLinks } from "@/Pages/Legal/LegalLayout"
 import FinstapPricing from "@/Pages/FinstapPricing"
+import { NewsletterSignup } from "@/Pages/Blog/Blog"
 
 // Finstap brand: blue → violet from the logo. The landing page is always light.
 const GRADIENT = "bg-linear-to-r from-[#297bff] to-[#834aff]"
@@ -48,6 +49,7 @@ const NAV = [
   ["How it works", "#how"],
   ["Why Finstap", "#why"],
   ["FAQ", "#faq"],
+  ["Blog", "/blog"],
 ]
 
 const FEATURES = [
@@ -688,6 +690,16 @@ export default function FinstapLanding() {
 
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white">
+        {/* Newsletter sign-up (Content > Newsletter in the owner portal) */}
+        <div className="border-b border-slate-100 bg-[#f6f5ff]">
+          <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Get the Finstap newsletter</h2>
+              <p className="mt-1 text-sm text-slate-600">Product news and practical tips for UK practices.</p>
+            </div>
+            <NewsletterSignup source="landing" />
+          </div>
+        </div>
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-4 py-10 sm:flex-row sm:px-6">
           <img src={finstapLogo} alt="Finstap" className="h-7 w-auto" />
           <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-slate-600">
