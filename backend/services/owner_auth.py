@@ -29,7 +29,7 @@ TOKEN_PREFIX = 'owner.'
 LINK_MINUTES = 30
 # Who may set up an owner account by email (the Finstap owner; more can be added in Coolify)
 OWNER_EMAILS = frozenset(
-    e.strip().lower() for e in (os.environ.get('PLATFORM_OWNER_EMAILS') or 'kaylxaiofficial@gmail.com').split(',')
+    e.strip().lower() for e in (os.environ.get('PLATFORM_OWNER_EMAILS') or 'admin@finstap.com').split(',')
     if e.strip()
 )
 
@@ -281,6 +281,25 @@ def set_password_with_link(token, password, full_name=''):
                       (admin['id'],))
     audit(admin, 'PASSWORD_SET' if existing else 'OWNER_CREATED')
     return email
+
+
+def change_password(admin, current, new, keep_token=''):
+    """A signed-in owner changes their own password; their other sessions end."""
+    row = _platform_query("SELECT * FROM platform_admins WHERE id = ? LIMIT 1;", ((admin or {}).get('id'),), one=True)
+    if not row or not verify_password(current or '', row['password_hash']):
+        raise OwnerAuthError("Your current password is not right.")
+    if len(new or '') < 12:
+        raise OwnerAuthError("The new password must be at least 12 characters.")
+    if new == current:
+        raise OwnerAuthError("The new password must be different from the current one.")
+    if str(new).strip().lower() == row['email']:
+        raise OwnerAuthError("The password must not be your email.")
+    _platform_execute("UPDATE platform_admins SET password_hash = ? WHERE id = ?;", (hash_password(new), row['id']))
+    _platform_execute("""
+        UPDATE platform_sessions SET revoked_at = datetime('now')
+        WHERE admin_id = ? AND revoked_at IS NULL AND token_hash != ?;
+    """, (row['id'], _hash(keep_token)))
+    audit(admin, 'PASSWORD_CHANGED')
 
 
 def logout(token):

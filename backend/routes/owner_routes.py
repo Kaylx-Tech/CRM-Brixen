@@ -7,6 +7,7 @@
   GET  /password-link?token=             → the email that link is for
   POST /password {token, password, full_name}
   GET  /me                               POST /logout
+  POST /account/password {current_password, new_password}
   GET  /overview                         → totals, money, plans, signups per day, trials ending soon
   GET  /workspaces?search=&plan=&status= → every workspace with its plan and usage
   GET  /workspaces/<slug>                → one workspace: plan, limits, usage, team, history
@@ -31,7 +32,7 @@ from utils.response import success_response, error_response
 from services import plans
 from config import TENANT_BASE_DOMAIN
 from services.owner_auth import (
-    OwnerAuthError, admin_for_token, audit, link_email, logout, request_password_link, resend,
+    OwnerAuthError, admin_for_token, audit, change_password, link_email, logout, request_password_link, resend,
     set_password_with_link, start_login, verify,
 )
 
@@ -283,6 +284,12 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
 
     if sub == '/me' and method == 'GET':
         return success_response(start_response, data={'admin': admin})
+    if sub == '/account/password' and method == 'POST':
+        try:
+            change_password(admin, body.get('current_password'), body.get('new_password'), _token(environ))
+        except OwnerAuthError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        return success_response(start_response, message="Password changed. Other devices were signed out.")
     if sub == '/logout' and method == 'POST':
         logout(_token(environ))
         audit(admin, 'SIGNED_OUT')

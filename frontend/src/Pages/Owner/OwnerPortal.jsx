@@ -6,6 +6,7 @@ import {
   IconBuildingSkyscraper,
   IconLayoutDashboard,
   IconLogout,
+  IconSettings,
   IconTags,
 } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
@@ -18,12 +19,14 @@ import OwnerWorkspaces from "./OwnerWorkspaces"
 import OwnerWorkspace from "./OwnerWorkspace"
 import OwnerPlans from "./OwnerPlans"
 import OwnerActivity from "./OwnerActivity"
+import OwnerSettings from "./OwnerSettings"
 
 const NAV = [
   ["Overview", "/owner", IconLayoutDashboard, true],
   ["Workspaces", "/owner/workspaces", IconBuildingSkyscraper, false],
   ["Plans", "/owner/plans", IconTags, false],
   ["Activity", "/owner/activity", IconActivity, false],
+  ["Settings", "/owner/settings", IconSettings, false],
 ]
 
 function OwnerShell({ admin, onSignOut, children }) {
@@ -136,6 +139,7 @@ export default function OwnerPortal() {
         <Route path="workspaces/:slug" element={<OwnerWorkspace />} />
         <Route path="plans" element={<OwnerPlans />} />
         <Route path="activity" element={<OwnerActivity />} />
+        <Route path="settings" element={<OwnerSettings admin={admin} />} />
         <Route path="*" element={<Navigate to="/owner" replace />} />
       </Routes>
     </OwnerShell>
