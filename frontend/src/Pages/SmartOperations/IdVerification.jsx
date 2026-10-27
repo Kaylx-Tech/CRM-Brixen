@@ -75,6 +75,63 @@ async function copyText(text, label) {
   }
 }
 
+// AML screening (PEP, sanctions, adverse media) in a few words, and its colour.
+// Matches already marked False Positive in Didit do not count.
+const openHits = (aml) => aml.open_hits ?? aml.total_hits ?? 0
+
+function amlLabel(aml) {
+  if (!aml) return ''
+  const open = openHits(aml)
+  if (open > 0) return `${open} possible match${open === 1 ? '' : 'es'}`
+  if (aml.status === 'Approved') return 'Clear'
+  if (aml.status === 'Not Finished') return 'Not finished'
+  return aml.status || 'Clear'
+}
+
+function amlTone(aml) {
+  if (!aml) return 'bg-muted text-muted-foreground'
+  if (aml.status === 'Declined') return 'bg-destructive/15 text-destructive'
+  if (openHits(aml) > 0 || aml.status === 'In Review') return 'badge-amber'
+  if (aml.status === 'Approved') return 'badge-green'
+  return 'bg-muted text-muted-foreground'
+}
+
+function AmlResult({ aml }) {
+  return (
+    <div className="rounded-lg border p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold">AML screening</p>
+        <Badge className={amlTone(aml)}>{amlLabel(aml)}</Badge>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        PEP, sanctions and adverse media lists
+        {aml.score != null ? ` · highest risk score ${Math.round(aml.score)}/100` : ''}
+      </p>
+      {(aml.hits || []).length > 0 && (
+        <ul className="mt-2 space-y-1.5">
+          {aml.hits.map((h, i) => (
+            <li key={i} className="rounded-md bg-muted/40 px-2 py-1.5 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium">{h.name || 'Unnamed match'}</span>
+                <span className="text-muted-foreground tabular-nums">
+                  {h.match_score != null ? `match ${Math.round(h.match_score)}%` : ''}
+                  {h.review_status && h.review_status !== 'Unreviewed' ? ` · ${h.review_status}` : ''}
+                </span>
+              </div>
+              {(h.lists || []).length > 0 && <p className="mt-0.5 text-muted-foreground">{h.lists.join(', ')}</p>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {openHits(aml) > 0 && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Review each match in the Didit console (Confirmed match or False positive) and keep the decision on file.
+        </p>
+      )}
+    </div>
+  )
+}
+
 // What the ACSP enters in "Tell Companies House you have verified someone's identity"
 function acspPack(person) {
   const r = person.result || {}
@@ -91,6 +148,7 @@ function acspPack(person) {
       r.id_status && `ID document ${r.id_status.toLowerCase()}`,
       r.liveness_status && `liveness ${r.liveness_status.toLowerCase()}`,
       r.face_match_status && `face match ${r.face_match_status.toLowerCase()}`,
+      r.aml && `AML screening ${amlLabel(r.aml).toLowerCase()}`,
     ].filter(Boolean).join(', ')],
     ['Verified with', `Didit${r.session_number ? ` session ${r.session_number}` : ''}${r.verified_at ? ` on ${shortDate(r.verified_at)}` : ''}`],
   ].filter(([, v]) => v)
@@ -113,6 +171,11 @@ function PersonRow({ person, busy, onAction, onOpen }) {
       </button>
       <div className="flex flex-wrap items-center gap-1">
         <Badge className={`${checkTone(person.status)} whitespace-nowrap`}>{person.status || 'Not Started'}</Badge>
+        {person.result?.aml && (
+          <Badge className={`${amlTone(person.result.aml)} whitespace-nowrap`} title="AML screening">
+            AML: {amlLabel(person.result.aml)}
+          </Badge>
+        )}
         {started ? (
           <>
             <Button variant="outline" size="xs" className="h-7 gap-1" title="Copy verification link" onClick={() => copyText(person.session_url, 'Link')}>
@@ -403,7 +466,7 @@ export default function IdVerification() {
 
       {/* Result and the ACSP filing pack */}
       <Dialog open={!!viewing} onOpenChange={(open) => !open && setViewing(null)}>
-        <DialogContent className="sm:max-w-[520px]">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[520px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {viewing?.full_name}
@@ -450,7 +513,7 @@ export default function IdVerification() {
                 <div className="flex gap-2">
                   <Input
                     id="idv-ch-code"
-                    className="font-mono uppercase tracking-wider"
+                    className="font-mono tracking-wider placeholder:font-sans placeholder:tracking-normal"
                     placeholder="11 characters, from Companies House"
                     maxLength={13}
                     value={chCode}
@@ -483,6 +546,9 @@ export default function IdVerification() {
               )}
             </div>
           )}
+
+          {/* AML can hold a verification In Review, so it shows whatever the overall status */}
+          {viewing?.result?.aml && <AmlResult aml={viewing.result.aml} />}
 
           <DialogFooter>
             {viewing?.session_url && (
