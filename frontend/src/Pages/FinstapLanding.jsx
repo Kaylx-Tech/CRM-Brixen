@@ -9,7 +9,11 @@ import {
   IconChartBar,
   IconCheck,
   IconChecklist,
+  IconDeviceLaptop,
+  IconFileCertificate,
   IconFileText,
+  IconId,
+  IconMapPin,
   IconMenu2,
   IconMinus,
   IconPalette,
@@ -36,6 +40,7 @@ const GHOST = "inline-flex items-center justify-center gap-2 rounded-full border
 
 const NAV = [
   ["Features", "#features"],
+  ["Services", "#services"],
   ["How it works", "#how"],
   ["Why Finstap", "#why"],
   ["FAQ", "#faq"],
@@ -50,6 +55,50 @@ const FEATURES = [
   [IconChartBar, "Finance & revenue", "Revenue over time, balance sheet and company expenses, ready when you need them."],
   [IconUsersGroup, "Team & roles", "Admins, managers and staff each see only what their role needs, prices included."],
   [IconPalette, "Your brand", "Your logo, your colours and your own address: yourcompany.finstap.com."],
+]
+
+// The company services a formation agent sells, each with what Finstap actually does for it
+const SERVICES = [
+  [
+    IconId,
+    "Director ID verification, tracked",
+    "Companies House now needs every director to verify their identity. Keep it under control for all your clients.",
+    [
+      "Take ID verification orders through your own forms",
+      "Store each director's 11-digit Companies House personal code",
+      "See who is verified, in progress or needs attention",
+    ],
+  ],
+  [
+    IconFileCertificate,
+    "Company accounts in one flow",
+    "From bank statement to filed accounts without leaving Finstap.",
+    [
+      "Build micro-entity or dormant accounts from a bank statement",
+      "Filing deadline and Corporation Tax estimate worked out for you",
+      "File with Companies House using your filing credentials, or download for GOV.UK",
+    ],
+  ],
+  [
+    IconMapPin,
+    "Your own registered office service",
+    "Sell registered office and mail forwarding addresses under your own name.",
+    [
+      "Add registered office and mail forwarding to your price list",
+      "Take each client's details through your own order form",
+      "Clients see their address services in their own portal",
+    ],
+  ],
+  [
+    IconDeviceLaptop,
+    "A portal for your clients",
+    "Give clients one place to see their work, at your own address and in your colours.",
+    [
+      "Companies, orders, invoices and documents in one view",
+      "Clients upload documents and message your team",
+      "Invoice emails open the invoice through a private link",
+    ],
+  ],
 ]
 
 const STEPS = [
@@ -358,6 +407,49 @@ export default function FinstapLanding() {
                   </span>
                   <h3 className="mt-5 font-semibold text-slate-900">{title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-slate-600">{text}</p>
+                </div>
+              </FadeUp>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Services: the company work formation agents sell, done inside Finstap */}
+      <section id="services" className="scroll-mt-20 py-20 sm:py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <FadeUp className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">Why choose us</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+              Built for <span className={GRADIENT_TEXT}>UK company services</span>
+            </h2>
+            <p className="mt-4 text-slate-600">
+              The services your clients buy from you every day, handled in the same place as their companies.
+            </p>
+          </FadeUp>
+          <div className="mt-14 grid gap-5 md:grid-cols-2">
+            {SERVICES.map(([Icon, title, text, points], i) => (
+              <FadeUp key={title} delay={(i % 2) * 0.08}>
+                <div className="group relative h-full overflow-hidden rounded-3xl border border-slate-200 bg-white p-7 transition duration-300 hover:-translate-y-1 hover:border-[#6559ff]/30 hover:shadow-[0_24px_48px_-24px_rgba(101,89,255,0.4)] sm:p-8">
+                  <span aria-hidden className="pointer-events-none absolute -right-20 -top-20 size-56 rounded-full bg-[#834aff]/10 blur-3xl transition duration-500 group-hover:bg-[#834aff]/20" />
+                  <div className="relative flex items-start gap-4">
+                    <span className={cn("flex size-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg shadow-[#6559ff]/25", GRADIENT)}>
+                      <Icon className="size-6" />
+                    </span>
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+                      <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{text}</p>
+                    </div>
+                  </div>
+                  <ul className="relative mt-6 grid gap-2.5 border-t border-slate-100 pt-5">
+                    {points.map((point) => (
+                      <li key={point} className="flex items-start gap-2.5 text-sm text-slate-700">
+                        <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                          <IconCheck className="size-3.5" />
+                        </span>
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </FadeUp>
             ))}
