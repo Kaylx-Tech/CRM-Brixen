@@ -3,6 +3,9 @@
   POST /login {email, password}          → {challenge, email_hint}: a 6-digit code is emailed
   POST /login/resend {challenge}
   POST /login/verify {challenge, code}   → {token, admin}
+  POST /password-link {email}            → emails a one-time "set your password" link
+  GET  /password-link?token=             → the email that link is for
+  POST /password {token, password, full_name}
   GET  /me                               POST /logout
   GET  /overview                         → totals, money, plans, signups per day, trials ending soon
   GET  /workspaces?search=&plan=&status= → every workspace with its plan and usage
@@ -26,7 +29,11 @@ import time
 from tenancy import _platform_execute, _platform_query, get_tenant, use_tenant, workspace_url
 from utils.response import success_response, error_response
 from services import plans
-from services.owner_auth import OwnerAuthError, admin_for_token, audit, logout, resend, start_login, verify
+from config import TENANT_BASE_DOMAIN
+from services.owner_auth import (
+    OwnerAuthError, admin_for_token, audit, link_email, logout, request_password_link, resend,
+    set_password_with_link, start_login, verify,
+)
 
 PREFIX = '/api/platform/owner'
 SUBSCRIPTION_STATUSES = ('trialing', 'active', 'past_due', 'cancelled')
@@ -45,6 +52,16 @@ def _token(environ):
 def _ip(environ):
     return (environ.get('HTTP_CF_CONNECTING_IP') or environ.get('HTTP_X_REAL_IP')
             or (environ.get('HTTP_X_FORWARDED_FOR') or '').split(',')[0] or environ.get('REMOTE_ADDR') or '').strip()
+
+
+def _portal_base(environ):
+    """Where links in owner emails point: the owner portal's own address. A local test page
+    (localhost) gets links back to itself; any other page gets the real address."""
+    origin = (environ.get('HTTP_ORIGIN') or '').strip().rstrip('/')
+    host = re.sub(r'^https?://', '', origin).split(':')[0].lower()
+    if host in ('localhost', '127.0.0.1') or (TENANT_BASE_DOMAIN and host == f'admin.{TENANT_BASE_DOMAIN}'):
+        return origin
+    return f"https://admin.{TENANT_BASE_DOMAIN}" if TENANT_BASE_DOMAIN else origin
 
 
 def _q(query, key):
@@ -230,6 +247,28 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
         except OwnerAuthError as exc:
             return error_response(start_response, str(exc), status_code=429 if exc.wait else 400)
         return success_response(start_response, data={'resend_after': 60}, message="A new code is on its way.")
+    # ── set or reset the password with an emailed one-time link ──
+    if sub == '/password-link' and method == 'POST':
+        try:
+            request_password_link(body.get('email'), _portal_base(environ), _ip(environ))
+        except OwnerAuthError as exc:
+            return error_response(start_response, str(exc), status_code=429 if exc.wait else 400)
+        return success_response(start_response, message="If this email belongs to a Finstap owner, a link is on "
+                                                         "its way. It works for 30 minutes.")
+    if sub == '/password-link' and method == 'GET':
+        email = link_email(_q(query, 'token'))
+        if not email:
+            return error_response(start_response, "This link has expired or was already used. Ask for a new one.",
+                                  status_code=400)
+        return success_response(start_response, data={'email': email})
+    if sub == '/password' and method == 'POST':
+        try:
+            email = set_password_with_link(body.get('token'), body.get('password'), body.get('full_name'))
+        except OwnerAuthError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        return success_response(start_response, data={'email': email},
+                                message="Password saved. Sign in with it now.")
+
     if sub == '/login/verify' and method == 'POST':
         try:
             token, admin = verify(body.get('challenge'), body.get('code'), _ip(environ),

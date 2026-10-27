@@ -1,7 +1,9 @@
 """Sign-in for the Finstap owner portal (admin.finstap.com): the platform's own admins, not a workspace's.
 
-  * accounts live in platform.db (platform_admins); the first one is made on the server with
-    scripts/create_platform_owner.py, never through the website
+  * accounts live in platform.db (platform_admins). The people in PLATFORM_OWNER_EMAILS (env,
+    comma-separated) can set their own password from the login page: a one-time link (30 minutes)
+    goes to that email. Existing owners can use the same link to reset a forgotten password.
+    scripts/create_platform_owner.py does the same from the server terminal.
   * every sign-in is email + password, then a 6-digit code sent to that email (10 minutes, 5 tries)
   * a session lasts 12 hours; only hashes of codes and session tokens are stored
   * wrong passwords are slowed down per email and per network
@@ -9,6 +11,7 @@
 """
 import hashlib
 import hmac
+import os
 import secrets
 import threading
 import time
@@ -22,6 +25,13 @@ RESEND_SECONDS = 60
 MAX_SENDS = 5
 SESSION_HOURS = 12
 TOKEN_PREFIX = 'owner.'
+
+LINK_MINUTES = 30
+# Who may set up an owner account by email (the Finstap owner; more can be added in Coolify)
+OWNER_EMAILS = frozenset(
+    e.strip().lower() for e in (os.environ.get('PLATFORM_OWNER_EMAILS') or 'kaylxaiofficial@gmail.com').split(',')
+    if e.strip()
+)
 
 FAIL_LIMIT = 5
 FAIL_WINDOW = 15 * 60
@@ -198,6 +208,79 @@ def admin_for_token(token):
         WHERE s.token_hash = ? AND s.revoked_at IS NULL AND datetime(s.expires_at) > datetime('now')
           AND a.status = 'Active' LIMIT 1;
     """, (_hash(token),), one=True)
+
+
+def _send_link(email, url):
+    from services.email_service import send_email
+    subject = "Set your Finstap owner portal password"
+    text = (f"Open this link to set your Finstap owner portal password:\n\n{url}\n\nIt works once, for "
+            f"{LINK_MINUTES} minutes. If you did not ask for it, ignore this email.")
+    html = (f'<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:520px;margin:0 auto;'
+            f'padding:32px 16px;color:#111827;"><p style="font-size:20px;font-weight:700;margin:0 0 16px;">'
+            f'Finstap owner portal</p><p style="margin:0 0 24px;color:#4b5563;">Use the button to set your password. '
+            f'It works once, for {LINK_MINUTES} minutes.</p><p style="margin:0 0 24px;"><a href="{url}" '
+            f'style="display:inline-block;background:#5f5cff;color:#ffffff;text-decoration:none;font-weight:600;'
+            f'padding:12px 22px;border-radius:999px;">Set password</a></p><p style="color:#6b7280;font-size:14px;">'
+            f'If you did not ask for this, ignore this email. Your password stays the same.</p></div>')
+    with use_tenant(None):
+        sent = send_email(email, subject, html, text, category='SECURITY', log=False, store_body=False,
+                          sender_name='Finstap')
+    if not sent:
+        from config import IS_PRODUCTION
+        if not IS_PRODUCTION:
+            print(f"[Owner password link] {email}: {url} (email not sent: no SMTP in development)")
+            return True
+    return sent
+
+
+def request_password_link(email, base_url, ip=''):
+    """Email a one-time 'set your password' link to an owner (or an allowed owner email without an
+    account yet). Says nothing about whether the email is known."""
+    email = str(email or '').strip().lower()
+    keys = [f"l:{email}", f"i:{ip}"]
+    if _blocked(keys):
+        raise OwnerAuthError("Too many requests. Please wait a few minutes.", wait=60)
+    _fail(keys)  # every request counts toward the limit
+    known = _platform_query("SELECT 1 FROM platform_admins WHERE email = ? AND status = 'Active';", (email,), one=True)
+    if not known and email not in OWNER_EMAILS:
+        return
+    token = secrets.token_urlsafe(32)
+    _platform_execute("""
+        INSERT INTO platform_password_links (token_hash, email, expires_at, ip)
+        VALUES (?, ?, datetime('now', ?), ?);
+    """, (_hash(token), email, f'+{LINK_MINUTES} minutes', (ip or '')[:64]))
+    if not _send_link(email, f"{base_url.rstrip('/')}/owner/set-password?token={token}"):
+        raise OwnerAuthError("We could not send the email. Check the server's email settings.")
+
+
+def link_email(token):
+    """The email a set-password link is for, while it is still good ('' otherwise)."""
+    row = _platform_query("""
+        SELECT email FROM platform_password_links
+        WHERE token_hash = ? AND used_at IS NULL AND datetime(expires_at) > datetime('now') LIMIT 1;
+    """, (_hash(token or ''),), one=True)
+    return row['email'] if row else ''
+
+
+def set_password_with_link(token, password, full_name=''):
+    """Use a link once: create the owner account or give it a new password, then sign out its old
+    sessions. The owner still signs in with password + email code afterwards."""
+    email = link_email(token)
+    if not email:
+        raise OwnerAuthError("This link has expired or was already used. Ask for a new one.")
+    if len(password or '') < 12:
+        raise OwnerAuthError("The password must be at least 12 characters.")
+    if str(password).strip().lower() == email:
+        raise OwnerAuthError("The password must not be your email.")
+    existing = _platform_query("SELECT * FROM platform_admins WHERE email = ? LIMIT 1;", (email,), one=True)
+    save_admin(email, (full_name or '').strip() or (existing or {}).get('full_name') or email.split('@')[0], password)
+    _platform_execute("UPDATE platform_password_links SET used_at = datetime('now') WHERE token_hash = ?;",
+                      (_hash(token),))
+    admin = _platform_query("SELECT id, email FROM platform_admins WHERE email = ? LIMIT 1;", (email,), one=True)
+    _platform_execute("UPDATE platform_sessions SET revoked_at = datetime('now') WHERE admin_id = ? AND revoked_at IS NULL;",
+                      (admin['id'],))
+    audit(admin, 'PASSWORD_SET' if existing else 'OWNER_CREATED')
+    return email
 
 
 def logout(token):

@@ -121,6 +121,15 @@ CREATE TABLE IF NOT EXISTS platform_audit (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_platform_audit_created ON platform_audit(created_at);
+-- Emailed one-time links that let an owner set (or reset) their own password
+CREATE TABLE IF NOT EXISTS platform_password_links (
+    token_hash TEXT PRIMARY KEY,
+    email TEXT NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    used_at TIMESTAMP,
+    ip TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 """
 
 # Subscription details on each workspace, added to databases made before the owner portal

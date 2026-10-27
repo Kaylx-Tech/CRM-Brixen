@@ -1,110 +1,23 @@
 import { useEffect, useState } from "react"
-import { NavLink, Navigate, Route, Routes } from "react-router-dom"
+import { NavLink, Navigate, Route, Routes, useNavigate } from "react-router-dom"
 import { cn } from "cn"
 import {
   IconActivity,
-  IconAlertCircle,
   IconBuildingSkyscraper,
   IconLayoutDashboard,
   IconLogout,
   IconTags,
 } from "@tabler/icons-react"
-import { FinstapAuthLayout, FINSTAP_CTA } from "@/components/finstap-auth-layout"
-import { LoginCodeStep } from "@/components/login-code-step"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { getApiBase } from "@/lib/api"
 import { getOwnerToken, ownerApi, setOwnerToken } from "@/lib/owner"
 import finstapLogo from "@/assets/finstap-logo.svg"
 import finstapLogoLight from "@/assets/finstap-logo-light.svg"
+import { OwnerForgot, OwnerLogin, OwnerSetPassword } from "./OwnerAuth"
 import OwnerOverview from "./OwnerOverview"
 import OwnerWorkspaces from "./OwnerWorkspaces"
 import OwnerWorkspace from "./OwnerWorkspace"
 import OwnerPlans from "./OwnerPlans"
 import OwnerActivity from "./OwnerActivity"
-
-/** Email + password, then the 6-digit code emailed to the owner. */
-function OwnerLogin({ onSignedIn }) {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const [busy, setBusy] = useState(false)
-  const [code, setCode] = useState(null)
-
-  const submit = async (e) => {
-    e.preventDefault()
-    setBusy(true)
-    setError("")
-    const res = await ownerApi("/login", { method: "POST", body: { email, password } })
-    setBusy(false)
-    if (res.ok) setCode(res.data)
-    else setError(res.error)
-  }
-
-  return (
-    <FinstapAuthLayout
-      title={code ? "Check your email" : "Finstap owner portal"}
-      subtitle={code ? undefined : "For the Finstap team only. Company workspaces sign in at their own address."}
-    >
-      {code ? (
-        <LoginCodeStep
-          apiUrl={getApiBase()}
-          challenge={code.challenge}
-          emailHint={code.email_hint}
-          resendAfter={code.resend_after}
-          verifyPath="/platform/owner/login/verify"
-          resendPath="/platform/owner/login/resend"
-          onSuccess={(data) => onSignedIn(data.data)}
-          onBack={() => {
-            setCode(null)
-            setPassword("")
-          }}
-        />
-      ) : (
-        <form onSubmit={submit}>
-          <FieldGroup>
-            {error && (
-              <Alert variant="destructive">
-                <IconAlertCircle className="size-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            <Field>
-              <FieldLabel htmlFor="owner-email">Email</FieldLabel>
-              <Input
-                id="owner-email"
-                type="email"
-                autoComplete="username"
-                autoFocus
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={busy}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="owner-password">Password</FieldLabel>
-              <Input
-                id="owner-password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={busy}
-              />
-            </Field>
-            <Button type="submit" disabled={busy} className={FINSTAP_CTA}>
-              {busy ? "Checking..." : "Continue"}
-            </Button>
-          </FieldGroup>
-        </form>
-      )}
-    </FinstapAuthLayout>
-  )
-}
 
 const NAV = [
   ["Overview", "/owner", IconLayoutDashboard, true],
@@ -157,8 +70,12 @@ function OwnerShell({ admin, onSignOut, children }) {
   )
 }
 
-/** The Finstap owner portal: overview, workspaces and their subscriptions, plans, and activity. */
+/**
+ * The Finstap owner portal. Signed out: /owner/login, /owner/forgot and /owner/set-password (the
+ * emailed link). Signed in: overview, workspaces and their subscriptions, plans and activity.
+ */
 export default function OwnerPortal() {
+  const navigate = useNavigate()
   const [admin, setAdmin] = useState(null)
   const [checking, setChecking] = useState(Boolean(getOwnerToken()))
 
@@ -181,14 +98,26 @@ export default function OwnerPortal() {
   }, [])
 
   if (checking) return <div className="min-h-screen bg-background" />
+
   if (!admin) {
     return (
-      <OwnerLogin
-        onSignedIn={(data) => {
-          setOwnerToken(data.token)
-          setAdmin(data.admin)
-        }}
-      />
+      <Routes>
+        <Route
+          path="login"
+          element={
+            <OwnerLogin
+              onSignedIn={(data) => {
+                setOwnerToken(data.token)
+                setAdmin(data.admin)
+                navigate("/owner", { replace: true })
+              }}
+            />
+          }
+        />
+        <Route path="forgot" element={<OwnerForgot />} />
+        <Route path="set-password" element={<OwnerSetPassword />} />
+        <Route path="*" element={<Navigate to="/owner/login" replace />} />
+      </Routes>
     )
   }
 
@@ -196,6 +125,7 @@ export default function OwnerPortal() {
     await ownerApi("/logout", { method: "POST" })
     setOwnerToken("")
     setAdmin(null)
+    navigate("/owner/login", { replace: true })
   }
 
   return (
