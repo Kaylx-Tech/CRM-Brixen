@@ -124,6 +124,9 @@ def trust_device(user_id, device_id, user_agent=''):
 
 FINSTAP_ICON_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                  'static', 'img', 'finstap-icon.png')
+# The full Finstap logo (the signup code email, services/signup_email.py, shows it)
+FINSTAP_LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                 'static', 'img', 'finstap-logo.png')
 FINSTAP_ACCENT = '#6559ff'
 
 
