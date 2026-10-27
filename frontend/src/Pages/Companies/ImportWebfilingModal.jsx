@@ -8,7 +8,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -16,7 +15,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { IconUpload, IconCheck, IconAlertCircle, IconLoader2, IconBuilding, IconInfoCircle, IconSearch, IconPlus } from '@tabler/icons-react'
+import { IconUpload, IconCheck, IconAlertCircle, IconLoader2, IconBuilding, IconInfoCircle, IconSearch, IconPlus, IconX } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import ToastSave from '@/components/ToastSave'
@@ -98,20 +97,31 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
   }, [chQuery])
 
   const addNumber = (raw) => {
-    const [n] = parseCompanyNumbers(raw)
-    if (!n) return
-    if (!parsedNumbers.includes(n)) {
-      setCompanyNumbers((prev) => (prev.trim() ? `${prev.trim()}\n${n}` : n))
+    const nums = parseCompanyNumbers(raw)
+    if (!nums.length) return
+    const fresh = nums.filter((n) => !parsedNumbers.includes(n))
+    if (fresh.length) {
+      setCompanyNumbers((prev) => [prev.trim(), ...fresh].filter(Boolean).join('\n'))
     }
     setExcluded((prev) => {
-      if (!prev.has(n)) return prev
+      if (!nums.some((n) => prev.has(n))) return prev
       const next = new Set(prev)
-      next.delete(n)
+      nums.forEach((n) => next.delete(n))
       return next
     })
     setChQuery('')
     setChResults([])
     setChOpen(false)
+  }
+
+  // Several company numbers pasted at once (spaces, commas or new lines) are all added instead of searched
+  const isNumberList = (text) => {
+    const parts = String(text || '').split(/[\s,;]+/).filter(Boolean)
+    return parts.length > 1 && parts.every((p) => /^(NO)?[A-Z]{0,2}\d{5,8}$/i.test(p.replace(/[^A-Za-z0-9]/g, '')))
+  }
+
+  const removeNumber = (n) => {
+    setCompanyNumbers((prev) => parseCompanyNumbers(prev).filter((x) => x !== n).join('\n'))
   }
 
   const showChResults = chOpen && chQuery.trim().length >= 2
@@ -424,7 +434,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                   <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="webfiling-search"
-                    placeholder="Search by company name or number…"
+                    placeholder="Search by company name or number, or paste numbers…"
                     className="pl-9 text-sm"
                     value={chQuery}
                     disabled={isSubmitting}
@@ -432,7 +442,22 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                     role="combobox"
                     aria-expanded={!!showChResults}
                     aria-controls="webfiling-ch-results"
-                    onChange={(e) => { setChQuery(e.target.value); setChOpen(true) }}
+                    onPaste={(e) => {
+                      // A single-line input would flatten new lines, so a pasted list is read from the clipboard
+                      const text = e.clipboardData?.getData('text') || ''
+                      if (isNumberList(text)) {
+                        e.preventDefault()
+                        addNumber(text)
+                      }
+                    }}
+                    onChange={(e) => {
+                      if (isNumberList(e.target.value)) {
+                        addNumber(e.target.value)
+                        return
+                      }
+                      setChQuery(e.target.value)
+                      setChOpen(true)
+                    }}
                     onFocus={() => setChOpen(true)}
                     onBlur={() => setChOpen(false)}
                     onKeyDown={onChKeyDown}
@@ -482,17 +507,6 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                     )}
                   </div>
                 )}
-                <Textarea
-                  id="webfiling-numbers"
-                  aria-label="Company numbers"
-                  placeholder="Or paste numbers (spaces, commas or new lines)"
-                  rows={2}
-                  className="min-h-0 max-h-28 text-sm font-mono"
-                  value={companyNumbers}
-                  onChange={(e) => setCompanyNumbers(e.target.value)}
-                  disabled={isSubmitting}
-                />
-
                 {parsedNumbers.length > 0 ? (
                   <div className="rounded-2xl border bg-muted/20">
                     <div className="flex items-center justify-between px-3 py-1.5 text-xs text-muted-foreground border-b">
@@ -556,6 +570,15 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                                   </p>
                                 )}
                               </div>
+                              <button
+                                type="button"
+                                aria-label={`Remove ${n}`}
+                                className="-mr-1 shrink-0 cursor-pointer rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                                disabled={isSubmitting}
+                                onClick={(e) => { e.stopPropagation(); removeNumber(n) }}
+                              >
+                                <IconX className="h-3.5 w-3.5" />
+                              </button>
                             </div>
                           </li>
                         )
@@ -565,7 +588,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                 ) : (
                   <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                     <IconInfoCircle className="h-3.5 w-3.5" />
-                    Added companies are checked at Companies House so you can pick which to import.
+                    Search by name or number, or paste a list of numbers. Each one is checked at Companies House so you can pick which to import.
                   </p>
                 )}
                 {lookupError ? <p className="text-xs text-destructive">{lookupError}</p> : null}
