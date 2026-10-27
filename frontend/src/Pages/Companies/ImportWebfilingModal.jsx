@@ -16,7 +16,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { IconUpload, IconCheck, IconAlertCircle, IconLoader2, IconBuilding, IconInfoCircle } from '@tabler/icons-react'
+import { IconUpload, IconCheck, IconAlertCircle, IconLoader2, IconBuilding, IconInfoCircle, IconSearch, IconPlus } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import ToastSave from '@/components/ToastSave'
@@ -61,6 +61,80 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
   const [excluded, setExcluded] = useState(() => new Set())
   const [lookupError, setLookupError] = useState('')
   const parsedNumbers = React.useMemo(() => parseCompanyNumbers(companyNumbers), [companyNumbers])
+
+  // Companies House search by name or number; picking a result adds its number to the list
+  const [chQuery, setChQuery] = useState('')
+  const [chResults, setChResults] = useState([])
+  const [chSearching, setChSearching] = useState(false)
+  const [chError, setChError] = useState('')
+  const [chOpen, setChOpen] = useState(false)
+  const [chActive, setChActive] = useState(0)
+
+  useEffect(() => {
+    const q = chQuery.trim()
+    if (q.length < 2) {
+      setChResults([])
+      setChError('')
+      setChSearching(false)
+      return
+    }
+    let cancelled = false
+    setChSearching(true)
+    const timer = setTimeout(async () => {
+      const res = await apiRequest(`/admin/companies/lookup-ch?query=${encodeURIComponent(q)}`, {
+        silent: true,
+        label: 'Companies House search',
+      })
+      if (cancelled) return
+      const data = res.data?.data || {}
+      // A company number returns one profile; a name returns a list of results
+      const items = Array.isArray(data.results) ? data.results : (data.company_number ? [data] : [])
+      setChResults(items.filter((it) => it.company_number).slice(0, 8))
+      setChError(res.ok ? '' : (res.reason || 'Companies House search failed'))
+      setChActive(0)
+      setChSearching(false)
+    }, 350)
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [chQuery])
+
+  const addNumber = (raw) => {
+    const [n] = parseCompanyNumbers(raw)
+    if (!n) return
+    if (!parsedNumbers.includes(n)) {
+      setCompanyNumbers((prev) => (prev.trim() ? `${prev.trim()}\n${n}` : n))
+    }
+    setExcluded((prev) => {
+      if (!prev.has(n)) return prev
+      const next = new Set(prev)
+      next.delete(n)
+      return next
+    })
+    setChQuery('')
+    setChResults([])
+    setChOpen(false)
+  }
+
+  const showChResults = chOpen && chQuery.trim().length >= 2
+
+  const onChKeyDown = (e) => {
+    if (e.key === 'ArrowDown' && chResults.length) {
+      e.preventDefault()
+      setChOpen(true)
+      setChActive((i) => (i + 1) % chResults.length)
+    } else if (e.key === 'ArrowUp' && chResults.length) {
+      e.preventDefault()
+      setChActive((i) => (i - 1 + chResults.length) % chResults.length)
+    } else if (e.key === 'Enter') {
+      // Enter adds the highlighted result (or a typed number) instead of submitting the form
+      e.preventDefault()
+      if (chResults[chActive]) addNumber(chResults[chActive].company_number)
+      else if (/^[A-Za-z]{0,2}\d{5,8}$/.test(chQuery.trim().replace(/\s+/g, ''))) addNumber(chQuery)
+    } else if (e.key === 'Escape' && showChResults) {
+      e.preventDefault()
+      e.stopPropagation()
+      setChOpen(false)
+    }
+  }
 
   useEffect(() => {
     const pending = parsedNumbers.filter((n) => !lookups[n]).slice(0, 100)
@@ -157,7 +231,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
     setErrorMsg('')
 
     if (!parsedNumbers.length) {
-      setErrorMsg('Please paste at least one Companies House number.')
+      setErrorMsg('Search or paste at least one company.')
       return
     }
     if (!selectedNumbers.length) {
@@ -235,6 +309,8 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
     setSelectedClientId('')
     setClientQuery('')
     setExcluded(new Set())
+    setChQuery('')
+    setChResults([])
   }
 
   const clientLabel = (c) => c.name || c.full_name || c.email || 'Customer'
@@ -279,19 +355,19 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
     <>
       <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleAttemptClose() }}>
         <DialogContent className="sm:max-w-140  p-0 overflow-hidden">
-          <DialogHeader className="p-6 pb-2">
+          <DialogHeader className="px-5 pt-5 pb-1">
             <div className="flex items-center gap-2">
               <div>
-                <DialogTitle className="text-xl">Import WebFiling Companies</DialogTitle>
-                <DialogDescription className="text-sm text-muted-foreground mt-0.5">
-                  Bulk import official company records from your Companies House WebFiling list.
+                <DialogTitle className="text-lg">Import WebFiling Companies</DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Add companies from Companies House by name or number.
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
 
           <ScrollArea className="max-h-[75vh]">
-            <form onSubmit={handleSubmit} className="p-6 pt-2 space-y-5">
+            <form onSubmit={handleSubmit} className="px-5 pb-5 pt-2 space-y-4">
               {errorMsg && (
                 <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-2">
                   <IconAlertCircle className="h-4 w-4 shrink-0" />
@@ -339,16 +415,79 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
               {/* Step 1: Numbers Input */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="webfiling-numbers" className="text-sm font-semibold">
-                    Company Numbers <span className="text-destructive">*</span>
+                  <Label htmlFor="webfiling-search" className="text-sm font-semibold">
+                    Companies <span className="text-destructive">*</span>
                   </Label>
-                  <span className="text-[11px] text-muted-foreground">Up to 100 numbers</span>
+                  <span className="text-[11px] text-muted-foreground">Up to 100</span>
                 </div>
+                <div className="relative">
+                  <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="webfiling-search"
+                    placeholder="Search by company name or number…"
+                    className="pl-9 text-sm"
+                    value={chQuery}
+                    disabled={isSubmitting}
+                    autoComplete="off"
+                    role="combobox"
+                    aria-expanded={!!showChResults}
+                    aria-controls="webfiling-ch-results"
+                    onChange={(e) => { setChQuery(e.target.value); setChOpen(true) }}
+                    onFocus={() => setChOpen(true)}
+                    onBlur={() => setChOpen(false)}
+                    onKeyDown={onChKeyDown}
+                  />
+                  {chSearching ? (
+                    <IconLoader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                  ) : null}
+                </div>
+                {/* Rendered in the flow (not absolute) so the dialog's scroll area never clips it */}
+                {showChResults && !chSearching && (
+                  <div
+                    id="webfiling-ch-results"
+                    role="listbox"
+                    className="max-h-56 overflow-y-auto overscroll-contain rounded-3xl bg-popover p-1.5 text-popover-foreground shadow-lg ring-1 ring-foreground/5 dark:ring-foreground/10 animate-in fade-in-0 zoom-in-95 duration-100"
+                  >
+                    {chResults.length ? (
+                      chResults.map((c, i) => {
+                        const added = parsedNumbers.includes(c.company_number)
+                        return (
+                          <button
+                            key={c.company_number}
+                            type="button"
+                            role="option"
+                            aria-selected={i === chActive}
+                            className={`flex w-full cursor-pointer items-center gap-2 rounded-[18px] px-3 py-2 text-left text-sm outline-none ${i === chActive ? 'bg-accent text-accent-foreground' : ''}`}
+                            // mousedown keeps focus in the input so onBlur doesn't close the list before the click lands
+                            onMouseDown={(e) => e.preventDefault()}
+                            onMouseEnter={() => setChActive(i)}
+                            onClick={() => addNumber(c.company_number)}
+                          >
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-medium">{c.company_name}</span>
+                              <span className="block truncate text-xs text-muted-foreground">
+                                {c.company_number}{c.status ? ` · ${c.status}` : ''}{c.address_snippet ? ` · ${c.address_snippet}` : ''}
+                              </span>
+                            </span>
+                            {added ? (
+                              <IconCheck className="h-4 w-4 shrink-0 text-emerald-600" />
+                            ) : (
+                              <IconPlus className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            )}
+                          </button>
+                        )
+                      })
+                    ) : (
+                      <p className="px-3 py-2 text-sm text-muted-foreground">{chError || 'No company found'}</p>
+                    )}
+                  </div>
+                )}
                 <Textarea
                   id="webfiling-numbers"
-                  placeholder={'Paste company numbers here (separated by spaces, commas or new lines)\ne.g.\n17361321\n17379440'}
-                  rows={3}
-                  className="text-sm font-mono"
+                  aria-label="Company numbers"
+                  placeholder="Or paste numbers (spaces, commas or new lines)"
+                  rows={2}
+                  className="min-h-0 max-h-28 text-sm font-mono"
                   value={companyNumbers}
                   onChange={(e) => setCompanyNumbers(e.target.value)}
                   disabled={isSubmitting}
@@ -356,11 +495,11 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
 
                 {parsedNumbers.length > 0 ? (
                   <div className="rounded-2xl border bg-muted/20">
-                    <div className="flex items-center justify-between px-3 py-2 text-xs text-muted-foreground border-b">
+                    <div className="flex items-center justify-between px-3 py-1.5 text-xs text-muted-foreground border-b">
                       <span>Companies House results</span>
                       <span>{selectedNumbers.length} of {parsedNumbers.length} selected</span>
                     </div>
-                    <ul className="max-h-60 overflow-y-auto overscroll-contain divide-y divide-border/50">
+                    <ul className="max-h-48 overflow-y-auto overscroll-contain divide-y divide-border/50">
                       {parsedNumbers.map((n) => {
                         const info = lookups[n]
                         const selectable = isSelectable(n)
@@ -368,7 +507,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                         return (
                           <li key={n}>
                             <div
-                              className={`flex items-start gap-3 px-3 py-2.5 ${selectable ? 'cursor-pointer hover:bg-muted/40' : 'opacity-70'}`}
+                              className={`flex items-start gap-3 px-3 py-2 ${selectable ? 'cursor-pointer hover:bg-muted/40' : 'opacity-70'}`}
                               onClick={(e) => {
                                 // The checkbox toggles itself; clicks anywhere else on the row toggle it too
                                 if (!selectable || isSubmitting || e.target.closest('[data-slot="checkbox"]')) return
@@ -426,7 +565,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                 ) : (
                   <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                     <IconInfoCircle className="h-3.5 w-3.5" />
-                    Each number is checked at Companies House and shown here so you can pick which ones to import.
+                    Added companies are checked at Companies House so you can pick which to import.
                   </p>
                 )}
                 {lookupError ? <p className="text-xs text-destructive">{lookupError}</p> : null}
@@ -563,7 +702,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
               </div>
 
               {/* Footer Buttons inside Form */}
-              <DialogFooter className="pt-3 gap-2">
+              <DialogFooter className="pt-1 gap-2">
                 {importResults && (
                   <Button type="button" variant="outline" size="sm" onClick={handleReset} className="mr-auto">
                     Import More
