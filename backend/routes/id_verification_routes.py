@@ -142,10 +142,12 @@ def _email_link(row, user):
         subject='Verify your identity',
         headline='Verify your identity',
         greeting=row['full_name'],
-        message=("To complete your order we need to verify your identity. It takes about two minutes: "
-                 "have your passport or driving licence ready and follow the secure link below on your phone "
-                 "or computer."),
-        points=['You will photograph your ID document and take a short selfie.',
+        message=("To complete your order we need to verify your identity, as Companies House requires for "
+                 "directors and people with significant control. It takes about five minutes: follow the secure "
+                 "link below on your phone or computer."),
+        points=['Have your passport or driving licence ready: you will photograph it and take a short selfie.',
+                'Have a proof of address from the last 3 months ready (utility bill, bank statement or council '
+                'tax bill), as a photo or PDF, to upload.',
                 'The check is run by our verification partner Didit; your details are handled securely.'],
         details=[('Order', order.get('order_number'))],
         cta_label='Verify my identity', cta_url=row['session_url'], category='ORDER')
