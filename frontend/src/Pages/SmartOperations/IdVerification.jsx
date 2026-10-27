@@ -268,6 +268,7 @@ export default function IdVerification() {
         return
       }
       replacePerson(res.data.data)
+      setChCode(res.data.data.ch_personal_code || '')
       toast.success('Companies House personal code saved')
     } finally {
       setIsSaving(false)
@@ -447,12 +448,27 @@ export default function IdVerification() {
               <div className="space-y-1.5">
                 <Label htmlFor="idv-ch-code">Companies House personal code</Label>
                 <div className="flex gap-2">
-                  <Input id="idv-ch-code" placeholder="After Companies House sends it" value={chCode} onChange={(e) => setChCode(e.target.value)} />
-                  <Button onClick={saveChCode} disabled={isSaving || chCode.trim() === (viewing.ch_personal_code || '')}>
+                  <Input
+                    id="idv-ch-code"
+                    className="font-mono uppercase tracking-wider"
+                    placeholder="11 characters, from Companies House"
+                    maxLength={13}
+                    value={chCode}
+                    onChange={(e) => setChCode(e.target.value.toUpperCase())}
+                  />
+                  <Button
+                    onClick={saveChCode}
+                    disabled={isSaving || chCode.trim() === (viewing.ch_personal_code || '')
+                      || (chCode.trim() !== '' && chCode.replace(/[\s-]/g, '').length !== 11)}
+                  >
                     {isSaving ? <IconLoader2 className="h-4 w-4 animate-spin" /> : <IconCheck className="h-4 w-4" />}
                     Save
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Companies House emails the person their 11-character personal code once you have reported the
+                  verification. They use it to link their verified identity as a director or PSC.
+                </p>
               </div>
             </div>
           ) : (

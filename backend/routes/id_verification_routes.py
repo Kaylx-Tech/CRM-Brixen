@@ -92,6 +92,11 @@ def _clean_person(body, partial=False):
         return None, "Enter a valid email address"
     if out.get('person_role') and out['person_role'] not in PERSON_ROLES:
         out['person_role'] = 'Other'
+    # Companies House personal code: 11 letters and numbers, given once the identity is verified
+    if out.get('ch_personal_code'):
+        out['ch_personal_code'] = re.sub(r'[\s-]', '', out['ch_personal_code']).upper()
+        if not re.fullmatch(r'[A-Z0-9]{11}', out['ch_personal_code']):
+            return None, "The Companies House personal code has 11 letters and numbers"
     return out, None
 
 
