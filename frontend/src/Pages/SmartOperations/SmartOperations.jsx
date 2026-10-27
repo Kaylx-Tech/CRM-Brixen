@@ -19,6 +19,7 @@ import {
   IconDownload,
   IconExternalLink,
   IconFileText,
+  IconId,
   IconLink,
   IconLoader2,
   IconPencil,
@@ -31,6 +32,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { IS_FINSTAP } from '@/lib/workspace'
 import Tasks from '@/Pages/Tasks/Tasks'
+import IdVerification from './IdVerification'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
 import { m, spring } from '@/lib/motion'
 import { apiRequest } from '@/lib/api'
@@ -116,10 +118,14 @@ function LinkRow({ link, canManage, onEdit, onDelete }) {
 }
 
 export default function SmartOperations() {
-  // ?tab=gov-forms opens GOV Forms (Finstap); the links are the default tab
+  // ID Verification (KYC orders) is the first, default tab; ?tab=links opens the links and
+  // ?tab=gov-forms GOV Forms (Finstap, the team's tasks)
   const [searchParams, setSearchParams] = useSearchParams()
-  const govForms = IS_FINSTAP && searchParams.get('tab') === 'gov-forms'
-  const setTab = (value) => setSearchParams(value === 'gov-forms' ? { tab: 'gov-forms' } : {}, { replace: true })
+  const tabs = IS_FINSTAP ? ['links', 'gov-forms'] : ['links']
+  const tab = tabs.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'id-verification'
+  const govForms = tab === 'gov-forms'
+  const linksTab = tab === 'links'
+  const setTab = (value) => setSearchParams(value === 'id-verification' ? {} : { tab: value }, { replace: true })
   const [links, setLinks] = useState([])
   const [categories, setCategories] = useState([])
   const [canManage, setCanManage] = useState(false)
@@ -246,13 +252,18 @@ export default function SmartOperations() {
       <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Smart Operations</h2>
-          {!govForms && (
+          {linksTab && (
             <p className="mt-0.5 text-sm text-muted-foreground">
               Quick links for the team: partner portals, referral links and forms, grouped by company.
             </p>
           )}
+          {tab === 'id-verification' && (
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Every order with a KYC product, for verifying the client's identity.
+            </p>
+          )}
         </div>
-        <div className={`flex items-center gap-2 ${govForms ? 'hidden' : ''}`}>
+        <div className={`flex items-center gap-2 ${linksTab ? '' : 'hidden'}`}>
           {canManage && (
             <>
               <Button variant="outline" onClick={importDefaults} disabled={isImporting}>
@@ -268,23 +279,29 @@ export default function SmartOperations() {
         </div>
       </div>
 
-      {/* Finstap: the team's tasks live here as GOV Forms, next to the links */}
-      {IS_FINSTAP && (
-        <Tabs value={govForms ? 'gov-forms' : 'links'} onValueChange={setTab}>
-          <TabsList>
-            <TabsTrigger value="links">
-              <IconLink className="size-4" />
-              Links
-            </TabsTrigger>
+      {/* KYC orders first, then the links, then (Finstap) the team's tasks as GOV Forms */}
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          <TabsTrigger value="id-verification">
+            <IconId className="size-4" />
+            ID Verification
+          </TabsTrigger>
+          <TabsTrigger value="links">
+            <IconLink className="size-4" />
+            Links
+          </TabsTrigger>
+          {IS_FINSTAP && (
             <TabsTrigger value="gov-forms">
               <IconFileText className="size-4" />
               GOV Forms
             </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      )}
+          )}
+        </TabsList>
+      </Tabs>
 
-      {govForms ? (
+      {tab === 'id-verification' ? (
+        <IdVerification />
+      ) : govForms ? (
         <Tasks view="gov-forms" />
       ) : (
       <>
