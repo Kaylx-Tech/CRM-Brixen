@@ -23,6 +23,7 @@ import {
   IconX,
 } from "@tabler/icons-react"
 import finstapLogo from "@/assets/finstap-logo.svg"
+import { LegalLinks } from "@/Pages/Legal/LegalLayout"
 
 // Finstap brand: blue → violet from the logo. The landing page is always light.
 const GRADIENT = "bg-linear-to-r from-[#297bff] to-[#834aff]"
@@ -477,6 +478,9 @@ export default function FinstapLanding() {
             </Link>
           </nav>
           <p className="text-sm text-slate-500">© 2026 Finstap. All rights reserved.</p>
+        </div>
+        <div className="border-t border-slate-100 py-4 text-sm text-slate-500">
+          <LegalLinks />
         </div>
       </footer>
     </div>

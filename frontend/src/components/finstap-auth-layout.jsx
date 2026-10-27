@@ -2,6 +2,7 @@ import { cn } from "cn"
 import { FinstapLogo, FINSTAP_GRADIENT } from "@/components/finstap-brand"
 import { subdomainWorkspace } from "@/lib/workspace"
 import authIllustration from "@/assets/finstap-auth-illustration.png"
+import { LegalLinks } from "@/Pages/Legal/LegalLayout"
 
 function BrandPanel() {
   return (
@@ -38,7 +39,10 @@ export function FinstapAuthLayout({ title, subtitle, children, footer }) {
           {children}
           {footer && <div className="mt-6 text-center text-sm text-muted-foreground">{footer}</div>}
         </div>
-        <p className="mt-10 text-xs text-muted-foreground">© 2026 Finstap. All rights reserved.</p>
+        <div className="mt-10 flex flex-col items-center gap-2 text-xs text-muted-foreground">
+          <LegalLinks />
+          <p>© 2026 Finstap. All rights reserved.</p>
+        </div>
       </div>
       {/* Stays one screen tall while a long form (signup) scrolls */}
       <div className="hidden md:sticky md:top-0 md:flex md:h-screen">
