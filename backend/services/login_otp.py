@@ -180,7 +180,8 @@ def sign_in_details(environ):
         'device': _device_label(environ.get('HTTP_USER_AGENT')),
         'location': ', '.join(p for p in (city, country) if p),
         'ip': ip,
-        'time': f"{now.strftime('%-d %b %Y, %H:%M')} {now.tzname()}",
+        # day without a leading zero by hand: '%-d' only works on Linux/macOS, not on Windows
+        'time': f"{now.day} {now.strftime('%b %Y, %H:%M')} {now.tzname()}",
         'origin': origin if origin.startswith(('https://', 'http://')) else '',
     }
 
