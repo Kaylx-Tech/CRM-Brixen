@@ -72,7 +72,13 @@ def _kyc_orders(user):
         ORDER BY o.created_at DESC, o.id DESC
         LIMIT 500;
     """, tuple(params)) or []
-    return [dict(r) for r in rows]
+    orders = [dict(r) for r in rows]
+    # The people to verify on each order, with their Didit status
+    from routes.id_verification_routes import people_for_orders
+    people = people_for_orders([o['id'] for o in orders])
+    for o in orders:
+        o['people'] = people.get(o['id'], [])
+    return orders
 
 
 def handle_smart_link_routes(environ, start_response, path, method, user, body, query):
@@ -97,7 +103,9 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
         })
 
     if path == '/api/admin/smart-links/id-verification' and method == 'GET':
-        return success_response(start_response, data={'orders': _kyc_orders(user)})
+        from services.didit_service import is_configured
+        return success_response(start_response, data={'orders': _kyc_orders(user),
+                                                      'didit_configured': is_configured()})
 
     if role not in MANAGE_ROLES:
         return error_response(start_response, "Only admins and managers can change Smart Operations links.",

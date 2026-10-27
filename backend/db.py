@@ -708,6 +708,32 @@ def ensure_schema():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE INDEX IF NOT EXISTS idx_smart_links_category ON smart_links(category, sort_order);
+        -- ID Verification (Smart Operations): one row per person on a KYC order, verified through Didit;
+        -- the Companies House personal code is saved after the ACSP reports the verification
+        CREATE TABLE IF NOT EXISTS id_verifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id INTEGER NOT NULL,
+            full_name TEXT NOT NULL,
+            email TEXT,
+            person_role TEXT,
+            didit_session_id TEXT,
+            session_url TEXT,
+            status TEXT NOT NULL DEFAULT 'Not Started',
+            result_json TEXT,
+            link_sent_at TIMESTAMP,
+            ch_personal_code TEXT,
+            ch_reported_at TIMESTAMP,
+            created_by INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_id_verifications_order ON id_verifications(order_id);
+        CREATE INDEX IF NOT EXISTS idx_id_verifications_session ON id_verifications(didit_session_id);
+        CREATE TABLE IF NOT EXISTS id_verification_events (
+            event_id TEXT PRIMARY KEY,
+            received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
         CREATE TABLE IF NOT EXISTS finance_expenses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             spent_on DATE NOT NULL,
