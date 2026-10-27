@@ -6,6 +6,7 @@ GET    /api/admin/smart-links            all links (+ the list of categories)
 POST   /api/admin/smart-links            {category, title, url, note}
 PUT    /api/admin/smart-links/<id>       any of {category, title, url, note, sort_order}
 DELETE /api/admin/smart-links/<id>
+GET    /api/admin/smart-links/id-verification   orders with a KYC product (ID Verification tab)
 """
 import re
 
@@ -47,6 +48,33 @@ def _row(link_id):
     return dict(row) if row else None
 
 
+def _kyc_orders(user):
+    """ID Verification: every order with a KYC product, as the service name or as one of its line items
+    (newest first). STAFF only see the orders they added, as on the Orders page; no money is returned."""
+    clauses = ["COALESCE(o.is_draft, 0) = 0",
+               "(o.service_name LIKE '%kyc%' OR EXISTS (SELECT 1 FROM order_line_items li "
+               "WHERE li.order_id = o.id AND li.product_name LIKE '%kyc%'))"]
+    params = []
+    if user.get('role') == 'STAFF':
+        clauses.append("o.created_by_id = ?")
+        params.append(user.get('id'))
+    rows = query_db(f"""
+        SELECT o.id, o.order_number, o.service_name, o.status, o.created_at, o.owner_name,
+               u.full_name AS customer_name, u.email AS customer_email,
+               c.name AS company_name, c.company_number, cb.full_name AS created_by_name,
+               (SELECT GROUP_CONCAT(li.product_name, ', ') FROM order_line_items li
+                 WHERE li.order_id = o.id AND li.product_name LIKE '%kyc%') AS kyc_products
+        FROM orders o
+        LEFT JOIN users u ON u.id = o.user_id
+        LEFT JOIN companies c ON c.id = o.company_id
+        LEFT JOIN users cb ON cb.id = o.created_by_id
+        WHERE {' AND '.join(clauses)}
+        ORDER BY o.created_at DESC, o.id DESC
+        LIMIT 500;
+    """, tuple(params)) or []
+    return [dict(r) for r in rows]
+
+
 def handle_smart_link_routes(environ, start_response, path, method, user, body, query):
     if not path.startswith('/api/admin/smart-links'):
         return None
@@ -67,6 +95,9 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
         return success_response(start_response, data={
             'links': links, 'categories': categories, 'can_manage': role in MANAGE_ROLES,
         })
+
+    if path == '/api/admin/smart-links/id-verification' and method == 'GET':
+        return success_response(start_response, data={'orders': _kyc_orders(user)})
 
     if role not in MANAGE_ROLES:
         return error_response(start_response, "Only admins and managers can change Smart Operations links.",
