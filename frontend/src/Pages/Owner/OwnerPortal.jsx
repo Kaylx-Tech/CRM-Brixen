@@ -4,7 +4,9 @@ import { cn } from "cn"
 import {
   IconActivity,
   IconBuildingSkyscraper,
+  IconId,
   IconLayoutDashboard,
+  IconMapPin,
   IconLogout,
   IconSettings,
   IconTags,
@@ -20,10 +22,14 @@ import OwnerWorkspace from "./OwnerWorkspace"
 import OwnerPlans from "./OwnerPlans"
 import OwnerActivity from "./OwnerActivity"
 import OwnerSettings from "./OwnerSettings"
+import OwnerKyc from "./OwnerKyc"
+import OwnerRegisteredOffice from "./OwnerRegisteredOffice"
 
 const NAV = [
   ["Overview", "/owner", IconLayoutDashboard, true],
   ["Workspaces", "/owner/workspaces", IconBuildingSkyscraper, false],
+  ["KYC", "/owner/kyc", IconId, false],
+  ["Registered office", "/owner/registered-office", IconMapPin, false],
   ["Plans", "/owner/plans", IconTags, false],
   ["Activity", "/owner/activity", IconActivity, false],
   ["Settings", "/owner/settings", IconSettings, false],
@@ -137,6 +143,8 @@ export default function OwnerPortal() {
         <Route index element={<OwnerOverview />} />
         <Route path="workspaces" element={<OwnerWorkspaces />} />
         <Route path="workspaces/:slug" element={<OwnerWorkspace />} />
+        <Route path="kyc" element={<OwnerKyc />} />
+        <Route path="registered-office" element={<OwnerRegisteredOffice />} />
         <Route path="plans" element={<OwnerPlans />} />
         <Route path="activity" element={<OwnerActivity />} />
         <Route path="settings" element={<OwnerSettings admin={admin} />} />

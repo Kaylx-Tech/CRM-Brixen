@@ -121,6 +121,47 @@ CREATE TABLE IF NOT EXISTS platform_audit (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_platform_audit_created ON platform_audit(created_at);
+-- Services Finstap sells to workspaces (services/platform_services.py): prices and Finstap's own
+-- registered office addresses, monthly KYC billing per workspace, and registered office requests
+CREATE TABLE IF NOT EXISTS platform_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS kyc_billing (
+    tenant_slug TEXT NOT NULL,
+    period TEXT NOT NULL,
+    checks INTEGER NOT NULL DEFAULT 0,
+    amount REAL NOT NULL DEFAULT 0,
+    status TEXT NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (tenant_slug, period)
+);
+CREATE TABLE IF NOT EXISTS ro_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tenant_slug TEXT NOT NULL,
+    company_id INTEGER,
+    company_name TEXT NOT NULL,
+    company_number TEXT,
+    client_user_id INTEGER,
+    client_name TEXT,
+    client_email TEXT,
+    notes TEXT,
+    status TEXT NOT NULL DEFAULT 'Pending',
+    address_json TEXT,
+    start_date DATE,
+    expiry_date DATE,
+    price REAL,
+    paid INTEGER NOT NULL DEFAULT 0,
+    workspace_address_id INTEGER,
+    requested_by TEXT,
+    decided_by TEXT,
+    decided_at TIMESTAMP,
+    reason TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_ro_requests_tenant ON ro_requests(tenant_slug, status);
 -- Emailed one-time links that let an owner set (or reset) their own password
 CREATE TABLE IF NOT EXISTS platform_password_links (
     token_hash TEXT PRIMARY KEY,

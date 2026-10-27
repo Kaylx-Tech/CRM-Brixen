@@ -26,6 +26,7 @@ from .id_verification_routes import handle_id_verification_routes
 from .ai_routes import handle_ai_routes
 from .finance_routes import handle_finance_routes
 from .plan_routes import handle_plan_routes
+from .platform_service_routes import handle_platform_service_routes
 
 
 # Accounts file integration
@@ -49,6 +50,11 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
 
     # 1b2. The workspace's Finstap plan and usage (admins)
     res = handle_plan_routes(environ, start_response, path, method, user, body, query)
+    if res is not None:
+        return res
+
+    # 1b3. Services Finstap sells to the workspace (registered office requests, KYC price)
+    res = handle_platform_service_routes(environ, start_response, path, method, user, body, query)
     if res is not None:
         return res
 

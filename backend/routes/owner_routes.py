@@ -16,6 +16,12 @@
   POST /workspaces/<slug>/trial {days}   → longer free trial
   POST /workspaces/<slug>/status {status: Active|Suspended, reason}
   GET  /activity                         → what owners changed, newest first
+  GET/POST /services/settings            → KYC price per check, registered office price a year, office addresses
+  GET  /kyc?period=YYYY-MM               → KYC checks per workspace that month and what to charge
+  POST /kyc/billing {slug, period, status: invoiced|paid|''}
+  GET  /registered-office?status=        → every workspace's registered office requests
+  POST /registered-office/<id>/confirm {address_index, start_date, months, price} | reject {reason}
+       | renew {months, price} | end {reason} | paid {paid}
   GET  /admins                           → owner accounts
 
 Every route except login needs "Authorization: Bearer owner.<token>". Nothing here deletes a workspace
@@ -30,6 +36,7 @@ import time
 from tenancy import _platform_execute, _platform_query, get_tenant, use_tenant, workspace_url
 from utils.response import success_response, error_response
 from services import plans
+from services import platform_services as svc
 from config import TENANT_BASE_DOMAIN
 from services.owner_auth import (
     OwnerAuthError, admin_for_token, audit, change_password, link_email, logout, request_password_link, resend,
@@ -324,6 +331,50 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
         rows = _platform_query("SELECT id, email, full_name, status, last_login_at, created_at FROM platform_admins "
                                "ORDER BY id;")
         return success_response(start_response, data={'admins': rows})
+
+    # ── services Finstap sells: KYC checks and registered offices (services/platform_services.py) ──
+    try:
+        if sub == '/services/settings' and method == 'GET':
+            return success_response(start_response, data=svc.settings())
+        if sub == '/services/settings' and method == 'POST':
+            saved = svc.save_settings(body)
+            audit(admin, 'SERVICE_PRICES_CHANGED', detail=f"KYC {saved['kyc_price']}, registered office "
+                                                         f"{saved['ro_price_year']}/yr, {len(saved['ro_addresses'])} address(es)")
+            return success_response(start_response, data=saved, message="Saved.")
+        if sub == '/kyc' and method == 'GET':
+            return success_response(start_response, data=svc.kyc_report(_q(query, 'period'), _q(query, 'workspace') or None))
+        if sub == '/kyc/billing' and method == 'POST':
+            svc.set_kyc_billing(body.get('slug'), body.get('period'), body.get('status'))
+            audit(admin, 'KYC_BILLING', body.get('slug'), f"{body.get('period')}: {body.get('status') or 'not billed'}")
+            return success_response(start_response, message="Billing updated.")
+        if sub == '/registered-office' and method == 'GET':
+            return success_response(start_response, data={
+                'requests': svc.ro_requests(status=_q(query, 'status') or None),
+                'settings': svc.settings(),
+            })
+        ro = re.match(r'^/registered-office/(\d+)/(confirm|reject|renew|end|paid)$', sub)
+        if ro and method == 'POST':
+            request_id, act = int(ro.group(1)), ro.group(2)
+            if act == 'confirm':
+                row = svc.confirm_ro(request_id, admin, body.get('address_index'), body.get('start_date'),
+                                     body.get('months'), body.get('price'))
+                message = "Registered office confirmed. The client can see it in their portal."
+            elif act == 'reject':
+                row = svc.reject_ro(request_id, admin, body.get('reason'))
+                message = "Request rejected."
+            elif act == 'renew':
+                row = svc.renew_ro(request_id, body.get('months'), body.get('price'))
+                message = f"Renewed until {row['expiry_date']}."
+            elif act == 'end':
+                row = svc.end_ro(request_id, admin, body.get('reason'))
+                message = "Registered office ended."
+            else:
+                row = svc.set_ro_paid(request_id, bool(body.get('paid')))
+                message = "Marked as paid." if row['paid'] else "Marked as unpaid."
+            audit(admin, f"REGISTERED_OFFICE_{act.upper()}", row['tenant_slug'], f"{row['company_name']}: {message}")
+            return success_response(start_response, data=row, message=message)
+    except svc.ServiceError as exc:
+        return error_response(start_response, str(exc), status_code=400)
 
     match = re.match(r'^/workspaces/([a-z0-9-]+)(/[a-z]+)?$', sub)
     if not match:

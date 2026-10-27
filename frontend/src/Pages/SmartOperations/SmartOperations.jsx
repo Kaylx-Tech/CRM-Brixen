@@ -19,6 +19,7 @@ import {
   IconDownload,
   IconExternalLink,
   IconFileText,
+  IconMapPin,
   IconId,
   IconLink,
   IconLoader2,
@@ -31,8 +32,10 @@ import { toast } from 'sonner'
 import { useSearchParams } from 'react-router-dom'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { IS_FINSTAP } from '@/lib/workspace'
+import { isManagerOrAbove } from '@/lib/permissions'
 import Tasks from '@/Pages/Tasks/Tasks'
 import IdVerification from './IdVerification'
+import RegisteredOffice from './RegisteredOffice'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
 import { m, spring } from '@/lib/motion'
 import { apiRequest } from '@/lib/api'
@@ -121,7 +124,9 @@ export default function SmartOperations() {
   // ID Verification (KYC orders) is the first, default tab; ?tab=links opens the links and
   // ?tab=gov-forms GOV Forms (Finstap, the team's tasks)
   const [searchParams, setSearchParams] = useSearchParams()
-  const tabs = IS_FINSTAP ? ['links', 'gov-forms'] : ['links']
+  // Finstap: admins and managers can also ask Finstap for a registered office
+  const canOrderServices = IS_FINSTAP && isManagerOrAbove()
+  const tabs = IS_FINSTAP ? ['links', 'gov-forms', ...(canOrderServices ? ['registered-office'] : [])] : ['links']
   const tab = tabs.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'id-verification'
   const govForms = tab === 'gov-forms'
   const linksTab = tab === 'links'
@@ -260,6 +265,12 @@ export default function SmartOperations() {
           {tab === 'id-verification' && (
             <p className="mt-0.5 text-sm text-muted-foreground">
               Every order with a KYC product, for verifying the client's identity.
+              {IS_FINSTAP && ' Each ID check runs on Finstap and is billed to your workspace monthly.'}
+            </p>
+          )}
+          {tab === 'registered-office' && (
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Finstap's office address for your clients' companies, confirmed by Finstap.
             </p>
           )}
         </div>
@@ -296,11 +307,19 @@ export default function SmartOperations() {
               GOV Forms
             </TabsTrigger>
           )}
+          {canOrderServices && (
+            <TabsTrigger value="registered-office">
+              <IconMapPin className="size-4" />
+              Registered Office
+            </TabsTrigger>
+          )}
         </TabsList>
       </Tabs>
 
       {tab === 'id-verification' ? (
         <IdVerification />
+      ) : tab === 'registered-office' ? (
+        <RegisteredOffice />
       ) : govForms ? (
         <Tasks view="gov-forms" />
       ) : (
