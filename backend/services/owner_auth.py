@@ -101,7 +101,7 @@ def _send_code(email, code):
             f'away.</p></div>')
     with use_tenant(None):
         sent = send_email(email, subject, html, text, category='SECURITY', log=False, store_body=False,
-                          sender_name='Finstap')
+                          sender_name='Finstap', mailbox='platform')
     if not sent:
         from config import IS_PRODUCTION
         if not IS_PRODUCTION:
@@ -224,7 +224,7 @@ def _send_link(email, url):
             f'If you did not ask for this, ignore this email. Your password stays the same.</p></div>')
     with use_tenant(None):
         sent = send_email(email, subject, html, text, category='SECURITY', log=False, store_body=False,
-                          sender_name='Finstap')
+                          sender_name='Finstap', mailbox='platform')
     if not sent:
         from config import IS_PRODUCTION
         if not IS_PRODUCTION:

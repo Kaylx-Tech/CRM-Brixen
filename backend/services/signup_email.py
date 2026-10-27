@@ -7,7 +7,8 @@ POST /api/platform/signup must bring; the token is for that one email and works 
   * a code works for 10 minutes and for 5 tries; a new one can be sent after 60 seconds
   * at most 5 codes per email and 10 per network (IP) an hour
   * a confirmed email can be used for signup within 60 minutes
-  * the email is sent as "Finstap" from the platform mailbox (SMTP_* env), never a company's
+  * the email is sent as "Finstap" from the platform's no-reply mailbox (PLATFORM_SMTP_* env, else SMTP_*),
+    never a company's
   * only hashes of the code and the token are stored (platform.db, table signup_emails)
 """
 import hashlib
@@ -87,10 +88,11 @@ def _send(email, code):
     subject = f"{code} is your Finstap verification code"
     text = (f"Your Finstap verification code is {code}.\n\nIt works for {CODE_MINUTES} minutes. If you did not "
             f"start a Finstap signup, ignore this email.")
-    # No workspace here: settings and the email log come from the server (SMTP_* env), never a company
+    # No workspace here: sent from Finstap's no-reply mailbox (PLATFORM_SMTP_*), else the server's SMTP_* one,
+    # never a company's
     with use_tenant(None):
         sent = send_email(email, subject, code_email_html(logo_src, code), text, category='SECURITY',
-                          log=False, store_body=False, logo=logo, sender_name='Finstap')
+                          log=False, store_body=False, logo=logo, sender_name='Finstap', mailbox='platform')
     if not sent:
         from config import IS_PRODUCTION
         if not IS_PRODUCTION:

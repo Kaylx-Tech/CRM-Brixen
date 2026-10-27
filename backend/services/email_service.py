@@ -11,7 +11,27 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 
-def _smtp_config():
+def _platform_mailbox():
+    """Finstap's own no-reply mailbox (PLATFORM_SMTP_USER / PLATFORM_SMTP_PASS, optional PLATFORM_SMTP_FROM,
+    PLATFORM_SMTP_HOST, PLATFORM_SMTP_PORT) for the platform's emails: signup codes and the owner portal's
+    codes and links. None when it is not set up, so those emails use the server's SMTP_* mailbox."""
+    user = os.environ.get('PLATFORM_SMTP_USER', '').strip()
+    password = os.environ.get('PLATFORM_SMTP_PASS', '').strip()
+    if not user or not password:
+        return None
+    host = (os.environ.get('PLATFORM_SMTP_HOST') or os.environ.get('SMTP_HOST') or 'smtp.hostinger.com').strip()
+    try:
+        port = int(os.environ.get('PLATFORM_SMTP_PORT') or os.environ.get('SMTP_PORT') or 587)
+    except (TypeError, ValueError):
+        port = 587
+    return host, port, user, password, (os.environ.get('PLATFORM_SMTP_FROM') or user).strip()
+
+
+def _smtp_config(mailbox=None):
+    if mailbox == 'platform':
+        own = _platform_mailbox()
+        if own:
+            return own
     host = os.environ.get('SMTP_HOST', '')
     port = os.environ.get('SMTP_PORT', '')
     user = os.environ.get('SMTP_USER', '')
@@ -93,8 +113,9 @@ def last_failure_reason():
 
 def send_email(recipient, subject, html_content, text_content=None, *, category=None, user_id=None,
                order_id=None, company_id=None, triggered_by=None, log=True, store_body=True, logo=None,
-               sender_name=None, images=None, attachments=None):
+               sender_name=None, images=None, attachments=None, mailbox=None):
     """Send an HTML transactional email via SMTP. Returns True only on real send.
+    mailbox='platform' sends from Finstap's own no-reply mailbox when it is set up (_platform_mailbox).
 
     Every attempt is written to the email log (status sent / failed / not_configured / invalid_recipient)
     together with what it was about, so admins can see and resend it. store_body=False keeps secrets
@@ -113,7 +134,8 @@ def send_email(recipient, subject, html_content, text_content=None, *, category=
         ok, status, error = False, 'suppressed', 'Emails are turned off in Settings > Email'
     else:
         ok, status, error = _deliver(recipient, subject, html_content, text_content, logo=logo,
-                                     sender_name=sender_name, images=images, attachments=attachments)
+                                     sender_name=sender_name, images=images, attachments=attachments,
+                                     mailbox=mailbox)
     _last_failure['status'], _last_failure['error'] = ('', '') if ok else (status, error)
     if log:
         _log_email((recipient or '').strip(), subject,
@@ -188,14 +210,14 @@ def _build_message(subject, sender, recipient, html_content, text_content, logo=
 
 
 def _deliver(recipient, subject, html_content, text_content, logo=None, sender_name=None, images=None,
-             attachments=None):
+             attachments=None, mailbox=None):
     """Hand the message to the SMTP server. Returns (ok, status, error)."""
     recipient = (recipient or '').strip()
     if not recipient or '@' not in recipient:
         print("[Email Service] Skipped: invalid recipient")
         return False, 'invalid_recipient', 'No valid recipient address'
 
-    smtp_host, smtp_port, smtp_user, smtp_pass, from_email = _smtp_config()
+    smtp_host, smtp_port, smtp_user, smtp_pass, from_email = _smtp_config(mailbox)
 
     if not smtp_user or not smtp_pass:
         print(
