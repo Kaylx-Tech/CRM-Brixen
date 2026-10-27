@@ -64,6 +64,7 @@ import { openInvoice, downloadInvoice } from '@/lib/invoices'
 import { isManagerOrAbove, canViewPrices } from '@/lib/permissions'
 import { formatGBP, plainAmount } from '@/lib/money'
 import { canCancelOrder, cancelOrder, cancelOrderMessage } from '@/lib/orders'
+import OrderIdVerification from '@/Pages/SmartOperations/OrderIdVerification'
 
 const PAYMENT_MODES = [
   { value: 'PKR(Bank Transfer)', label: 'PKR (Bank Transfer)' },
@@ -850,6 +851,8 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                   <>
                     {/* ── TAB 1: OVERVIEW / ORDER DETAILS ──────────────────────── */}
                     <TabsContent value="overview" className="m-0 space-y-6 outline-none">
+                      {/* KYC orders: each director / PSC's identity verification (Didit) */}
+                      <OrderIdVerification orderId={orderId} />
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="text-sm font-bold text-foreground">Formation & Checkout Data</h4>

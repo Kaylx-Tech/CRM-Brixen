@@ -5,6 +5,7 @@ import { SectionCards } from "@/Layout/StatsCard"
 import { IconAlertCircle, IconUpload, IconCreditCard, IconInfoCircle, IconFileText, IconBuilding } from "@tabler/icons-react"
 import { usePortalData, PageHeader, PageState, StatusBadge, ProgressBar, formatDate } from "./portalShared"
 import { OrderDetailDialog } from "./PortalOrders"
+import PortalIdVerification from "./PortalIdVerification"
 import { openDocument } from "@/lib/documents"
 import { toast } from "sonner"
 
@@ -38,6 +39,9 @@ export default function PortalDashboard() {
       />
       <PageState isLoading={isLoading && !data} error={error} onRetry={reload}>
         <SectionCards stats={stats} isLoading={false} />
+
+        {/* Directors / PSCs still to verify their identity (shown only while one is open) */}
+        <PortalIdVerification onlyOpen />
 
         <div className="rounded-2xl border bg-card">
           <div className="border-b px-4 py-3">

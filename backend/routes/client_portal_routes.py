@@ -123,7 +123,7 @@ def handle_client_portal_routes(environ, start_response, path, method, user, bod
     if not path.startswith('/api/client/'):
         return None
     # /api/client/orders, /accountancy and /notifications are served by their own modules
-    if re.match(r'^/api/client/(orders|accountancy|accounts-file|notifications)(/|$)', path):
+    if re.match(r'^/api/client/(orders|accountancy|accounts-file|notifications|id-verification)(/|$)', path):
         return None
     if not user:
         return error_response(start_response, "Authentication required", status_code=401)

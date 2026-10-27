@@ -250,6 +250,11 @@ def process_woocommerce_order(payload):
     except Exception as e:
         print(f"[Webhook] invoice sync error: {e}")
 
+    # 7. A new KYC order starts the customer's Didit identity verification and emails them the link
+    if created:
+        from routes.id_verification_routes import auto_start_for_order
+        auto_start_for_order(order_id)
+
     return {
         "success": True,
         "order_id": order_id,

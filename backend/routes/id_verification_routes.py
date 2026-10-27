@@ -169,6 +169,104 @@ def _email_link(row, user):
     return None
 
 
+def _client_step(status):
+    """What the customer sees: never the AML or document details, only what they need to do."""
+    if status == 'Approved':
+        return 'verified'
+    if status in ('In Review', 'Resubmitted'):
+        return 'checking'
+    if status in ('Declined',):
+        return 'not_verified'
+    if status in ('Expired', 'Kyc Expired', 'Abandoned'):
+        return 'expired'
+    return 'action_needed'
+
+
+def _client_view(user):
+    """The identity checks on the customer's own orders (client portal)."""
+    rows = query_db("""
+        SELECT v.id, v.order_id, v.full_name, v.person_role, v.status, v.session_url, v.ch_personal_code,
+               v.updated_at, o.order_number
+        FROM id_verifications v JOIN orders o ON o.id = v.order_id
+        WHERE o.user_id = ? AND COALESCE(o.is_draft, 0) = 0
+        ORDER BY v.id DESC;
+    """, (user.get('id'),)) or []
+    out = []
+    for r in rows:
+        step = _client_step(r['status'])
+        out.append({
+            'id': r['id'], 'order_id': r['order_id'], 'order_number': r['order_number'],
+            'full_name': r['full_name'], 'person_role': r['person_role'], 'step': step,
+            # The link only while there is something to do
+            'verify_url': r['session_url'] if step == 'action_needed' else None,
+            'ch_personal_code': r['ch_personal_code'] if step == 'verified' else None,
+        })
+    return out
+
+
+GUEST_EMAIL = 'guest.unlinked@brixenconsultants.com'
+
+
+def is_kyc_order(order_id):
+    return bool(query_db("""
+        SELECT 1 FROM orders o WHERE o.id = ? AND COALESCE(o.is_draft, 0) = 0
+          AND (o.service_name LIKE '%kyc%' OR EXISTS (SELECT 1 FROM order_line_items li
+               WHERE li.order_id = o.id AND li.product_name LIKE '%kyc%'));
+    """, (order_id,), one=True))
+
+
+def _auto_start(order_id, triggered_by):
+    """Add the customer as the first person to verify, start Didit and email them the link."""
+    try:
+        if not didit_service.is_configured() or not is_kyc_order(order_id):
+            return
+        if query_db("SELECT 1 FROM id_verifications WHERE order_id = ? LIMIT 1;", (order_id,), one=True):
+            return
+        order = query_db("""
+            SELECT o.id, o.owner_name, o.owner_form_email, o.created_by_id, u.full_name, u.email
+            FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = ?;
+        """, (order_id,), one=True)
+        # Website guest orders wait until the team links the real customer
+        if not order or str(order.get('email') or '').lower() == GUEST_EMAIL:
+            return
+        name = (order.get('owner_name') or order.get('full_name') or '').strip()
+        email = (order.get('owner_form_email') or order.get('email') or '').strip()
+        if not name:
+            return
+        verification_id = execute_db("""
+            INSERT INTO id_verifications (order_id, full_name, email, person_role, created_by, created_at, updated_at)
+            VALUES (?, ?, ?, 'Director', ?, datetime('now'), datetime('now'));
+        """, (order_id, name, email or None, triggered_by or order.get('created_by_id')))
+        row, err = start_session(verification_id)
+        if err:
+            print(f"[ID Verification] order {order_id}: {err}")
+            return
+        if email:
+            err = _email_link(dict(row), {'id': triggered_by})
+            if err:
+                print(f"[ID Verification] order {order_id}: {err}")
+    except Exception as exc:
+        print(f"[ID Verification] auto-start for order {order_id} failed: {exc}")
+    finally:
+        from db import close_db
+        close_db()  # this background thread's own connection
+
+
+def auto_start_for_order(order_id, triggered_by=None):
+    """A new KYC order starts its identity verification by itself, in the background (Didit can take a few
+    seconds), so placing the order is never slowed down or blocked by it."""
+    if not order_id:
+        return
+    try:
+        from tenancy import run_in_thread  # Finstap: keep the request's workspace database
+    except ImportError:
+        import threading
+
+        def run_in_thread(target, *args):
+            threading.Thread(target=target, args=args, daemon=True).start()
+    run_in_thread(_auto_start, order_id, triggered_by)
+
+
 def _handle_webhook(environ, start_response, body):
     headers = {
         'signature_v2': environ.get('HTTP_X_SIGNATURE_V2'),
@@ -222,12 +320,28 @@ def handle_didit_webhook(environ, start_response, body):
 def handle_id_verification_routes(environ, start_response, path, method, user, body, query):
     if path == '/api/webhooks/didit' and method == 'POST':
         return _handle_webhook(environ, start_response, body)
+    if path == '/api/client/id-verification' and method == 'GET':
+        if not user:
+            return error_response(start_response, "Authentication required", status_code=401)
+        return success_response(start_response, data={'verifications': _client_view(user)})
     if not path.startswith('/api/admin/id-verification'):
         return None
     if not user:
         return error_response(start_response, "Authentication required", status_code=401)
     if user.get('role') not in TEAM_ROLES:
         return error_response(start_response, "ID Verification is for the team only.", status_code=403)
+
+    # The order view: this order's people and their verification
+    match = re.match(r'^/api/admin/id-verification/orders/(\d+)$', path)
+    if match and method == 'GET':
+        order = _order(int(match.group(1)))
+        if not _can_open(user, order):
+            return error_response(start_response, "Order not found", status_code=404)
+        return success_response(start_response, data={
+            'is_kyc': is_kyc_order(order['id']),
+            'didit_configured': didit_service.is_configured(),
+            'people': people_for_orders([order['id']]).get(order['id'], []),
+        })
 
     match = re.match(r'^/api/admin/id-verification/orders/(\d+)/people$', path)
     if match and method == 'POST':
