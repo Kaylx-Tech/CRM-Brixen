@@ -203,7 +203,7 @@ def summarise_decision(decision):
     address = idv.get('formatted_address') or idv.get('address') or ''
     if isinstance(address, dict):
         address = address.get('formatted_address') or ', '.join(str(v) for v in address.values() if v)
-    return {k: v for k, v in {
+    summary = {k: v for k, v in {
         'status': decision.get('status'),
         'id_status': idv.get('status'),
         'liveness_status': liveness.get('status'),
@@ -221,3 +221,29 @@ def summarise_decision(decision):
         'verified_at': decision.get('created_at') or decision.get('updated_at'),
         'session_number': decision.get('session_number'),
     }.items() if v}
+    aml = summarise_aml(_first(decision, 'aml_screenings', 'aml'))
+    if aml:
+        summary['aml'] = aml
+    return summary
+
+
+def summarise_aml(aml):
+    """AML screening (PEP, sanctions, adverse media): the outcome and the strongest hits, for the ACSP's
+    AML record. Hits marked False Positive in Didit are left out."""
+    if not isinstance(aml, dict) or not aml:
+        return {}
+    hits = [h for h in (aml.get('hits') or []) if isinstance(h, dict) and h.get('review_status') != 'False Positive']
+    hits.sort(key=lambda h: (float(h.get('risk_score') or 0), float(h.get('match_score') or 0)), reverse=True)
+    return {
+        'status': aml.get('status'),
+        'total_hits': int(aml.get('total_hits') or 0),
+        'open_hits': len(hits),
+        'score': aml.get('score'),
+        'hits': [{k: v for k, v in {
+            'name': h.get('caption'),
+            'lists': [str(d) for d in (h.get('datasets') or [])][:6],
+            'match_score': h.get('match_score'),
+            'risk_score': h.get('risk_score'),
+            'review_status': h.get('review_status'),
+        }.items() if v not in (None, '', [])} for h in hits[:5]],
+    }
