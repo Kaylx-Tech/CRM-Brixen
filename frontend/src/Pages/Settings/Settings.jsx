@@ -16,6 +16,7 @@ import { IS_FINSTAP, getWorkspace } from '@/lib/workspace'
 import { loadBranding } from '@/lib/branding'
 import BrandingTab from './BrandingTab'
 import InvoicesTab from './InvoicesTab'
+import PlanTab from './PlanTab'
 import { accountsFromSaved, accountsToSaved, linksFromSaved, linksToSaved } from './invoiceSettings'
 
 // Where Didit posts verification results (the API may live on another address than this page);
@@ -31,7 +32,7 @@ const MIN_PASSWORD = 10
 // Branding (logo, icon, accent colour) and Invoices (bank accounts per country, links) are Finstap company
 // settings; Brixen keeps its own look and its own bank details
 const SETTINGS_TABS = new Set(['general', ...(IS_FINSTAP ? ['branding'] : []), 'email', 'integrations', 'compliance',
-  ...(IS_FINSTAP ? ['invoices'] : []), 'profile'])
+  ...(IS_FINSTAP ? ['invoices', 'plan'] : []), 'profile'])
 
 function syncLocalUser(user) {
   if (!user) return
@@ -654,7 +655,7 @@ export default function Settings() {
             ['email', 'Email (SMTP)'],
             ['integrations', 'Integrations'],
             ['compliance', 'Compliance'],
-            ...(IS_FINSTAP ? [['invoices', 'Invoices']] : []),
+            ...(IS_FINSTAP ? [['invoices', 'Invoices'], ['plan', 'Plan & usage']] : []),
             ['profile', 'Profile & Password'],
           ].filter(([value]) => canManageSettings || value === 'profile').map(([value, label]) => (
             <TabsTrigger
@@ -1245,6 +1246,12 @@ export default function Settings() {
             <TabsContent value="invoices" className="mt-0 space-y-4">
               {invoiceDetails}
               <InvoicesTab form={form} setField={setField} disabled={isLoading || isSaving} />
+            </TabsContent>
+          )}
+
+          {IS_FINSTAP && (
+            <TabsContent value="plan" className="mt-0 space-y-4">
+              <PlanTab />
             </TabsContent>
           )}
 

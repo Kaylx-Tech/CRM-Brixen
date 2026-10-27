@@ -28,40 +28,76 @@ import {
 } from "@tabler/icons-react"
 import finstapLogo from "@/assets/finstap-logo.svg"
 import { LegalLinks } from "@/Pages/Legal/LegalLayout"
+import FinstapPricing from "@/Pages/FinstapPricing"
 
 // Finstap brand: blue → violet from the logo. The landing page is always light.
 const GRADIENT = "bg-linear-to-r from-[#297bff] to-[#834aff]"
-const GRADIENT_TEXT = "bg-linear-to-r from-[#297bff] via-[#5f5cff] to-[#834aff] bg-clip-text text-transparent"
+const GRADIENT_TEXT =
+  "bg-linear-to-r from-[#297bff] via-[#5f5cff] to-[#834aff] bg-clip-text text-transparent"
 const CTA = cn(
   GRADIENT,
   "inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(101,89,255,0.7)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_36px_-12px_rgba(101,89,255,0.8)]",
 )
-const GHOST = "inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-800 transition hover:border-[#6559ff]/40 hover:text-[#5f5cff]"
+const GHOST =
+  "inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-800 transition hover:border-[#6559ff]/40 hover:text-[#5f5cff]"
 
 const NAV = [
   ["Features", "#features"],
   ["Services", "#services"],
+  ["Pricing", "#pricing"],
   ["How it works", "#how"],
   ["Why Finstap", "#why"],
   ["FAQ", "#faq"],
 ]
 
 const FEATURES = [
-  [IconUsers, "Clients & companies", "Every client, director and company in one place, with their orders, invoices and documents."],
-  [IconBuildingBank, "Companies House sync", "Pull company details, officers and filing dates straight from Companies House."],
-  [IconReceipt2, "Orders & invoices", "Take orders through your own forms, send invoices and see what is paid at a glance."],
-  [IconFileText, "Documents", "Store and share client documents securely, organised by client and company."],
-  [IconChecklist, "Smart Operations", "GOV forms, tasks and deadlines your team can work through without missing a date."],
-  [IconChartBar, "Finance & revenue", "Revenue over time, balance sheet and company expenses, ready when you need them."],
-  [IconUsersGroup, "Team & roles", "Admins, managers and staff each see only what their role needs, prices included."],
-  [IconPalette, "Your brand", "Your logo, your colours and your own address: yourcompany.finstap.com."],
+  [
+    IconUsers,
+    "Clients & companies",
+    "Every client, director and company in one place, with their orders, invoices and documents.",
+  ],
+  [
+    IconBuildingBank,
+    "Companies House sync",
+    "Pull company details, officers and filing dates straight from Companies House.",
+  ],
+  [
+    IconReceipt2,
+    "Orders & invoices",
+    "Take orders through your own forms, send invoices and see what is paid at a glance.",
+  ],
+  [
+    IconFileText,
+    "Documents",
+    "Store and share client documents securely, organised by client and company.",
+  ],
+  [
+    IconChecklist,
+    "Smart Operations",
+    "GOV forms, tasks and deadlines your team can work through without missing a date.",
+  ],
+  [
+    IconChartBar,
+    "Finance & revenue",
+    "Revenue over time, balance sheet and company expenses, ready when you need them.",
+  ],
+  [
+    IconUsersGroup,
+    "Team & roles",
+    "Admins, managers and staff each see only what their role needs, prices included.",
+  ],
+  [
+    IconPalette,
+    "Your brand",
+    "Your logo, your colours and your own address: yourcompany.finstap.com.",
+  ],
 ]
 
 // The company services a formation agent sells, each with what Finstap actually does for it
 const SERVICES = [
   [
     IconId,
-    "Director ID verification, tracked",
+    "Director ID Verification, Tracked",
     "Companies House now needs every director to verify their identity. Keep it under control for all your clients.",
     [
       "Take ID verification orders through your own forms",
@@ -115,10 +151,22 @@ const WHY = [
 ]
 
 const FAQ = [
-  ["Is there a free trial?", "Yes. Every new workspace starts with a 14-day free trial, no card needed to begin."],
-  ["Who is Finstap for?", "Accounting practices, company formation agents and corporate service providers who manage many clients and companies."],
-  ["Is my data kept separate?", "Yes. Each company gets its own workspace and its own database, reached at its own address."],
-  ["Can my team use it?", "Yes. Invite your team and choose a role for each person: admin, manager or staff."],
+  [
+    "Is there a free trial?",
+    "Yes. Every new workspace starts with a 14-day free trial, no card needed to begin.",
+  ],
+  [
+    "Who is Finstap for?",
+    "Accounting practices, company formation agents and corporate service providers who manage many clients and companies.",
+  ],
+  [
+    "Is my data kept separate?",
+    "Yes. Each company gets its own workspace and its own database, reached at its own address.",
+  ],
+  [
+    "Can my team use it?",
+    "Yes. Invite your team and choose a role for each person: admin, manager or staff.",
+  ],
 ]
 
 function FadeUp({ children, delay = 0, className }) {
@@ -145,7 +193,11 @@ function Header() {
         </a>
         <nav className="hidden items-center gap-8 md:flex">
           {NAV.map(([label, href]) => (
-            <a key={href} href={href} className="text-sm font-medium text-slate-600 transition hover:text-[#5f5cff]">
+            <a
+              key={href}
+              href={href}
+              className="text-sm font-medium text-slate-600 transition hover:text-[#5f5cff]"
+            >
               {label}
             </a>
           ))}
@@ -202,8 +254,14 @@ function HeroVisual() {
   const bars = [38, 52, 44, 66, 58, 82, 70]
   return (
     <div className="relative mx-auto w-full max-w-md lg:max-w-none">
-      <span aria-hidden className="absolute -top-10 right-0 size-72 rounded-full bg-[#834aff]/25 blur-3xl" />
-      <span aria-hidden className="absolute -bottom-10 left-0 size-72 rounded-full bg-[#297bff]/25 blur-3xl" />
+      <span
+        aria-hidden
+        className="absolute -top-10 right-0 size-72 rounded-full bg-[#834aff]/25 blur-3xl"
+      />
+      <span
+        aria-hidden
+        className="absolute -bottom-10 left-0 size-72 rounded-full bg-[#297bff]/25 blur-3xl"
+      />
 
       {/* Revenue overview */}
       <motion.div
@@ -234,7 +292,9 @@ function HeroVisual() {
         </div>
         <div className="mt-2 flex justify-between text-[10px] text-slate-400">
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-            <span key={d} className="flex-1 text-center">{d}</span>
+            <span key={d} className="flex-1 text-center">
+              {d}
+            </span>
           ))}
         </div>
       </motion.div>
@@ -328,12 +388,18 @@ function FaqItem({ q, a }) {
 /** Finstap's public home page on finstap.com: what it is, what it does, and the way into a free trial. */
 export default function FinstapLanding() {
   return (
-    <div id="top" className="min-h-screen scroll-smooth bg-white font-sans text-slate-900 antialiased [color-scheme:light]">
+    <div
+      id="top"
+      className="min-h-screen scroll-smooth bg-white font-sans text-slate-900 antialiased [color-scheme:light]"
+    >
       <Header />
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(60%_60%_at_20%_0%,rgba(41,123,255,0.12),transparent),radial-gradient(50%_50%_at_90%_10%,rgba(131,74,255,0.14),transparent)]" />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(60%_60%_at_20%_0%,rgba(41,123,255,0.12),transparent),radial-gradient(50%_50%_at_90%_10%,rgba(131,74,255,0.14),transparent)]"
+        />
         <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 pb-20 pt-14 sm:px-6 lg:grid-cols-2 lg:gap-10 lg:pb-28 lg:pt-20">
           <div>
             <motion.span
@@ -341,7 +407,8 @@ export default function FinstapLanding() {
               animate={{ opacity: 1, y: 0 }}
               className="inline-flex items-center gap-2 rounded-full border border-[#6559ff]/20 bg-[#6559ff]/5 px-3 py-1 text-xs font-semibold text-[#5f5cff]"
             >
-              <IconBuildingSkyscraper className="size-3.5" /> CRM for accountants & company formation
+              <IconBuildingSkyscraper className="size-3.5" /> CRM for accountants & company
+              formation
             </motion.span>
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
@@ -357,8 +424,8 @@ export default function FinstapLanding() {
               transition={{ duration: 0.6, delay: 0.15 }}
               className="mt-5 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg"
             >
-              Finstap brings your clients, companies, orders, invoices and deadlines together, so your
-              team spends less time chasing and more time helping clients.
+              Finstap brings your clients, companies, orders, invoices and deadlines together, so
+              your team spends less time chasing and more time helping clients.
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -392,8 +459,12 @@ export default function FinstapLanding() {
       <section id="features" className="scroll-mt-20 bg-slate-50/70 py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <FadeUp className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">Features</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Everything your practice runs on</h2>
+            <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">
+              Features
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+              Everything your practice runs on
+            </h2>
             <p className="mt-4 text-slate-600">
               One workspace for the work you do every day, from the first order to the final filing.
             </p>
@@ -402,7 +473,12 @@ export default function FinstapLanding() {
             {FEATURES.map(([Icon, title, text], i) => (
               <FadeUp key={title} delay={(i % 4) * 0.06}>
                 <div className="group h-full rounded-2xl border border-slate-200 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-[#6559ff]/30 hover:shadow-[0_20px_40px_-20px_rgba(101,89,255,0.35)]">
-                  <span className={cn("flex size-11 items-center justify-center rounded-xl text-white", GRADIENT)}>
+                  <span
+                    className={cn(
+                      "flex size-11 items-center justify-center rounded-xl text-white",
+                      GRADIENT,
+                    )}
+                  >
                     <Icon className="size-5" />
                   </span>
                   <h3 className="mt-5 font-semibold text-slate-900">{title}</h3>
@@ -418,25 +494,36 @@ export default function FinstapLanding() {
       <section id="services" className="scroll-mt-20 py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <FadeUp className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">Why choose us</p>
+            <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">
+              Why choose us
+            </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
               Built for <span className={GRADIENT_TEXT}>UK company services</span>
             </h2>
             <p className="mt-4 text-slate-600">
-              The services your clients buy from you every day, handled in the same place as their companies.
+              The services your clients buy from you every day, handled in the same place as their
+              companies.
             </p>
           </FadeUp>
           <div className="mt-14 grid gap-5 md:grid-cols-2">
             {SERVICES.map(([Icon, title, text, points], i) => (
               <FadeUp key={title} delay={(i % 2) * 0.08}>
                 <div className="group relative h-full overflow-hidden rounded-3xl border border-slate-200 bg-white p-7 transition duration-300 hover:-translate-y-1 hover:border-[#6559ff]/30 hover:shadow-[0_24px_48px_-24px_rgba(101,89,255,0.4)] sm:p-8">
-                  <span aria-hidden className="pointer-events-none absolute -right-20 -top-20 size-56 rounded-full bg-[#834aff]/10 blur-3xl transition duration-500 group-hover:bg-[#834aff]/20" />
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute -right-20 -top-20 size-56 rounded-full bg-[#834aff]/10 blur-3xl transition duration-500 group-hover:bg-[#834aff]/20"
+                  />
                   <div className="relative flex items-start gap-4">
-                    <span className={cn("flex size-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg shadow-[#6559ff]/25", GRADIENT)}>
+                    <span
+                      className={cn(
+                        "flex size-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg shadow-[#6559ff]/25",
+                        GRADIENT,
+                      )}
+                    >
                       <Icon className="size-6" />
                     </span>
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+                      <h3 className="text-lg font-semibold text-slate-900 capitalize">{title}</h3>
                       <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{text}</p>
                     </div>
                   </div>
@@ -461,18 +548,32 @@ export default function FinstapLanding() {
       <section id="how" className="scroll-mt-20 py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <FadeUp className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">How it works</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Up and running in minutes</h2>
+            <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">
+              How it works
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+              Up and running in minutes
+            </h2>
           </FadeUp>
           <div className="relative mt-14 grid gap-6 md:grid-cols-3">
-            <span aria-hidden className="absolute left-[16%] right-[16%] top-7 hidden h-px bg-linear-to-r from-[#297bff]/40 via-[#5f5cff]/40 to-[#834aff]/40 md:block" />
+            <span
+              aria-hidden
+              className="absolute left-[16%] right-[16%] top-7 hidden h-px bg-linear-to-r from-[#297bff]/40 via-[#5f5cff]/40 to-[#834aff]/40 md:block"
+            />
             {STEPS.map(([title, text], i) => (
               <FadeUp key={title} delay={i * 0.1} className="relative text-center">
-                <span className={cn("relative mx-auto flex size-14 items-center justify-center rounded-full text-lg font-bold text-white shadow-lg ring-8 ring-white", GRADIENT)}>
+                <span
+                  className={cn(
+                    "relative mx-auto flex size-14 items-center justify-center rounded-full text-lg font-bold text-white shadow-lg ring-8 ring-white",
+                    GRADIENT,
+                  )}
+                >
                   {i + 1}
                 </span>
                 <h3 className="mt-5 text-lg font-semibold">{title}</h3>
-                <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-slate-600">{text}</p>
+                <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-slate-600">
+                  {text}
+                </p>
               </FadeUp>
             ))}
           </div>
@@ -485,10 +586,15 @@ export default function FinstapLanding() {
           <FadeUp>
             <div className="grid items-center gap-10 overflow-hidden rounded-3xl border border-slate-200 bg-linear-to-br from-[#297bff]/[0.06] via-white to-[#834aff]/[0.08] p-8 sm:p-12 lg:grid-cols-2">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">Why Finstap</p>
-                <h2 className="mt-3 text-3xl font-bold tracking-tight">Your practice, your address, your data</h2>
+                <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">
+                  Why Finstap
+                </p>
+                <h2 className="mt-3 text-3xl font-bold tracking-tight">
+                  Your practice, your address, your data
+                </h2>
                 <p className="mt-4 text-slate-600">
-                  Each company gets its own Finstap workspace at its own address, with your logo and your colours.
+                  Each company gets its own Finstap workspace at its own address, with your logo and
+                  your colours.
                 </p>
                 <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm">
                   <IconWorld className="size-4 text-[#5f5cff]" />
@@ -497,9 +603,16 @@ export default function FinstapLanding() {
               </div>
               <ul className="grid gap-3">
                 {WHY.map((item) => (
-                  <li key={item} className="flex items-center gap-3 rounded-2xl bg-white/80 px-4 py-3.5 text-sm font-medium text-slate-800 shadow-sm ring-1 ring-slate-200/70">
+                  <li
+                    key={item}
+                    className="flex items-center gap-3 rounded-2xl bg-white/80 px-4 py-3.5 text-sm font-medium text-slate-800 shadow-sm ring-1 ring-slate-200/70"
+                  >
                     <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                      {item.startsWith("Login") ? <IconShieldLock className="size-4" /> : <IconCheck className="size-4" />}
+                      {item.startsWith("Login") ? (
+                        <IconShieldLock className="size-4" />
+                      ) : (
+                        <IconCheck className="size-4" />
+                      )}
                     </span>
                     {item}
                   </li>
@@ -510,12 +623,17 @@ export default function FinstapLanding() {
         </div>
       </section>
 
+      {/* Pricing (plans come from the server) */}
+      <FinstapPricing />
+
       {/* FAQ */}
       <section id="faq" className="scroll-mt-20 bg-slate-50/70 py-20 sm:py-24">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
           <FadeUp className="text-center">
             <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">FAQ</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Questions, answered</h2>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+              Questions, answered
+            </h2>
           </FadeUp>
           <div className="mt-10 grid gap-3">
             {FAQ.map(([q, a]) => (
@@ -529,10 +647,23 @@ export default function FinstapLanding() {
       <section className="py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <FadeUp>
-            <div className={cn("relative overflow-hidden rounded-3xl px-6 py-14 text-center text-white sm:px-12 sm:py-16", "bg-linear-to-br from-[#297bff] via-[#5f5cff] to-[#834aff]")}>
-              <span aria-hidden className="absolute -right-16 -top-20 size-72 rounded-full bg-white/15 blur-3xl" />
-              <span aria-hidden className="absolute -bottom-24 -left-10 size-72 rounded-full bg-[#297bff]/50 blur-3xl" />
-              <h2 className="relative text-3xl font-bold tracking-tight sm:text-4xl">Ready to give your practice a calmer week?</h2>
+            <div
+              className={cn(
+                "relative overflow-hidden rounded-3xl px-6 py-14 text-center text-white sm:px-12 sm:py-16",
+                "bg-linear-to-br from-[#297bff] via-[#5f5cff] to-[#834aff]",
+              )}
+            >
+              <span
+                aria-hidden
+                className="absolute -right-16 -top-20 size-72 rounded-full bg-white/15 blur-3xl"
+              />
+              <span
+                aria-hidden
+                className="absolute -bottom-24 -left-10 size-72 rounded-full bg-[#297bff]/50 blur-3xl"
+              />
+              <h2 className="relative text-3xl font-bold tracking-tight sm:text-4xl">
+                Ready to give your practice a calmer week?
+              </h2>
               <p className="relative mx-auto mt-4 max-w-xl text-white/85">
                 Create your workspace in a few minutes and try everything free for 14 days.
               </p>

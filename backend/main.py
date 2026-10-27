@@ -17,6 +17,7 @@ from utils.response import json_response, error_response
 from routes import dispatch_api_routes
 from services.price_privacy import hides_prices, applies_to_path, blocked_path, strip_incoming, scrub_json_payload
 from routes.platform_routes import handle_platform_routes
+from services.plans import PlanLimitError, guard as plan_guard
 from tenancy import (
     activate, deactivate, ensure_platform, for_each_tenant, resolve_request_tenant, seed_workspace_settings,
 )
@@ -159,6 +160,13 @@ def app(environ, start_response):
 
         # 5. Authenticate User
         user = get_authenticated_user(environ) if tenant else None
+
+        # 5a. Finstap plans: limits and features of the workspace's subscription (services/plans.py)
+        try:
+            plan_guard(tenant, path, method, user, body)
+        except PlanLimitError as exc:
+            return error_response(custom_start_response, str(exc), status_code=403,
+                                  details={'code': exc.code, 'key': exc.key})
 
         # 5b. Operations staff never see or set money (services/price_privacy.py)
         if hides_prices(user) and applies_to_path(path):

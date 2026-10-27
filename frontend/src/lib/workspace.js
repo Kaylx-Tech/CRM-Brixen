@@ -17,7 +17,7 @@ export const TENANT_DOMAIN = IS_FINSTAP
   : ""
 
 // Shared addresses that are never a company workspace (matches the backend's reserved names)
-const RESERVED = new Set(["www", "api", "app", "admin", "portal", "platform", "finstap", "mail", "static"])
+const RESERVED = new Set(["www", "api", "app", "admin", "portal", "platform", "finstap", "mail", "static", "owner"])
 
 const KEY = "workspace"
 

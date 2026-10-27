@@ -6,10 +6,21 @@ import { LegalLinks } from "@/Pages/Legal/LegalLayout"
 
 function BrandPanel() {
   return (
-    <div className={cn("relative flex w-full items-center justify-center overflow-hidden p-6 lg:p-10", FINSTAP_GRADIENT)}>
+    <div
+      className={cn(
+        "relative flex w-full items-center justify-center overflow-hidden p-6 lg:p-10",
+        FINSTAP_GRADIENT,
+      )}
+    >
       {/* Soft light shapes behind the card */}
-      <span aria-hidden className="pointer-events-none absolute -top-24 -right-16 size-80 rounded-full bg-white/15 blur-3xl" />
-      <span aria-hidden className="pointer-events-none absolute -bottom-28 -left-20 size-96 rounded-full bg-[#297bff]/40 blur-3xl" />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -top-24 -right-16 size-80 rounded-full bg-white/15 blur-3xl"
+      />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -bottom-28 -left-20 size-96 rounded-full bg-[#297bff]/40 blur-3xl"
+      />
 
       {/* The illustration card carries its own heading and dots */}
       <img
@@ -39,7 +50,7 @@ export function FinstapAuthLayout({ title, subtitle, children, footer }) {
           {children}
           {footer && <div className="mt-6 text-center text-sm text-muted-foreground">{footer}</div>}
         </div>
-        <div className="mt-10 flex flex-col items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex flex-col items-center gap-2 text-xs text-muted-foreground mt-20">
           <LegalLinks />
           <p>© 2026 Finstap. All rights reserved.</p>
         </div>
@@ -53,4 +64,5 @@ export function FinstapAuthLayout({ title, subtitle, children, footer }) {
 }
 
 /** The brand gradient for the main button on Finstap sign-in pages. */
-export const FINSTAP_CTA = "border-0 bg-linear-to-r from-[#297bff] to-[#834aff] text-white hover:opacity-90"
+export const FINSTAP_CTA =
+  "border-0 bg-linear-to-r from-[#297bff] to-[#834aff] text-white hover:opacity-90"

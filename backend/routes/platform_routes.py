@@ -18,7 +18,9 @@ from tenancy import (
     normalize_slug, redeem_login_handoff, use_tenant, workspace_url,
 )
 from routes.auth_routes import _client_ip, _public_user, _session_cookie
+from routes.owner_routes import handle_owner_routes
 from services import signup_email
+from services.plans import public_plans
 from services.signup_email import SignupEmailError
 
 # Signup flood guard: max workspaces per IP inside the window
@@ -47,6 +49,15 @@ def _query_value(query, key):
 def handle_platform_routes(environ, start_response, path, method, body, query=None):
     if not path.startswith('/api/platform/'):
         return None
+
+    # Finstap owner portal (admin.finstap.com), its own sign-in (routes/owner_routes.py)
+    response = handle_owner_routes(environ, start_response, path, method, body, query)
+    if response is not None:
+        return response
+
+    # Plans, prices and limits for the landing page (services/plans.py)
+    if path == '/api/platform/plans' and method == 'GET':
+        return success_response(start_response, data=public_plans())
 
     if path == '/api/platform/workspace' and method == 'GET':
         tenant = get_tenant(_query_value(query, 'slug'))

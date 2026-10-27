@@ -9,6 +9,8 @@ import SharedInvoice from './Pages/SharedInvoice'
 import PrivacyPolicy from './Pages/Legal/PrivacyPolicy'
 import Terms from './Pages/Legal/Terms'
 import Security from './Pages/Legal/Security'
+import OwnerPortal from './Pages/Owner/OwnerPortal'
+import { onOwnerHost, ownerPortalAllowed } from './lib/owner'
 import { IS_FINSTAP, onSharedHost, subdomainWorkspace } from './lib/workspace'
 import { loadBranding } from './lib/branding'
 import ResetPassword from './Pages/ResetPassword'
@@ -49,6 +51,8 @@ import { PortalServices, PortalAddresses, PortalAccountancy } from './Pages/Port
 // the company addresses, so a token left there from before subdomains must not send visitors to /login.
 // Without subdomains (local tests) it shows to visitors who are not signed in.
 function HomeRedirect() {
+  // admin.finstap.com is the owner portal only
+  if (onOwnerHost()) return <Navigate to="/owner" replace />
   if (IS_FINSTAP && (onSharedHost() || (!subdomainWorkspace() && !localStorage.getItem('token')))) {
     return <FinstapLanding />
   }
@@ -122,6 +126,9 @@ const App = () => {
             {IS_FINSTAP && <Route path="/terms" element={<Terms />} />}
             {IS_FINSTAP && <Route path="/security" element={<Security />} />}
 
+            {/* Finstap owner portal: admin.finstap.com (or /owner when subdomains are off, for local tests) */}
+            {ownerPortalAllowed() && <Route path="/owner/*" element={<OwnerPortal />} />}
+
             {/* Finstap: companies create their own workspace; the Brixen build has no signup */}
             <Route
               path="/signup"
@@ -185,7 +192,7 @@ const App = () => {
             <Route path="/toast-test" element={<ToastPlayground />} />
 
             {/* Catch-all fallback */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<Navigate to={onOwnerHost() ? "/owner" : "/login"} replace />} />
           </Routes>
         </BrowserRouter>
           </MotionRoot>

@@ -37,7 +37,7 @@ SLUG_RE = re.compile(r'^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$')
 NEW_SLUG_RE = re.compile(r'^[a-z0-9]{3,30}$')
 RESERVED_SLUGS = frozenset({
     'www', 'api', 'app', 'admin', 'portal', 'platform', 'finstap', 'mail', 'static',
-    'assets', 'login', 'signup', 'support', 'help', 'billing', 'status', 'docs', 'blog',
+    'assets', 'login', 'signup', 'support', 'help', 'billing', 'status', 'docs', 'blog', 'owner',
 })
 
 PLATFORM_SCHEMA = """
@@ -81,7 +81,58 @@ CREATE TABLE IF NOT EXISTS signup_emails (
 );
 CREATE INDEX IF NOT EXISTS idx_signup_emails_email ON signup_emails(email, sent_at);
 CREATE INDEX IF NOT EXISTS idx_signup_emails_token ON signup_emails(token_hash);
+-- Finstap owner portal (admin.finstap.com): the platform's own admins, their sign-in codes and sessions,
+-- and a record of everything they change (services/owner_auth.py, routes/owner_routes.py)
+CREATE TABLE IF NOT EXISTS platform_admins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    full_name TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Active',
+    last_login_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS platform_login_codes (
+    challenge TEXT PRIMARY KEY,
+    admin_id INTEGER NOT NULL,
+    code_hash TEXT NOT NULL,
+    tries INTEGER NOT NULL DEFAULT 0,
+    sends INTEGER NOT NULL DEFAULT 1,
+    sent_at TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+    expires_at TIMESTAMP NOT NULL,
+    used_at TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS platform_sessions (
+    token_hash TEXT PRIMARY KEY,
+    admin_id INTEGER NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    ip TEXT,
+    user_agent TEXT,
+    revoked_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS platform_audit (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    admin_id INTEGER,
+    admin_email TEXT,
+    action TEXT NOT NULL,
+    tenant_slug TEXT,
+    detail TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_platform_audit_created ON platform_audit(created_at);
 """
+
+# Subscription details on each workspace, added to databases made before the owner portal
+TENANT_COLUMNS = (
+    ('billing_cycle', "TEXT"),                 # monthly / yearly
+    ('subscription_status', "TEXT"),           # trialing / active / past_due / cancelled
+    ('current_period_end', "TIMESTAMP"),       # paid until
+    ('price_override', "REAL"),                # a special monthly price agreed with this company
+    ('custom_limits', "TEXT"),                 # JSON {limit: number|null}, wins over the plan's limits
+    ('owner_notes', "TEXT"),                   # notes for the Finstap team only
+    ('suspended_reason', "TEXT"),
+)
 
 HANDOFF_SECONDS = 120
 
@@ -153,7 +204,11 @@ def ensure_platform():
         conn = _platform_conn()
         try:
             conn.executescript(PLATFORM_SCHEMA)
-            known = conn.execute("SELECT 1 FROM tenants WHERE slug = ?;", (DEFAULT_TENANT,)).fetchone()
+            have = {row['name'] for row in conn.execute("PRAGMA table_info(tenants);").fetchall()}
+            for column, kind in TENANT_COLUMNS:
+                if column not in have:
+                    conn.execute(f"ALTER TABLE tenants ADD COLUMN {column} {kind};")
+            known =conn.execute("SELECT 1 FROM tenants WHERE slug = ?;", (DEFAULT_TENANT,)).fetchone()
             # Only an existing CRM database is adopted (never created or moved), so a fresh Finstap server starts empty
             if not known and _has_crm_data(db_mod.DB_PATH):
                 conn.execute("""
