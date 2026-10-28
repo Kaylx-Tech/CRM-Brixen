@@ -71,9 +71,12 @@ export default function ClientLayout() {
   if (getRole() && getRole() !== "CLIENT") return <Navigate to="/admin/dashboard" replace />
 
   return (
-    // Old Brixen portal colours: deep navy menu
-    <SidebarProvider className="[--sidebar:#0B1220]">
-      <Sidebar collapsible="offcanvas" className="group-data-[side=left]:border-r-0">
+    // Brixen navy menu: a soft blue glow at the top fading into deep navy
+    <SidebarProvider className="[--sidebar:#04162E]">
+      <Sidebar
+        collapsible="offcanvas"
+        className="group-data-[side=left]:border-r-0 **:data-[slot=sidebar-inner]:bg-[radial-gradient(120%_45%_at_0%_0%,rgba(0,108,255,0.28),transparent_60%),linear-gradient(180deg,#003971_0%,#04162E_55%,#020B19_100%)]"
+      >
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>

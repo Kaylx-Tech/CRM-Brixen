@@ -28,16 +28,20 @@ const GROUPED = {
     "fs-menu-badge top-2! right-2 h-5 min-w-5 rounded-full bg-sidebar-primary px-1.5 text-[10.5px] font-semibold text-white! shadow-sm",
 }
 
-// Client portal menu, as in the old Brixen portal: bold small group titles, slate rows and the active
-// page in a soft blue
+// Client portal menu in Brixen navy: group titles trailed by a thin line, rows that slide a little on
+// hover, and the open page as a white pill with navy text and a blue dot
 const PORTAL = {
   group: "px-2 py-1",
-  label: "h-6 px-3 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400",
+  label:
+    "h-6 gap-2 px-3 text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#8FB3DC] " +
+    "after:h-px after:flex-1 after:bg-gradient-to-r after:from-white/15 after:to-transparent after:content-['']",
   menu: "gap-0.5",
   button:
-    "h-10 gap-3 rounded-lg px-3.5 text-[14px] font-medium text-slate-300 transition-colors hover:bg-[#172033] hover:text-white " +
-    "data-active:bg-[rgba(37,99,235,0.18)] data-active:text-[#93C5FD] " +
-    "[&_svg]:size-[18px]! [&_svg]:text-slate-400 hover:[&_svg]:text-white data-active:[&_svg]:text-[#60A5FA]",
+    "relative h-10 gap-3 rounded-xl px-3.5 text-[14px] font-medium text-[#C9D8EC] transition-[background-color,color,transform,box-shadow] duration-200 " +
+    "hover:translate-x-0.5 hover:bg-white/[0.08] hover:text-white " +
+    "data-active:translate-x-0 data-active:bg-white data-active:font-semibold data-active:text-[#003971] data-active:shadow-[0_6px_18px_rgba(0,0,0,0.25)] " +
+    "after:absolute after:right-3 after:top-1/2 after:size-1.5 after:-translate-y-1/2 after:scale-0 after:rounded-full after:bg-[#006CFF] after:transition-transform after:duration-300 after:content-[''] data-active:after:scale-100 " +
+    "[&_svg]:size-[18px]! [&_svg]:text-[#8FB3DC] [&_svg]:transition-colors hover:[&_svg]:text-white data-active:[&_svg]:text-[#006CFF]",
   badge: GROUPED.badge,
 }
 

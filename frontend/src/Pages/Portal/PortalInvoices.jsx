@@ -26,6 +26,7 @@ export default function PortalInvoices() {
     <div className="flex flex-col gap-6 w-full pb-10">
       <PageHeader title="Invoices & Payments" description="Your invoices, what you have paid and what is still due" onRefresh={reload} isLoading={isLoading} />
       <SectionCards
+        compact
         isLoading={isLoading && !data}
         stats={[
           { title: "Total billed", value: money(totals.billed) },

@@ -127,6 +127,7 @@ export function PortalAccountancy() {
     <div className="flex flex-col gap-6 w-full pb-10">
       <PageHeader title="Accountancy" description="Annual accounts and filing deadlines for your companies" onRefresh={reload} isLoading={isLoading} />
       <SectionCards
+        compact
         isLoading={isLoading && !data}
         stats={[
           { title: "Overdue", value: String(m.overdue ?? 0) },

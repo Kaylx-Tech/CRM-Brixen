@@ -1,7 +1,8 @@
 import React, { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { IconAlertCircle, IconUpload, IconCreditCard, IconInfoCircle, IconFileText, IconBuilding, IconPackage, IconBell, IconShoppingBag, IconArrowRight } from "@tabler/icons-react"
+import { SectionCards } from "@/Layout/StatsCard"
+import { IconAlertCircle, IconUpload, IconCreditCard, IconInfoCircle, IconFileText, IconBuilding, IconShoppingBag, IconArrowRight } from "@tabler/icons-react"
 import { usePortalData, PageHeader, PageState, StatusBadge, ProgressBar, formatDate } from "./portalShared"
 import { OrderDetailDialog } from "./PortalOrders"
 import PortalIdVerification from "./PortalIdVerification"
@@ -10,24 +11,7 @@ import { toast } from "sonner"
 
 const ACTION_ICONS = { upload: IconUpload, "credit-card": IconCreditCard, info: IconInfoCircle }
 
-// Old Brixen portal look: white cards, small bold uppercase labels, blue links
-function OverviewCard({ title, value, icon: Icon, onClick }) {
-  const Tag = onClick ? "button" : "div"
-  return (
-    <Tag
-      type={onClick ? "button" : undefined}
-      onClick={onClick}
-      className="flex flex-col gap-2 rounded-xl border border-slate-200/70 bg-white p-4 text-left shadow-[0_4px_14px_rgba(15,23,42,0.05)] transition-shadow hover:shadow-[0_6px_18px_rgba(15,23,42,0.09)] dark:border-border dark:bg-card"
-    >
-      <span className="flex size-8 items-center justify-center rounded-lg bg-[#EFF6FF] text-[#2563EB] dark:bg-blue-500/15">
-        <Icon className="size-4" />
-      </span>
-      <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-slate-500">{title}</span>
-      <span className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-foreground">{value}</span>
-    </Tag>
-  )
-}
-
+// Old Brixen portal look: white panels with blue links
 function Panel({ title, linkLabel, onLink, children }) {
   return (
     <section className="rounded-lg border border-slate-200 bg-white dark:border-border dark:bg-card">
@@ -51,10 +35,10 @@ export default function PortalDashboard() {
   const d = data || {}
 
   const stats = [
-    { title: "My businesses", value: String(d.total_companies ?? 0), icon: IconBuilding, onClick: () => navigate("/portal/companies") },
-    { title: "Active orders", value: String(d.active_orders_count ?? 0), icon: IconPackage, onClick: () => navigate("/portal/orders") },
-    { title: "Documents", value: String(d.documents_count ?? 0), icon: IconFileText, onClick: () => navigate("/portal/documents") },
-    { title: "Pending actions", value: String(d.pending_actions_count ?? 0), icon: IconBell },
+    { title: "My businesses", value: String(d.total_companies ?? 0), onClick: () => navigate("/portal/companies") },
+    { title: "Active orders", value: String(d.active_orders_count ?? 0), onClick: () => navigate("/portal/orders") },
+    { title: "Documents", value: String(d.documents_count ?? 0), onClick: () => navigate("/portal/documents") },
+    { title: "Pending actions", value: String(d.pending_actions_count ?? 0) },
   ]
 
   const runAction = (a) => {
@@ -71,9 +55,8 @@ export default function PortalDashboard() {
         isLoading={isLoading}
       />
       <PageState isLoading={isLoading && !data} error={error} onRetry={reload}>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {stats.map((s) => <OverviewCard key={s.title} {...s} />)}
-        </div>
+        {/* Same coloured cards and size as the rest of the CRM */}
+        <SectionCards stats={stats} compact />
 
         {/* Directors / PSCs still to verify their identity (shown only while one is open) */}
         <PortalIdVerification onlyOpen />
