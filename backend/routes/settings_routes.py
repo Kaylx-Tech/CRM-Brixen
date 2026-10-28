@@ -114,7 +114,8 @@ def handle_settings_routes(environ, start_response, path, method, user, body, qu
     if path == '/api/admin/settings/test-didit' and method == 'POST':
         from services.didit_service import test_connection
         custom_key = body.get('didit_api_key') if isinstance(body, dict) else None
-        result = test_connection(api_key=custom_key)
+        typed_workflow = body.get('didit_workflow_id') if isinstance(body, dict) else None
+        result = test_connection(api_key=custom_key, workflow_id=typed_workflow)
         if result.get('success'):
             return success_response(start_response, data=result, message=result.get('message'))
         return error_response(start_response, result.get('error', 'Didit test failed'), status_code=400)

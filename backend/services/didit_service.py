@@ -155,17 +155,19 @@ def get_decision(session_id):
     return body, None
 
 
-def test_connection(api_key=None):
+def test_connection(api_key=None, workflow_id=None):
     """Checks the key without starting a session: an unknown session gives 404 with a good key, 403 without."""
     key = (api_key or config()['api_key'] or '').strip()
     if not key:
         return {'success': False, 'error': 'Paste the Didit API key first.'}
     status, body = _request('GET', '/v3/session/00000000-0000-0000-0000-000000000000/decision/', api_key=key)
     if status in (200, 404):
-        workflow_id = config()['workflow_id']
+        # The ID typed on the Settings page (not saved yet) wins over the saved one
+        workflow_id = _workflow_id(workflow_id) if workflow_id is not None else config()['workflow_id']
         if workflow_id and not UUID_RE.fullmatch(workflow_id):
-            return {'success': False, 'error': 'Didit accepted the API key, but the workflow ID is not right. '
-                    'Paste the Workflow ID from the Didit console, like 83e09caa-e91c-45d8-8cd4-c3e9bbc98a1b.'}
+            return {'success': False, 'error': f'Didit accepted the API key, but the workflow ID "{workflow_id[:40]}" '
+                    'is not right. Paste the Workflow ID from the Didit console, like '
+                    '83e09caa-e91c-45d8-8cd4-c3e9bbc98a1b, then Save.'}
         return {'success': True, 'message': 'Didit accepted the API key.'}
     return {'success': False, 'error': _error_text(status, body)}
 
