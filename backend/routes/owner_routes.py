@@ -19,6 +19,7 @@
   GET/POST /services/settings            → KYC price per check, registered office price a year, office addresses
   GET  /kyc?period=YYYY-MM               → KYC checks per workspace that month and what to charge
   POST /kyc/billing {slug, period, status: invoiced|paid|''}
+  POST /kyc/<slug>/<id>/reject {reason} | resubmit {reason?} → new Didit link emailed to the client
   GET  /registered-office?status=        → every workspace's registered office requests
   POST /registered-office/<id>/confirm {address_index, start_date, months, price} | reject {reason}
        | renew {months, price} | end {reason} | paid {paid}
@@ -346,6 +347,21 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
             svc.set_kyc_billing(body.get('slug'), body.get('period'), body.get('status'))
             audit(admin, 'KYC_BILLING', body.get('slug'), f"{body.get('period')}: {body.get('status') or 'not billed'}")
             return success_response(start_response, message="Billing updated.")
+        kyc = re.match(r'^/kyc/([a-z0-9-]+)/(\d+)/(reject|resubmit)$', sub)
+        if kyc and method == 'POST':
+            slug, check_id, act = kyc.group(1), int(kyc.group(2)), kyc.group(3)
+            if act == 'reject':
+                row = svc.reject_check(slug, check_id, body.get('reason'))
+                audit(admin, 'KYC_REJECTED', slug, f"{row['full_name']} ({row.get('order_number') or 'no order'}): "
+                                                   f"{row.get('reason')}")
+                return success_response(start_response, data=row, message="Marked as rejected.")
+            row, emailed = svc.resubmit_check(slug, check_id, body.get('reason'))
+            audit(admin, 'KYC_RESUBMIT', slug, f"{row['full_name']} ({row.get('order_number') or 'no order'}): "
+                                               f"new link{' emailed' if emailed else ', not emailed'}"
+                                               f"{'; ' + body.get('reason') if body.get('reason') else ''}")
+            return success_response(start_response, data=row, message=(
+                "New link emailed to the client." if emailed
+                else "New link made, but the email was not sent. Copy the link and send it yourself."))
         if sub == '/registered-office' and method == 'GET':
             return success_response(start_response, data={
                 'requests': svc.ro_requests(status=_q(query, 'status') or None),

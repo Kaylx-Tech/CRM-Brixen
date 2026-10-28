@@ -99,21 +99,84 @@ def _period(value):
     return value, f"{value}-01 00:00:00", f"{value}-{last:02d} 23:59:59"
 
 
-def _workspace_checks(tenant, start, end):
-    """The ID checks one workspace started in the period (empty for workspaces without the table)."""
+def _ensure_review_note():
+    """The reason the Finstap team gives when it rejects a check (column added on first use)."""
+    from db import query_db, execute_db
+    columns = {c['name'] for c in (query_db("PRAGMA table_info(id_verifications);") or [])}
+    if columns and 'review_note' not in columns:
+        execute_db("ALTER TABLE id_verifications ADD COLUMN review_note TEXT;")
+
+
+def _didit_reason(result):
+    """Why Didit did not approve a check, in a few words, from the saved result summary."""
+    parts = []
+    for key, label in (('id_status', 'ID document'), ('liveness_status', 'Liveness'), ('face_match_status', 'Face match')):
+        if result.get(key) in ('Declined', 'In Review'):
+            parts.append(f"{label}: {result[key].lower()}")
+    poa = result.get('poa') or {}
+    if poa.get('status') in ('Declined', 'In Review'):
+        parts.append('Proof of address: ' + (', '.join(poa.get('warnings') or []) or poa['status'].lower()))
+    aml = result.get('aml') or {}
+    if aml.get('open_hits') or aml.get('total_hits'):
+        parts.append('AML: possible match')
+    return ' · '.join(parts)
+
+
+def _check_row(row):
+    """One check as the owner's KYC table shows it: the client, the order and the result."""
+    out = dict(row)
+    try:
+        result = json.loads(out.pop('result_json', None) or '{}') or {}
+    except ValueError:
+        result = {}
+    poa = result.get('poa') or {}
+    out['address'] = poa.get('address') or result.get('address') or out.pop('client_address', None) or ''
+    out.pop('client_address', None)
+    out['reason'] = out.get('review_note') or (_didit_reason(result) if out.get('status') != 'Approved' else '')
+    invoice = out.pop('invoice_status', None)
+    out['payment_status'] = '' if not invoice else ('Paid' if invoice == 'Paid' else
+                                                     'Partly paid' if invoice == 'Partial Paid' else
+                                                     'Cancelled' if invoice == 'Cancelled' else 'Unpaid')
+    return out
+
+
+def _workspace_checks(tenant, start, end, check_id=None):
+    """The ID checks one workspace started in the period (empty for workspaces without the table), with the
+    client, the order and its invoice for the owner's KYC table."""
     from db import query_db
+    where = "v.id = ?" if check_id else """v.didit_session_id IS NOT NULL AND v.didit_session_id != ''
+                  AND datetime(v.created_at) BETWEEN datetime(?) AND datetime(?)"""
+    args = (check_id,) if check_id else (start, end)
     with use_tenant(tenant):
         try:
-            return query_db("""
-                SELECT v.id, v.full_name, v.person_role, v.status, v.ch_personal_code, v.created_at,
-                       v.updated_at, o.order_number
-                FROM id_verifications v LEFT JOIN orders o ON o.id = v.order_id
-                WHERE v.didit_session_id IS NOT NULL AND v.didit_session_id != ''
-                  AND datetime(v.created_at) BETWEEN datetime(?) AND datetime(?)
+            _ensure_review_note()
+            rows = query_db(f"""
+                SELECT v.id, v.order_id, v.full_name, v.email, v.person_role, v.status, v.ch_personal_code,
+                       v.result_json, v.review_note, v.session_url, v.link_sent_at, v.created_at, v.updated_at,
+                       o.order_number, o.service_name, o.total, o.status AS order_status, o.created_at AS order_date,
+                       u.full_name AS client_name, u.email AS client_email, u.address AS client_address,
+                       COALESCE(NULLIF(o.end_client_phone, ''), NULLIF(o.checkout_phone, ''), u.phone) AS phone,
+                       (SELECT i.status FROM invoices i WHERE i.order_id = o.id ORDER BY i.id DESC LIMIT 1)
+                           AS invoice_status
+                FROM id_verifications v
+                LEFT JOIN orders o ON o.id = v.order_id
+                LEFT JOIN users u ON u.id = o.user_id
+                WHERE {where}
                 ORDER BY v.created_at DESC;
-            """, (start, end)) or []
+            """, args) or []
+            return [_check_row(r) for r in rows]
         except Exception:
-            return []
+            # Older workspace databases: status only
+            try:
+                return query_db(f"""
+                    SELECT v.id, v.full_name, v.person_role, v.status, v.ch_personal_code, v.created_at,
+                           v.updated_at, o.order_number
+                    FROM id_verifications v LEFT JOIN orders o ON o.id = v.order_id
+                    WHERE {where}
+                    ORDER BY v.created_at DESC;
+                """, args) or []
+            except Exception:
+                return []
 
 
 def _bucket(status):
@@ -186,6 +249,67 @@ def set_kyc_billing(slug, period, status):
         ON CONFLICT(tenant_slug, period) DO UPDATE SET checks = excluded.checks, amount = excluded.amount,
             status = excluded.status, updated_at = excluded.updated_at;
     """, (slug, period, row['checks'], row['amount'], status))
+
+
+def _check(slug, check_id):
+    tenant = get_tenant(slug)
+    if not tenant or not os.path.exists(tenant.get('db_path') or ''):
+        raise ServiceError("Workspace not found")
+    rows = _workspace_checks(tenant, None, None, int(check_id))
+    if not rows:
+        raise ServiceError("Check not found")
+    return tenant, rows[0]
+
+
+def reject_check(slug, check_id, reason):
+    """The Finstap team rejects a check (for example an edited bank statement) and says why; the client can
+    then be sent a new link with Resubmit."""
+    from db import execute_db
+    reason = str(reason or '').strip()[:300]
+    if not reason:
+        raise ServiceError("Write the reason, so the client knows what to fix")
+    tenant, _ = _check(slug, check_id)
+    with use_tenant(tenant):
+        execute_db("UPDATE id_verifications SET status = 'Declined', review_note = ?, updated_at = datetime('now') "
+                   "WHERE id = ?;", (reason, int(check_id)))
+    return _check(slug, check_id)[1]
+
+
+def resubmit_check(slug, check_id, reason=None):
+    """Start a new Didit session for the person and email them the link, with what to fix.
+    Returns (row, emailed). The earlier reason stays in the owner activity log."""
+    from db import execute_db
+    from routes.id_verification_routes import start_session
+    from services.client_mail import compose_client_email
+    from services.email_service import send_email, last_failure_reason
+    tenant, row = _check(slug, check_id)
+    reason = str(reason or row.get('reason') or '').strip()[:300]
+    emailed = False
+    with use_tenant(tenant):
+        fresh, err = start_session(int(check_id))
+        if err:
+            raise ServiceError(err)
+        execute_db("UPDATE id_verifications SET review_note = NULL WHERE id = ?;", (int(check_id),))
+        email = fresh.get('email') or row.get('client_email')
+        if email and fresh.get('session_url'):
+            subject, text, html = compose_client_email(
+                subject='Please verify your identity again',
+                headline='Please verify your identity again',
+                greeting=fresh['full_name'],
+                message=("We could not accept your last identity check. Please follow the secure link below and "
+                         "do it again: it takes about five minutes."),
+                points=[f"What to fix: {reason}" if reason else '',
+                        'Have your passport or driving licence ready: you will photograph it and take a short selfie.',
+                        'Upload an original proof of address from the last 3 months (utility bill, bank statement or '
+                        'council tax bill). Edited or screenshot documents are not accepted.'],
+                details=[('Order', row.get('order_number'))],
+                cta_label='Verify my identity', cta_url=fresh['session_url'], category='ORDER')
+            emailed = send_email(email, subject, html, text, category='ORDER', order_id=row.get('order_id'))
+            if emailed:
+                execute_db("UPDATE id_verifications SET link_sent_at = datetime('now') WHERE id = ?;", (int(check_id),))
+            else:
+                print(f"[KYC resubmit] {slug} check {check_id}: {last_failure_reason() or 'email not sent'}")
+    return _check(slug, check_id)[1], emailed
 
 
 # ── registered office ───────────────────────────────────────────────────────
