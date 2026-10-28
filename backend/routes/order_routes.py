@@ -478,9 +478,10 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         if invoice_id:
             inv = query_db("SELECT id, invoice_number, status FROM invoices WHERE id = ?;", (invoice_id,), one=True)
             result['invoice'] = dict(inv) if inv else None
-        # Thank-you email to the customer with the order number and next steps (respects the Send emails switch)
-        from services.client_mail import notify_order_received
-        notify_order_received(result.get('order_id') or result.get('id'), triggered_by=user_id)
+        # Thank-you email to the customer with the order number and next steps (respects the Send emails switch),
+        # sent in the background so the order is not slowed down by the email server
+        from services.client_mail import notify_order_received_later
+        notify_order_received_later(result.get('order_id') or result.get('id'), triggered_by=user_id)
         # A KYC order starts the customer's Didit identity verification and emails them the link
         from routes.id_verification_routes import auto_start_for_order
         auto_start_for_order(result.get('order_id') or result.get('id'), triggered_by=user_id)

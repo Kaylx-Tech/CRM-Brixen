@@ -343,6 +343,28 @@ def notify_order_received(order_id, triggered_by=None):
         company=company, order=order, triggered_by=triggered_by, account_owner=True)
 
 
+def notify_order_received_later(order_id, triggered_by=None):
+    """notify_order_received in the background: the email server can take many seconds (up to its timeout),
+    so placing the order no longer waits for the thank-you email."""
+    if not order_id:
+        return
+    try:
+        from tenancy import run_in_thread  # Finstap: keep the request's workspace database
+    except ImportError:
+        import threading
+
+        def run_in_thread(target, *args):
+            threading.Thread(target=target, args=args, daemon=True).start()
+
+    def _send(oid, by):
+        try:
+            notify_order_received(oid, triggered_by=by)
+        except Exception as exc:  # emails must never break anything
+            print(f"[Client mail] Order received #{oid}: {exc}")
+
+    run_in_thread(_send, order_id, triggered_by)
+
+
 def notify_product_status_changed(order_id, line_item_id, triggered_by=None):
     """Email the customer only about the product whose fulfillment status changed."""
     order, company = _order_context(order_id)
