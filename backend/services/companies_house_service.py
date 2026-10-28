@@ -22,6 +22,12 @@ def get_ch_api_key():
     if key:
         return key
     try:
+        from services.settings_service import _in_workspace
+        if _in_workspace():
+            return ''  # Finstap workspaces use the server's key only
+    except ImportError:
+        pass
+    try:
         from db import query_db
         row = query_db("SELECT value FROM settings WHERE key = 'companies_house_api_key' LIMIT 1;", one=True)
         if row and row['value']:

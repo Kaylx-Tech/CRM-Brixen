@@ -889,6 +889,8 @@ export default function Settings() {
             </Section>
           </TabsContent>
 
+          {/* Finstap runs every integration for its workspaces: no Integrations page there at all */}
+          {!IS_FINSTAP && (
           <TabsContent value="integrations" className="mt-0 space-y-4">
             <Section
               title="Companies House"
@@ -1162,6 +1164,7 @@ export default function Settings() {
               </div>
             </Section>
           </TabsContent>
+          )}
 
           <TabsContent value="compliance" className="mt-0 space-y-4">
             <Section

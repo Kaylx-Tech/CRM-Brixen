@@ -223,6 +223,19 @@ def _in_workspace():
     return bool(tenant and tenant.get('plan') != 'legacy')
 
 
+# Integrations Finstap runs for every company workspace from the server env (Coolify): a workspace can neither
+# set them nor override them with a value of its own
+PLATFORM_INTEGRATION_KEYS = {
+    'companies_house_api_key', 'getaddress_api_key',
+    'didit_api_key', 'didit_webhook_secret', 'didit_workflow_id', 'didit_callback_url', 'didit_api_base',
+    'google_drive_root_folder', 'google_service_account_json', 'google_service_account_base64',
+    'google_service_account_path',
+}
+# Settings › Integrations keys a workspace cannot save (the WordPress connection will be a plugin later;
+# what a workspace already saved keeps working)
+WORKSPACE_LOCKED_KEYS = PLATFORM_INTEGRATION_KEYS | {'wordpress_url', 'wordpress_webhook_secret'}
+
+
 def _defaults():
     """Brixen's defaults for its own database; neutral ones inside a Finstap company workspace."""
     if _in_workspace():
@@ -235,11 +248,13 @@ def get_setting(key: str, default=None):
     1. Database `settings` table
     2. os.environ (UPPERCASE or exact)
     3. Default value fallback
+    Finstap workspaces skip the database for the integrations Finstap runs (server env only).
     """
     try:
-        row = query_db("SELECT value FROM settings WHERE key = ?;", (key,), one=True)
-        if row and row['value'] is not None and str(row['value']).strip() != '':
-            return str(row['value'])
+        if not (key in PLATFORM_INTEGRATION_KEYS and _in_workspace()):
+            row = query_db("SELECT value FROM settings WHERE key = ?;", (key,), one=True)
+            if row and row['value'] is not None and str(row['value']).strip() != '':
+                return str(row['value'])
     except Exception:
         pass
 
@@ -396,6 +411,10 @@ def update_settings(payload: dict, user_id=None, ip_address=None):
     for key in INVOICE_LIST_KEYS:
         if key in flat_updates:
             flat_updates[key] = json.dumps(clean_invoice_list(key, flat_updates[key]))
+
+    # Finstap manages integrations for every workspace: a workspace's save leaves them alone
+    if _in_workspace():
+        flat_updates = {k: v for k, v in flat_updates.items() if k not in WORKSPACE_LOCKED_KEYS}
 
     saved_keys = []
     for key, value in flat_updates.items():
