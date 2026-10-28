@@ -9,69 +9,107 @@ import urllib.error
 
 CH_API_BASE = "https://api.company-information.service.gov.uk"
 
-def get_ch_api_key():
-    key = os.environ.get('COMPANIES_HOUSE_API_KEY', '').strip()
-    if key:
-        return key
+KEY_REFUSED = ("Companies House refused the API key (401). Check the key in Settings > Integrations "
+               "and COMPANIES_HOUSE_API_KEY on the server.")
+
+# The key that last worked, tried first next time
+_good_key = {'key': ''}
+
+
+def _clean(value):
+    """A key as pasted: no spaces around it, no quotes around it (env values sometimes keep them)."""
+    value = str(value or '').strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+        value = value[1:-1].strip()
+    return value
+
+
+def ch_api_keys():
+    """Every key there is, in order: Settings > Integrations (what the Test button checks), then the server
+    env COMPANIES_HOUSE_API_KEY. Before, the env came first, so an old env key gave 401 on the order form
+    while Settings > Test said the saved key was fine."""
+    keys = []
     try:
         from db import query_db
         row = query_db("SELECT value FROM settings WHERE key = 'companies_house_api_key' LIMIT 1;", one=True)
         if row and row['value']:
-            return str(row['value']).strip()
+            keys.append(_clean(row['value']))
     except Exception:
         pass
-    return ''
+    keys.append(_clean(os.environ.get('COMPANIES_HOUSE_API_KEY', '')))
+    keys = [k for i, k in enumerate(keys) if k and k not in keys[:i]]
+    if _good_key['key'] in keys:
+        keys.remove(_good_key['key'])
+        keys.insert(0, _good_key['key'])
+    return keys
+
+
+def get_ch_api_key():
+    keys = ch_api_keys()
+    return keys[0] if keys else ''
+
+
+def _ch_get(url, timeout=10):
+    """GET a Companies House URL as JSON. A key that gets 401 is skipped for the next one; if every key is
+    refused, the 401 is raised."""
+    refused = None
+    for api_key in ch_api_keys():
+        auth_header = base64.b64encode(f"{api_key}:".encode('utf-8')).decode('utf-8')
+        req = urllib.request.Request(url, headers={
+            "Authorization": f"Basic {auth_header}",
+            "Accept": "application/json"
+        })
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                data = json.loads(response.read().decode('utf-8'))
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                refused = e
+                continue
+            raise
+        _good_key['key'] = api_key
+        return data
+    raise refused
+
+
+def _error_text(e):
+    if isinstance(e, urllib.error.HTTPError) and e.code == 401:
+        return KEY_REFUSED
+    return str(e)
+
 
 def fetch_company_profile(company_number):
     """Fetch live company profile data from UK Companies House."""
-    api_key = get_ch_api_key()
-    if not api_key:
+    if not get_ch_api_key():
         return {"error": "COMPANIES_HOUSE_API_KEY is not configured on server"}
 
     comp_num = str(company_number).strip().zfill(8).upper()
     url = f"{CH_API_BASE}/company/{comp_num}"
-    
-    auth_header = base64.b64encode(f"{api_key}:".encode('utf-8')).decode('utf-8')
-    req = urllib.request.Request(url, headers={
-        "Authorization": f"Basic {auth_header}",
-        "Accept": "application/json"
-    })
 
     try:
-        with urllib.request.urlopen(req, timeout=10) as response:
-            data = json.loads(response.read().decode('utf-8'))
-            return {"success": True, "data": data}
+        return {"success": True, "data": _ch_get(url)}
     except urllib.error.HTTPError as e:
-        return {"success": False, "status_code": e.code, "error": f"Companies House API error: {e.reason}"}
+        error = KEY_REFUSED if e.code == 401 else f"Companies House API error: {e.reason}"
+        return {"success": False, "status_code": e.code, "error": error}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 def fetch_company_officers(company_number):
     """Fetch company directors and secretaries from Companies House."""
-    api_key = get_ch_api_key()
-    if not api_key:
+    if not get_ch_api_key():
         return {"error": "COMPANIES_HOUSE_API_KEY is not configured"}
 
     comp_num = str(company_number).strip().zfill(8).upper()
     url = f"{CH_API_BASE}/company/{comp_num}/officers"
-    
-    auth_header = base64.b64encode(f"{api_key}:".encode('utf-8')).decode('utf-8')
-    req = urllib.request.Request(url, headers={
-        "Authorization": f"Basic {auth_header}",
-        "Accept": "application/json"
-    })
 
     try:
-        with urllib.request.urlopen(req, timeout=10) as response:
-            data = json.loads(response.read().decode('utf-8'))
-            return {"success": True, "officers": data.get('items', [])}
+        return {"success": True, "officers": _ch_get(url).get('items', [])}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": _error_text(e)}
 
 def search_companies_house(query):
     """Search companies by name or number from UK Companies House."""
-    api_key = get_ch_api_key()
-    if not api_key:
+    if not get_ch_api_key():
         return {"success": False, "error": "COMPANIES_HOUSE_API_KEY is not configured"}
 
     import urllib.parse
@@ -81,20 +119,11 @@ def search_companies_house(query):
 
     q_encoded = urllib.parse.quote(q_str)
     url = f"{CH_API_BASE}/search/companies?q={q_encoded}&items_per_page=10"
-    
-    auth_header = base64.b64encode(f"{api_key}:".encode('utf-8')).decode('utf-8')
-    req = urllib.request.Request(url, headers={
-        "Authorization": f"Basic {auth_header}",
-        "Accept": "application/json"
-    })
 
     try:
-        with urllib.request.urlopen(req, timeout=10) as response:
-            data = json.loads(response.read().decode('utf-8'))
-            items = data.get('items', [])
-            return {"success": True, "results": items}
+        return {"success": True, "results": _ch_get(url).get('items', [])}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": _error_text(e)}
 
 
 def normalize_company_number(company_number):

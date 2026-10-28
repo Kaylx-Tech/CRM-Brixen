@@ -420,28 +420,37 @@ def test_google_drive_connection(custom_json=None):
 
 def test_companies_house_connection(custom_api_key=None):
     """Test UK Companies House API Key with a real company query."""
-    api_key = (custom_api_key or get_setting('companies_house_api_key', '')).strip()
-    if not api_key:
+    from services.companies_house_service import _ch_get, ch_api_keys
+    api_key = (custom_api_key or '').strip()
+    if not api_key and not ch_api_keys():
         return {"success": False, "error": "Companies House API key is missing"}
 
     url = "https://api.company-information.service.gov.uk/company/00000006"
-    auth_header = base64.b64encode(f"{api_key}:".encode('utf-8')).decode('utf-8')
-    req = urllib.request.Request(url, headers={
-        "Authorization": f"Basic {auth_header}",
-        "Accept": "application/json"
-    })
 
     try:
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
-            return {
-                "success": True,
-                "message": "Companies House API Key is valid and active",
-                "sample_company": data.get('company_name'),
-                "sample_status": data.get('company_status')
-            }
+        if api_key:
+            # The key typed on the page, before it is saved
+            auth_header = base64.b64encode(f"{api_key}:".encode('utf-8')).decode('utf-8')
+            req = urllib.request.Request(url, headers={
+                "Authorization": f"Basic {auth_header}",
+                "Accept": "application/json"
+            })
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                data = json.loads(resp.read().decode('utf-8'))
+        else:
+            # The same keys, in the same order, as company search and the order form's name check
+            data = _ch_get(url, timeout=8)
+        return {
+            "success": True,
+            "message": "Companies House API Key is valid and active",
+            "sample_company": data.get('company_name'),
+            "sample_status": data.get('company_status')
+        }
     except urllib.error.HTTPError as e:
         if e.code == 401:
+            if not api_key:
+                return {"success": False, "error": "Companies House refused every saved key (401): the key in "
+                                                   "Settings and COMPANIES_HOUSE_API_KEY on the server"}
             return {"success": False, "error": "Invalid Companies House API Key (401 Unauthorized)"}
         return {"success": False, "error": f"Companies House API returned status {e.code}: {e.reason}"}
     except Exception as e:
