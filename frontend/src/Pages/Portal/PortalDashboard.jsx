@@ -1,8 +1,7 @@
 import React, { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { SectionCards } from "@/Layout/StatsCard"
-import { IconAlertCircle, IconUpload, IconCreditCard, IconInfoCircle, IconFileText, IconBuilding } from "@tabler/icons-react"
+import { IconAlertCircle, IconUpload, IconCreditCard, IconInfoCircle, IconFileText, IconBuilding, IconPackage, IconBell, IconShoppingBag, IconArrowRight } from "@tabler/icons-react"
 import { usePortalData, PageHeader, PageState, StatusBadge, ProgressBar, formatDate } from "./portalShared"
 import { OrderDetailDialog } from "./PortalOrders"
 import PortalIdVerification from "./PortalIdVerification"
@@ -11,6 +10,40 @@ import { toast } from "sonner"
 
 const ACTION_ICONS = { upload: IconUpload, "credit-card": IconCreditCard, info: IconInfoCircle }
 
+// Old Brixen portal look: white cards, small bold uppercase labels, blue links
+function OverviewCard({ title, value, icon: Icon, onClick }) {
+  const Tag = onClick ? "button" : "div"
+  return (
+    <Tag
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      className="flex flex-col gap-2 rounded-xl border border-slate-200/70 bg-white p-4 text-left shadow-[0_4px_14px_rgba(15,23,42,0.05)] transition-shadow hover:shadow-[0_6px_18px_rgba(15,23,42,0.09)] dark:border-border dark:bg-card"
+    >
+      <span className="flex size-8 items-center justify-center rounded-lg bg-[#EFF6FF] text-[#2563EB] dark:bg-blue-500/15">
+        <Icon className="size-4" />
+      </span>
+      <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-slate-500">{title}</span>
+      <span className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-foreground">{value}</span>
+    </Tag>
+  )
+}
+
+function Panel({ title, linkLabel, onLink, children }) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white dark:border-border dark:bg-card">
+      <div className="flex items-center justify-between gap-3 px-[18px] pt-4 pb-3">
+        <h3 className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-foreground">{title}</h3>
+        {linkLabel ? (
+          <button type="button" onClick={onLink} className="inline-flex cursor-pointer items-center gap-1 text-[13px] font-semibold text-[#2563EB] hover:underline">
+            {linkLabel} <IconArrowRight className="size-3.5" />
+          </button>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  )
+}
+
 export default function PortalDashboard() {
   const navigate = useNavigate()
   const { data, isLoading, error, reload } = usePortalData("/client/dashboard")
@@ -18,10 +51,10 @@ export default function PortalDashboard() {
   const d = data || {}
 
   const stats = [
-    { title: "Companies", value: String(d.total_companies ?? 0), onClick: () => navigate("/portal/companies") },
-    { title: "Active orders", value: String(d.active_orders_count ?? 0), onClick: () => navigate("/portal/orders") },
-    { title: "Documents", value: String(d.documents_count ?? 0), onClick: () => navigate("/portal/documents") },
-    { title: "Needs your attention", value: String(d.pending_actions_count ?? 0) },
+    { title: "My businesses", value: String(d.total_companies ?? 0), icon: IconBuilding, onClick: () => navigate("/portal/companies") },
+    { title: "Active orders", value: String(d.active_orders_count ?? 0), icon: IconPackage, onClick: () => navigate("/portal/orders") },
+    { title: "Documents", value: String(d.documents_count ?? 0), icon: IconFileText, onClick: () => navigate("/portal/documents") },
+    { title: "Pending actions", value: String(d.pending_actions_count ?? 0), icon: IconBell },
   ]
 
   const runAction = (a) => {
@@ -38,15 +71,14 @@ export default function PortalDashboard() {
         isLoading={isLoading}
       />
       <PageState isLoading={isLoading && !data} error={error} onRetry={reload}>
-        <SectionCards stats={stats} isLoading={false} />
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {stats.map((s) => <OverviewCard key={s.title} {...s} />)}
+        </div>
 
         {/* Directors / PSCs still to verify their identity (shown only while one is open) */}
         <PortalIdVerification onlyOpen />
 
-        <div className="rounded-2xl border bg-card">
-          <div className="border-b px-4 py-3">
-            <h3 className="font-semibold">Needs your attention</h3>
-          </div>
+        <Panel title="Needs your attention">
           {(d.pending_actions || []).length === 0 ? (
             <p className="px-4 py-6 text-sm font-medium text-emerald-600">You're all caught up.</p>
           ) : (
@@ -68,14 +100,10 @@ export default function PortalDashboard() {
               })}
             </ul>
           )}
-        </div>
+        </Panel>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border bg-card">
-            <div className="flex items-center justify-between border-b px-4 py-3">
-              <h3 className="font-semibold">Active orders</h3>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/portal/orders")}>View all</Button>
-            </div>
+          <Panel title="Your Orders" linkLabel="View all orders" onLink={() => navigate("/portal/orders")}>
             {(d.active_orders || []).length === 0 ? (
               <p className="px-4 py-6 text-sm text-muted-foreground">No orders in progress.</p>
             ) : (
@@ -96,14 +124,10 @@ export default function PortalDashboard() {
                 ))}
               </ul>
             )}
-          </div>
+          </Panel>
 
           <div className="flex flex-col gap-6">
-            <div className="rounded-2xl border bg-card">
-              <div className="flex items-center justify-between border-b px-4 py-3">
-                <h3 className="font-semibold">Companies</h3>
-                <Button variant="ghost" size="sm" onClick={() => navigate("/portal/companies")}>View all</Button>
-              </div>
+            <Panel title="Business Portfolio" linkLabel="View Business Portfolio" onLink={() => navigate("/portal/companies")}>
               {(d.companies || []).length === 0 ? (
                 <p className="px-4 py-6 text-sm text-muted-foreground">No companies yet.</p>
               ) : (
@@ -120,13 +144,9 @@ export default function PortalDashboard() {
                   ))}
                 </ul>
               )}
-            </div>
+            </Panel>
 
-            <div className="rounded-2xl border bg-card">
-              <div className="flex items-center justify-between border-b px-4 py-3">
-                <h3 className="font-semibold">Recent documents</h3>
-                <Button variant="ghost" size="sm" onClick={() => navigate("/portal/documents")}>View all</Button>
-              </div>
+            <Panel title="Recent Documents" linkLabel="View all documents" onLink={() => navigate("/portal/documents")}>
               {(d.recent_documents || []).length === 0 ? (
                 <p className="px-4 py-6 text-sm text-muted-foreground">No documents shared with you yet.</p>
               ) : (
@@ -148,8 +168,44 @@ export default function PortalDashboard() {
                   ))}
                 </ul>
               )}
-            </div>
+            </Panel>
           </div>
+        </div>
+
+        {/* Quick actions and help, as on the old portal home */}
+        <div className="grid gap-4 lg:grid-cols-[1fr_minmax(0,380px)]">
+          <section className="rounded-xl bg-white p-4 shadow-[0_4px_14px_rgba(15,23,42,0.05)] dark:bg-card">
+            <h3 className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-foreground">Quick Actions</h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[
+                ["Upload Document", IconUpload, "/portal/documents"],
+                ["View Orders", IconShoppingBag, "/portal/orders"],
+                ["Business Portfolio", IconBuilding, "/portal/companies"],
+              ].map(([label, Icon, to]) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => navigate(to)}
+                  className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 hover:bg-slate-50 dark:border-border dark:bg-card dark:text-foreground"
+                >
+                  <Icon className="size-3.5" /> {label}
+                </button>
+              ))}
+            </div>
+          </section>
+          <section className="flex items-center justify-between gap-3 rounded-xl bg-white p-4 shadow-[0_4px_14px_rgba(15,23,42,0.05)] dark:bg-card">
+            <div>
+              <h3 className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-foreground">Need help?</h3>
+              <p className="text-xs text-slate-500">Your Brixen team is here to help.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate("/portal/support")}
+              className="h-8 shrink-0 cursor-pointer rounded-full bg-[#2563EB] px-4 text-xs font-semibold text-white hover:bg-[#1D4ED8]"
+            >
+              Contact Support
+            </button>
+          </section>
         </div>
       </PageState>
       <OrderDetailDialog orderId={openOrderId} onClose={() => setOpenOrderId(null)} />

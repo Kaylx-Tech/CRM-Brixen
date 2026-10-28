@@ -28,6 +28,19 @@ const GROUPED = {
     "fs-menu-badge top-2! right-2 h-5 min-w-5 rounded-full bg-sidebar-primary px-1.5 text-[10.5px] font-semibold text-white! shadow-sm",
 }
 
+// Client portal menu, as in the old Brixen portal: bold small group titles, slate rows and the active
+// page in a soft blue
+const PORTAL = {
+  group: "px-2 py-1",
+  label: "h-6 px-3 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400",
+  menu: "gap-0.5",
+  button:
+    "h-10 gap-3 rounded-lg px-3.5 text-[14px] font-medium text-slate-300 transition-colors hover:bg-[#172033] hover:text-white " +
+    "data-active:bg-[rgba(37,99,235,0.18)] data-active:text-[#93C5FD] " +
+    "[&_svg]:size-[18px]! [&_svg]:text-slate-400 hover:[&_svg]:text-white data-active:[&_svg]:text-[#60A5FA]",
+  badge: GROUPED.badge,
+}
+
 export function NavMain({
   groups = [],
   items,
@@ -35,6 +48,7 @@ export function NavMain({
   variant,
 }) {
   const location = useLocation()
+  const styled = variant === "grouped" ? GROUPED : variant === "portal" ? PORTAL : null
   const grouped = variant === "grouped"
 
   // Support legacy flat `items` prop as a single unlabeled group
@@ -51,17 +65,17 @@ export function NavMain({
   return (
     <>
       {resolvedGroups.map((group) => (
-        <SidebarGroup key={group.label || "main"} className={grouped ? GROUPED.group : undefined}>
+        <SidebarGroup key={group.label || "main"} className={styled ? styled.group : undefined}>
           {group.label ? (
             <SidebarGroupLabel
-              className={grouped ? cn(GROUPED.label, "fs-menu-row") : undefined}
+              className={grouped ? cn(GROUPED.label, "fs-menu-row") : styled ? styled.label : undefined}
               style={grouped ? { "--i": row++ } : undefined}
             >
               {group.label}
             </SidebarGroupLabel>
           ) : null}
           <SidebarGroupContent className="flex flex-col gap-2">
-            <SidebarMenu className={grouped ? GROUPED.menu : undefined}>
+            <SidebarMenu className={styled ? styled.menu : undefined}>
               {group.items.map((item) => {
                 const pathOnly = item.url.split("?")[0]
                 const isActive =
@@ -75,13 +89,13 @@ export function NavMain({
                       render={<Link to={item.url} />}
                       tooltip={item.title}
                       isActive={isActive}
-                      className={grouped ? cn(GROUPED.button, count > 0 && "pr-10") : undefined}
+                      className={styled ? cn(styled.button, count > 0 && "pr-10") : undefined}
                     >
                       {item.icon}
                       <span>{item.title}</span>
                     </SidebarMenuButton>
                     {count > 0 ? (
-                      <SidebarMenuBadge className={grouped ? GROUPED.badge : undefined} aria-label={`${count} open`}>
+                      <SidebarMenuBadge className={styled ? styled.badge : undefined} aria-label={`${count} open`}>
                         {count > 99 ? "99+" : count}
                       </SidebarMenuBadge>
                     ) : null}
