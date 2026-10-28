@@ -3,15 +3,12 @@ import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "reac
 import { cn } from "cn"
 import {
   IconActivity,
-  IconArticle,
   IconBuildingSkyscraper,
   IconChevronDown,
   IconId,
   IconLayoutDashboard,
   IconLogout,
-  IconMail,
   IconMapPin,
-  IconNews,
   IconPlugConnected,
   IconReceipt2,
   IconSettings,
@@ -57,23 +54,10 @@ const NAV = [
       ["Registered office", "/owner/registered-office", IconMapPin],
     ],
   },
-  {
-    label: "Content",
-    icon: IconNews,
-    items: [
-      ["Blogs", "/owner/content/blog", IconArticle],
-      ["Newsletter", "/owner/content/newsletter", IconMail],
-    ],
-  },
+  // Content (Blogs, Newsletter) is off the menu for now (user, 2026-10-28); its pages stay at /owner/content/…
+  ["Integrations", "/owner/integrations", IconPlugConnected],
   ["Billing", "/owner/billing", IconReceipt2],
-  {
-    label: "Settings",
-    icon: IconSettings,
-    items: [
-      ["Integrations", "/owner/integrations", IconPlugConnected],
-      ["My account", "/owner/settings", IconSettings],
-    ],
-  },
+  ["Settings", "/owner/settings", IconSettings],
 ]
 
 const NAV_ITEM = "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition"
