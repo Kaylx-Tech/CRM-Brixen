@@ -70,7 +70,7 @@ export default function PortalDashboard() {
           )}
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
           <div className="rounded-2xl border bg-card">
             <div className="flex items-center justify-between border-b px-4 py-3">
               <h3 className="font-semibold">Active orders</h3>

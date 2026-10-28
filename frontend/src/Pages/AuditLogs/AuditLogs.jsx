@@ -6,6 +6,8 @@ import { DataTable } from '../../Layout/DataTable'
 import { IconArrowsSort } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { apiRequest, getApiBase, toastApiEmpty } from '@/lib/api'
+import { PlanLocked } from '@/components/PlanLocked'
+import { isPlanLocked } from '@/lib/planLock'
 import { OverflowTooltip } from '@/components/OverflowTooltip'
 import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
@@ -56,19 +58,24 @@ const AuditLogs = () => {
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
+  const [planLocked, setPlanLocked] = useState(null)
 
   const loadLogs = useCallback(async () => {
     setIsLoading(true)
     setLoadError(null)
+    setPlanLocked(null)
     try {
       // Same endpoint as legacy app.js loadAdminLogs() → GET /api/admin/activity-logs
       const res = await apiRequest('/admin/activity-logs?limit=200', {
         label: 'Audit Logs',
+        silent: true,
       })
       if (!res.ok) {
         setLogs([])
         setTotal(0)
-        setLoadError(res.reason)
+        // Not in the workspace's plan: an upgrade card instead of an error and an empty table
+        if (isPlanLocked(res)) setPlanLocked(res.reason)
+        else setLoadError(res.reason)
         return
       }
 
@@ -239,13 +246,17 @@ const AuditLogs = () => {
         </div>
       )}
 
-      <DataTable
-        columns={columns}
-        data={logs}
-        filterConfig={filterConfig}
-        isLoading={isLoading}
-        searchPlaceholder="Search action, user, details…"
-      />
+      {planLocked ? (
+        <PlanLocked message={planLocked} />
+      ) : (
+        <DataTable
+          columns={columns}
+          data={logs}
+          filterConfig={filterConfig}
+          isLoading={isLoading}
+          searchPlaceholder="Search action, user, details…"
+        />
+      )}
     </div>
   )
 }

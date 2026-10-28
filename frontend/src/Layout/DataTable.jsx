@@ -52,7 +52,8 @@ function columnLabel(column) {
 /** Phones: one table row as a card: its first column as the title (actions on the right), the rest
  *  as label / value lines. */
 function StackedRowCard({ row, table }) {
-  const cells = row.getVisibleCells().filter((c) => c.column.id !== "select");
+  // Every column: phones have no Columns menu, and hideOnSmallerScreens is for the wide table only
+  const cells = row.getAllCells().filter((c) => c.column.id !== "select");
   const actions = cells.find((c) => ACTION_COLUMNS.includes(c.column.id));
   const [first, ...rest] = cells.filter((c) => c !== actions);
   return (
@@ -92,12 +93,19 @@ export const DataTable = ({
   // card, otherwise the row's columns stacked as label / value. mobileCards={false} keeps the table.
   renderMobileCard,
   mobileCards = true,
+  // Column ids hidden at first on screens narrower than 1536px, so the table fits without sideways
+  // scrolling; the Columns menu shows them again
+  hideOnSmallerScreens,
 }) => {
   const isSearchControlled = typeof onSearchChange === "function";
   const [sorting, setSorting] = React.useState([]);
   const [columnFilters, setColumnFilters] = React.useState([]);
   const [globalFilter, setGlobalFilter] = React.useState("");
-  const [columnVisibility, setColumnVisibility] = React.useState({});
+  const [columnVisibility, setColumnVisibility] = React.useState(() => {
+    if (!hideOnSmallerScreens?.length || typeof window === "undefined") return {};
+    if (window.matchMedia?.("(min-width: 1536px)").matches) return {};
+    return Object.fromEntries(hideOnSmallerScreens.map((id) => [id, false]));
+  });
   const [rowSelection, setRowSelection] = React.useState({});
   const [pagination, setPagination] = React.useState({
     pageIndex: 0,

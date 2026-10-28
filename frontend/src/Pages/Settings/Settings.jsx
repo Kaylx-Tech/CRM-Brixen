@@ -1264,13 +1264,21 @@ export default function Settings() {
           )}
 
           <TabsContent value="profile" className="mt-0 space-y-4">
-            <Section title="Account" description="Your staff login details. Email cannot be changed here.">
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="text-sm text-muted-foreground">Signed-in role</span>
-                {profile.role ? (
-                  <Badge className="badge-sky text-[11px]">{profile.role}</Badge>
-                ) : null}
-              </div>
+            {/* Customers see this tab in the portal: no staff wording or role */}
+            <Section
+              title="Account"
+              description={profile.role === 'CLIENT'
+                ? 'Your login details. To change your email, contact us.'
+                : 'Your staff login details. Email cannot be changed here.'}
+            >
+              {profile.role !== 'CLIENT' && (
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-sm text-muted-foreground">Signed-in role</span>
+                  {profile.role ? (
+                    <Badge className="badge-sky text-[11px]">{profile.role}</Badge>
+                  ) : null}
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field id="prof_email" label="Email">
                   <Input
@@ -1282,15 +1290,17 @@ export default function Settings() {
                     className="bg-muted/40"
                   />
                 </Field>
-                <Field id="prof_role" label="Role">
-                  <Input
-                    id="prof_role"
-                    value={profile.role}
-                    readOnly
-                    disabled
-                    className="bg-muted/40"
-                  />
-                </Field>
+                {profile.role !== 'CLIENT' && (
+                  <Field id="prof_role" label="Role">
+                    <Input
+                      id="prof_role"
+                      value={profile.role}
+                      readOnly
+                      disabled
+                      className="bg-muted/40"
+                    />
+                  </Field>
+                )}
                 <Field id="prof_full_name" label="Full name">
                   <Input
                     id="prof_full_name"

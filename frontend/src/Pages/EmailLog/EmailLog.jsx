@@ -13,6 +13,8 @@ import { DataTable } from '../../Layout/DataTable'
 import { IconEye, IconSend, IconLoader2, IconMailCheck, IconMailX, IconMailPause } from '@tabler/icons-react'
 import { SectionCards } from '../../Layout/StatsCard'
 import { apiRequest } from '@/lib/api'
+import { PlanLocked } from '@/components/PlanLocked'
+import { isPlanLocked } from '@/lib/planLock'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import { OverflowTooltip } from '@/components/OverflowTooltip'
 import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
@@ -141,16 +143,20 @@ export default function EmailLog() {
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
+  const [planLocked, setPlanLocked] = useState(null)
   const [previewId, setPreviewId] = useState(null)
 
   const load = useCallback(async () => {
     setIsLoading(true)
     setLoadError(null)
+    setPlanLocked(null)
     try {
       const res = await apiRequest('/admin/email-logs?limit=200', { label: 'Email log', silent: true })
       if (!res.ok) {
         setEmails([])
-        setLoadError(res.reason)
+        // Not in the workspace's plan: an upgrade card instead of an error, zero counts and an empty table
+        if (isPlanLocked(res)) setPlanLocked(res.reason)
+        else setLoadError(res.reason)
         return
       }
       const d = res.data?.data || {}
@@ -286,30 +292,37 @@ export default function EmailLog() {
         </div>
       </div>
 
-      <SectionCards
-        compact
-        isLoading={isLoading && total === 0}
-        stats={[
-          { title: 'Total Emails', hero: true, value: String(total), footerSubText: 'Sent or attempted' },
-          { title: 'Delivered', tone: 'emerald', icon: IconMailCheck, value: String(counts.sent || 0), footerSubText: total ? `${Math.round(((counts.sent || 0) / total) * 100)}% of all emails` : 'Nothing yet' },
-          { title: 'Not Delivered', tone: 'rose', icon: IconMailX, value: String(failed), footerSubText: 'Failed, bad address or no SMTP' },
-          { title: 'Held (emails off)', tone: 'amber', icon: IconMailPause, value: String(counts.suppressed || 0), footerSubText: 'Send emails is switched off' },
-        ]}
-      />
+      {planLocked ? (
+        <PlanLocked message={planLocked} />
+      ) : (
+        <>
+          <SectionCards
+            compact
+            isLoading={isLoading && total === 0}
+            stats={[
+              { title: 'Total Emails', hero: true, value: String(total), footerSubText: 'Sent or attempted' },
+              { title: 'Delivered', tone: 'emerald', icon: IconMailCheck, value: String(counts.sent || 0), footerSubText: total ? `${Math.round(((counts.sent || 0) / total) * 100)}% of all emails` : 'Nothing yet' },
+              { title: 'Not Delivered', tone: 'rose', icon: IconMailX, value: String(failed), footerSubText: 'Failed, bad address or no SMTP' },
+              { title: 'Held (emails off)', tone: 'amber', icon: IconMailPause, value: String(counts.suppressed || 0), footerSubText: 'Send emails is switched off' },
+            ]}
+          />
 
-      {loadError && (
-        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-2 text-sm text-destructive">
-          {loadError}
-        </div>
+          {loadError && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-2 text-sm text-destructive">
+              {loadError}
+            </div>
+          )}
+
+          <DataTable
+            hideOnSmallerScreens={['triggered_by_name']}
+            columns={columns}
+            data={emails}
+            filterConfig={filterConfig}
+            isLoading={isLoading}
+            searchPlaceholder="Search address, subject, customer…"
+          />
+        </>
       )}
-
-      <DataTable
-        columns={columns}
-        data={emails}
-        filterConfig={filterConfig}
-        isLoading={isLoading}
-        searchPlaceholder="Search address, subject, customer…"
-      />
 
       <EmailPreview emailId={previewId} onClose={() => setPreviewId(null)} onResend={resend} />
     </div>

@@ -83,14 +83,11 @@ export function toastApiError({ title, reason, status, url } = {}) {
 }
 
 /**
- * Soft info when API succeeded but list is empty.
+ * Called when a list loaded but is empty. No toast any more: every list already shows its own
+ * empty state, and the toast stayed on screen while the user moved to other pages.
  */
-export function toastApiEmpty(label, apiBase) {
-  toast.info(`${label}: No records found`, {
-    description: `API responded successfully, but there is no data to display.`,
-    duration: 4000,
-  })
-}
+// eslint-disable-next-line no-unused-vars
+export function toastApiEmpty(label, apiBase) {}
 
 let sessionExpiredHandled = false
 
