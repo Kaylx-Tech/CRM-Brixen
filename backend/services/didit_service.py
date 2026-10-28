@@ -62,8 +62,24 @@ def _request(method, path, payload=None, api_key=None):
         return 0, {'detail': str(e)}
 
 
+def _field_errors(body, prefix=''):
+    """Didit's 400 replies list problems per field, e.g. {"callback": ["Enter a valid URL."]}."""
+    parts = []
+    for key, value in (body.items() if isinstance(body, dict) else []):
+        name = f"{prefix}{key}"
+        if isinstance(value, dict):
+            parts.extend(_field_errors(value, f"{name}."))
+        elif isinstance(value, list):
+            parts.append(f"{name}: {' '.join(str(v) for v in value)}")
+        elif value:
+            parts.append(f"{name}: {value}")
+    return parts
+
+
 def _error_text(status, body):
     detail = body.get('detail') or body.get('message') or body.get('error') if isinstance(body, dict) else None
+    if not detail and isinstance(body, dict):
+        detail = '; '.join(_field_errors(body))[:300] or None
     if status in (401, 403):
         return 'Didit refused the API key. Check it in Settings > Integrations.'
     if status == 0:
