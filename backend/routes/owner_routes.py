@@ -31,6 +31,8 @@
   GET  /admins                           → owner accounts
   GET/POST /integrations {values: {NAME: value}, clear: [NAME]}  → Finstap's API keys for every workspace
        (secrets are never sent back, only whether they are set)
+  GET  /integrations/r2  · POST /integrations/r2/test · POST /integrations/r2/move  → R2 check and moving
+       documents that are only on the server into R2
 
 Every route except login needs "Authorization: Bearer owner.<token>". Nothing here deletes a workspace
 or its data; Brixen's adopted database (plan "legacy") cannot be changed from here.
@@ -363,6 +365,26 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
             audit(admin, 'INTEGRATIONS_CHANGED', detail=', '.join(changed))
         return success_response(start_response, data={'groups': integrations.overview()},
                                 message="Saved." if changed else "Nothing changed.")
+
+    # Cloudflare R2: test it, see how many documents are still only on the server, move them in
+    if sub == '/integrations/r2' and method == 'GET':
+        from services import r2_migrate
+        return success_response(start_response, data=r2_migrate.overview())
+    if sub == '/integrations/r2/test' and method == 'POST':
+        from services import r2_storage
+        health = r2_storage.health()
+        return success_response(start_response, data=health,
+                                message="R2 works." if health['ok'] else health['error'])
+    if sub == '/integrations/r2/move' and method == 'POST':
+        from services import r2_migrate
+        result = r2_migrate.move(limit=200)
+        if result.get('moved'):
+            audit(admin, 'R2_FILES_MOVED', detail=f"{result['moved']} moved, {result['failed']} failed, "
+                                                  f"{result['left']} left")
+        message = result.get('error') or (f"{result['moved']} file(s) moved to R2"
+                                          + (f", {result['failed']} failed" if result['failed'] else '')
+                                          + (f", {result['left']} still on the server" if result['left'] else '') + '.')
+        return success_response(start_response, data=result, message=message)
 
     # ── services Finstap sells: KYC checks and registered offices (services/platform_services.py) ──
     try:

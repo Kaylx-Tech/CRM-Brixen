@@ -141,6 +141,71 @@ function WebhookUrl({ url, title, hint }) {
   )
 }
 
+/** R2: test the connection (each step), and move documents that are only on the server into R2. */
+function R2Tools() {
+  const [files, setFiles] = useState(null)
+  const [steps, setSteps] = useState(null)
+  const [busy, setBusy] = useState("")
+
+  useEffect(() => {
+    ownerApi("/integrations/r2").then((res) => res.ok && setFiles(res.data))
+  }, [])
+
+  const run = async (key, path) => {
+    setBusy(key)
+    const res = await ownerApi(path, { method: "POST" })
+    setBusy("")
+    if (!res.ok) return toastFail(undefined, res.error)
+    if (res.data?.steps) setSteps(res.data.steps)
+    const good = key === "test" ? res.data.ok : res.data.ok !== false && !res.data.error
+    ;(good ? toastDone : toastFail)(undefined, res.message)
+    ownerApi("/integrations/r2").then((r) => r.ok && setFiles(r.data))
+  }
+
+  return (
+    <div className="space-y-3 rounded-xl border bg-muted/40 p-3 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="font-medium">Documents</p>
+          <p className="text-xs text-muted-foreground">
+            {files
+              ? `${files.in_r2} in R2 · ${files.server_only} only on the server (saved there when an upload to R2 failed)`
+              : "Counting…"}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" size="sm" disabled={!!busy} onClick={() => run("test", "/integrations/r2/test")}>
+            {busy === "test" && <IconLoader2 className="size-4 animate-spin" />}
+            Test connection
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            disabled={!!busy || !files?.server_only}
+            onClick={() => run("move", "/integrations/r2/move")}
+          >
+            {busy === "move" && <IconLoader2 className="size-4 animate-spin" />}
+            Move files to R2
+          </Button>
+        </div>
+      </div>
+      {steps && (
+        <ul className="space-y-1 text-xs">
+          {steps.map((s) => (
+            <li key={s.step} className="flex gap-2">
+              <span className={cn("font-semibold", s.ok ? "text-emerald-600" : "text-destructive")}>{s.ok ? "OK" : "FAIL"}</span>
+              <span>
+                {s.step}
+                {s.detail ? <span className="text-muted-foreground"> · {s.detail}</span> : null}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 /** Integrations: the API keys Finstap runs for every workspace. Workspaces cannot see or change them. */
 export default function OwnerIntegrations() {
   const [data, setData] = useState(null)
@@ -184,6 +249,8 @@ export default function OwnerIntegrations() {
                     title="Webhook URL for Stripe"
                     hint="Stripe › Developers › Webhooks › Add endpoint. Events: checkout.session.completed, customer.subscription.created, customer.subscription.updated, customer.subscription.deleted, invoice.paid, invoice.payment_failed."
                   />
+                ) : g.id === "r2" ? (
+                  <R2Tools />
                 ) : null
               }
             />
