@@ -473,7 +473,7 @@ export default function Settings() {
         path = '/admin/settings/test-didit'
         body = {
           ...(form.didit_api_key.trim() ? { didit_api_key: form.didit_api_key.trim() } : {}),
-          didit_workflow_id: form.didit_workflow_id.trim(),
+          ...(form.didit_workflow_id.trim() ? { didit_workflow_id: form.didit_workflow_id.trim() } : {}),
         }
       } else if (kind === 'drive') {
         path = '/admin/settings/test-google-drive'
