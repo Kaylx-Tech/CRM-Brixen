@@ -1,5 +1,5 @@
 import React from "react"
-import { Link, Navigate, Outlet } from "react-router-dom"
+import { Navigate, Outlet } from "react-router-dom"
 import brixenLogo from "@/assets/brixen-logo.png"
 import { NavMain } from "@/Layout/nav-main"
 import { NavUser } from "@/Layout/nav-user"
@@ -90,16 +90,6 @@ export default function ClientLayout() {
           <NavMain groups={NAV_GROUPS} variant="portal" />
         </SidebarContent>
         <SidebarFooter>
-          <div className="mx-1 rounded-xl border border-slate-200 bg-white p-4 text-center">
-            <h4 className="text-[13.5px] font-bold text-slate-900">Need Help?</h4>
-            <p className="mt-1 text-xs text-slate-500">Speak to your dedicated corporate advisor.</p>
-            <Link
-              to="/portal/support"
-              className="mt-3 flex h-8 items-center justify-center rounded-full bg-[#0084D6] text-[13px] font-medium text-white hover:bg-[#0073bb]"
-            >
-              Contact Support
-            </Link>
-          </div>
           <NavUser profileHref="/portal/profile" notificationsHref="/portal/notifications" />
         </SidebarFooter>
       </Sidebar>

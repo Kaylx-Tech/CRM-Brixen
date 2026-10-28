@@ -119,6 +119,45 @@ def _pending_actions(uid):
     return actions
 
 
+ADDRESS_SERVICE_PRICE = 40.0  # £ per year; the first year is included when the company is formed
+
+
+def _parse_company_date(value):
+    """inc_date / created_at as a date ('2024-03-12', '12/03/2024', '12 March 2024'...), or None."""
+    text = str(value or '').strip()
+    if re.match(r'^\d{4}-\d{2}-\d{2}', text):
+        text = text[:10]
+    for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y', '%d %B %Y', '%d %b %Y'):
+        try:
+            return datetime.datetime.strptime(text, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _company_address_service(company):
+    """A company's registered office as a yearly £40 address subscription: paid for the first year
+    from incorporation, 'Renews soon' in its last 30 days, then 'Renewal due'."""
+    start = _parse_company_date(company.get('inc_date')) or _parse_company_date(company.get('created_at'))
+    expiry = None
+    status = 'Paid'
+    if start:
+        try:
+            expiry = start.replace(year=start.year + 1)
+        except ValueError:  # 29 February
+            expiry = start.replace(year=start.year + 1, day=28)
+        days_left = (expiry - datetime.date.today()).days
+        status = 'Renewal due' if days_left < 0 else 'Renews soon' if days_left <= 30 else 'Paid'
+    return {
+        'id': f"company-{company['id']}", 'company_id': company['id'], 'company_name': company.get('name'),
+        'type': 'Registered Office', 'service_name': 'Registered Office Address',
+        'line1': str(company.get('reg_office') or '').strip(), 'line2': '', 'city': '', 'postal_code': '', 'country': '',
+        'start_date': start.isoformat() if start else None, 'expiry_date': expiry.isoformat() if expiry else None,
+        'price': ADDRESS_SERVICE_PRICE, 'billing_period': 'year', 'status': status,
+        'payment_status': 'Paid' if status != 'Renewal due' else 'Due',
+    }
+
+
 def handle_client_portal_routes(environ, start_response, path, method, user, body, query):
     if not path.startswith('/api/client/'):
         return None
@@ -209,7 +248,16 @@ def handle_client_portal_routes(environ, start_response, path, method, user, bod
             LEFT JOIN companies c ON a.company_id = c.id
             WHERE a.user_id = ? ORDER BY a.created_at DESC;
         """, (uid,)) or []
-        return success_response(start_response, data={'addresses': [dict(r) for r in rows]})
+        addresses = [dict(r) for r in rows]
+        # Every company's registered office is an address service from the day it was incorporated
+        listed = {a.get('company_id') for a in addresses if a.get('company_id')}
+        companies = query_db("""
+            SELECT id, name, reg_office, inc_date, created_at FROM companies
+            WHERE user_id = ? AND TRIM(COALESCE(reg_office, '')) <> ''
+            ORDER BY datetime(created_at) DESC;
+        """, (uid,)) or []
+        addresses += [_company_address_service(c) for c in companies if c['id'] not in listed]
+        return success_response(start_response, data={'addresses': addresses})
 
     # ── Invoices & payments ──────────────────────────────────────────────
     if path in ('/api/client/invoices', '/api/client/payments') and method == 'GET':

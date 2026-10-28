@@ -89,6 +89,7 @@ export function PortalAddresses() {
                 <TableHead>Address</TableHead>
                 <TableHead>Service</TableHead>
                 <TableHead>Company</TableHead>
+                <TableHead>Price</TableHead>
                 <TableHead>Renews</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
@@ -102,6 +103,9 @@ export function PortalAddresses() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{a.service_name || a.type || "—"}</TableCell>
                   <TableCell className="max-w-48 truncate text-muted-foreground">{a.company_name || "—"}</TableCell>
+                  <TableCell className="whitespace-nowrap text-muted-foreground">
+                    {a.price != null ? `£${Number(a.price).toFixed(2)}${a.billing_period ? ` / ${a.billing_period}` : ""}` : "—"}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{formatDate(a.expiry_date)}</TableCell>
                   <TableCell><StatusBadge status={a.status} /></TableCell>
                 </TableRow>

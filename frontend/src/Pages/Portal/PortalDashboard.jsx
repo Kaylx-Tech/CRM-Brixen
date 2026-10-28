@@ -172,41 +172,26 @@ export default function PortalDashboard() {
           </div>
         </div>
 
-        {/* Quick actions and help, as on the old portal home */}
-        <div className="grid gap-4 lg:grid-cols-[1fr_minmax(0,380px)]">
-          <section className="rounded-xl bg-white p-4 shadow-[0_4px_14px_rgba(15,23,42,0.05)] dark:bg-card">
-            <h3 className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-foreground">Quick Actions</h3>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {[
-                ["Upload Document", IconUpload, "/portal/documents"],
-                ["View Orders", IconShoppingBag, "/portal/orders"],
-                ["Business Portfolio", IconBuilding, "/portal/companies"],
-              ].map(([label, Icon, to]) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => navigate(to)}
-                  className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 hover:bg-slate-50 dark:border-border dark:bg-card dark:text-foreground"
-                >
-                  <Icon className="size-3.5" /> {label}
-                </button>
-              ))}
-            </div>
-          </section>
-          <section className="flex items-center justify-between gap-3 rounded-xl bg-white p-4 shadow-[0_4px_14px_rgba(15,23,42,0.05)] dark:bg-card">
-            <div>
-              <h3 className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-foreground">Need help?</h3>
-              <p className="text-xs text-slate-500">Your Brixen team is here to help.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate("/portal/support")}
-              className="h-8 shrink-0 cursor-pointer rounded-full bg-[#2563EB] px-4 text-xs font-semibold text-white hover:bg-[#1D4ED8]"
-            >
-              Contact Support
-            </button>
-          </section>
-        </div>
+        {/* Quick actions, as on the old portal home */}
+        <section className="rounded-xl bg-white p-4 shadow-[0_4px_14px_rgba(15,23,42,0.05)] dark:bg-card">
+          <h3 className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-foreground">Quick Actions</h3>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[
+              ["Upload Document", IconUpload, "/portal/documents"],
+              ["View Orders", IconShoppingBag, "/portal/orders"],
+              ["Business Portfolio", IconBuilding, "/portal/companies"],
+            ].map(([label, Icon, to]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => navigate(to)}
+                className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 hover:bg-slate-50 dark:border-border dark:bg-card dark:text-foreground"
+              >
+                <Icon className="size-3.5" /> {label}
+              </button>
+            ))}
+          </div>
+        </section>
       </PageState>
       <OrderDetailDialog orderId={openOrderId} onClose={() => setOpenOrderId(null)} />
     </div>
