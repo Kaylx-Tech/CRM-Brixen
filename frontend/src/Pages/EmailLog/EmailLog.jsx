@@ -304,6 +304,7 @@ export default function EmailLog() {
       )}
 
       <DataTable
+        hideOnSmallerScreens={['triggered_by_name']}
         columns={columns}
         data={emails}
         filterConfig={filterConfig}

@@ -907,6 +907,7 @@ export default function Payments() {
 
           <DataTable
             columns={invoiceColumns}
+            hideOnSmallerScreens={['whenLabel']}
             data={filteredInvoices}
             filterConfig={invoiceFilterConfig}
             isLoading={isLoadingInvoices}

@@ -536,6 +536,7 @@ const Customers = () => {
       </Tabs>
 
       <DataTable
+        hideOnSmallerScreens={["source", "access"]}
         columns={columns}
         data={filteredCustomers}
         filterConfig={customerFilterConfig}

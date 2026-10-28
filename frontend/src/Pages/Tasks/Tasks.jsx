@@ -844,6 +844,7 @@ const Tasks = ({ view } = {}) => {
       ) : (
         <DataTable
           columns={staffColumns}
+          hideOnSmallerScreens={['joined', 'phone']}
           data={staff}
           isLoading={staffLoading}
         />

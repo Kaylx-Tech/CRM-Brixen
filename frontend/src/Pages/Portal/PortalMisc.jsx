@@ -97,12 +97,13 @@ export function PortalAddresses() {
             <TableBody>
               {rows.map((a) => (
                 <TableRow key={a.id}>
-                  <TableCell className="max-w-72">
-                    <span className="block truncate font-medium">{[a.line1, a.line2].filter(Boolean).join(", ")}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{[a.city, a.postal_code, a.country].filter(Boolean).join(", ")}</span>
+                  <TableCell className="md:max-w-72">
+                    {/* Phones wrap the whole address; wider screens keep one line */}
+                    <span className="block font-medium md:truncate">{[a.line1, a.line2].filter(Boolean).join(", ")}</span>
+                    <span className="block text-xs text-muted-foreground md:truncate">{[a.city, a.postal_code, a.country].filter(Boolean).join(", ")}</span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{a.service_name || a.type || "—"}</TableCell>
-                  <TableCell className="max-w-48 truncate text-muted-foreground">{a.company_name || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground md:max-w-48 md:truncate">{a.company_name || "—"}</TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">
                     {a.price != null ? `£${Number(a.price).toFixed(2)}${a.billing_period ? ` / ${a.billing_period}` : ""}` : "—"}
                   </TableCell>

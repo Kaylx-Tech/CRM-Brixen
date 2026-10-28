@@ -14,7 +14,7 @@ const ACTION_ICONS = { upload: IconUpload, "credit-card": IconCreditCard, info: 
 // Old Brixen portal look: white panels with blue links
 function Panel({ title, linkLabel, onLink, children }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white dark:border-border dark:bg-card">
+    <section className="min-w-0 rounded-lg border border-slate-200 bg-white dark:border-border dark:bg-card">
       <div className="flex items-center justify-between gap-3 px-[18px] pt-4 pb-3">
         <h3 className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-foreground">{title}</h3>
         {linkLabel ? (
@@ -85,7 +85,7 @@ export default function PortalDashboard() {
           )}
         </Panel>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
           <Panel title="Your Orders" linkLabel="View all orders" onLink={() => navigate("/portal/orders")}>
             {(d.active_orders || []).length === 0 ? (
               <p className="px-4 py-6 text-sm text-muted-foreground">No orders in progress.</p>
