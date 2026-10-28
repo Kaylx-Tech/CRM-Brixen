@@ -4,12 +4,15 @@ import { SiteHeader } from "./Header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Navigate, Outlet } from "react-router-dom"
+import PageLoading from "@/components/PageLoading"
+import { usePrefetchPages } from "@/lib/prefetchPages"
 import { getRole } from "@/lib/permissions"
 import AiInput from "@/components/ai-input"
 import { authHeaders } from "@/lib/api"
 import { PageTransition } from "@/lib/motion"
 
 const AdminLayout = () => {
+  usePrefetchPages('admin')
   const [aiMessages, setAiMessages] = useState([])
   const [aiLoading, setAiLoading] = useState(false)
 
@@ -55,7 +58,7 @@ const AdminLayout = () => {
           <SiteHeader />
           <PageTransition>
             <main className="flex flex-col gap-4 p-2 lg:p-6 pb-20">
-              <React.Suspense fallback={null}><Outlet /></React.Suspense>
+              <React.Suspense fallback={<PageLoading />}><Outlet /></React.Suspense>
             </main>
           </PageTransition>
         </ScrollArea>

@@ -6,6 +6,7 @@ import ResetPassword from './Pages/ResetPassword'
 // import SignUp from './Pages/SignUp'
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute'
 import { isStaffRole, homePath, isManagerOrAbove } from './lib/permissions'
+import PageLoading from './components/PageLoading'
 
 // Pages load only when opened, so the first screen does not wait for the whole CRM
 const lazyPage = (load, name = 'default') => React.lazy(() => load().then((m) => ({ default: m[name] })))
@@ -71,7 +72,7 @@ const App = () => {
         <TooltipProvider>
           <MotionRoot>
           <BrowserRouter>
-            <React.Suspense fallback={null}>
+            <React.Suspense fallback={<PageLoading fullScreen />}>
             <Routes>
             <Route path="/" element={<HomeRedirect />} />
             

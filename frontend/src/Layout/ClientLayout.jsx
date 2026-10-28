@@ -1,5 +1,7 @@
 import React from "react"
 import { Navigate, Outlet } from "react-router-dom"
+import PageLoading from "@/components/PageLoading"
+import { usePrefetchPages } from "@/lib/prefetchPages"
 import brixenLogo from "@/assets/brixen-logo.png"
 import { NavMain } from "@/Layout/nav-main"
 import { NavUser } from "@/Layout/nav-user"
@@ -67,6 +69,7 @@ const NAV_GROUPS = [
 ]
 
 export default function ClientLayout() {
+  usePrefetchPages('portal')
   // Team members belong in the admin CRM
   if (getRole() && getRole() !== "CLIENT") return <Navigate to="/admin/dashboard" replace />
 
@@ -101,7 +104,7 @@ export default function ClientLayout() {
           <SiteHeader homeHref="/portal/dashboard" />
           <PageTransition>
             <main className="flex flex-col gap-4 p-2 lg:p-6 pb-20">
-              <React.Suspense fallback={null}><Outlet /></React.Suspense>
+              <React.Suspense fallback={<PageLoading />}><Outlet /></React.Suspense>
             </main>
           </PageTransition>
         </ScrollArea>
