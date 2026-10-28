@@ -172,7 +172,7 @@ export function LoginForm({ className, ...props }) {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@brixenconsultants.com"
+                placeholder="Enter your email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}

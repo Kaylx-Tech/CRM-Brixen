@@ -55,7 +55,7 @@ const AdminLayout = () => {
           <SiteHeader />
           <PageTransition>
             <main className="flex flex-col gap-4 p-2 lg:p-6 pb-20">
-              <Outlet />
+              <React.Suspense fallback={null}><Outlet /></React.Suspense>
             </main>
           </PageTransition>
         </ScrollArea>

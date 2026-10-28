@@ -5,35 +5,43 @@ import ForgotPassword from './Pages/ForgotPassword'
 import ResetPassword from './Pages/ResetPassword'
 // import SignUp from './Pages/SignUp'
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute'
-import AdminLayout from './Layout/AdminLayout'
-import Dashboard from './Pages/Dasboard'
-import Customers from './Pages/Customer/Customers'
-import Companies from './Pages/Companies/Companies'
-import Accountancy from './Pages/Accountancy/Accountancy'
-import Orders from './Pages/Orders/Orders'
-import Tasks from './Pages/Tasks/Tasks'
-import Services from './Pages/Services/Services'
-import Payments from './Pages/Payments/Payments'
-import Documents from './Pages/Documents/Documents'
-import Intake from './Pages/Intake/Intake'
-import AuditLogs from './Pages/AuditLogs/AuditLogs'
-import EmailLog from './Pages/EmailLog/EmailLog'
-import Tickets from './Pages/Tickets/Tickets'
-import SmartOperations from './Pages/SmartOperations/SmartOperations'
-import Sso from './Pages/Sso'
-import Settings from './Pages/Settings/Settings'
-import NotificationsPage from './Pages/Notifications/Notifications'
-import Performance, { StaffDashboard } from './Pages/Performance/Performance'
-import PageGuard from './components/PageGuard'
 import { isStaffRole, homePath, isManagerOrAbove } from './lib/permissions'
-import ClientLayout from './Layout/ClientLayout'
-import PortalDashboard from './Pages/Portal/PortalDashboard'
-import PortalCompanies from './Pages/Portal/PortalCompanies'
-import PortalOrders from './Pages/Portal/PortalOrders'
-import PortalInvoices from './Pages/Portal/PortalInvoices'
-import PortalDocuments from './Pages/Portal/PortalDocuments'
-import PortalSupport, { PortalMessages } from './Pages/Portal/PortalSupport'
-import { PortalServices, PortalAddresses, PortalAccountancy } from './Pages/Portal/PortalMisc'
+
+// Pages load only when opened, so the first screen does not wait for the whole CRM
+const lazyPage = (load, name = 'default') => React.lazy(() => load().then((m) => ({ default: m[name] })))
+const Sso = lazyPage(() => import('./Pages/Sso'))
+const AdminLayout = lazyPage(() => import('./Layout/AdminLayout'))
+const Dashboard = lazyPage(() => import('./Pages/Dasboard'))
+const Customers = lazyPage(() => import('./Pages/Customer/Customers'))
+const Companies = lazyPage(() => import('./Pages/Companies/Companies'))
+const Accountancy = lazyPage(() => import('./Pages/Accountancy/Accountancy'))
+const Orders = lazyPage(() => import('./Pages/Orders/Orders'))
+const Tasks = lazyPage(() => import('./Pages/Tasks/Tasks'))
+const Services = lazyPage(() => import('./Pages/Services/Services'))
+const Payments = lazyPage(() => import('./Pages/Payments/Payments'))
+const Documents = lazyPage(() => import('./Pages/Documents/Documents'))
+const Intake = lazyPage(() => import('./Pages/Intake/Intake'))
+const AuditLogs = lazyPage(() => import('./Pages/AuditLogs/AuditLogs'))
+const EmailLog = lazyPage(() => import('./Pages/EmailLog/EmailLog'))
+const Tickets = lazyPage(() => import('./Pages/Tickets/Tickets'))
+const SmartOperations = lazyPage(() => import('./Pages/SmartOperations/SmartOperations'))
+const Settings = lazyPage(() => import('./Pages/Settings/Settings'))
+const NotificationsPage = lazyPage(() => import('./Pages/Notifications/Notifications'))
+const Performance = lazyPage(() => import('./Pages/Performance/Performance'))
+const StaffDashboard = lazyPage(() => import('./Pages/Performance/Performance'), 'StaffDashboard')
+const PageGuard = lazyPage(() => import('./components/PageGuard'))
+const ClientLayout = lazyPage(() => import('./Layout/ClientLayout'))
+const PortalDashboard = lazyPage(() => import('./Pages/Portal/PortalDashboard'))
+const PortalCompanies = lazyPage(() => import('./Pages/Portal/PortalCompanies'))
+const PortalOrders = lazyPage(() => import('./Pages/Portal/PortalOrders'))
+const PortalInvoices = lazyPage(() => import('./Pages/Portal/PortalInvoices'))
+const PortalDocuments = lazyPage(() => import('./Pages/Portal/PortalDocuments'))
+const PortalSupport = lazyPage(() => import('./Pages/Portal/PortalSupport'))
+const PortalMessages = lazyPage(() => import('./Pages/Portal/PortalSupport'), 'PortalMessages')
+const PortalServices = lazyPage(() => import('./Pages/Portal/PortalMisc'), 'PortalServices')
+const PortalAddresses = lazyPage(() => import('./Pages/Portal/PortalMisc'), 'PortalAddresses')
+const PortalAccountancy = lazyPage(() => import('./Pages/Portal/PortalMisc'), 'PortalAccountancy')
+const ToastPlayground = lazyPage(() => import('./Pages/ToastPlayground'))
 
 // "/" sends each user to their own home (customers -> portal, team -> CRM)
 function HomeRedirect() {
@@ -50,7 +58,6 @@ function TeamPage() {
 function DashboardHome() {
   return isStaffRole() ? <StaffDashboard /> : <Dashboard />
 }
-import ToastPlayground from './Pages/ToastPlayground'
 import { TooltipProvider } from './components/ui/tooltip'
 import { MotionRoot } from './lib/motion'
 import { ThemeProvider } from './hooks/theme-provider'
@@ -64,6 +71,7 @@ const App = () => {
         <TooltipProvider>
           <MotionRoot>
           <BrowserRouter>
+            <React.Suspense fallback={null}>
             <Routes>
             <Route path="/" element={<HomeRedirect />} />
             
@@ -146,6 +154,7 @@ const App = () => {
             {/* Catch-all fallback */}
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
+            </React.Suspense>
         </BrowserRouter>
           </MotionRoot>
         <Toaster position="top-center" />

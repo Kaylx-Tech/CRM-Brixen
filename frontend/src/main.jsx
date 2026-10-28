@@ -17,6 +17,18 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// Dev only: the JSXCanvas overlay loads Monaco, whose global AMD `define` makes recharts' number library
+// register itself there instead of exporting, so charts crash. Load recharts with `define` hidden (production is unaffected)
+if (import.meta.env.DEV) {
+  const amdDefine = window.define
+  window.define = undefined
+  try {
+    await import('recharts')
+  } finally {
+    if (amdDefine && !window.define) window.define = amdDefine
+  }
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
