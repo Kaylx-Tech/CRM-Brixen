@@ -1,35 +1,32 @@
 import { useEffect, useState } from "react"
-import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom"
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom"
+import { cn } from "cn"
 import {
   IconActivity,
   IconArticle,
   IconBuildingSkyscraper,
+  IconChevronDown,
   IconId,
   IconLayoutDashboard,
   IconLogout,
   IconMail,
   IconMapPin,
+  IconNews,
   IconReceipt2,
   IconSettings,
   IconTags,
 } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-  useSidebar,
-} from "@/components/ui/sidebar"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { ModeToggle } from "@/components/ThemeTogge"
-import { NavMain } from "@/Layout/nav-main"
 import { PageTransition } from "@/lib/motion"
 import { getOwnerToken, ownerApi, setOwnerToken } from "@/lib/owner"
+import finstapLogo from "@/assets/finstap-logo.svg"
 import finstapLogoLight from "@/assets/finstap-logo-light.svg"
 import { OwnerForgot, OwnerLogin, OwnerSetPassword } from "./OwnerAuth"
 import OwnerOverview from "./OwnerOverview"
@@ -44,162 +41,110 @@ import OwnerBilling from "./OwnerBilling"
 import OwnerBlog, { OwnerBlogEditor } from "./OwnerBlog"
 import OwnerNewsletter from "./OwnerNewsletter"
 
-// The owner menu, in groups like the CRM's own sidebar. Activity holds the services Finstap sells.
-const NAV_GROUPS = [
-  {
-    label: "Platform",
-    items: [
-      { title: "Overview", url: "/owner/overview", icon: IconLayoutDashboard },
-      { title: "Workspaces", url: "/owner/workspaces", icon: IconBuildingSkyscraper },
-      { title: "Plans", url: "/owner/plans", icon: IconTags },
-    ],
-  },
+// The owner menu as header tabs. A plain entry is [label, path, icon]; a group has items and opens a small menu.
+const NAV = [
+  ["Overview", "/owner/overview", IconLayoutDashboard],
+  ["Workspaces", "/owner/workspaces", IconBuildingSkyscraper],
+  ["Plans", "/owner/plans", IconTags],
   {
     label: "Activity",
+    icon: IconActivity,
     items: [
-      { title: "Activity log", url: "/owner/activity", icon: IconActivity },
-      { title: "KYC", url: "/owner/kyc", icon: IconId },
-      { title: "Registered office", url: "/owner/registered-office", icon: IconMapPin },
+      ["Activity log", "/owner/activity", IconActivity],
+      ["KYC", "/owner/kyc", IconId],
+      ["Registered office", "/owner/registered-office", IconMapPin],
     ],
   },
   {
     label: "Content",
+    icon: IconNews,
     items: [
-      { title: "Blogs", url: "/owner/content/blog", icon: IconArticle },
-      { title: "Newsletter", url: "/owner/content/newsletter", icon: IconMail },
+      ["Blogs", "/owner/content/blog", IconArticle],
+      ["Newsletter", "/owner/content/newsletter", IconMail],
     ],
   },
-  {
-    label: "Account",
-    items: [
-      { title: "Billing", url: "/owner/billing", icon: IconReceipt2 },
-      { title: "Settings", url: "/owner/settings", icon: IconSettings },
-    ],
-  },
+  ["Billing", "/owner/billing", IconReceipt2],
+  ["Settings", "/owner/settings", IconSettings],
 ]
 
-function initials(admin) {
-  const name = String(admin?.full_name || admin?.email || "F").trim()
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-}
+const NAV_ITEM = "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition"
 
-/** The page's name for the top bar, from the menu (or the deeper pages under it). */
-function usePageTitle() {
+function NavGroup({ group }) {
+  const navigate = useNavigate()
   const { pathname } = useLocation()
-  for (const group of NAV_GROUPS) {
-    for (const item of group.items) {
-      if (pathname === item.url || pathname.startsWith(`${item.url}/`)) return [group.label, item.title]
-    }
-  }
-  return ["Platform", "Overview"]
-}
-
-function OwnerSidebar({ admin, onSignOut }) {
-  const groups = NAV_GROUPS.map((g) => ({
-    label: g.label,
-    items: g.items.map(({ icon: Icon, ...item }) => ({ ...item, icon: <Icon /> })),
-  }))
+  const active = group.items.some(([, to]) => pathname === to || pathname.startsWith(`${to}/`))
+  const Icon = group.icon
   return (
-    <Sidebar collapsible="offcanvas" className="group-data-[side=left]:border-r-0">
-      <SidebarHeader>
-        <div className="flex flex-col items-center gap-2 px-2 pt-5 pb-3">
-          <img src={finstapLogoLight} alt="Finstap" className="h-10 w-auto drop-shadow-[0_3px_10px_rgba(0,0,0,0.35)]" />
-          <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-white/80">
-            Owner portal
-          </span>
-        </div>
-      </SidebarHeader>
-      <SidebarContent>
-        <NavMain groups={groups} variant="finstap" />
-      </SidebarContent>
-      <SidebarFooter>
-        <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-2.5">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-[#297bff] to-[#834aff] text-sm font-semibold text-white">
-            {initials(admin)}
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium text-sidebar-foreground">{admin?.full_name || "Owner"}</div>
-            <div className="truncate text-xs text-sidebar-foreground/55">{admin?.email}</div>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={onSignOut}
-            title="Sign out"
-            aria-label="Sign out"
-            className="text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground"
-          >
-            <IconLogout className="size-4" />
-          </Button>
-        </div>
-      </SidebarFooter>
-    </Sidebar>
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={cn(NAV_ITEM, "outline-none", active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}
+      >
+        <Icon className="size-4" />
+        <span className="hidden sm:inline">{group.label}</span>
+        <IconChevronDown className="size-3.5 opacity-60" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-48">
+        {group.items.map(([label, to, ItemIcon]) => (
+          <DropdownMenuItem key={to} onClick={() => navigate(to)} className={cn(pathname.startsWith(to) && "text-primary")}>
+            <ItemIcon className="size-4" />
+            {label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
-}
-
-function OwnerTopBar({ admin, onSignOut }) {
-  const [section, page] = usePageTitle()
-  return (
-    <header className="sticky top-0 z-10 flex shrink-0 items-center gap-2 border-b bg-background/80 py-3.5 backdrop-blur-xl">
-      <div className="flex w-full items-center justify-between gap-2 px-4 lg:px-6">
-        <div className="flex min-w-0 items-center gap-3">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="h-4 data-vertical:self-auto" />
-          <div className="min-w-0 text-sm">
-            <span className="text-muted-foreground">{section}</span>
-            <span className="mx-1.5 text-muted-foreground/50">/</span>
-            <span className="font-medium text-foreground">{page}</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <ModeToggle />
-          <Separator orientation="vertical" className="mx-1 h-6 data-vertical:self-auto" />
-          <span className="hidden text-sm text-muted-foreground md:inline">{admin?.full_name || admin?.email}</span>
-          <Button variant="outline" size="lg" onClick={onSignOut}>
-            <IconLogout className="size-4" />
-            <span className="hidden sm:inline">Sign out</span>
-          </Button>
-        </div>
-      </div>
-    </header>
-  )
-}
-
-/** On a phone the menu slides over the page: close it once a page is chosen. */
-function CloseMenuOnNavigate() {
-  const { pathname } = useLocation()
-  const { setOpenMobile } = useSidebar()
-  useEffect(() => {
-    setOpenMobile(false)
-  }, [pathname, setOpenMobile])
-  return null
 }
 
 function OwnerShell({ admin, onSignOut, children }) {
   return (
-    <SidebarProvider>
-      <CloseMenuOnNavigate />
-      <OwnerSidebar admin={admin} onSignOut={onSignOut} />
-      <SidebarInset className="relative h-svh overflow-hidden bg-sidebar p-2">
-        <ScrollArea className="h-full w-full rounded-xl border bg-background shadow-sm">
-          <OwnerTopBar admin={admin} onSignOut={onSignOut} />
-          <PageTransition>
-            <main className="mx-auto w-full max-w-7xl p-4 pb-16 lg:p-8">{children}</main>
-          </PageTransition>
-        </ScrollArea>
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="min-h-screen bg-muted/30">
+      <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
+          <NavLink to="/owner/overview" className="flex shrink-0 items-center gap-2">
+            <img src={finstapLogo} alt="Finstap" className="h-7 w-auto dark:hidden" />
+            <img src={finstapLogoLight} alt="Finstap" className="hidden h-7 w-auto dark:block" />
+            <span className="hidden rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary sm:inline">
+              Owner
+            </span>
+          </NavLink>
+          <nav className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+            {NAV.map((entry) => {
+              if (!Array.isArray(entry)) return <NavGroup key={entry.label} group={entry} />
+              const [label, to, Icon] = entry
+              return (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={({ isActive }) =>
+                    cn(NAV_ITEM, isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")
+                  }
+                >
+                  <Icon className="size-4" />
+                  <span className="hidden sm:inline">{label}</span>
+                </NavLink>
+              )
+            })}
+          </nav>
+          <div className="flex shrink-0 items-center gap-2">
+            <ModeToggle />
+            <span className="hidden text-sm text-muted-foreground md:inline">{admin?.full_name || admin?.email}</span>
+            <Button variant="outline" size="lg" onClick={onSignOut}>
+              <IconLogout className="size-4" />
+              <span className="hidden sm:inline">Sign out</span>
+            </Button>
+          </div>
+        </div>
+      </header>
+      <PageTransition>
+        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+      </PageTransition>
+    </div>
   )
 }
 
 /**
  * The Finstap owner portal. Signed out: /owner/login, /owner/forgot and /owner/set-password (the
- * emailed link). Signed in: the sidebar with the platform, its services, content and billing.
+ * emailed link). Signed in: header tabs for the platform, its services, content and billing.
  */
 export default function OwnerPortal() {
   const navigate = useNavigate()
