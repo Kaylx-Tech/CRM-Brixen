@@ -141,10 +141,6 @@ def _email_branding():
             'support_email': settings.get('support_email') or ''}
 
 
-COPY_ICON_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                              'static', 'img', 'copy-icon.png')
-
-
 def _device_label(user_agent):
     """'Chrome on macOS' from a browser's user agent ('' when unknown)."""
     ua = str(user_agent or '')
@@ -186,11 +182,11 @@ def sign_in_details(environ):
     }
 
 
-def code_email_html(brand, code, *, icon_src='', accent='#111827', details=None, support_email='', copy_icon_src=''):
+def code_email_html(brand, code, *, icon_src='', accent='#111827', details=None, support_email=''):
     """The login code email: small icon and name, where the sign-in came from, the code, and what to do
     if it was not you. Inter like the CRM (email apps without it fall back to their system font).
-    Email apps cannot copy on a click (no scripts), so one tap on the code selects all six digits and
-    the small copy icon says so."""
+    Email apps cannot copy on a click (no scripts), so there is no copy button: one tap on the code
+    selects all six digits."""
     from html import escape
     name = escape(brand)
     details = details or {}
@@ -212,9 +208,6 @@ def code_email_html(brand, code, *, icon_src='', accent='#111827', details=None,
                   f'cellspacing="0" style="background:#fafafa;border:1px solid #ececef;border-radius:12px;">'
                   f'<tr><td style="padding:6px 24px;"><table role="presentation" width="100%" cellpadding="0" '
                   f'cellspacing="0">{detail_rows}</table></td></tr></table></td></tr>') if rows else ''
-    copy_icon = (f'<td style="padding:0 0 0 4px;vertical-align:middle;"><img src="{escape(copy_icon_src)}" '
-                 'alt="Copy" title="Tap the code to select it, then copy" width="20" height="20" '
-                 'style="display:block;width:20px;height:20px;border:0;outline:none;"></td>') if copy_icon_src else ''
     secure = (f' <a href="{escape(details["origin"])}/forgot-password" style="color:{accent};font-weight:600;'
               f'text-decoration:underline;">Secure your account&nbsp;&rarr;</a>') if details.get('origin') else ''
     help_line = (f'<br>Need help? <a href="mailto:{escape(support_email)}" style="color:#71717a;">'
@@ -245,10 +238,9 @@ def code_email_html(brand, code, *, icon_src='', accent='#111827', details=None,
           <tr><td align="center" style="padding:0 0 10px;">
             <table role="presentation" cellpadding="0" cellspacing="0"><tr>
               <td style="{mono}font-size:40px;line-height:1.1;font-weight:600;letter-spacing:10px;color:#18181b;"><span style="-webkit-user-select:all;user-select:all;">{code[:3]}<span style="margin-left:14px;">{code[3:]}</span></span></td>
-              {copy_icon}
             </tr></table>
           </td></tr>
-          <tr><td align="center" style="padding:0 0 32px;font-size:13px;color:#71717a;">Tap the code to copy it &middot; expires in {CODE_MINUTES} minutes</td></tr>
+          <tr><td align="center" style="padding:0 0 32px;font-size:13px;color:#71717a;">Tap and hold the code to copy it &middot; expires in {CODE_MINUTES} minutes</td></tr>
           <tr><td style="padding:0 0 40px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;">
               <tr><td style="padding:16px 20px;font-size:14px;line-height:1.6;color:#78350f;">&#9888;&#65039;&nbsp; If you didn't try to sign in, someone knows your password.{secure}</td></tr>
@@ -265,11 +257,6 @@ def code_email_html(brand, code, *, icon_src='', accent='#111827', details=None,
 </body></html>"""
 
 
-def _copy_icon():
-    with open(COPY_ICON_PATH, 'rb') as fh:
-        return fh.read()
-
-
 def _send_code(user, code, details=None):
     """Email the code; True when it went out (or, outside production, when it was printed instead)."""
     from services.email_service import send_email
@@ -281,12 +268,13 @@ def _send_code(user, code, details=None):
                       (('Device', 'device'), ('Location', 'location'), ('IP address', 'ip'), ('Time', 'time'))
                       if (details or {}).get(key))
             + "\nIf you didn't try to sign in, someone knows your password: change it now.")
-    html = code_email_html(brand, code, icon_src='cid:brand-logo' if branding['icon'] else '',
-                           accent=branding['accent'], details=details, support_email=branding['support_email'],
-                           copy_icon_src='cid:copy-icon')
+    # The icon loads from the CRM site, so Gmail does not list it as an attachment
+    from services.email_engine import hosted_email_image_url
+    html = code_email_html(brand, code, icon_src=hosted_email_image_url('brixen-icon.png') if branding['icon'] else '',
+                           accent=branding['accent'], details=details, support_email=branding['support_email'])
     # From the login code mailbox (e.g. noreply@) when one is set up in Settings > Email
     sent = send_email(user.get('email'), subject, html, text, category='SECURITY',
-                      user_id=user.get('id'), store_body=False, images=[('copy-icon', _copy_icon(), 'png')], sender='login', logo=branding['icon'])
+                      user_id=user.get('id'), store_body=False, sender='login')
     if not sent:
         from config import IS_PRODUCTION
         if not IS_PRODUCTION:

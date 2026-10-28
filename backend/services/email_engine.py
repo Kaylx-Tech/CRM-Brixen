@@ -526,20 +526,33 @@ def email_issue_card_html(blocks):
     return ''.join(parts)
 
 
-# The company logo at the top of every client/team email. The bundled logo travels inside the email
-# (cid:, attached by email_service), so it shows without the reader allowing remote images.
+# The company logo at the top of every client/team email. Older emails carried it inside the email
+# (cid:, attached by email_service), which Gmail lists as a "brand-logo.png" attachment; emails now load
+# it from the CRM site (frontend/public/email/), so nothing shows up as an attachment.
 EMAIL_LOGO_CID = 'brand-logo'
 BUNDLED_LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                  'static', 'img', 'brixen-logo.png')
 
 
+def hosted_email_image_url(filename):
+    """Full URL of a picture in frontend/public/email/ on the CRM site (Settings frontend_url / FRONTEND_URL)."""
+    from config import FRONTEND_URL
+    base = ''
+    try:
+        from services.settings_service import get_setting
+        base = (get_setting('frontend_url') or '').strip().rstrip('/')
+    except Exception:
+        pass
+    return f"{base or FRONTEND_URL}/email/{filename}"
+
+
 def email_logo_src(brand):
-    """<img src> for the brand logo: a full image URL from Settings, the bundled logo, or '' (name only)."""
+    """<img src> for the brand logo: a full image URL from Settings, the hosted Brixen logo, or '' (name only)."""
     url = str((brand or {}).get('logo_url') or '').strip()
     if re.match(r'^https?://', url, re.I):
         return url
-    if url.startswith('/static/img/') and os.path.isfile(BUNDLED_LOGO_PATH):
-        return f'cid:{EMAIL_LOGO_CID}'
+    if url.startswith('/static/img/'):
+        return hosted_email_image_url('brixen-logo.png')
     return ''
 
 
