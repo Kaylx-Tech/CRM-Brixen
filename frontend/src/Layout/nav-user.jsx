@@ -29,6 +29,7 @@ import {
 } from "@tabler/icons-react"
 import { useNavigate } from "react-router-dom"
 import { isAdminRole } from "@/lib/permissions"
+import { IS_FINSTAP } from "@/lib/workspace"
 
 const itemClass =
   "text-slate-200 hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white cursor-pointer rounded-lg px-2.5 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
@@ -127,6 +128,16 @@ export function NavUser({
                     <IconMail className="size-4" />
                     <span>Email Log</span>
                   </DropdownMenuItem>
+                  {/* Finstap: the workspace's own plan and card payments (admins only, like this group) */}
+                  {IS_FINSTAP && (
+                    <DropdownMenuItem
+                      onClick={() => navigate('/admin/billing')}
+                      className={itemClass}
+                    >
+                      <IconCreditCard className="size-4" />
+                      <span>Billing</span>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem
                     onClick={() => navigate('/admin/settings')}
                     className={itemClass}

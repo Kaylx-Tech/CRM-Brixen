@@ -16,6 +16,14 @@ PREFIX = 'integration:'
 # Each group is one card on the owner's Integrations page: (env name, label, secret, help)
 GROUPS = [
     {
+        'id': 'stripe', 'title': 'Stripe (payments)',
+        'description': 'Workspaces pay their plan and Finstap services by card through this Stripe account.',
+        'fields': [
+            ('STRIPE_SECRET_KEY', 'Secret key', True, 'Stripe dashboard › Developers › API keys (sk_live_… or sk_test_…)'),
+            ('STRIPE_WEBHOOK_SECRET', 'Webhook signing secret', True, 'Stripe › Developers › Webhooks › your endpoint (whsec_…)'),
+        ],
+    },
+    {
         'id': 'didit', 'title': 'Didit identity verification',
         'description': 'KYC checks for every workspace run on this Didit account.',
         'fields': [

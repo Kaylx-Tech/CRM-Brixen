@@ -165,7 +165,9 @@ def app(environ, start_response):
         try:
             plan_guard(tenant, path, method, user, body)
         except PlanLimitError as exc:
-            return error_response(custom_start_response, str(exc), status_code=403,
+            # 402: the workspace is locked until it pays (the app then shows only Billing)
+            return error_response(custom_start_response, str(exc),
+                                  status_code=402 if exc.code == 'subscription_ended' else 403,
                                   details={'code': exc.code, 'key': exc.key})
 
         # 5b. Operations staff never see or set money (services/price_privacy.py)

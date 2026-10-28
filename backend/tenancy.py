@@ -222,7 +222,20 @@ CREATE TABLE IF NOT EXISTS platform_password_links (
     ip TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+-- Stripe webhook events already handled (Stripe can send one more than once)
+CREATE TABLE IF NOT EXISTS stripe_events (
+    event_id TEXT PRIMARY KEY,
+    type TEXT,
+    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 """
+
+# Card payments from Stripe on the payments list, added to databases made before Stripe
+PAYMENT_COLUMNS = (
+    ('kind', "TEXT"),                          # subscription / services
+    ('stripe_ref', "TEXT"),                    # Stripe invoice or checkout session id (each saved once)
+    ('receipt_url', "TEXT"),                   # Stripe's invoice / receipt page
+)
 
 # Subscription details on each workspace, added to databases made before the owner portal
 TENANT_COLUMNS = (
@@ -233,6 +246,9 @@ TENANT_COLUMNS = (
     ('custom_limits', "TEXT"),                 # JSON {limit: number|null}, wins over the plan's limits
     ('owner_notes', "TEXT"),                   # notes for the Finstap team only
     ('suspended_reason', "TEXT"),
+    ('stripe_customer_id', "TEXT"),            # Stripe (services/stripe_billing.py)
+    ('stripe_subscription_id', "TEXT"),
+    ('cancel_at', "TIMESTAMP"),                # the subscription ends then (cancelled in Stripe, still paid)
 )
 
 HANDOFF_SECONDS = 120
@@ -309,6 +325,12 @@ def ensure_platform():
             for column, kind in TENANT_COLUMNS:
                 if column not in have:
                     conn.execute(f"ALTER TABLE tenants ADD COLUMN {column} {kind};")
+            have = {row['name'] for row in conn.execute("PRAGMA table_info(subscription_payments);").fetchall()}
+            for column, kind in PAYMENT_COLUMNS:
+                if column not in have:
+                    conn.execute(f"ALTER TABLE subscription_payments ADD COLUMN {column} {kind};")
+            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_subscription_payments_stripe "
+                         "ON subscription_payments(stripe_ref) WHERE stripe_ref IS NOT NULL;")
             known =conn.execute("SELECT 1 FROM tenants WHERE slug = ?;", (DEFAULT_TENANT,)).fetchone()
             # Only an existing CRM database is adopted (never created or moved), so a fresh Finstap server starts empty
             if not known and _has_crm_data(db_mod.DB_PATH):

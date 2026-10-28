@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { IconCheck, IconMail } from '@tabler/icons-react'
+import { Link } from 'react-router-dom'
+import { IconCheck, IconCreditCard, IconMail } from '@tabler/icons-react'
 import { PlanUsage } from '@/components/plan-usage'
 import { apiRequest } from '@/lib/api'
 import { cn } from 'cn'
@@ -72,20 +73,27 @@ export default function PlanTab() {
                   </li>
                 ))}
               </ul>
-              {!here && (
+              {!here && (p.custom ? (
                 <a
                   href={`mailto:contact@finstap.com?subject=${encodeURIComponent(`Finstap ${p.name} plan`)}`}
                   className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium hover:bg-muted"
                 >
-                  <IconMail className="size-4" /> {p.custom ? 'Talk to us' : `Switch to ${p.name}`}
+                  <IconMail className="size-4" /> Talk to us
                 </a>
-              )}
+              ) : (
+                <Link
+                  to="/admin/billing"
+                  className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium hover:bg-muted"
+                >
+                  <IconCreditCard className="size-4" /> Switch to {p.name}
+                </Link>
+              ))}
             </div>
           )
         })}
       </section>
       <p className="text-xs text-muted-foreground">
-        Online payment is coming soon. Until then, email contact@finstap.com to change your plan.
+        Choose, change or pay for your plan in <Link to="/admin/billing" className="text-primary hover:underline">Billing</Link>.
       </p>
     </div>
   )

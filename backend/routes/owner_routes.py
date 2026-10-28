@@ -348,6 +348,7 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
         return success_response(start_response, data={
             'groups': integrations.overview(),
             'didit_webhook_url': f"{_api_base(environ)}/api/webhooks/didit",
+            'stripe_webhook_url': f"{_api_base(environ)}/api/platform/stripe/webhook",
         })
     if sub == '/integrations' and method == 'POST':
         try:

@@ -116,11 +116,11 @@ function IntegrationCard({ group, extra, onSaved }) {
   )
 }
 
-function WebhookUrl({ url }) {
+function WebhookUrl({ url, title, hint }) {
   return (
     <div className="rounded-xl border bg-muted/40 p-3 text-sm">
-      <p className="font-medium">Webhook URL for Didit</p>
-      <p className="mb-2 text-xs text-muted-foreground">Paste this in the Didit console › Webhooks, so results come back by themselves.</p>
+      <p className="font-medium">{title}</p>
+      <p className="mb-2 text-xs text-muted-foreground">{hint}</p>
       <div className="flex items-center gap-2">
         <code className="min-w-0 flex-1 truncate rounded-md bg-background px-2 py-1.5 text-xs">{url}</code>
         <Button
@@ -171,7 +171,21 @@ export default function OwnerIntegrations() {
               key={`${g.id}-${version}`}
               group={g}
               onSaved={onSaved}
-              extra={g.id === "didit" ? <WebhookUrl url={data.didit_webhook_url} /> : null}
+              extra={
+                g.id === "didit" ? (
+                  <WebhookUrl
+                    url={data.didit_webhook_url}
+                    title="Webhook URL for Didit"
+                    hint="Paste this in the Didit console › Webhooks, so results come back by themselves."
+                  />
+                ) : g.id === "stripe" ? (
+                  <WebhookUrl
+                    url={data.stripe_webhook_url}
+                    title="Webhook URL for Stripe"
+                    hint="Stripe › Developers › Webhooks › Add endpoint. Events: checkout.session.completed, customer.subscription.created, customer.subscription.updated, customer.subscription.deleted, invoice.paid, invoice.payment_failed."
+                  />
+                ) : null
+              }
             />
           ))}
           <Panel title="Coming later" className="xl:col-span-2">

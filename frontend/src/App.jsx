@@ -46,6 +46,7 @@ import PortalInvoices from './Pages/Portal/PortalInvoices'
 import PortalDocuments from './Pages/Portal/PortalDocuments'
 import PortalSupport, { PortalMessages } from './Pages/Portal/PortalSupport'
 import { PortalServices, PortalAddresses, PortalAccountancy } from './Pages/Portal/PortalMisc'
+import Billing from './Pages/Billing/Billing'
 
 // "/" sends each user to their own home (customers -> portal, team -> CRM). Finstap's main address
 // (finstap.com, not a company's acme.finstap.com) always shows the public landing page: logins live on
@@ -188,6 +189,7 @@ const App = () => {
                 <Route path="tickets" element={<PageGuard page="tickets"><Tickets /></PageGuard>} />
                 <Route path="smart-operations" element={<PageGuard page="smart-operations"><SmartOperations /></PageGuard>} />
                 <Route path="settings" element={<Settings />} />
+                {IS_FINSTAP && <Route path="billing" element={<Billing />} />}
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="profile" element={<Navigate to="/admin/settings?tab=profile" replace />} />
                 <Route path="toast-test" element={<ToastPlayground />} />

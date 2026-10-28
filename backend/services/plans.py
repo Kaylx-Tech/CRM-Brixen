@@ -9,8 +9,10 @@ a workspace inside its plan.
     Enterprise deals; those win over the plan's.
   * Limits only stop NEW records. Nothing is ever deleted or hidden when a plan goes down, and a
     workspace's own customers (client portal, website orders and webhooks) are never blocked.
-  * PLAN_LOCK_EXPIRED_TRIALS=1 (env) makes a workspace read-only once its trial has ended without a
-    paid plan; off by default until online payment is live.
+  * When the free trial has ended without a plan, or a paid plan is not paid (cancelled and ended, or more
+    than GRACE_DAYS past its paid-until date), the team sees only Billing until it pays (lock_reason).
+    The client portal and the website keep working. PLAN_LOCK_EXPIRED_TRIALS=0 (env) switches the lock
+    off; PLAN_LOCK_SKIP (env, default "demo") lists workspaces that are never locked.
 """
 import json
 import os
@@ -190,7 +192,7 @@ def check_limit(tenant, key, adding=1):
         label = LIMITS[key].lower()
         shown = f"{limit} GB of document storage" if key == 'storage_gb' else f"{limit} {label}"
         raise PlanLimitError(f"Your {plan['name']} plan includes {shown} and this workspace has reached it. "
-                             f"Upgrade your plan in Settings → Plan & usage to add more.", key=key)
+                             f"Upgrade your plan in Billing to add more.", key=key)
 
 
 def check_feature(tenant, feature):
@@ -198,11 +200,53 @@ def check_feature(tenant, feature):
     if feature not in plan['features']:
         needed = next((PLANS[k]['name'] for k in PLAN_ORDER if feature in PLANS[k]['features']), 'a higher')
         raise PlanLimitError(f"{FEATURES[feature]} is part of the {needed} plan. "
-                             f"Upgrade in Settings → Plan & usage to use it.", code='plan_feature', key=feature)
+                             f"Upgrade in Billing to use it.", code='plan_feature', key=feature)
 
 
 def lock_expired_trials():
-    return str(os.environ.get('PLAN_LOCK_EXPIRED_TRIALS', '0')).strip().lower() in ('1', 'true', 'yes', 'on')
+    return str(os.environ.get('PLAN_LOCK_EXPIRED_TRIALS', '1')).strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+GRACE_DAYS = 3
+# What the team may still open while the workspace is locked: Billing (to pay), its plan, sign-in and branding
+LOCK_OPEN_PATHS = ('/api/admin/billing', '/api/admin/plan', '/api/settings/public')
+
+
+def _passed(value, days=0):
+    """The date `value` (+ days) is in the past."""
+    if not value:
+        return False
+    row = query_db("SELECT datetime(?, ?) < datetime('now') AS gone;", (value, f'+{int(days)} days'), one=True)
+    return bool(row and row['gone'])
+
+
+def lock_reason(tenant):
+    """Why the workspace is locked ('trial_ended', 'subscription_ended', 'payment_overdue') or None."""
+    if not tenant or not lock_expired_trials():
+        return None
+    plan = (tenant.get('plan') or 'trial').lower()
+    skip = {s.strip().lower() for s in os.environ.get('PLAN_LOCK_SKIP', 'demo').split(',') if s.strip()}
+    if plan == 'legacy' or str(tenant.get('slug') or '').lower() in skip:
+        return None
+    if plan == 'trial':
+        return None if trial_active(tenant) else 'trial_ended'
+    end = tenant.get('current_period_end')
+    if tenant.get('subscription_status') == 'cancelled' and (not end or _passed(end)):
+        return 'subscription_ended'
+    # No paid-until date: billed by hand (e.g. Enterprise), never locked by date
+    if end and _passed(end, GRACE_DAYS):
+        return 'payment_overdue'
+    return None
+
+
+LOCK_MESSAGES = {
+    'trial_ended': "Your free trial has ended. Choose a plan in Billing to keep using Finstap; everything you "
+                   "saved is still here.",
+    'subscription_ended': "Your subscription has ended. Renew it in Billing to keep using Finstap; everything "
+                          "you saved is still here.",
+    'payment_overdue': "Your subscription payment is overdue. Pay in Billing to keep using Finstap; everything "
+                       "you saved is still here.",
+}
 
 
 # Areas of the CRM that belong to a feature (path prefix → feature). Incoming website webhooks are
@@ -238,11 +282,9 @@ def guard(tenant, path, method, user, body):
     if role == 'CLIENT' or path.startswith(('/api/client/', '/api/v1/', '/api/webhooks', '/api/auth/')):
         return
 
-    if (lock_expired_trials() and method not in ('GET', 'HEAD') and (tenant.get('plan') or 'trial') == 'trial'
-            and not trial_active(tenant)):
-        raise PlanLimitError("Your free trial has ended. Choose a plan in Settings → Plan & usage to keep "
-                             "adding and changing records; everything you saved is still here.",
-                             code='trial_ended')
+    reason = lock_reason(tenant)
+    if reason and not any(path == p or path.startswith(p + '/') for p in LOCK_OPEN_PATHS):
+        raise PlanLimitError(LOCK_MESSAGES[reason], code='subscription_ended', key=reason)
 
     for prefix, feature in FEATURE_PATHS:
         if path == prefix or path.startswith(prefix + '/'):
@@ -299,4 +341,6 @@ def summary(tenant):
         'subscription_status': (tenant or {}).get('subscription_status'),
         'billing_cycle': (tenant or {}).get('billing_cycle'),
         'current_period_end': (tenant or {}).get('current_period_end'),
+        'cancel_at': (tenant or {}).get('cancel_at'),
+        'locked': lock_reason(tenant),
     }

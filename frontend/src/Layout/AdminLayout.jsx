@@ -1,17 +1,41 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { AppSidebar } from "./Sidebar"
 import { SiteHeader } from "./Header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Navigate, Outlet } from "react-router-dom"
+import { Navigate, Outlet, useNavigate } from "react-router-dom"
 import { getRole } from "@/lib/permissions"
 import AiInput from "@/components/ai-input"
-import { authHeaders } from "@/lib/api"
+import { apiRequest, authHeaders } from "@/lib/api"
 import { PageTransition } from "@/lib/motion"
+import { IS_FINSTAP } from "@/lib/workspace"
+import { LockedScreen } from "@/Pages/Billing/Billing"
+
+/** Finstap: is the workspace locked until it pays? Checked on load and whenever billing changes. */
+function useBillingLock() {
+  const [status, setStatus] = useState(null)
+  useEffect(() => {
+    if (!IS_FINSTAP) return undefined
+    let alive = true
+    const check = () =>
+      apiRequest('/admin/billing/status', { silent: true }).then((res) => {
+        if (alive && res.ok) setStatus(res.data.data)
+      })
+    check()
+    window.addEventListener('finstap-billing-changed', check)
+    return () => {
+      alive = false
+      window.removeEventListener('finstap-billing-changed', check)
+    }
+  }, [])
+  return status
+}
 
 const AdminLayout = () => {
   const [aiMessages, setAiMessages] = useState([])
   const [aiLoading, setAiLoading] = useState(false)
+  const lock = useBillingLock()
+  const navigate = useNavigate()
 
   const handleSendAi = async (prompt) => {
     const userMsg = { role: 'user', content: prompt }
@@ -46,6 +70,20 @@ const AdminLayout = () => {
 
   // Customers have their own portal; the admin CRM is for the team only
   if (getRole() === 'CLIENT') return <Navigate to="/portal/dashboard" replace />
+
+  // Finstap: trial or subscription over and not paid: nothing but Billing until it is renewed
+  if (lock?.locked) {
+    return (
+      <LockedScreen
+        status={lock}
+        onSignOut={() => {
+          localStorage.removeItem('user')
+          localStorage.removeItem('token')
+          navigate('/login')
+        }}
+      />
+    )
+  }
 
   return (
     <SidebarProvider>

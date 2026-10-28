@@ -174,6 +174,11 @@ export async function apiRequest(path, options = {}) {
     if (res.status === 401 && !url.includes("/auth/")) {
       handleSessionExpired()
     }
+    // Finstap: the workspace is locked until it pays; the layout then shows only Billing
+    if (res.status === 402) {
+      window.dispatchEvent(new Event("finstap-billing-changed"))
+      return { ok: false, status: 402, data, url, reason: data?.error || "Payment needed" }
+    }
     const info = {
       ok: false,
       status: res.status,

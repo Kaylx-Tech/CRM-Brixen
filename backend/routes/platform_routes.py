@@ -56,6 +56,14 @@ def handle_platform_routes(environ, start_response, path, method, body, query=No
     if response is not None:
         return response
 
+    # Stripe tells Finstap about card payments and subscriptions (services/stripe_billing.py)
+    if path == '/api/platform/stripe/webhook' and method == 'POST':
+        from services.stripe_billing import handle_webhook
+        status, note = handle_webhook(environ.get('brixen.raw_body'), environ.get('HTTP_STRIPE_SIGNATURE'))
+        if status >= 400:
+            return error_response(start_response, note, status_code=status)
+        return success_response(start_response, message=note)
+
     # Plans, prices and limits for the landing page (services/plans.py)
     if path == '/api/platform/plans' and method == 'GET':
         return success_response(start_response, data=public_plans())
