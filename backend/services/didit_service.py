@@ -13,6 +13,7 @@ Settings > Integrations (or env vars) hold the keys, never the code:
 import hashlib
 import hmac
 import json
+import re
 import time
 import urllib.error
 import urllib.request
@@ -22,13 +23,21 @@ from services.settings_service import get_setting
 DEFAULT_API_BASE = 'https://verification.didit.me'
 # Didit session statuses (case-sensitive, as Didit sends them)
 FINAL_STATUSES = ('Approved', 'Declined', 'Abandoned', 'Expired', 'Kyc Expired')
+UUID_RE = re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', re.I)
+
+
+def _workflow_id(value):
+    """The workflow UUID, also when it was pasted with extra text around it (quotes, a console URL)."""
+    value = (value or '').strip()
+    match = UUID_RE.search(value)
+    return match.group(0).lower() if match else value
 
 
 def config():
     return {
         'api_key': (get_setting('didit_api_key', '') or '').strip(),
         'webhook_secret': (get_setting('didit_webhook_secret', '') or '').strip(),
-        'workflow_id': (get_setting('didit_workflow_id', '') or '').strip(),
+        'workflow_id': _workflow_id(get_setting('didit_workflow_id', '')),
         'callback_url': (get_setting('didit_callback_url', '') or '').strip(),
         'api_base': ((get_setting('didit_api_base', '') or '').strip() or DEFAULT_API_BASE).rstrip('/'),
     }
@@ -92,6 +101,9 @@ def create_session(*, vendor_data, full_name='', email='', order_number=''):
     cfg = config()
     if not cfg['api_key'] or not cfg['workflow_id']:
         return None, 'Add the Didit API key and workflow ID in Settings > Integrations first.'
+    if not UUID_RE.fullmatch(cfg['workflow_id']):
+        return None, ('The Didit workflow ID in Settings > Integrations is not right. It is the Workflow ID '
+                      'shown in the Didit console, like 83e09caa-e91c-45d8-8cd4-c3e9bbc98a1b.')
     payload = {
         'workflow_id': cfg['workflow_id'],
         # Didit hands back an unfinished session with the same vendor_data instead of starting a new one
@@ -123,6 +135,10 @@ def test_connection(api_key=None):
         return {'success': False, 'error': 'Paste the Didit API key first.'}
     status, body = _request('GET', '/v3/session/00000000-0000-0000-0000-000000000000/decision/', api_key=key)
     if status in (200, 404):
+        workflow_id = config()['workflow_id']
+        if workflow_id and not UUID_RE.fullmatch(workflow_id):
+            return {'success': False, 'error': 'Didit accepted the API key, but the workflow ID is not right. '
+                    'Paste the Workflow ID from the Didit console, like 83e09caa-e91c-45d8-8cd4-c3e9bbc98a1b.'}
         return {'success': True, 'message': 'Didit accepted the API key.'}
     return {'success': False, 'error': _error_text(status, body)}
 
