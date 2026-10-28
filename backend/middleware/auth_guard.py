@@ -100,7 +100,7 @@ def get_authenticated_user(environ):
     if not row:
         return _dev_admin_user()
 
-    # Only B2B customers use the CRM portal; Individual / Business customers sign in on the website.
+    # Only B2B / Business customers use the CRM portal; Individual customers sign in on the website.
     # A session an admin opened by switching into the customer still works.
     from services.portal_access import client_can_use_crm_portal
     if not client_can_use_crm_portal(row, impersonated=bool(row.get('impersonator_token'))):

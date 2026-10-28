@@ -98,7 +98,7 @@ const Customers = () => {
             ageDays,
             isNew: ageDays !== null && ageDays <= 7,
             access:
-              type === "B2B"
+              type === "B2B" || type === "Business"
                 ? c.portal_login_ready === false
                   ? "Needs portal password"
                   : "Portal login"

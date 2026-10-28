@@ -8,6 +8,7 @@ from utils.response import json_response, success_response, error_response
 from services.permissions import check_permission, can_view_revenue
 from services.price_privacy import normalize_staff_type
 from services.b2b_service import client_is_b2b
+from services.portal_access import uses_crm_portal
 from services import wordpress_service
 
 STAFF_MIN_PASSWORD_LEN = 10
@@ -46,8 +47,8 @@ def _client_target(cid):
 
 
 def _portal_login_ready(row):
-    """Only B2B clients sign in to the CRM portal; others use the website."""
-    if not client_is_b2b(row):
+    """Only B2B / Business clients sign in to the CRM portal; others use the website."""
+    if not uses_crm_portal(row):
         return False
     return not str(row.get('wordpress_user_id') or '').startswith('local_client_')
 
@@ -149,7 +150,7 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         for r in rows:
             item = dict(r)
             item['portal_login_ready'] = _portal_login_ready(item)
-            item['website_login_only'] = not client_is_b2b(item)
+            item['website_login_only'] = not uses_crm_portal(item)
             customers.append(item)
         return success_response(start_response, data={
             "status": "success", "customers": customers, "clients": customers, "total": len(customers)})
@@ -264,7 +265,7 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         _audit(user, 'CLIENT_PASSWORD_SET', 'users', cid, f"Set portal password for {target.get('email')}")
 
         name = target.get('full_name') or 'Customer'
-        if client_is_b2b(target):
+        if uses_crm_portal(target):
             return success_response(
                 start_response, message=f"{name} can now sign in at the portal with {target.get('email')}.",
                 data={"portal_login_ready": True, "website_provisioned": None})

@@ -208,7 +208,7 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
         if user_row.get('status') != 'Active':
             return error_response(start_response, "Account is disabled. Please contact support.", status_code=403)
 
-        # Only B2B customers use this portal; Individual / Business customers sign in on the website
+        # Only B2B / Business customers use this portal; Individual customers sign in on the website
         if user_row.get('role') == 'CLIENT':
             from services.portal_access import client_can_use_crm_portal, website_login_url, WEBSITE_ONLY_MESSAGE
             full = query_db("SELECT * FROM users WHERE id = ?;", (user_row['id'],), one=True)

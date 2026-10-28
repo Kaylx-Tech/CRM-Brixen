@@ -1,6 +1,6 @@
 """Who may sign in to the CRM portal (app.py client_can_use_crm_portal).
 
-The team always. Customers: only B2B accounts. Individual and Business customers sign in on the Brixen website
+The team always. Customers: B2B and Business accounts. Individual customers sign in on the Brixen website
 (WordPress / WooCommerce); the CRM sends them there instead. An admin who switched into a customer account
 (impersonation) can always see it.
 """
@@ -14,6 +14,15 @@ def is_b2b_client(user):
     return bool(user) and (int(user.get('is_b2b') or 0) == 1 or str(user.get('client_type') or '').upper() == 'B2B')
 
 
+def is_business_client(user):
+    return bool(user) and str(user.get('client_type') or '').strip().lower() == 'business'
+
+
+def uses_crm_portal(user):
+    """B2B and Business customers sign in to the CRM client portal (with the default password at first)."""
+    return is_b2b_client(user) or is_business_client(user)
+
+
 def client_can_use_crm_portal(user, *, impersonated=False):
     if not user:
         return False
@@ -24,7 +33,7 @@ def client_can_use_crm_portal(user, *, impersonated=False):
         return False
     if str(user.get('email') or '').strip().lower() == 'guest.unlinked@brixenconsultants.com':
         return False
-    return is_b2b_client(user)
+    return uses_crm_portal(user)
 
 
 def website_login_url():
