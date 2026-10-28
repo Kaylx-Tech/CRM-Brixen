@@ -10,7 +10,13 @@ import urllib.error
 CH_API_BASE = "https://api.company-information.service.gov.uk"
 
 def platform_ch_api_key():
-    """The server's own Companies House key (Coolify env): used for every company workspace."""
+    """Finstap's own Companies House key (owner portal › Integrations, else Coolify env): used for every
+    company workspace."""
+    try:
+        from services.platform_integrations import get
+        return get('COMPANIES_HOUSE_API_KEY')
+    except ImportError:
+        pass
     key = os.environ.get('COMPANIES_HOUSE_API_KEY', '').strip()
     if len(key) >= 2 and key[0] == key[-1] and key[0] in ('"', "'"):
         key = key[1:-1].strip()

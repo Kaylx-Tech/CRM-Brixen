@@ -29,6 +29,8 @@
   GET  /content/newsletter               → subscribers and newsletters
   POST /content/newsletter/issues[/<id>[/test|/send]]   draft, save, test to yourself, send to all
   GET  /admins                           → owner accounts
+  GET/POST /integrations {values: {NAME: value}, clear: [NAME]}  → Finstap's API keys for every workspace
+       (secrets are never sent back, only whether they are set)
 
 Every route except login needs "Authorization: Bearer owner.<token>". Nothing here deletes a workspace
 or its data; Brixen's adopted database (plan "legacy") cannot be changed from here.
@@ -45,7 +47,8 @@ from services import plans
 from services import platform_services as svc
 from services import platform_billing as billing
 from services import platform_content as content
-from config import TENANT_BASE_DOMAIN
+from services import platform_integrations as integrations
+from config import API_PUBLIC_URL, TENANT_BASE_DOMAIN
 from services.owner_auth import (
     OwnerAuthError, admin_for_token, audit, change_password, link_email, logout, request_password_link, resend,
     set_password_with_link, start_login, verify,
@@ -78,6 +81,14 @@ def _portal_base(environ):
     if host in ('localhost', '127.0.0.1') or (TENANT_BASE_DOMAIN and host == f'admin.{TENANT_BASE_DOMAIN}'):
         return origin
     return f"https://admin.{TENANT_BASE_DOMAIN}" if TENANT_BASE_DOMAIN else origin
+
+
+def _api_base(environ):
+    """This API's public address (for the Didit webhook URL the owner pastes into Didit)."""
+    if API_PUBLIC_URL:
+        return API_PUBLIC_URL
+    scheme = environ.get('HTTP_X_FORWARDED_PROTO') or environ.get('wsgi.url_scheme') or 'https'
+    return f"{scheme}://{environ.get('HTTP_HOST') or f'api.{TENANT_BASE_DOMAIN}'}"
 
 
 def _q(query, key):
@@ -331,6 +342,26 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
         rows = _platform_query("SELECT id, email, full_name, status, last_login_at, created_at FROM platform_admins "
                                "ORDER BY id;")
         return success_response(start_response, data={'admins': rows})
+
+    # ── integrations: Finstap's API keys for every workspace (services/platform_integrations.py) ──
+    if sub == '/integrations' and method == 'GET':
+        return success_response(start_response, data={
+            'groups': integrations.overview(),
+            'didit_webhook_url': f"{_api_base(environ)}/api/webhooks/didit",
+        })
+    if sub == '/integrations' and method == 'POST':
+        try:
+            changed = integrations.save((body or {}).get('values'), (body or {}).get('clear'))
+        except integrations.IntegrationError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        if any(name.startswith('R2_') for name in changed):
+            from services.r2_storage import reset_client
+            reset_client()
+        if changed:
+            # Names only: the values (keys, passwords) never go into the log
+            audit(admin, 'INTEGRATIONS_CHANGED', detail=', '.join(changed))
+        return success_response(start_response, data={'groups': integrations.overview()},
+                                message="Saved." if changed else "Nothing changed.")
 
     # ── services Finstap sells: KYC checks and registered offices (services/platform_services.py) ──
     try:

@@ -226,7 +226,7 @@ def _in_workspace():
 # Integrations Finstap runs for every company workspace from the server env (Coolify): a workspace can neither
 # set them nor override them with a value of its own
 PLATFORM_INTEGRATION_KEYS = {
-    'companies_house_api_key', 'getaddress_api_key',
+    'companies_house_api_key', 'getaddress_api_key', 'gemini_api_key', 'gemini_model',
     'didit_api_key', 'didit_webhook_secret', 'didit_workflow_id', 'didit_callback_url', 'didit_api_base',
     'google_drive_root_folder', 'google_service_account_json', 'google_service_account_base64',
     'google_service_account_path',
@@ -251,7 +251,13 @@ def get_setting(key: str, default=None):
     Finstap workspaces skip the database for the integrations Finstap runs (server env only).
     """
     try:
-        if not (key in PLATFORM_INTEGRATION_KEYS and _in_workspace()):
+        if key in PLATFORM_INTEGRATION_KEYS and _in_workspace():
+            # Finstap's own keys: owner portal › Integrations, else the server env
+            from services.platform_integrations import get as platform_value
+            value = platform_value(key.upper())
+            if value:
+                return value
+        else:
             row = query_db("SELECT value FROM settings WHERE key = ?;", (key,), one=True)
             if row and row['value'] is not None and str(row['value']).strip() != '':
                 return str(row['value'])

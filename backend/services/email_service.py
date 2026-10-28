@@ -14,17 +14,23 @@ from email.mime.text import MIMEText
 def _platform_mailbox():
     """Finstap's own no-reply mailbox (PLATFORM_SMTP_USER / PLATFORM_SMTP_PASS, optional PLATFORM_SMTP_FROM,
     PLATFORM_SMTP_HOST, PLATFORM_SMTP_PORT) for the platform's emails: signup codes and the owner portal's
-    codes and links. None when it is not set up, so those emails use the server's SMTP_* mailbox."""
-    user = os.environ.get('PLATFORM_SMTP_USER', '').strip()
-    password = os.environ.get('PLATFORM_SMTP_PASS', '').strip()
+    codes and links. None when it is not set up, so those emails use the server's SMTP_* mailbox.
+    The owner portal (Integrations) comes before the env."""
+    try:
+        from services.platform_integrations import get as platform
+    except ImportError:
+        def platform(name):
+            return os.environ.get(name, '').strip()
+    user = platform('PLATFORM_SMTP_USER')
+    password = platform('PLATFORM_SMTP_PASS')
     if not user or not password:
         return None
-    host = (os.environ.get('PLATFORM_SMTP_HOST') or os.environ.get('SMTP_HOST') or 'smtp.hostinger.com').strip()
+    host = (platform('PLATFORM_SMTP_HOST') or os.environ.get('SMTP_HOST') or 'smtp.hostinger.com').strip()
     try:
-        port = int(os.environ.get('PLATFORM_SMTP_PORT') or os.environ.get('SMTP_PORT') or 587)
+        port = int(platform('PLATFORM_SMTP_PORT') or os.environ.get('SMTP_PORT') or 587)
     except (TypeError, ValueError):
         port = 587
-    return host, port, user, password, (os.environ.get('PLATFORM_SMTP_FROM') or user).strip()
+    return host, port, user, password, (platform('PLATFORM_SMTP_FROM') or user).strip()
 
 
 def _smtp_config(mailbox=None):

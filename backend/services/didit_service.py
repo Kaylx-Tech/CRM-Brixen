@@ -37,6 +37,11 @@ def _workflow_id(value):
 
 
 def _env(name):
+    try:
+        from services.platform_integrations import get  # Finstap: the owner portal's value, else the env
+        return get(name)
+    except ImportError:
+        pass
     value = os.environ.get(name, '').strip()
     if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
         value = value[1:-1].strip()

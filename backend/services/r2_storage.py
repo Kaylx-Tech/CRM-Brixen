@@ -21,6 +21,11 @@ _client_lock = threading.Lock()
 
 
 def _env(key):
+    try:
+        from services.platform_integrations import get  # Finstap: the owner portal's value, else the env
+        return get(key)
+    except ImportError:
+        pass
     value = os.environ.get(key, '').strip()
     if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
         value = value[1:-1].strip()

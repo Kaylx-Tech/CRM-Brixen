@@ -12,6 +12,7 @@ import {
   IconMail,
   IconMapPin,
   IconNews,
+  IconPlugConnected,
   IconReceipt2,
   IconSettings,
   IconTags,
@@ -40,6 +41,7 @@ import OwnerRegisteredOffice from "./OwnerRegisteredOffice"
 import OwnerBilling from "./OwnerBilling"
 import OwnerBlog, { OwnerBlogEditor } from "./OwnerBlog"
 import OwnerNewsletter from "./OwnerNewsletter"
+import OwnerIntegrations from "./OwnerIntegrations"
 
 // The owner menu as header tabs. A plain entry is [label, path, icon]; a group has items and opens a small menu.
 const NAV = [
@@ -64,7 +66,14 @@ const NAV = [
     ],
   },
   ["Billing", "/owner/billing", IconReceipt2],
-  ["Settings", "/owner/settings", IconSettings],
+  {
+    label: "Settings",
+    icon: IconSettings,
+    items: [
+      ["Integrations", "/owner/integrations", IconPlugConnected],
+      ["My account", "/owner/settings", IconSettings],
+    ],
+  },
 ]
 
 const NAV_ITEM = "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition"
@@ -127,7 +136,7 @@ function OwnerShell({ admin, onSignOut, children }) {
           </nav>
           <div className="flex shrink-0 items-center gap-2">
             <ModeToggle />
-            <span className="hidden text-sm text-muted-foreground md:inline">{admin?.full_name || admin?.email}</span>
+            <span className="hidden text-sm text-muted-foreground 2xl:inline">{admin?.full_name || admin?.email}</span>
             <Button variant="outline" size="lg" onClick={onSignOut}>
               <IconLogout className="size-4" />
               <span className="hidden sm:inline">Sign out</span>
@@ -215,6 +224,7 @@ export default function OwnerPortal() {
         <Route path="content/blog" element={<OwnerBlog />} />
         <Route path="content/blog/:id" element={<OwnerBlogEditor />} />
         <Route path="content/newsletter" element={<OwnerNewsletter />} />
+        <Route path="integrations" element={<OwnerIntegrations />} />
         <Route path="settings" element={<OwnerSettings admin={admin} />} />
         <Route path="*" element={<Navigate to="/owner/overview" replace />} />
       </Routes>
