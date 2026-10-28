@@ -116,6 +116,51 @@ function IntegrationCard({ group, extra, onSaved }) {
   )
 }
 
+/** A sensitive integration: its keys live only in the server env (Coolify). Shows which are set, nothing to type. */
+function ServerCard({ group, extra }) {
+  return (
+    <Panel
+      title={group.title}
+      description={group.description}
+      action={
+        <span
+          className={cn(
+            PILL,
+            group.connected
+              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+              : "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+          )}
+        >
+          {group.connected && <IconCircleCheck className="size-3.5" />}
+          {group.connected ? "Connected" : "Not set up"}
+        </span>
+      }
+    >
+      <div className="space-y-4">
+        <ul className="divide-y rounded-xl border text-sm">
+          {group.fields.map((f) => (
+            <li key={f.name} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+              <div className="min-w-0">
+                <code className="text-xs font-semibold">{f.name}</code>
+                <p className="text-xs text-muted-foreground">{f.label}</p>
+              </div>
+              {f.source ? (
+                <span className="text-xs text-emerald-700 dark:text-emerald-300">Set on the server</span>
+              ) : (
+                <span className="text-xs text-amber-700 dark:text-amber-300">Not set</span>
+              )}
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-muted-foreground">
+          Set these in Coolify › the backend app › Environment Variables, then redeploy. They are never typed or shown here.
+        </p>
+        {extra}
+      </div>
+    </Panel>
+  )
+}
+
 function WebhookUrl({ url, title, hint }) {
   return (
     <div className="rounded-xl border bg-muted/40 p-3 text-sm">
@@ -225,36 +270,39 @@ export default function OwnerIntegrations() {
     <>
       <PageTitle
         title="Integrations"
-        description="API keys Finstap uses for every workspace. A key saved here comes first; an empty field uses the server's (Coolify) value. Keys are never shown again after saving."
+        description="API keys Finstap uses for every workspace. Secret keys (Stripe, Didit, Companies House, Gemini, R2) are set only in the server env (Coolify); this page shows whether they are there. The no-reply email can be set here."
       />
       <LoadError error={error} />
       {!data && !error && <p className="text-sm text-muted-foreground">Loading…</p>}
       {data && (
         <div className="grid gap-4 xl:grid-cols-2">
-          {data.groups.map((g) => (
-            <IntegrationCard
-              key={`${g.id}-${version}`}
-              group={g}
-              onSaved={onSaved}
-              extra={
-                g.id === "didit" ? (
-                  <WebhookUrl
-                    url={data.didit_webhook_url}
-                    title="Webhook URL for Didit"
-                    hint="Paste this in the Didit console › Webhooks, so results come back by themselves."
-                  />
-                ) : g.id === "stripe" ? (
-                  <WebhookUrl
-                    url={data.stripe_webhook_url}
-                    title="Webhook URL for Stripe"
-                    hint="Stripe › Developers › Webhooks › Add endpoint. Events: checkout.session.completed, customer.subscription.created, customer.subscription.updated, customer.subscription.deleted, invoice.paid, invoice.payment_failed."
-                  />
-                ) : g.id === "r2" ? (
-                  <R2Tools />
-                ) : null
-              }
-            />
-          ))}
+          {data.groups.map((g) => {
+            const Card = g.server_only ? ServerCard : IntegrationCard
+            return (
+              <Card
+                key={`${g.id}-${version}`}
+                group={g}
+                onSaved={onSaved}
+                extra={
+                  g.id === "didit" ? (
+                    <WebhookUrl
+                      url={data.didit_webhook_url}
+                      title="Webhook URL for Didit"
+                      hint="Paste this in the Didit console › Webhooks, so results come back by themselves."
+                    />
+                  ) : g.id === "stripe" ? (
+                    <WebhookUrl
+                      url={data.stripe_webhook_url}
+                      title="Webhook URL for Stripe"
+                      hint="Stripe › Developers › Webhooks › Add endpoint. Events: checkout.session.completed, customer.subscription.created, customer.subscription.updated, customer.subscription.deleted, invoice.paid, invoice.payment_failed."
+                    />
+                  ) : g.id === "r2" ? (
+                    <R2Tools />
+                  ) : null
+                }
+              />
+            )
+          })}
           <Panel title="Coming later" className="xl:col-span-2">
             <div className="flex items-start gap-3 text-sm text-muted-foreground">
               <IconPlugConnected className="mt-0.5 size-5 shrink-0" />

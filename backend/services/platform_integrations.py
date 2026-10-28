@@ -1,9 +1,11 @@
 """The API keys Finstap runs for every company workspace (Didit, Companies House, Gemini, Cloudflare R2, the
 no-reply mailbox), managed by the Finstap owner in the owner portal (Integrations).
 
-A value saved in the owner portal comes first; an empty one falls back to the server env (Coolify) under the
-same name, so nothing breaks while the portal is still empty. Company workspaces cannot set or see any of these
-(services/settings_service.py). Secrets are never sent back to the browser, only whether they are set.
+The sensitive ones (Stripe, Didit, Companies House, Gemini, R2: groups with 'server_only') come ONLY from the
+server env (Coolify): the owner portal shows whether they are set, never a field to type them (user, 2026-10-28).
+Values saved for them in the portal before that are ignored, not deleted. For the rest (the no-reply email) a
+value saved in the owner portal comes first, then the server env under the same name. Company workspaces cannot
+set or see any of these (services/settings_service.py). Secrets are never sent back to the browser.
 """
 import os
 import threading
@@ -16,7 +18,7 @@ PREFIX = 'integration:'
 # Each group is one card on the owner's Integrations page: (env name, label, secret, help)
 GROUPS = [
     {
-        'id': 'stripe', 'title': 'Stripe (payments)',
+        'id': 'stripe', 'server_only': True, 'title': 'Stripe (payments)',
         'description': 'Workspaces pay their plan and Finstap services by card through this Stripe account.',
         'fields': [
             ('STRIPE_SECRET_KEY', 'Secret key', True, 'Stripe dashboard › Developers › API keys (sk_live_… or sk_test_…)'),
@@ -24,7 +26,7 @@ GROUPS = [
         ],
     },
     {
-        'id': 'didit', 'title': 'Didit identity verification',
+        'id': 'didit', 'server_only': True, 'title': 'Didit identity verification',
         'description': 'KYC checks for every workspace run on this Didit account.',
         'fields': [
             ('DIDIT_API_KEY', 'API key', True, 'Didit console › API keys'),
@@ -34,14 +36,14 @@ GROUPS = [
         ],
     },
     {
-        'id': 'companies_house', 'title': 'Companies House',
+        'id': 'companies_house', 'server_only': True, 'title': 'Companies House',
         'description': 'Company search and lookups for every workspace.',
         'fields': [
             ('COMPANIES_HOUSE_API_KEY', 'API key', True, 'developer.company-information.service.gov.uk'),
         ],
     },
     {
-        'id': 'gemini', 'title': 'Google Gemini (AI assistant)',
+        'id': 'gemini', 'server_only': True, 'title': 'Google Gemini (AI assistant)',
         'description': 'The AI assistant in every workspace. UK users need a paid (billing-enabled) key.',
         'fields': [
             ('GEMINI_API_KEY', 'API key', True, 'Google AI Studio › API keys'),
@@ -49,7 +51,7 @@ GROUPS = [
         ],
     },
     {
-        'id': 'r2', 'title': 'Cloudflare R2 (documents)',
+        'id': 'r2', 'server_only': True, 'title': 'Cloudflare R2 (documents)',
         'description': 'Where workspace documents are stored. Changing the bucket does not move files already there.',
         'fields': [
             ('R2_ACCOUNT_ID', 'Account ID', False, ''),
@@ -74,6 +76,8 @@ GROUPS = [
 
 FIELDS = {f[0]: f for g in GROUPS for f in g['fields']}
 SECRETS = {name for name, _l, secret, _h in FIELDS.values() if secret}
+# Read from the server env only, never from (or saved to) the owner portal
+SERVER_ONLY = {f[0] for g in GROUPS if g.get('server_only') for f in g['fields']}
 # Not needed for "connected" (they have defaults: the server's SMTP host and port)
 OPTIONAL = {'PLATFORM_SMTP_HOST', 'PLATFORM_SMTP_PORT'}
 
@@ -109,7 +113,9 @@ def _saved():
 
 
 def get(name):
-    """The key to use: the owner portal's value, else the server env's."""
+    """The key to use: the server env's for a server-only key; else the owner portal's value, then the env's."""
+    if name in SERVER_ONLY:
+        return _env(name)
     return _saved().get(name) or _env(name)
 
 
@@ -118,8 +124,14 @@ def overview():
     saved = _saved()
     groups = []
     for g in GROUPS:
+        server_only = bool(g.get('server_only'))
         fields = []
         for name, label, secret, help_text in g['fields']:
+            if server_only:
+                # Only whether the env has it: no value, not even a non-secret one
+                fields.append({'name': name, 'label': label, 'secret': True, 'help': help_text,
+                               'source': 'server' if _env(name) else '', 'value': '', 'server_value': ''})
+                continue
             source = 'portal' if saved.get(name) else ('server' if _env(name) else '')
             fields.append({
                 'name': name, 'label': label, 'secret': secret, 'help': help_text, 'source': source,
@@ -129,6 +141,7 @@ def overview():
         # Connected once every field that is not marked optional has a value
         required = [f for f in fields if '(optional)' not in f['label'] and f['name'] not in OPTIONAL]
         groups.append({'id': g['id'], 'title': g['title'], 'description': g['description'],
+                       'server_only': server_only,
                        'connected': all(f['source'] for f in required), 'fields': fields})
     return groups
 
@@ -137,6 +150,8 @@ def save(values, clear=None):
     """Save the typed values (an empty secret keeps the saved one); `clear` lists names to forget, so the
     server env is used again. Returns the names that changed."""
     values = values if isinstance(values, dict) else {}
+    if any(name in SERVER_ONLY for name in list(values) + list(clear or [])):
+        raise IntegrationError("This key is set on the server (Coolify env), not here")
     clear = [c for c in (clear or []) if c in FIELDS]
     changed = []
     for name, value in values.items():

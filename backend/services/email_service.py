@@ -33,26 +33,40 @@ def _platform_mailbox():
     return host, port, user, password, (platform('PLATFORM_SMTP_FROM') or user).strip()
 
 
+def _in_workspace():
+    try:
+        from services.settings_service import _in_workspace as check
+        return check()
+    except Exception:
+        return False
+
+
 def _smtp_config(mailbox=None):
     if mailbox == 'platform':
         own = _platform_mailbox()
         if own:
             return own
-    host = os.environ.get('SMTP_HOST', '')
-    port = os.environ.get('SMTP_PORT', '')
-    user = os.environ.get('SMTP_USER', '')
-    password = os.environ.get('SMTP_PASS', '')
-    from_email = os.environ.get('SMTP_FROM', '')
+    in_workspace = _in_workspace()
+    # A Finstap company workspace sends only from its own mailbox (Settings › Email), never the server's SMTP_*;
+    # a platform email there (no-reply not set up) uses the server's, never the workspace's
+    own_only = in_workspace and mailbox != 'platform'
+    env = (lambda name: '') if own_only else (lambda name: os.environ.get(name, ''))
+    host = env('SMTP_HOST')
+    port = env('SMTP_PORT')
+    user = env('SMTP_USER')
+    password = env('SMTP_PASS')
+    from_email = env('SMTP_FROM')
 
-    try:
-        from services.settings_service import get_setting
-        host = get_setting('smtp_host', host) or host
-        port = get_setting('smtp_port', port) or port
-        user = get_setting('smtp_user', user) or user
-        password = get_setting('smtp_pass', password) or password
-        from_email = get_setting('smtp_from', from_email) or from_email
-    except Exception:
-        pass
+    if not (in_workspace and mailbox == 'platform'):
+        try:
+            from services.settings_service import get_setting
+            host = get_setting('smtp_host', host) or host
+            port = get_setting('smtp_port', port) or port
+            user = get_setting('smtp_user', user) or user
+            password = get_setting('smtp_pass', password) or password
+            from_email = get_setting('smtp_from', from_email) or from_email
+        except Exception:
+            pass
 
     host = (host or 'smtp.hostinger.com').strip()
     try:
@@ -63,6 +77,12 @@ def _smtp_config(mailbox=None):
     password = (password or '').strip()
     from_email = (from_email or user or '').strip()
     return host, port, user, password, from_email
+
+
+def workspace_mailbox_ready():
+    """True when the current workspace (or Brixen) has a username and password in Settings › Email."""
+    _host, _port, user, password, _from = _smtp_config()
+    return bool(user and password)
 
 
 def emails_enabled():
@@ -105,6 +125,8 @@ def last_failure_reason():
     if not status:
         return ''
     if status == 'not_configured':
+        if _in_workspace():
+            return "the workspace's own email is not set up yet (Settings › Email)"
         return 'email (SMTP) is not set up on the server: SMTP_USER / SMTP_PASS are empty'
     if status == 'invalid_recipient':
         return 'the account has no valid email address'
@@ -134,6 +156,10 @@ def send_email(recipient, subject, html_content, text_content=None, *, category=
     """
     meta = {'category': category, 'user_id': user_id, 'order_id': order_id, 'company_id': company_id,
             'triggered_by': triggered_by}
+    # Sign-in codes and password resets of a workspace that has not set up its own mailbox yet come from
+    # Finstap's no-reply, so nobody is locked out; every other email waits for the workspace's mailbox
+    if mailbox is None and category == 'SECURITY' and _in_workspace() and not workspace_mailbox_ready():
+        mailbox = 'platform'
     # Master switch (Settings > Email: "Send emails"): when off, nothing goes out except password resets,
     # and the email is logged as suppressed so it can be sent later from the Email log
     if category != 'SECURITY' and not emails_enabled():

@@ -815,13 +815,22 @@ export default function Settings() {
             </Section>
 
             <Section
-              title="Customer email (SMTP)"
+              title={IS_FINSTAP ? 'Your email account (SMTP)' : 'Customer email (SMTP)'}
               description={
                 flags.smtp_pass_set
                   ? 'SMTP password is configured. Leave blank to keep the current password.'
-                  : 'Add Hostinger (or other) SMTP so clients receive document and order emails.'
+                  : IS_FINSTAP
+                    ? 'Emails to your customers and team are sent from your own mailbox. Add its SMTP details from your email provider (Google Workspace, Microsoft 365, Hostinger…).'
+                    : 'Add Hostinger (or other) SMTP so clients receive document and order emails.'
               }
             >
+              {/* Finstap: a workspace's emails never go out from Finstap's mailbox */}
+              {IS_FINSTAP && !(form.smtp_user && flags.smtp_pass_set) && (
+                <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+                  Not set up yet: emails to your customers and team are not sent until you add your mailbox here.
+                  Sign-in codes and password resets still come from Finstap, so your team can always sign in.
+                </p>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field id="smtp_host" label="SMTP host">
                   <Input

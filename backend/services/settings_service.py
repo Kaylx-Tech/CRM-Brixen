@@ -234,6 +234,16 @@ PLATFORM_INTEGRATION_KEYS = {
 # Settings › Integrations keys a workspace cannot save (the WordPress connection will be a plugin later;
 # what a workspace already saved keeps working)
 WORKSPACE_LOCKED_KEYS = PLATFORM_INTEGRATION_KEYS | {'wordpress_url', 'wordpress_webhook_secret'}
+# A workspace's own mailbox (Settings › Email): only what the workspace saved, never the server's SMTP_* env, so a
+# company's emails never go out from Finstap's mailbox (user, 2026-10-28)
+WORKSPACE_OWN_KEYS = {'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from'}
+
+
+def _env_value(key):
+    """The server env's value for a setting; none for a workspace's own mailbox inside a workspace."""
+    if key in WORKSPACE_OWN_KEYS and _in_workspace():
+        return None
+    return os.environ.get(key.upper()) or os.environ.get(key)
 
 
 def _defaults():
@@ -265,7 +275,7 @@ def get_setting(key: str, default=None):
         pass
 
     # Check os.environ
-    env_val = os.environ.get(key.upper()) or os.environ.get(key)
+    env_val = _env_value(key)
     if env_val is not None and str(env_val).strip() != '':
         return str(env_val)
 
@@ -298,7 +308,7 @@ def get_all_settings(raw: bool = False):
         # DB first, then ENV, then default
         val = db_settings.get(k)
         if val is None or str(val).strip() == '':
-            val = os.environ.get(k.upper()) or os.environ.get(k)
+            val = _env_value(k)
         if val is None or str(val).strip() == '':
             val = defaults.get(k, '')
         merged[k] = str(val)
