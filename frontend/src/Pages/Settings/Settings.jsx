@@ -30,8 +30,10 @@ function diditWebhookUrl() {
 
 const MIN_PASSWORD = 10
 // Branding (logo, icon, accent colour) and Invoices (bank accounts per country, links) are Finstap company
-// settings; Brixen keeps its own look and its own bank details
-const SETTINGS_TABS = new Set(['general', ...(IS_FINSTAP ? ['branding'] : []), 'email', 'integrations', 'compliance',
+// settings; Brixen keeps its own look and its own bank details. Finstap manages integrations (Didit, Companies
+// House …) for every workspace itself, so workspaces have no Integrations tab.
+const SETTINGS_TABS = new Set(['general', ...(IS_FINSTAP ? ['branding'] : []), 'email',
+  ...(IS_FINSTAP ? [] : ['integrations']), 'compliance',
   ...(IS_FINSTAP ? ['invoices', 'plan'] : []), 'profile'])
 
 function syncLocalUser(user) {
@@ -627,7 +629,7 @@ export default function Settings() {
           <h2 className="text-2xl font-bold tracking-tight">{canManageSettings ? 'System Settings' : 'My Profile'}</h2>
           <p className="text-sm text-muted-foreground mt-1">
             {canManageSettings
-              ? (IS_FINSTAP ? 'Branding, email, integrations, compliance, invoices, and your profile'
+              ? (IS_FINSTAP ? 'Branding, email, compliance, invoices, and your profile'
                 : 'Branding, email, integrations, compliance, and your profile')
               : 'Your details and password'}
           </p>
@@ -656,7 +658,7 @@ export default function Settings() {
             ['general', 'General'],
             ...(IS_FINSTAP ? [['branding', 'Branding']] : []),
             ['email', 'Email (SMTP)'],
-            ['integrations', 'Integrations'],
+            ...(IS_FINSTAP ? [] : [['integrations', 'Integrations']]),
             ['compliance', 'Compliance'],
             ...(IS_FINSTAP ? [['invoices', 'Invoices'], ['plan', 'Plan & usage']] : []),
             ['profile', 'Profile & Password'],

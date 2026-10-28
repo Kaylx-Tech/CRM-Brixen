@@ -30,6 +30,7 @@ import {
 } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { apiRequest } from '@/lib/api'
+import { IS_FINSTAP } from '@/lib/workspace'
 import { useRefreshOnReturn } from '@/lib/useRefreshOnReturn'
 import { amlLabel, amlTone, checkTone, openHits, shortDate } from './idvStatus'
 
@@ -353,11 +354,18 @@ export default function IdVerification() {
       {!configured && (
         <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
           <IconAlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
-          <p>
-            Didit is not connected yet. An admin adds the API key, webhook secret and workflow ID in{' '}
-            <Link to="/admin/settings?tab=integrations" className="font-medium text-primary hover:underline">Settings › Integrations</Link>;
-            until then people can be added but no verification starts.
-          </p>
+          {IS_FINSTAP ? (
+            <p>
+              ID verification is not switched on for your workspace yet. Finstap sets it up for you: contact Finstap
+              support. Until then people can be added but no verification starts.
+            </p>
+          ) : (
+            <p>
+              Didit is not connected yet. An admin adds the API key, webhook secret and workflow ID in{' '}
+              <Link to="/admin/settings?tab=integrations" className="font-medium text-primary hover:underline">Settings › Integrations</Link>;
+              until then people can be added but no verification starts.
+            </p>
+          )}
         </div>
       )}
 
