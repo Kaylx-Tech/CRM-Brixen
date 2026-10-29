@@ -26,9 +26,11 @@ const FINSTAP = {
     "[&_svg]:size-[18px]! [&_svg]:text-sidebar-foreground/55 [&_svg]:transition-[transform,color] [&_svg]:duration-200 hover:[&_svg]:translate-x-0.5 hover:[&_svg]:text-sidebar-foreground data-active:[&_svg]:text-sidebar-primary",
   badge:
     "fs-menu-badge top-2! right-2 h-5 min-w-5 rounded-full bg-sidebar-primary px-1.5 text-[10.5px] font-semibold text-sidebar-primary-foreground! shadow-sm",
-  // A tiny red sign over the end of the page name (`tag` in finstap-nav.js, e.g. "Soon"), hanging at a slight tilt
+  // A quiet word at the end of the row (`tag` in finstap-nav.js, e.g. "Soon"): a softly glowing accent dot
+  // and small muted letters, so the page reads as "on its way" without shouting
   tag:
-    "fs-menu-tag pointer-events-none absolute -top-2.5 -right-2 rounded-[3px] bg-[#b00000] px-1 py-[2px] text-[7.5px] font-bold uppercase leading-none tracking-wide text-white shadow-[0_1px_2px_rgba(0,0,0,0.35)] group-data-[collapsible=icon]:hidden",
+    "fs-menu-tag ml-auto flex shrink-0 items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-sidebar-foreground/45 group-data-[collapsible=icon]:hidden",
+  tagDot: "fs-menu-tag-dot relative size-1.5 rounded-full bg-sidebar-primary",
 }
 
 export function NavMain({
@@ -81,17 +83,13 @@ export function NavMain({
                       className={finstap ? cn(FINSTAP.button, count > 0 && "pr-10") : undefined}
                     >
                       {item.icon}
+                      <span>{item.title}</span>
                       {finstap && item.tag ? (
-                        // overflow-visible: the button truncates its last span, which would cut the tag off
-                        <span className="relative overflow-visible!">
-                          {item.title}
-                          <span className={FINSTAP.tag} style={motion.style}>
-                            {item.tag}
-                          </span>
+                        <span className={FINSTAP.tag} style={motion.style}>
+                          <span className={FINSTAP.tagDot} />
+                          {item.tag}
                         </span>
-                      ) : (
-                        <span>{item.title}</span>
-                      )}
+                      ) : null}
                     </SidebarMenuButton>
                     {count > 0 ? (
                       <SidebarMenuBadge className={finstap ? FINSTAP.badge : undefined} aria-label={`${count} open`}>

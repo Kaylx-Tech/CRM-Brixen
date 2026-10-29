@@ -307,26 +307,26 @@ html.is-non-apple,
   animation: fs-badge-pop 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   animation-delay: calc(var(--i, 0) * 28ms + 0.2s);
 }
-/* Tiny "Soon" signs over a page name: they pop in, then swing a little now and then, like a hanging sign */
+/* "Soon" at the end of a menu row: fades in with the row, and its accent dot sends out a soft ring */
 @keyframes fs-tag-in {
-  0% { opacity: 0; transform: rotate(-8deg) scale(0.4); }
-  70% { opacity: 1; transform: rotate(-8deg) scale(1.15); }
-  100% { transform: rotate(-8deg); }
+  from { opacity: 0; transform: translateX(4px); }
+  to { opacity: 1; transform: none; }
 }
-@keyframes fs-tag-swing {
-  0%, 70%, 100% { transform: rotate(-8deg); }
-  76% { transform: rotate(6deg); }
-  82% { transform: rotate(-12deg); }
-  88% { transform: rotate(-3deg); }
-  94% { transform: rotate(-9deg); }
+@keyframes fs-tag-ping {
+  0% { transform: scale(1); opacity: 0.7; }
+  80%, 100% { transform: scale(2.8); opacity: 0; }
 }
 .fs-menu-tag {
-  transform: rotate(-8deg);
-  transform-origin: 50% 0;
-  animation:
-    fs-tag-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both,
-    fs-tag-swing 4s ease-in-out infinite;
-  animation-delay: calc(var(--i, 0) * 28ms + 0.25s), calc(var(--i, 0) * 28ms + 1.2s);
+  animation: fs-tag-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 28ms + 0.25s);
+}
+.fs-menu-tag-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: var(--sidebar-primary);
+  animation: fs-tag-ping 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 /* Partner Perks (Smart Operations): the gift gives a small wiggle and a shine crosses the banner now and then */
 @keyframes fs-gift-wiggle {
@@ -357,6 +357,7 @@ html.is-non-apple,
   .fs-menu-btn[data-active],
   .fs-menu-badge,
   .fs-menu-tag,
+  .fs-menu-tag-dot::after,
   .fs-perks-gift,
   .fs-perks-banner::after {
     animation: none;
