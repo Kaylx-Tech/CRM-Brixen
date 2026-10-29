@@ -1,11 +1,15 @@
 import React, { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SectionCards } from "@/Layout/StatsCard"
-import { IconSearch, IconMessagePlus, IconShoppingCartPlus } from "@tabler/icons-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { IconSearch, IconMessagePlus, IconShoppingCartPlus, IconRefresh, IconCreditCard, IconFileText, IconExternalLink, IconLoader2 } from "@tabler/icons-react"
+import { toast } from "sonner"
+import { apiRequest } from "@/lib/api"
+import { openInvoice } from "@/lib/invoices"
 import { usePortalData, PageHeader, PageState, StatusBadge, money, formatDate } from "./portalShared"
 
 /** Service catalog: customers order a service (order wizard) or ask about it through a support request. */
@@ -73,10 +77,66 @@ export function PortalServices() {
   )
 }
 
+/** How to pay an address renewal invoice: Tide pay link, bank transfer details, the invoice PDF. */
+function RenewalPayDialog({ open, onOpenChange, address, pay }) {
+  const invoice = address?.renewal_invoice
+  if (!invoice) return null
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Pay your address renewal</DialogTitle>
+          <DialogDescription>
+            {address.company_name} · {money(invoice.total)} for one more year. The address stays active once the payment arrives.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-3 text-sm">
+          {pay?.pay_url ? (
+            <a href={pay.pay_url} target="_blank" rel="noopener noreferrer" className={buttonVariants()}>
+              <IconCreditCard className="size-4" /> Pay by card <IconExternalLink className="size-3.5" />
+            </a>
+          ) : null}
+          {pay?.account_number ? (
+            <div className="rounded-lg border bg-muted/40 p-3">
+              <p className="mb-2 font-medium">Or pay by bank transfer</p>
+              <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1">
+                <dt className="text-muted-foreground">Account name</dt><dd>{pay.account_name}</dd>
+                <dt className="text-muted-foreground">Account number</dt><dd className="tabular-nums">{pay.account_number}</dd>
+                <dt className="text-muted-foreground">Sort code</dt><dd className="tabular-nums">{pay.sort_code}</dd>
+                <dt className="text-muted-foreground">Reference</dt><dd className="font-medium">{invoice.invoice_number}</dd>
+              </dl>
+            </div>
+          ) : null}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => openInvoice(invoice.id, { client: true })}>
+            <IconFileText className="size-4" /> View invoice
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 /** Registered office / mail forwarding addresses the customer subscribes to. */
 export function PortalAddresses() {
   const { data, isLoading, error, reload } = usePortalData("/client/addresses")
   const rows = data?.addresses || []
+  const [renewing, setRenewing] = useState(null)
+  const [payFor, setPayFor] = useState(null)
+
+  const renew = async (a) => {
+    setRenewing(a.id)
+    const res = await apiRequest(`/client/addresses/${a.id}/renew`, { method: "POST", silent: true })
+    setRenewing(null)
+    if (!res.ok) {
+      toast.error(res.reason || "Could not renew this address")
+      return
+    }
+    toast.success("Renewal invoice created")
+    setPayFor((res.data?.data ?? res.data)?.address || null)
+    reload()
+  }
   return (
     <div className="flex flex-col gap-6 w-full pb-10">
       <PageHeader title="Addresses" description="Registered office and mail forwarding addresses" onRefresh={reload} isLoading={isLoading} />
@@ -92,6 +152,7 @@ export function PortalAddresses() {
                 <TableHead>Price</TableHead>
                 <TableHead>Renews</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="w-0" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -109,12 +170,25 @@ export function PortalAddresses() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{formatDate(a.expiry_date)}</TableCell>
                   <TableCell><StatusBadge status={a.status} /></TableCell>
+                  <TableCell>
+                    {/* Renew opens 30 days before the year ends; an unpaid renewal shows how to pay it */}
+                    {a.renewal_invoice ? (
+                      <Button size="sm" className="h-7 gap-1" onClick={() => setPayFor(a)}>
+                        <IconCreditCard className="size-3.5" /> Pay renewal
+                      </Button>
+                    ) : a.can_renew ? (
+                      <Button size="sm" className="h-7 gap-1" disabled={renewing === a.id} onClick={() => renew(a)}>
+                        {renewing === a.id ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconRefresh className="size-3.5" />} Renew
+                      </Button>
+                    ) : null}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       </PageState>
+      <RenewalPayDialog open={!!payFor} onOpenChange={(open) => !open && setPayFor(null)} address={payFor} pay={data?.pay} />
     </div>
   )
 }
