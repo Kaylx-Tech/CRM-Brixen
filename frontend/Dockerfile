@@ -12,6 +12,9 @@ COPY . .
 # VITE_PRODUCT=finstap builds the Finstap app (signup + workspace login); empty = Brixen
 ARG VITE_API_URL
 ARG VITE_PRODUCT
+# Error tracking (GlitchTip DSN of this site's project); unset = no errors are sent. Vite reads VITE_* build args.
+ARG VITE_SENTRY_DSN
+ARG VITE_SENTRY_ENVIRONMENT
 # A Finstap build without its API address would fall back to "/api" and fail in confusing ways: stop here
 RUN if [ -z "$VITE_API_URL" ] && grep -q '^VITE_PRODUCT=finstap' .env.production 2>/dev/null; then \
       echo "ERROR: set VITE_API_URL as a Build Variable in Coolify (e.g. https://api.finstap.com/api)"; exit 1; \

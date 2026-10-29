@@ -21,6 +21,9 @@ from services.plans import PlanLimitError, guard as plan_guard
 from tenancy import (
     activate, deactivate, ensure_platform, for_each_tenant, resolve_request_tenant, seed_workspace_settings,
 )
+from services.error_tracking import init_error_tracking, capture_api_error
+
+init_error_tracking()
 
 
 class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
@@ -146,6 +149,7 @@ def app(environ, start_response):
     tenant, tenant_error = resolve_request_tenant(environ, query_params, extract_session_token(environ))
     activate(tenant)
 
+    user = None  # set below; the error report needs it even when a crash comes first
     try:
         # Signup and workspace lookup work without a workspace
         response = handle_platform_routes(environ, custom_start_response, path, method, body, query_params)
@@ -188,6 +192,7 @@ def app(environ, start_response):
         print(f"[API Server Error] Path: {path} Method: {method} Error: {exc}")
         import traceback
         traceback.print_exc()
+        capture_api_error(exc, path, method, user, workspace=(tenant or {}).get('slug'))
         # Do not leak exception details to clients
         return error_response(custom_start_response, "Internal Server Error", status_code=500)
     finally:

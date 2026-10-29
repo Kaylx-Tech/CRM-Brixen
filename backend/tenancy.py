@@ -38,6 +38,7 @@ NEW_SLUG_RE = re.compile(r'^[a-z0-9]{3,30}$')
 RESERVED_SLUGS = frozenset({
     'www', 'api', 'app', 'admin', 'portal', 'platform', 'finstap', 'mail', 'static',
     'assets', 'login', 'signup', 'support', 'help', 'billing', 'status', 'docs', 'blog', 'owner',
+    'errors',  # errors.finstap.com is GlitchTip (error tracking)
 })
 
 PLATFORM_SCHEMA = """
