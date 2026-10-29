@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { FieldMessage, RequiredMark, invalidProps } from '@/components/FormField'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
@@ -20,6 +21,7 @@ const SetCustomerPassword = ({ customer, isOpen, onClose, onPasswordSet }) => {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [fieldError, setFieldError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showUnsavedToast, setShowUnsavedToast] = useState(false)
   const [toastSaveState, setToastSaveState] = useState('initial')
@@ -38,6 +40,7 @@ const SetCustomerPassword = ({ customer, isOpen, onClose, onPasswordSet }) => {
   const handleClose = () => {
     setPassword('')
     setError('')
+    setFieldError('')
     setShowPassword(false)
     setShowUnsavedToast(false)
     onClose()
@@ -47,10 +50,13 @@ const SetCustomerPassword = ({ customer, isOpen, onClose, onPasswordSet }) => {
     e?.preventDefault?.()
     setError('')
 
-    if (!password || password.length < 8) {
-      setError('Password must be at least 8 characters long.')
+    // Same minimum as the server (STAFF_MIN_PASSWORD_LEN in client_routes.py)
+    if (!password || password.length < 10) {
+      setFieldError(password ? 'Password must be at least 10 characters.' : 'Password is required.')
+      document.getElementById('password')?.focus()
       return
     }
+    setFieldError('')
 
     setIsLoading(true)
     const toastId = toastProcessing('Updating password…')
@@ -81,7 +87,8 @@ const SetCustomerPassword = ({ customer, isOpen, onClose, onPasswordSet }) => {
         handleClose()
       } else {
         const msg = data.message || data.error || 'Failed to update customer password.'
-        setError(msg)
+        if (data.fields?.password) setFieldError(data.fields.password)
+        else setError(msg)
         toastFail(toastId, msg)
       }
     } catch (err) {
@@ -105,7 +112,7 @@ const SetCustomerPassword = ({ customer, isOpen, onClose, onPasswordSet }) => {
               Set password for <strong>{customer.name}</strong>
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4 pt-2">
             {error && (
               <Alert variant="destructive">
                 <IconAlertCircle className="size-4" />
@@ -114,16 +121,16 @@ const SetCustomerPassword = ({ customer, isOpen, onClose, onPasswordSet }) => {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password <span className="text-destructive">*</span></Label>
+              <Label htmlFor="password">New Password <RequiredMark /></Label>
               <div className="relative">
                 <Input
-                  id="newPassword"
+                  id="password"
+                  {...invalidProps({ password: fieldError }, 'password')}
                   type={showPassword ? "text" : "password"}
-                  placeholder="At least 8 characters"
+                  placeholder="At least 10 characters"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); if (fieldError && e.target.value.length >= 10) setFieldError('') }}
                   disabled={isLoading}
-                  required
                   className="pr-10"
                 />
                 <button
@@ -135,6 +142,7 @@ const SetCustomerPassword = ({ customer, isOpen, onClose, onPasswordSet }) => {
                   {showPassword ? <IconEyeOff className="w-4 h-4" /> : <IconEye className="w-4 h-4" />}
                 </button>
               </div>
+              <FieldMessage id="password-error" message={fieldError} />
             </div>
 
             <DialogFooter className="gap-2 pt-2">

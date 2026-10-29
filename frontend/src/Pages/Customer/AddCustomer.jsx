@@ -16,6 +16,15 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import ToastSave from '@/components/ToastSave'
 import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
+import { useFormErrors } from '@/lib/validation'
+import { FieldMessage, RequiredMark, invalidProps } from '@/components/FormField'
+
+const CUSTOMER_SCHEMA = {
+  full_name: { label: 'Full name', required: true, maxLength: 120 },
+  email: { label: 'Email', required: true, type: 'email' },
+  phone: { label: 'Phone', type: 'phone' },
+  city: { label: 'City', maxLength: 80 },
+}
 
 const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
   const [custType, setCustType] = useState('individual')
@@ -27,6 +36,7 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
   const [isLoading, setIsLoading] = useState(false)
   const [showUnsavedToast, setShowUnsavedToast] = useState(false)
   const [toastSaveState, setToastSaveState] = useState('initial')
+  const { errors, check, recheck, fromResponse, clear } = useFormErrors(CUSTOMER_SCHEMA, { prefix: 'cust-' })
 
   const isDirty = Boolean(
     fullName.trim() ||
@@ -41,6 +51,7 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
     setPhone('')
     setCity('')
     setError('')
+    clear()
     setShowUnsavedToast(false)
   }
 
@@ -56,6 +67,7 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    if (!check({ full_name: fullName, email, phone, city })) return
 
     setIsLoading(true)
     const toastId = toastProcessing('Creating customer…')
@@ -98,7 +110,7 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
         onClose()
       } else {
         const msg = data.message || data.error || 'Failed to create customer.'
-        setError(msg)
+        if (!fromResponse({ data })) setError(msg)
         toastFail(toastId, msg)
       }
     } catch (err) {
@@ -121,7 +133,7 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} noValidate className="space-y-6">
             {error && (
               <Alert variant="destructive">
                 <IconAlertCircle className="size-4" />
@@ -190,50 +202,56 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2 md:col-span-2">
-                <Label htmlFor="fullName">Full Name <span className="text-destructive">*</span></Label>
+                <Label htmlFor="cust-full_name">Full Name <RequiredMark /></Label>
                 <Input
-                  id="fullName"
+                  id="cust-full_name"
+                  {...invalidProps(errors, 'full_name', 'cust-')}
                   placeholder="e.g. Muhammad Ahmed"
-                  required
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e) => { setFullName(e.target.value); recheck('full_name', e.target.value) }}
                   disabled={isLoading}
                 />
+                <FieldMessage id="cust-full_name-error" message={errors.full_name} />
               </div>
               
               <div className="grid gap-2 md:col-span-2">
-                <Label htmlFor="email">Email Address <span className="text-destructive">*</span></Label>
+                <Label htmlFor="cust-email">Email Address <RequiredMark /></Label>
                 <Input
-                  id="email"
+                  id="cust-email"
+                  {...invalidProps(errors, 'email', 'cust-')}
                   type="email"
                   placeholder="customer@example.com"
-                  required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); recheck('email', e.target.value) }}
                   disabled={isLoading}
                 />
+                <FieldMessage id="cust-email-error" message={errors.email} />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="cust-phone">Phone Number</Label>
                 <Input
-                  id="phone"
+                  id="cust-phone"
+                  {...invalidProps(errors, 'phone', 'cust-')}
                   placeholder="+44 7911 123456"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => { setPhone(e.target.value); recheck('phone', e.target.value) }}
                   disabled={isLoading}
                 />
+                <FieldMessage id="cust-phone-error" message={errors.phone} />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="city">City</Label>
+                <Label htmlFor="cust-city">City</Label>
                 <Input
-                  id="city"
+                  id="cust-city"
+                  {...invalidProps(errors, 'city', 'cust-')}
                   placeholder="e.g. London"
                   value={city}
-                  onChange={(e) => setCity(e.target.value)}
+                  onChange={(e) => { setCity(e.target.value); recheck('city', e.target.value) }}
                   disabled={isLoading}
                 />
+                <FieldMessage id="cust-city-error" message={errors.city} />
               </div>
 
               <p className="md:col-span-2 text-sm text-muted-foreground">

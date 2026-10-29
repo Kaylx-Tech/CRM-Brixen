@@ -5,6 +5,7 @@ import os
 import re
 from db import query_db, execute_db, hash_password
 from utils.response import json_response, success_response, error_response
+from utils.validation import validate, validation_error
 from services.permissions import check_permission, can_view_revenue
 from services.price_privacy import normalize_staff_type
 from services.b2b_service import client_is_b2b
@@ -215,6 +216,9 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
             return _forbidden(start_response)
         cid = body.get('customer_id') or body.get('id')
         phone = (body.get('phone') or '').strip()
+        errors = validate({'phone': phone}, {'phone': {'label': 'Phone', 'type': 'phone'}})
+        if errors:
+            return validation_error(start_response, errors)
         target = _client_target(cid) if cid else None
         if not target or target.get('role') != 'CLIENT':
             return error_response(start_response, "Customer not found", status_code=404)
@@ -229,7 +233,7 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         cid = body.get('customer_id') or body.get('user_id') or body.get('id')
         raw_email = (body.get('notification_email') or '').strip().lower()
         if raw_email and not STAFF_EMAIL_RE.match(raw_email):
-            return error_response(start_response, "Enter a valid notification email.", status_code=400)
+            return validation_error(start_response, {'notification_email': "Enter a valid notification email."})
         target = _client_target(cid) if cid else None
         if not target or target.get('role') != 'CLIENT':
             return error_response(start_response, "Customer not found", status_code=404)
@@ -254,9 +258,9 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         if not cid:
             return error_response(start_response, "Customer is required", status_code=400)
         if not isinstance(password, str) or len(password) < STAFF_MIN_PASSWORD_LEN:
-            return error_response(start_response, f"Password must be at least {STAFF_MIN_PASSWORD_LEN} characters", status_code=400)
+            return validation_error(start_response, {'password': f"Password must be at least {STAFF_MIN_PASSWORD_LEN} characters."})
         if confirm is not None and confirm != password:
-            return error_response(start_response, "Passwords do not match", status_code=400)
+            return validation_error(start_response, {'confirm_password': "Passwords do not match."})
         target = _client_target(cid)
         if not target or target.get('role') != 'CLIENT':
             return error_response(start_response, "Customer not found", status_code=404)
@@ -439,12 +443,16 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         if not check_permission(user, 'clients.create' if role == 'CLIENT' else 'staff.manage'):
             return _forbidden(start_response)
 
-        if not email or not full_name or not STAFF_EMAIL_RE.match(email):
-            return error_response(start_response, "Full name and a valid email are required", status_code=400)
-        if role != 'CLIENT' and (not body.get('password') or len(str(body.get('password'))) < STAFF_MIN_PASSWORD_LEN):
-            return error_response(
-                start_response, f"Staff accounts need an explicit password (min {STAFF_MIN_PASSWORD_LEN} characters)",
-                status_code=400)
+        errors = validate({**body, 'full_name': full_name, 'email': email}, {
+            'full_name': {'label': 'Full name', 'required': True, 'max_length': 120},
+            'email': {'label': 'Email', 'required': True, 'type': 'email'},
+            'phone': {'label': 'Phone', 'type': 'phone'},
+            'city': {'label': 'City', 'max_length': 80},
+        })
+        if role != 'CLIENT' and len(str(body.get('password') or '')) < STAFF_MIN_PASSWORD_LEN:
+            errors['password'] = f"Password must be at least {STAFF_MIN_PASSWORD_LEN} characters."
+        if errors:
+            return validation_error(start_response, errors)
 
         existing = query_db("SELECT id, role, removed_at FROM users WHERE email = ?;", (email,), one=True)
         if existing and role != 'CLIENT' and existing.get('removed_at') and existing.get('role') != 'CLIENT':
@@ -459,7 +467,7 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
             _audit(user, 'STAFF_RESTORED', 'users', existing['id'], f"Re-added {role} account for {email}")
             return success_response(start_response, message=f"Team member '{full_name}' added back", data={"id": existing['id']})
         if existing:
-            return error_response(start_response, "An account with this email already exists", status_code=400)
+            return validation_error(start_response, {'email': "An account with this email already exists."})
 
         hashed = hash_password(password)
         # Notification emails default to the login email (can be changed later from the customer profile).

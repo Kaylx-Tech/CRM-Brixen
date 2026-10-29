@@ -17,6 +17,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { FieldMessage, invalidProps } from '@/components/FormField'
+import { checkField } from '@/lib/validation'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -64,6 +66,7 @@ const Row = ({ title, meta, right }) => (
 const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
   const [activeTab, setActiveTab] = useState("overview")
   const [notificationEmail, setNotificationEmail] = useState("")
+  const [emailError, setEmailError] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [detail, setDetail] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -140,6 +143,9 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
 
   const handleSaveNotificationEmail = async () => {
     if (!customer?.id) return
+    const msg = checkField(notificationEmail, { label: 'Notification email', type: 'email' })
+    setEmailError(msg)
+    if (msg) return
     setIsSaving(true)
     const res = await apiRequest('/admin/customers/notification-email', {
       method: 'POST',
@@ -151,6 +157,8 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
     if (res.ok) {
       toast.success(res.data?.message || "Notification email updated successfully")
       onCustomerUpdated?.()
+    } else if (res.fieldErrors?.notification_email) {
+      setEmailError(res.fieldErrors.notification_email)
     } else {
       toast.error(res.reason || "Failed to update notification email")
     }
@@ -272,18 +280,22 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
                 <Separator />
 
                 <div className="space-y-3">
-                  <Label className="font-semibold text-sm">Notification Email Dispatch</Label>
+                  <Label htmlFor="notification_email" className="font-semibold text-sm">Notification Email Dispatch</Label>
                   <div className="flex items-center gap-3">
                     <Input
+                      id="notification_email"
+                      type="email"
+                      {...invalidProps({ notification_email: emailError }, 'notification_email')}
                       placeholder="Leave blank to use primary login email"
                       className="max-w-md"
                       value={notificationEmail}
-                      onChange={(e) => setNotificationEmail(e.target.value)}
+                      onChange={(e) => { setNotificationEmail(e.target.value); setEmailError("") }}
                     />
                     <Button size="sm" className="h-7" onClick={handleSaveNotificationEmail} disabled={isSaving}>
                       {isSaving ? "Saving..." : "Save"}
                     </Button>
                   </div>
+                  <FieldMessage id="notification_email-error" message={emailError} className="-mt-1" />
                   <p className="text-[12px] text-muted-foreground">
                     All automated intake alerts, compliance deadlines, and order receipts will be delivered to this address.
                   </p>
