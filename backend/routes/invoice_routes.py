@@ -275,7 +275,8 @@ def handle_invoice_routes(environ, start_response, path, method, user, body, que
         row = query_db("SELECT * FROM invoices WHERE id = ? LIMIT 1;", (inv_id,), one=True)
         if not row:
             return error_response(start_response, "Invoice not found", status_code=404)
-        if not is_staff and row['user_id'] != user_id:
+        # Only the team records payments: a customer must not mark their own invoice paid
+        if not is_staff:
             return error_response(start_response, "Access denied", status_code=403)
         updated, error, _mail = update_admin_invoice(inv_id, {'status': 'Paid'}, actor=user)
         if error:
