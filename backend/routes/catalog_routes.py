@@ -276,7 +276,7 @@ def handle_catalog_routes(environ, start_response, path, method, user, body, que
 
         service_ids = body.get('service_ids', [])
         if not isinstance(service_ids, list) or len(service_ids) == 0:
-            return error_response(start_response, "service_ids array is required", 400)
+            return error_response(start_response, "Choose at least one service", 400)
 
         deleted = 0
         for sid in service_ids:

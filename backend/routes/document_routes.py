@@ -160,7 +160,7 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
         filename = _os.path.basename(str(data.get('filename') or '').strip())
         file_base64 = data.get('file_base64') or ''
         if not filename or not file_base64:
-            return error_response(start_response, "filename and file_base64 are required", status_code=400)
+            return error_response(start_response, "Choose a file to upload", status_code=400)
         try:
             file_bytes = base64.b64decode(file_base64)
         except Exception:
@@ -296,7 +296,7 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
             company_number = normalize_company_number(data.get('company_number'))
             document_ids = data.get('document_ids') or []
             if not client_id:
-                return error_response(start_response, "client_id is required", status_code=400)
+                return error_response(start_response, "Choose the customer", status_code=400)
             company_obj = None
             if company_id:
                 company_obj = query_db("SELECT * FROM companies WHERE id = ?;", (int(company_id),), one=True)
@@ -305,7 +305,7 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
                     company_obj = query_db("SELECT * FROM companies WHERE id = ?;", (company_obj['id'],), one=True)
             if not company_obj:
                 if not company_number:
-                    return error_response(start_response, "company_number or company_id is required", status_code=400)
+                    return error_response(start_response, "Choose the company", status_code=400)
                 company_obj = auto_import_companies_house_from_intake(
                     data.get('company_name'),
                     company_number,
@@ -596,7 +596,7 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
             return error_response(start_response, "Select a customer first.", status_code=400)
 
         if not file_base64:
-            return error_response(start_response, "file_content_base64 is required", status_code=400)
+            return error_response(start_response, "Choose a file to upload", status_code=400)
 
         if isinstance(file_base64, str) and ',' in file_base64 and file_base64.strip().startswith('data:'):
             file_base64 = file_base64.split(',', 1)[1]

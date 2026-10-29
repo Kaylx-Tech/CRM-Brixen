@@ -34,7 +34,7 @@ def generate_ad01_pdf(data):
     sign_date = str(data.get('sign_date') or datetime.now().strftime('%d/%m/%Y')).strip()
 
     if not FPDF:
-        raise RuntimeError("fpdf2 library not installed.")
+        raise RuntimeError("The fpdf2 library is not installed.")
 
     class AD01PDF(FPDF):
         def header(self):
