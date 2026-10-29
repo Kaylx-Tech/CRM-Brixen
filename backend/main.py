@@ -9,6 +9,10 @@ import urllib.parse
 from wsgiref.simple_server import make_server, WSGIServer
 from socketserver import ThreadingMixIn
 
+# Datadog APM: only when DD_AGENT_HOST is set; patches sqlite3/requests before the routes import them
+from utils.monitoring import init_monitoring, wrap_wsgi, record_exception
+init_monitoring('brixen-api')
+
 from config import HOST, PORT, ALLOWED_CORS_ORIGINS
 from db import ensure_schema
 from middleware.cors import handle_cors_headers, handle_options_preflight
@@ -158,6 +162,7 @@ def app(environ, start_response):
             return response
     except Exception as exc:
         print(f"[API Server Error] Path: {path} Method: {method} Error: {exc}")
+        record_exception(exc)
         import traceback
         traceback.print_exc()
         capture_api_error(exc, path, method, user)
@@ -195,14 +200,15 @@ def run_server():
     print(f"CORS Enabled for: {', '.join(sorted(ALLOWED_CORS_ORIGINS))}")
     print("=" * 60)
 
+    application = wrap_wsgi(app)
     try:
         from waitress import serve
-        serve(app, host=HOST, port=PORT, threads=8, ident='brixen-crm')
+        serve(application, host=HOST, port=PORT, threads=8, ident='brixen-crm')
         return
     except ImportError:
         pass
 
-    server = make_server(HOST, PORT, app, server_class=ThreadingWSGIServer)
+    server = make_server(HOST, PORT, application, server_class=ThreadingWSGIServer)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

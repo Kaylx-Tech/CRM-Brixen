@@ -10,3 +10,4 @@ google-auth>=2.30.0
 google-auth-httplib2>=0.2.0
 waitress>=3.0.0
 sentry-sdk>=2.20.0
+ddtrace==4.15.7
