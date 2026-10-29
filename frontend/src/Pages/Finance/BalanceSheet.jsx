@@ -28,6 +28,20 @@ import { toast } from "sonner"
 import { apiRequest } from "@/lib/api"
 import { formatMoney, plainAmount } from "@/lib/money"
 import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
+import { useFormErrors } from "@/lib/validation"
+import { FieldMessage, RequiredMark, invalidProps } from "@/components/FormField"
+
+const EXPENSE_SCHEMA = {
+  spent_on: { label: "Date", required: true, type: "date" },
+  category: { label: "Category", required: true },
+  amount: { label: "Amount", required: true, type: "amount", min: 0.01 },
+  description: { label: "Details", maxLength: 500 },
+}
+const START_SCHEMA = {
+  amount: { label: "Balance", required: true, type: "amount", min: -1e12 },
+  start_month: { label: "From month", required: true, validate: (v) => (/^\d{4}-\d{2}$/.test(v) ? "" : "Choose a month.") },
+}
+const RUPEE_SCHEMA = { amount: { label: "Amount", required: true, type: "amount" } }
 
 /**
  * Revenue & Balance Sheet (admins), the Balance Sheet tab on the Finance page: for each currency, what the company held at the start of the month,
@@ -101,9 +115,24 @@ export default function BalanceSheet({ embedded = false }) {
   useEffect(() => { load() }, [load])
   useRefreshOnReturn(() => load(true))
 
-  const save = async (path, method, body, label) => {
+  const expenseErrors = useFormErrors(EXPENSE_SCHEMA, { prefix: "expense-" })
+  const startErrors = useFormErrors(START_SCHEMA, { prefix: "start-" })
+  const rupeeErrors = useFormErrors(RUPEE_SCHEMA, { prefix: "rupee-" })
+  const hasExpenseForm = !!expenseForm
+  const hasStartForm = !!startForm
+  const hasRupeeForm = !!rupeeForm
+  const { clear: clearExpense } = expenseErrors
+  const { clear: clearStart } = startErrors
+  const { clear: clearRupee } = rupeeErrors
+  // A dialog opens with no old messages
+  useEffect(() => { if (!hasExpenseForm) clearExpense() }, [hasExpenseForm, clearExpense])
+  useEffect(() => { if (!hasStartForm) clearStart() }, [hasStartForm, clearStart])
+  useEffect(() => { if (!hasRupeeForm) clearRupee() }, [hasRupeeForm, clearRupee])
+
+  const save = async (path, method, body, label, errs) => {
     const res = await apiRequest(path, { method, body, label, silent: true })
     if (!res.ok) {
+      errs?.fromResponse(res)
       toast.error(res.reason || res.data?.error || `${label} failed`)
       return false
     }
@@ -113,11 +142,12 @@ export default function BalanceSheet({ embedded = false }) {
   }
 
   const saveExpense = async () => {
-    setSavingExpense(true)
     const { id, ...fields } = expenseForm
+    if (!expenseErrors.check(fields)) return
+    setSavingExpense(true)
     const ok = id
-      ? await save(`/admin/finance/expenses/${id}`, 'PUT', fields, 'Save expense')
-      : await save('/admin/finance/expenses', 'POST', fields, 'Add expense')
+      ? await save(`/admin/finance/expenses/${id}`, 'PUT', fields, 'Save expense', expenseErrors)
+      : await save('/admin/finance/expenses', 'POST', fields, 'Add expense', expenseErrors)
     setSavingExpense(false)
     if (ok) setExpenseForm(null)
   }
@@ -130,17 +160,19 @@ export default function BalanceSheet({ embedded = false }) {
   }
 
   const saveStart = async () => {
+    if (!startErrors.check(startForm)) return
     setSavingStart(true)
     const ok = await save(`/admin/finance/opening/${startForm.currency}`, 'PUT',
-      { amount: startForm.amount, start_month: startForm.start_month }, 'Starting balance')
+      { amount: startForm.amount, start_month: startForm.start_month }, 'Starting balance', startErrors)
     setSavingStart(false)
     if (ok) setStartForm(null)
   }
 
   const saveRupees = async (reset = false) => {
+    if (!reset && !rupeeErrors.check(rupeeForm)) return
     setSavingRupees(true)
     const ok = await save(`/admin/finance/receipts/${rupeeForm.invoice.invoice_id}`, 'PUT',
-      reset ? { reset: true } : { amount: rupeeForm.amount }, 'Rupees received')
+      reset ? { reset: true } : { amount: rupeeForm.amount }, 'Rupees received', rupeeErrors)
     setSavingRupees(false)
     if (ok) setRupeeForm(null)
   }
@@ -370,12 +402,14 @@ export default function BalanceSheet({ embedded = false }) {
           {expenseForm && (
             <div className="grid grid-cols-2 gap-3 py-1">
               <div className="grid gap-1.5">
-                <Label>Date</Label>
-                <Input type="date" value={expenseForm.spent_on}
+                <Label htmlFor="expense-spent_on">Date <RequiredMark /></Label>
+                <Input id="expense-spent_on"
+                  {...invalidProps(expenseErrors.errors, 'spent_on', 'expense-')} type="date" value={expenseForm.spent_on}
                   onChange={(e) => setExpenseForm((p) => ({ ...p, spent_on: e.target.value }))} />
+                <FieldMessage id="expense-spent_on-error" message={expenseErrors.errors.spent_on} />
               </div>
               <div className="grid gap-1.5">
-                <Label>Category</Label>
+                <Label>Category <RequiredMark /></Label>
                 <Select value={expenseForm.category} onValueChange={(v) => setExpenseForm((p) => ({ ...p, category: v }))}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -384,9 +418,11 @@ export default function BalanceSheet({ embedded = false }) {
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label>Amount</Label>
-                <Input inputMode="decimal" placeholder="0" value={expenseForm.amount}
+                <Label htmlFor="expense-amount">Amount <RequiredMark /></Label>
+                <Input id="expense-amount"
+                  {...invalidProps(expenseErrors.errors, 'amount', 'expense-')} inputMode="decimal" placeholder="0" value={expenseForm.amount}
                   onChange={(e) => setExpenseForm((p) => ({ ...p, amount: e.target.value }))} />
+                <FieldMessage id="expense-amount-error" message={expenseErrors.errors.amount} />
               </div>
               <div className="grid gap-1.5">
                 <Label>Paid from</Label>
@@ -399,9 +435,11 @@ export default function BalanceSheet({ embedded = false }) {
                 </Select>
               </div>
               <div className="grid gap-1.5 col-span-2">
-                <Label>Details</Label>
-                <Input placeholder="e.g. October salary, office rent" value={expenseForm.description}
+                <Label htmlFor="expense-description">Details</Label>
+                <Input id="expense-description"
+                  {...invalidProps(expenseErrors.errors, 'description', 'expense-')} placeholder="e.g. October salary, office rent" value={expenseForm.description}
                   onChange={(e) => setExpenseForm((p) => ({ ...p, description: e.target.value }))} />
+                <FieldMessage id="expense-description-error" message={expenseErrors.errors.description} />
               </div>
             </div>
           )}
@@ -428,14 +466,18 @@ export default function BalanceSheet({ embedded = false }) {
           {startForm && (
             <div className="grid grid-cols-2 gap-3 py-1">
               <div className="grid gap-1.5">
-                <Label>Balance</Label>
-                <Input inputMode="decimal" placeholder="0" value={startForm.amount}
+                <Label htmlFor="start-amount">Balance <RequiredMark /></Label>
+                <Input id="start-amount"
+                  {...invalidProps(startErrors.errors, 'amount', 'start-')} inputMode="decimal" placeholder="0" value={startForm.amount}
                   onChange={(e) => setStartForm((p) => ({ ...p, amount: e.target.value }))} />
+                <FieldMessage id="start-amount-error" message={startErrors.errors.amount} />
               </div>
               <div className="grid gap-1.5">
-                <Label>From month</Label>
-                <Input type="month" value={startForm.start_month}
+                <Label htmlFor="start-start_month">From month <RequiredMark /></Label>
+                <Input id="start-start_month"
+                  {...invalidProps(startErrors.errors, 'start_month', 'start-')} type="month" value={startForm.start_month}
                   onChange={(e) => setStartForm((p) => ({ ...p, start_month: e.target.value }))} />
+                <FieldMessage id="start-start_month-error" message={startErrors.errors.start_month} />
               </div>
             </div>
           )}
@@ -460,9 +502,11 @@ export default function BalanceSheet({ embedded = false }) {
           </DialogHeader>
           {rupeeForm && (
             <div className="grid gap-1.5 py-1">
-              <Label>Amount (Rs)</Label>
-              <Input inputMode="decimal" placeholder="0" value={rupeeForm.amount}
+              <Label htmlFor="rupee-amount">Amount (Rs) <RequiredMark /></Label>
+              <Input id="rupee-amount"
+                {...invalidProps(rupeeErrors.errors, 'amount', 'rupee-')} inputMode="decimal" placeholder="0" value={rupeeForm.amount}
                 onChange={(e) => setRupeeForm((p) => ({ ...p, amount: e.target.value }))} />
+              <FieldMessage id="rupee-amount-error" message={rupeeErrors.errors.amount} />
             </div>
           )}
           <DialogFooter className="gap-2">

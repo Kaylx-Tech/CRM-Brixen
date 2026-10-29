@@ -2,6 +2,7 @@
 Decoupled & Database-Driven architecture.
 """
 from db import query_db, execute_db
+from utils.validation import validate, validation_error
 from utils.response import json_response, success_response, error_response
 import json
 import re
@@ -102,6 +103,16 @@ def _clean_field_list(raw, allowed_types, used_ids, path=''):
             field['fields'] = sub
         fields.append(field)
     return fields, None
+
+
+SERVICE_RULES = {
+    'name': {'label': 'Service name', 'required': True, 'max_length': 160},
+    'description': {'label': 'Description', 'max_length': 4000},
+    'sellPrice': {'label': 'Sell price', 'type': 'amount'},
+    'price': {'label': 'Sell price', 'type': 'amount'},
+    'originalPrice': {'label': 'Original price', 'type': 'amount'},
+    'cost_price': {'label': 'Original price', 'type': 'amount'},
+}
 
 
 def clean_form_fields(raw):
@@ -228,8 +239,9 @@ def handle_catalog_routes(environ, start_response, path, method, user, body, que
         description = body.get('description', '')
         duration = body.get('duration', '12 Months')
 
-        if not name:
-            return error_response(start_response, "Service name is required", 400)
+        errors = validate({**body, 'name': name}, SERVICE_RULES)
+        if errors:
+            return validation_error(start_response, errors)
 
         try:
             price = float(body.get('sellPrice') if body.get('sellPrice') not in (None, '') else body.get('price', 0) or 0)
@@ -242,7 +254,7 @@ def handle_catalog_routes(environ, start_response, path, method, user, body, que
 
         form_fields, form_err = clean_form_fields(body.get('form_fields'))
         if form_err:
-            return error_response(start_response, form_err, 400)
+            return validation_error(start_response, {'form_fields': form_err})
 
         try:
             sid = execute_db("""
@@ -302,8 +314,9 @@ def handle_catalog_routes(environ, start_response, path, method, user, body, que
         description = (body.get('description') if 'description' in body else existing.get('description') or '').strip()
         category = (body.get('category') if 'category' in body else existing.get('category') or '').strip() or 'Corporate'
         duration = (body.get('duration') if 'duration' in body else existing.get('duration') or '').strip() or '12 Months'
-        if not name:
-            return error_response(start_response, "Service name is required", 400)
+        errors = validate({**body, 'name': name}, {k: r for k, r in SERVICE_RULES.items() if k in body or k == 'name'})
+        if errors:
+            return validation_error(start_response, errors)
 
         try:
             if 'sellPrice' in body or 'price' in body:
@@ -327,7 +340,7 @@ def handle_catalog_routes(environ, start_response, path, method, user, body, que
         if 'form_fields' in body:
             form_fields, form_err = clean_form_fields(body.get('form_fields'))
             if form_err:
-                return error_response(start_response, form_err, 400)
+                return validation_error(start_response, {'form_fields': form_err})
             form_json = json.dumps({'fields': form_fields}) if form_fields else None
 
         execute_db("""

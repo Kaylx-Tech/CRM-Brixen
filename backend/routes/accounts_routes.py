@@ -3,6 +3,7 @@
 import re
 from datetime import datetime, timedelta
 from db import query_db, execute_db
+from utils.validation import validate, validation_error, parse_date
 from utils.response import json_response, success_response, error_response
 from services.accountancy_books import (
     build_company_books_workspace,
@@ -271,7 +272,19 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
         comp_id_from_path = match_file.group(1) if match_file else None
         company_id = comp_id_from_path or body.get('company_id')
         if not company_id:
-            return error_response(start_response, "Please select a company to file accounts", status_code=400)
+            return validation_error(start_response, {'company_id': "Choose a company to file accounts for."})
+        errors = validate(body, {
+            'period_start': {'label': 'Period start', 'type': 'date'},
+            'period_end': {'label': 'Year end', 'type': 'date'},
+            'due_date': {'label': 'Due date', 'type': 'date'},
+            'confirmation_number': {'label': 'Confirmation number', 'max_length': 60},
+            'notes': {'label': 'Internal notes', 'max_length': 4000},
+        })
+        start_d, end_d = parse_date(body.get('period_start')), parse_date(body.get('period_end'))
+        if not errors and start_d and end_d and end_d <= start_d:
+            errors['period_end'] = "Year end must be after the period start."
+        if errors:
+            return validation_error(start_response, errors)
 
         try:
             company_id = int(company_id)
@@ -388,8 +401,13 @@ def handle_accountancy_routes(environ, start_response, path, method, user, body,
             entry_date = body.get('entry_date') or body.get('date') or str(datetime.now().date())
             period_end_body = body.get('period_end') or period_end or str(datetime.now().date())
 
-            if not desc:
-                return error_response(start_response, "Description is required", status_code=400)
+            errors = validate({**body, 'description': desc, 'entry_date': entry_date}, {
+                'description': {'label': 'Description', 'required': True, 'max_length': 200},
+                'amount': {'label': 'Amount', 'required': True, 'type': 'amount', 'min': 0.01},
+                'entry_date': {'label': 'Date', 'type': 'date'},
+            })
+            if errors:
+                return validation_error(start_response, errors)
 
             try:
                 if isinstance(amount_val, str):

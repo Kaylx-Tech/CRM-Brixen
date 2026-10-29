@@ -36,6 +36,26 @@ import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 import { formatGBP, plainAmount } from "@/lib/money"
 import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
+import { useFormErrors } from '@/lib/validation'
+import { FieldMessage, RequiredMark, invalidProps } from '@/components/FormField'
+
+const num = (v) => Number(String(v ?? '').replace(/[£,\s]/g, ''))
+const INVOICE_SCHEMA = {
+  due_date: { label: 'Due date', type: 'date' },
+  total: { label: 'Total', required: true, type: 'amount' },
+  deposit_amount: {
+    label: 'Deposit',
+    type: 'amount',
+    required: (v) => v.payment_timing === 'Deposit',
+    when: (v) => v.payment_timing === 'Deposit',
+    validate: (v, all) => (num(v) > num(all.total) ? 'Deposit cannot be more than the total.' : ''),
+  },
+  amount_paid: {
+    label: 'Received so far',
+    type: 'amount',
+    validate: (v, all) => (num(v) > num(all.total) ? 'Received cannot be more than the total.' : ''),
+  },
+}
 
 const invoiceCol = createColumnHelper()
 const costCol = createColumnHelper()
@@ -542,8 +562,11 @@ export default function Payments() {
     }
   }
 
+  const invoiceErrors = useFormErrors(INVOICE_SCHEMA, { prefix: 'invoice-' })
+
   const openEdit = (inv) => {
     setEditInvoice(inv)
+    invoiceErrors.clear()
     const money = invoiceMoneyBits(inv)
     setEditForm({
       status: money.status === 'Partial Paid' ? 'Partial Paid' : (inv.status || 'Pending'),
@@ -558,6 +581,7 @@ export default function Payments() {
 
   const handleSaveInvoice = async () => {
     if (!editInvoice?.id) return
+    if (!invoiceErrors.check(editForm)) return
     setIsSavingInvoice(true)
     const toastId = toastProcessing('Saving invoice…')
     try {
@@ -590,6 +614,7 @@ export default function Payments() {
         setEditInvoice(null)
         fetchInvoices()
       } else {
+        invoiceErrors.fromResponse(res)
         toastFail(toastId, res.reason || 'Failed to save invoice')
       }
     } finally {
@@ -1022,45 +1047,53 @@ export default function Payments() {
                 </div>
 
                 <div className="grid gap-1.5">
-                  <Label>Due date</Label>
-                  <Input
+                  <Label htmlFor="invoice-due_date">Due date</Label>
+                  <Input id="invoice-due_date"
+                    {...invalidProps(invoiceErrors.errors, 'due_date', 'invoice-')}
                     type="date"
                     className="w-full"
                     value={editForm.due_date || ''}
                     onChange={(e) => setEditForm((p) => ({ ...p, due_date: e.target.value }))}
                   />
+                  <FieldMessage id="invoice-due_date-error" message={invoiceErrors.errors.due_date} />
                 </div>
 
                 <div className="grid gap-1.5">
-                  <Label>Total (£)</Label>
-                  <Input
+                  <Label htmlFor="invoice-total">Total (£) <RequiredMark /></Label>
+                  <Input id="invoice-total"
+                    {...invalidProps(invoiceErrors.errors, 'total', 'invoice-')}
                     className="w-full"
                     value={editForm.total || ''}
                     onChange={(e) => setEditForm((p) => ({ ...p, total: e.target.value }))}
                     inputMode="decimal"
                   />
+                  <FieldMessage id="invoice-total-error" message={invoiceErrors.errors.total} />
                 </div>
 
                 {editForm.payment_timing === 'Deposit' && (
                   <div className="grid gap-1.5">
-                    <Label>Deposit now</Label>
-                    <Input
+                    <Label htmlFor="invoice-deposit_amount">Deposit now <RequiredMark /></Label>
+                    <Input id="invoice-deposit_amount"
+                      {...invalidProps(invoiceErrors.errors, 'deposit_amount', 'invoice-')}
                       className="w-full"
                       value={editForm.deposit_amount || ''}
                       onChange={(e) => setEditForm((p) => ({ ...p, deposit_amount: e.target.value }))}
                       inputMode="decimal"
                     />
+                    <FieldMessage id="invoice-deposit_amount-error" message={invoiceErrors.errors.deposit_amount} />
                   </div>
                 )}
 
                 <div className="grid gap-1.5">
-                  <Label>Received so far</Label>
-                  <Input
+                  <Label htmlFor="invoice-amount_paid">Received so far</Label>
+                  <Input id="invoice-amount_paid"
+                    {...invalidProps(invoiceErrors.errors, 'amount_paid', 'invoice-')}
                     className="w-full"
                     value={editForm.amount_paid || ''}
                     onChange={(e) => setEditForm((p) => ({ ...p, amount_paid: e.target.value }))}
                     inputMode="decimal"
                   />
+                  <FieldMessage id="invoice-amount_paid-error" message={invoiceErrors.errors.amount_paid} />
                 </div>
               </div>
 
