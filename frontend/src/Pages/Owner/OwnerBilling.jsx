@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { IconAlertTriangle, IconCash, IconClockHour4, IconId, IconMapPin, IconReceipt2, IconWallet, IconCheck } from "@tabler/icons-react"
+import { IconAlertTriangle, IconCash, IconClockHour4, IconId, IconMapPin, IconReceipt2, IconWallet, IconCheck, IconSearch } from "@tabler/icons-react"
 import { cn } from "cn"
 import { Input } from "@/components/ui/input"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { checkField } from "@/lib/validation"
 import { FieldMessage } from "@/components/FormField"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
@@ -17,6 +18,8 @@ const STATE = {
   cancelled: ["Cancelled", "bg-muted text-muted-foreground"],
   no_price: ["No price", "bg-muted text-muted-foreground"],
 }
+
+const PAGE_SIZE = 25
 
 const FILTERS = [
   ["", "All"],
@@ -214,6 +217,12 @@ export default function OwnerBilling() {
   const [filter, setFilter] = useState("")
   const [paying, setPaying] = useState("")
   const [topping, setTopping] = useState("")
+  const [search, setSearch] = useState("")
+  const [plan, setPlan] = useState("")
+  const [view, setView] = useState("")
+  const [sort, setSort] = useState("attention")
+  const [page, setPage] = useState(0)
+  const [openSlug, setOpenSlug] = useState("")
 
   const load = useCallback(() => {
     ownerApi("/billing").then((res) => (res.ok ? setData(res.data) : setError(res.error)))
@@ -223,12 +232,32 @@ export default function OwnerBilling() {
     load()
   }, [load])
 
+  const plans = useMemo(() => [...new Set((data?.workspaces || []).map((w) => w.plan).filter(Boolean))].sort(), [data])
   const rows = useMemo(() => {
     const order = { overdue: 0, due_soon: 1, no_price: 2, paid: 3, trial: 4, cancelled: 5 }
-    return (data?.workspaces || [])
-      .filter((w) => !filter || w.state === filter)
-      .sort((a, b) => order[a.state] - order[b.state] || a.name.localeCompare(b.name))
-  }, [data, filter])
+    const q = search.trim().toLowerCase()
+    const list = (data?.workspaces || []).filter((w) => {
+      if (filter && w.state !== filter) return false
+      if (plan && w.plan !== plan) return false
+      if (view === "services" && !(w.services_unpaid > 0)) return false
+      if (view === "subscription" && !(w.subscription_due > 0)) return false
+      if (view === "balance" && !(w.balance > 0)) return false
+      return !q || [w.name, w.slug, w.owner_email, w.plan].some((v) => String(v || "").toLowerCase().includes(q))
+    })
+    const by = {
+      attention: (a, b) => order[a.state] - order[b.state] || a.name.localeCompare(b.name),
+      name: (a, b) => a.name.localeCompare(b.name),
+      due: (a, b) => (b.subscription_due || 0) + (b.services_unpaid || 0) - (a.subscription_due || 0) - (a.services_unpaid || 0),
+      balance: (a, b) => (b.balance || 0) - (a.balance || 0),
+      paid_until: (a, b) => String(a.current_period_end || "9999").localeCompare(String(b.current_period_end || "9999")),
+    }
+    return list.sort(by[sort] || by.attention)
+  }, [data, filter, plan, view, search, sort])
+  const pageRows = rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const reset = (fn) => (e) => {
+    fn(e?.target ? e.target.value : e)
+    setPage(0)
+  }
 
   if (error) return <LoadError error={error} />
   if (!data) return <p className="text-sm text-muted-foreground">Loading…</p>
@@ -260,98 +289,154 @@ export default function OwnerBilling() {
         />
       </div>
 
-      <FilterTabs value={filter} onChange={setFilter} options={FILTERS} className="mt-8 mb-4" />
-
-      <div className="space-y-2">
-        {!rows.length && (
-          <Panel>
-            <p className="text-sm text-muted-foreground">No workspaces here.</p>
-          </Panel>
-        )}
-        {rows.map((w) => {
-          const [label, tone] = STATE[w.state] || [w.state, "bg-muted"]
-          return (
-            <div key={w.slug} className="rounded-2xl border bg-card p-4 shadow-xs">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Link to={`/owner/workspaces/${w.slug}`} className="font-semibold hover:text-primary">
-                      {w.name}
-                    </Link>
-                    <PlanBadge plan={w.plan} />
-                    {w.state !== "trial" && (
-                      <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-semibold", tone)}>{label}</span>
-                    )}
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {w.cycle_amount ? `${money(w.cycle_amount)} ${w.billing_cycle === "yearly" ? "a year" : "a month"}` : "No subscription price"}
-                    {w.state === "trial" && w.trial_ends_at ? ` · trial ends ${shortDate(w.trial_ends_at)}` : ""}
-                    {w.current_period_end ? ` · paid until ${shortDate(w.current_period_end)}` : ""}
-                    {w.last_payment ? ` · last paid ${money(w.last_payment.amount)} on ${shortDate(w.last_payment.created_at)}` : ""}
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">Balance: {money(w.balance)}</p>
-                  {w.services_unpaid > 0 && (
-                    <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
-                      Services unpaid: {money(w.services_unpaid)}
-                      {w.ro_unpaid ? ` (registered office ${money(w.ro_unpaid)}` : " ("}
-                      {w.ro_unpaid && w.kyc_unpaid ? ", " : ""}
-                      {w.kyc_unpaid ? `KYC ${money(w.kyc_unpaid)}` : ""})
-                    </p>
-                  )}
-                </div>
-                <div className="flex shrink-0 flex-wrap items-center gap-2">
-                  {w.subscription_due > 0 && <span className="text-sm font-semibold text-destructive">{money(w.subscription_due)} due</span>}
-                  {w.ro_unpaid > 0 && (
-                    <Button variant="outline" size="lg" nativeButton={false} render={<Link to="/owner/registered-office" />}>
-                      <IconMapPin className="size-4" /> Registered office
-                    </Button>
-                  )}
-                  {w.kyc_unpaid > 0 && (
-                    <Button variant="outline" size="lg" nativeButton={false} render={<Link to="/owner/kyc" />}>
-                      <IconId className="size-4" /> KYC
-                    </Button>
-                  )}
-                  {topping !== w.slug && (
-                    <Button size="lg" variant="outline" onClick={() => setTopping(w.slug)}>
-                      <IconWallet className="size-4" /> Top up balance
-                    </Button>
-                  )}
-                  {!["trial", "no_price"].includes(w.state) && paying !== w.slug && (
-                    <Button size="lg" variant={w.state === "overdue" ? "default" : "outline"} onClick={() => setPaying(w.slug)}>
-                      <IconCash className="size-4" /> Record payment
-                    </Button>
-                  )}
-                </div>
-              </div>
-              {topping === w.slug && (
-                <div className="mt-3">
-                  <TopUpForm
-                    workspace={w}
-                    onCancel={() => setTopping("")}
-                    onDone={() => {
-                      setTopping("")
-                      load()
-                    }}
-                  />
-                </div>
-              )}
-              {paying === w.slug && (
-                <div className="mt-3">
-                  <PaymentForm
-                    workspace={w}
-                    methods={data.methods}
-                    onCancel={() => setPaying("")}
-                    onDone={() => {
-                      setPaying("")
-                      load()
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          )
-        })}
+      {/* Built for many workspaces: search, filters, sorting and pages; "Manage" opens payments and top-ups */}
+      <div className="mt-8 mb-3 flex flex-col gap-3">
+        <FilterTabs value={filter} onChange={reset(setFilter)} options={FILTERS} />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <IconSearch className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input className="pl-9" placeholder="Search workspace name, web address or owner email…" value={search} onChange={reset(setSearch)} aria-label="Search workspaces" />
+          </div>
+          <select className={cn(SELECT, "sm:w-40 sm:shrink-0")} value={plan} onChange={reset(setPlan)} aria-label="Plan">
+            <option value="">All plans</option>
+            {plans.map((p) => (
+              <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+            ))}
+          </select>
+          <select className={cn(SELECT, "sm:w-48 sm:shrink-0")} value={view} onChange={reset(setView)} aria-label="Show">
+            <option value="">Everything</option>
+            <option value="subscription">Subscription due</option>
+            <option value="services">Services unpaid</option>
+            <option value="balance">Has balance</option>
+          </select>
+          <select className={cn(SELECT, "sm:w-44 sm:shrink-0")} value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort">
+            <option value="attention">Needs attention first</option>
+            <option value="due">Most owed</option>
+            <option value="paid_until">Paid until (soonest)</option>
+            <option value="balance">Highest balance</option>
+            <option value="name">Name A–Z</option>
+          </select>
+        </div>
       </div>
+
+      {!rows.length ? (
+        <Panel>
+          <p className="text-sm text-muted-foreground">{search || plan || view ? "No matches. Try another search or filter." : "No workspaces here."}</p>
+        </Panel>
+      ) : (
+        <div className="overflow-hidden rounded-2xl border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Workspace</TableHead>
+                <TableHead>Subscription</TableHead>
+                <TableHead>Paid until</TableHead>
+                <TableHead className="text-right">Subscription due</TableHead>
+                <TableHead className="text-right">Services unpaid</TableHead>
+                <TableHead className="text-right">Balance</TableHead>
+                <TableHead className="w-0" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pageRows.map((w) => {
+                const [label, tone] = STATE[w.state] || [w.state, "bg-muted"]
+                const opened = openSlug === w.slug
+                return (
+                  <Fragment key={w.slug}>
+                    <TableRow className={cn(opened && "bg-muted/40")}>
+                      <TableCell className="md:max-w-56">
+                        <Link to={`/owner/workspaces/${w.slug}`} className="block font-semibold hover:text-primary md:truncate">{w.name}</Link>
+                        <span className="block text-xs text-muted-foreground">{w.slug}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <PlanBadge plan={w.plan} />
+                          {w.state !== "trial" && (
+                            <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-semibold", tone)}>{label}</span>
+                          )}
+                        </div>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          {w.cycle_amount ? `${money(w.cycle_amount)} ${w.billing_cycle === "yearly" ? "a year" : "a month"}` : "No price"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                        {w.state === "trial" && w.trial_ends_at ? `Trial ends ${shortDate(w.trial_ends_at)}` : w.current_period_end ? shortDate(w.current_period_end) : "—"}
+                      </TableCell>
+                      <TableCell className={cn("whitespace-nowrap text-right tabular-nums", w.subscription_due > 0 ? "font-semibold text-destructive" : "text-muted-foreground")}>
+                        {w.subscription_due > 0 ? money(w.subscription_due) : "—"}
+                      </TableCell>
+                      <TableCell className={cn("whitespace-nowrap text-right tabular-nums", w.services_unpaid > 0 ? "font-semibold text-amber-700 dark:text-amber-300" : "text-muted-foreground")}>
+                        {w.services_unpaid > 0 ? money(w.services_unpaid) : "—"}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-right tabular-nums">{money(w.balance)}</TableCell>
+                      <TableCell>
+                        <Button size="sm" variant={opened ? "default" : "outline"} onClick={() => setOpenSlug(opened ? "" : w.slug)}>
+                          {opened ? "Close" : "Manage"}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                    {opened && (
+                      <TableRow className="bg-muted/20 hover:bg-muted/20">
+                        <TableCell colSpan={7} className="space-y-3">
+                          <div className="grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
+                            <p>{w.last_payment ? `Last paid ${money(w.last_payment.amount)} on ${shortDate(w.last_payment.created_at)}` : "No payment recorded yet"}</p>
+                            {w.services_unpaid > 0 && (
+                              <p>
+                                Services: {w.ro_unpaid ? `registered office ${money(w.ro_unpaid)}` : ""}
+                                {w.ro_unpaid && w.kyc_unpaid ? ", " : ""}
+                                {w.kyc_unpaid ? `KYC ${money(w.kyc_unpaid)}` : ""}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {!["trial", "no_price"].includes(w.state) && paying !== w.slug && (
+                              <Button variant={w.state === "overdue" ? "default" : "outline"} onClick={() => { setPaying(w.slug); setTopping("") }}>
+                                <IconCash className="size-4" /> Record payment
+                              </Button>
+                            )}
+                            {topping !== w.slug && (
+                              <Button variant="outline" onClick={() => { setTopping(w.slug); setPaying("") }}>
+                                <IconWallet className="size-4" /> Top up balance
+                              </Button>
+                            )}
+                            {w.ro_unpaid > 0 && (
+                              <Button variant="outline" nativeButton={false} render={<Link to="/owner/registered-office" />}>
+                                <IconMapPin className="size-4" /> Registered office
+                              </Button>
+                            )}
+                            {w.kyc_unpaid > 0 && (
+                              <Button variant="outline" nativeButton={false} render={<Link to="/owner/kyc" />}>
+                                <IconId className="size-4" /> KYC
+                              </Button>
+                            )}
+                          </div>
+                          {topping === w.slug && (
+                            <TopUpForm workspace={w} onCancel={() => setTopping("")} onDone={() => { setTopping(""); load() }} />
+                          )}
+                          {paying === w.slug && (
+                            <PaymentForm workspace={w} methods={data.methods} onCancel={() => setPaying("")} onDone={() => { setPaying(""); load() }} />
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+      {rows.length > PAGE_SIZE && (
+        <div className="mt-3 flex items-center justify-between gap-2 text-sm text-muted-foreground">
+          <span>
+            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, rows.length)} of {rows.length}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Previous</Button>
+            <Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= rows.length} onClick={() => setPage((p) => p + 1)}>Next</Button>
+          </div>
+        </div>
+      )}
 
       <Panel title="Recent payments" className="mt-6">
         {data.payments.length ? (
