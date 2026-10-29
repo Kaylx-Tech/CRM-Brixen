@@ -65,6 +65,15 @@ import { isManagerOrAbove, canViewPrices } from '@/lib/permissions'
 import { formatGBP, plainAmount } from '@/lib/money'
 import { canCancelOrder, cancelOrder, cancelOrderMessage } from '@/lib/orders'
 import OrderIdVerification from '@/Pages/SmartOperations/OrderIdVerification'
+import { useFormErrors } from '@/lib/validation'
+import { FieldMessage, RequiredMark, invalidProps } from '@/components/FormField'
+
+const ORDER_DETAILS_SCHEMA = {
+  service_name: { label: 'Service', required: true, maxLength: 200 },
+  order_date: { label: 'Order date', type: 'date', past: true },
+  owner_form_email: { label: 'Owner email', type: 'email' },
+}
+const CREDENTIALS_SCHEMA = { access_email: { label: 'Service email', type: 'email' } }
 
 const PAYMENT_MODES = [
   { value: 'PKR(Bank Transfer)', label: 'PKR (Bank Transfer)' },
@@ -235,6 +244,8 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
   // Edit credentials mode
   const [isEditingCreds, setIsEditingCreds] = useState(false)
   const [accessEmail, setAccessEmail] = useState('')
+  const detailErrors = useFormErrors(ORDER_DETAILS_SCHEMA, { prefix: 'order-' })
+  const credErrors = useFormErrors(CREDENTIALS_SCHEMA, { prefix: 'order-' })
   const [accessPassword, setAccessPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isSavingCreds, setIsSavingCreds] = useState(false)
@@ -504,6 +515,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
   // Save edited checkout form fields
   const handleSaveDetails = async () => {
     if (!orderId) return
+    if (!detailErrors.check(orderInfo)) return
     setIsSavingDetails(true)
     const toastId = toastProcessing('Saving order details…')
     try {
@@ -527,6 +539,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
         fetchOrderDetails()
         if (onOrderUpdated) onOrderUpdated()
       } else {
+        detailErrors.fromResponse(res)
         toastFail(toastId, res.reason || 'Failed to update order details')
       }
     } finally {
@@ -537,6 +550,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
   // Save credentials
   const handleSaveCredentials = async () => {
     if (!orderId) return
+    if (!credErrors.check({ access_email: accessEmail })) return
     setIsSavingCreds(true)
     const toastId = toastProcessing('Saving credentials…')
     try {
@@ -555,6 +569,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
         fetchOrderDetails()
         if (onOrderUpdated) onOrderUpdated()
       } else {
+        credErrors.fromResponse(res)
         toastFail(toastId, res.reason || 'Failed to save credentials')
       }
     } finally {
@@ -622,9 +637,9 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
   }
 
   const handleSaveItemPrice = async (item, value) => {
-    const price = Number(value)
-    if (!Number.isFinite(price) || price < 0) {
-      toast.error('Enter a valid price')
+    const price = Number(String(value).replace(/[£,\s]/g, ''))
+    if (String(value).trim() === '' || !Number.isFinite(price) || price < 0) {
+      toast.error('Enter a price of 0 or more, like 120.50')
       return
     }
     if (Number(item.unit_price || 0) === price) return
@@ -944,21 +959,25 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                             <p className="text-sm font-semibold">Order</p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               <div className="space-y-1.5">
-                                <Label className="text-xs text-muted-foreground">Service</Label>
-                                <Input
+                                <Label htmlFor="order-service_name" className="text-xs text-muted-foreground">Service <RequiredMark /></Label>
+                                <Input id="order-service_name"
+                                  {...invalidProps(detailErrors.errors, 'service_name', 'order-')}
                                   value={orderInfo.service_name}
                                   onChange={(e) => setOrderInfo((p) => ({ ...p, service_name: e.target.value }))}
                                   className="text-sm bg-background"
                                 />
+                                <FieldMessage id="order-service_name-error" message={detailErrors.errors.service_name} />
                               </div>
                               <div className="space-y-1.5">
                                 <Label className="text-xs text-muted-foreground">Order date</Label>
-                                <Input
+                                <Input id="order-order_date"
+                                  {...invalidProps(detailErrors.errors, 'order_date', 'order-')}
                                   type="date"
                                   value={orderInfo.order_date}
                                   onChange={(e) => setOrderInfo((p) => ({ ...p, order_date: e.target.value }))}
                                   className="text-sm bg-background"
                                 />
+                                <FieldMessage id="order-order_date-error" message={detailErrors.errors.order_date} />
                               </div>
                               <div className="space-y-1.5">
                                 <Label className="text-xs text-muted-foreground">Owner name (on the form)</Label>
@@ -970,12 +989,14 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               </div>
                               <div className="space-y-1.5">
                                 <Label className="text-xs text-muted-foreground">Owner email (order emails)</Label>
-                                <Input
+                                <Input id="order-owner_form_email"
+                                  {...invalidProps(detailErrors.errors, 'owner_form_email', 'order-')}
                                   type="email"
                                   value={orderInfo.owner_form_email}
                                   onChange={(e) => setOrderInfo((p) => ({ ...p, owner_form_email: e.target.value }))}
                                   className="text-sm bg-background"
                                 />
+                                <FieldMessage id="order-owner_form_email-error" message={detailErrors.errors.owner_form_email} />
                               </div>
                               <div className="space-y-1.5 md:col-span-2">
                                 <Label className="text-xs text-muted-foreground">Company</Label>
@@ -1282,13 +1303,15 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-1.5">
                             <Label className="text-sm font-semibold">Service Email</Label>
-                            <Input
+                            <Input id="order-access_email"
+                              {...invalidProps(credErrors.errors, 'access_email', 'order-')}
                               type="email"
                               placeholder="e.g. info@clientcompany.co.uk"
                               value={accessEmail}
                               onChange={(e) => setAccessEmail(e.target.value)}
                               className="text-sm"
                             />
+                            <FieldMessage id="order-access_email-error" message={credErrors.errors.access_email} />
                           </div>
                           <div className="space-y-1.5">
                             <Label className="text-sm font-semibold">Email Password / Access Code</Label>

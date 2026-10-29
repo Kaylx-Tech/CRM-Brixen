@@ -5,6 +5,7 @@ import os
 import re
 import secrets
 from db import query_db, execute_db
+from utils.validation import validate, validation_error, check_service_fields
 from utils.response import json_response, success_response, error_response
 from services.invoice_service import attach_order_profit_fields
 from services.order_service import build_admin_order_list
@@ -466,8 +467,34 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
             or payload.get('sic_code')
         )
         if is_manual:
+            new_mode = payload.get('client_mode') == 'new'
+            errors = validate(payload, {
+                'client_id': {'label': 'Client', 'required': True, 'when': lambda v: not new_mode},
+                'new_client_full_name': {'label': 'Client full name', 'required': True, 'when': lambda v: new_mode},
+                'new_client_email': {'label': 'Portal login email', 'required': True, 'type': 'email', 'when': lambda v: new_mode},
+                'company_name': {'label': 'Company name', 'max_length': 160},
+                'company_email': {'label': 'Company notification email', 'required': True, 'type': 'email'},
+                'company_phone': {'label': 'Company phone', 'type': 'phone'},
+                'registered_postcode': {'label': 'Postcode', 'type': 'postcode'},
+                'owner_name': {'label': 'Director name', 'max_length': 120},
+                'director_phone': {'label': 'Director phone', 'type': 'phone'},
+            })
+            items = [li for li in (payload.get('line_items') or []) if str((li or {}).get('product_name') or '').strip()]
+            if not items:
+                errors['line_items'] = 'Add at least one product or service.'
+            else:
+                bad = next((li for li in items if li.get('price') not in (None, '') and validate(
+                    {'price': str(li.get('price'))}, {'price': {'label': 'Price', 'type': 'amount'}})), None)
+                if bad:
+                    errors['line_items'] = f"Price for \"{bad['product_name']}\" must be 0 or more, like 120.50."
+            if errors:
+                return validation_error(start_response, errors)
             result, err = create_manual_crm_order(payload, actor=user)
         else:
+            # The services' own questions: an email / phone / postcode / date answer must be in that format
+            bad = check_service_fields((payload.get('form_values') or {}).get('service_fields'))
+            if bad:
+                return validation_error(start_response, bad)
             result, err = _upsert_wizard_order(body=payload, user_id=user_id, is_staff=is_staff, as_draft=False,
                                                own_orders_only=own_orders_only)
         if err:
@@ -509,6 +536,9 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
             execute_db("UPDATE orders SET cost_price = NULL, updated_at = datetime('now') WHERE id = ?;", (order_id,))
             return success_response(start_response, data={"id": order_id, "cost_price": None}, message="Order cost reset.")
 
+        errors = validate(body, {'cost_price': {'label': 'Cost price', 'type': 'amount'}})
+        if errors:
+            return validation_error(start_response, errors)
         cost_price = float(body.get('cost_price', 0) or 0)
         execute_db(
             "UPDATE orders SET cost_price = ?, updated_at = datetime('now') WHERE id = ?;",
@@ -542,7 +572,11 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
             svc = query_db("SELECT id, name, category, price FROM services WHERE id = ?;", (int(service_id),), one=True) if service_id else None
             name = str(body.get('product_name') or (svc or {}).get('name') or '').strip()
             if not name:
-                return error_response(start_response, "service_id or product_name is required", status_code=400)
+                return validation_error(start_response, {'product_name': "Choose a service or enter a product name."})
+            errors = validate(body, {'unit_price': {'label': 'Price', 'type': 'amount'},
+                                     'quantity': {'label': 'Quantity', 'type': 'integer', 'min': 1, 'max': 1000}})
+            if errors:
+                return validation_error(start_response, errors)
             try:
                 qty = max(1, int(body.get('quantity') or 1))
                 unit = float(body['unit_price']) if body.get('unit_price') not in (None, '') else float((svc or {}).get('price') or 0)
@@ -606,6 +640,20 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
         order_id = int(match_update.group(1))
         if not is_staff:
             return error_response(start_response, "Only staff can update orders", status_code=403)
+
+        # Only the fields that were sent are checked
+        rules = {
+            'service_name': {'label': 'Service', 'required': True, 'max_length': 200},
+            'order_date': {'label': 'Order date', 'type': 'date', 'past': True},
+            'owner_form_email': {'label': 'Owner email', 'type': 'email'},
+            'access_email': {'label': 'Service email', 'type': 'email'},
+            'cost_price': {'label': 'Cost price', 'type': 'amount'},
+            'price': {'label': 'Price', 'type': 'amount'},
+            'total': {'label': 'Total', 'type': 'amount'},
+        }
+        errors = validate(body, {k: r for k, r in rules.items() if k in body})
+        if errors:
+            return validation_error(start_response, errors)
 
         updates = []
         params = []
