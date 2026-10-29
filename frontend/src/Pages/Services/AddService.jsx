@@ -17,7 +17,6 @@ import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import { IconLoader2 } from '@tabler/icons-react'
 import ToastSave from '@/components/ToastSave'
 import FormFieldsBuilder, { formFieldsError } from './FormFieldsBuilder'
-import { ScrollArea } from '@/components/ui/scroll-area'
 
 const AddService = ({ isOpen, onClose, onSuccess }) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -123,7 +122,7 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
             </DialogDescription>
           </DialogHeader>
           {/* Header and buttons stay put; only the form scrolls */}
-          <ScrollArea className="-mx-6 h-0 min-h-0 flex-1 overflow-hidden">
+          <div className="-mx-6 min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="grid gap-4 px-6 py-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Name *</Label>
@@ -200,7 +199,7 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
               disabled={isSubmitting}
             />
           </div>
-          </ScrollArea>
+          </div>
           <DialogFooter className="gap-3 shrink-0">
             <Button variant="outline" onClick={handleAttemptClose} disabled={isSubmitting}>Cancel</Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>

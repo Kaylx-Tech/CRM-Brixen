@@ -300,12 +300,13 @@ export default function FormFieldsBuilder({ value = [], onChange, disabled, nest
         </ul>
       )}
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Add-field chips: each as wide as its label, wrapping onto the next line when the row is full */}
+      <div className="flex flex-wrap gap-2">
         {types.map((t) => (
-          <Button key={t.value} type="button" variant="outline" size="sm" className="h-auto min-h-9 w-full justify-start whitespace-normal text-left"
+          <Button key={t.value} type="button" variant="outline" size="sm" className="max-w-full"
             onClick={() => add(t.value)}
             disabled={disabled || value.length >= MAX_FIELDS}>
-            <IconPlus /> {t.label}
+            <t.icon /> <span className="truncate">{t.label}</span>
           </Button>
         ))}
       </div>
