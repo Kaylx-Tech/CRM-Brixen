@@ -16,6 +16,9 @@ from middleware.auth_guard import get_authenticated_user
 from utils.response import json_response, error_response
 from routes import dispatch_api_routes
 from services.price_privacy import hides_prices, applies_to_path, blocked_path, strip_incoming, scrub_json_payload
+from services.error_tracking import init_error_tracking, capture_api_error
+
+init_error_tracking()
 
 
 class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
@@ -157,6 +160,7 @@ def app(environ, start_response):
         print(f"[API Server Error] Path: {path} Method: {method} Error: {exc}")
         import traceback
         traceback.print_exc()
+        capture_api_error(exc, path, method, user)
         # Do not leak exception details to clients
         return error_response(custom_start_response, "Internal Server Error", status_code=500)
 
