@@ -183,6 +183,8 @@ export async function apiRequest(path, options = {}) {
       url,
       title: `${label} failed to load`,
       reason: httpReason(res, data, base, rawText),
+      // 400 { fields: { name: message } } from backend/utils/validation.py, shown next to each field
+      fieldErrors: data && typeof data.fields === "object" ? data.fields : null,
     }
     if (!silent) toastApiError(info)
     return info
@@ -196,6 +198,7 @@ export async function apiRequest(path, options = {}) {
       url,
       title: `${label} failed to load`,
       reason: data.error || data.message || "API returned success: false",
+      fieldErrors: typeof data.fields === "object" ? data.fields : null,
     }
     if (!silent) toastApiError(info)
     return info
