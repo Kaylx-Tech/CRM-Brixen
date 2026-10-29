@@ -6,6 +6,11 @@ import { apiRequest } from '@/lib/api'
 // Fields that change what a user can see; if the server's copy differs from the saved one, re-render the app
 const ACCESS_FIELDS = ['id', 'role', 'department', 'status', 'impersonated']
 
+// The login reply has no `impersonated` flag while /auth/me sends false; both mean "not impersonated"
+function accessValue(user, key) {
+  return key === 'impersonated' ? String(Boolean(user[key])) : String(user[key] ?? '')
+}
+
 function readStoredUser() {
   try {
     return JSON.parse(localStorage.getItem('user') || 'null')
@@ -34,7 +39,7 @@ function useSessionSync() {
       const fresh = res.ok ? res.data?.data?.user : null
       if (!fresh) return
       const stored = readStoredUser() || {}
-      const changed = ACCESS_FIELDS.some((k) => String(stored[k] ?? '') !== String(fresh[k] ?? ''))
+      const changed = ACCESS_FIELDS.some((k) => accessValue(stored, k) !== accessValue(fresh, k))
       localStorage.setItem('user', JSON.stringify({ ...stored, ...fresh }))
       if (changed) window.location.replace(window.location.pathname + window.location.search)
     })
