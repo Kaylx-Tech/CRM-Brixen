@@ -56,7 +56,7 @@ export default function WalletButton() {
   const due = Number(data.due?.total || 0)
   const short = due > data.balance + 0.004
   const min = data.min_top_up || 10
-  const max = data.max_top_up || 10000
+  const max = data.max_top_up || 1000
   const value = Number(String(amount).replace(/[£,\s]/g, ''))
   const amountOk = value >= min && value <= max
 

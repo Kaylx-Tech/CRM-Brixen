@@ -78,7 +78,7 @@ def top_up(slug, amount, note, admin):
 
 
 MIN_TOP_UP = 10
-MAX_TOP_UP = 10000
+MAX_TOP_UP = 1000
 
 
 def _amount(value, label="Amount"):
