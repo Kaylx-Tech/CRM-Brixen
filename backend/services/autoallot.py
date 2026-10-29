@@ -27,8 +27,8 @@ KINDS = {
         'label': 'Registered office',
         'prefix': 'Office',
         'first_number': 1000,
-        # Unpaid allotted addresses a workspace may hold, per plan (trial: none until a plan is chosen)
-        'credits': {'trial': 0, 'starter': 1, 'pro': 5, 'business': 10, 'enterprise': 20},
+        # Unpaid allotted addresses a workspace may hold, per plan (a free trial gets 2 to try it)
+        'credits': {'trial': 2, 'starter': 3, 'pro': 5, 'business': 10, 'enterprise': 20},
     },
 }
 
