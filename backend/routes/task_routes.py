@@ -3,6 +3,7 @@
 import datetime
 import re
 from db import query_db, execute_db
+from utils.validation import validate, validation_error
 from utils.response import success_response, error_response
 from services.notification_service import notify_user
 from services.permissions import check_permission, departments_from_user
@@ -12,6 +13,13 @@ VALID_STATUSES = ('Open', 'In Progress', 'Completed', 'Cancelled')
 VALID_PRIORITIES = ('Low', 'Medium', 'High', 'Urgent')
 TASK_MANAGER_ROLES = ('SUPER_ADMIN', 'ADMIN', 'MANAGER')
 
+
+
+TASK_RULES = {
+    'title': {'label': 'Task title', 'required': True, 'max_length': 200},
+    'description': {'label': 'Description', 'max_length': 4000},
+    'due_date': {'label': 'Due date', 'type': 'date'},
+}
 
 def _staff_can_access(user, task):
     """Same rule as the old portal: staff see their own tasks and unassigned tasks in their departments."""
@@ -216,8 +224,9 @@ def handle_task_routes(environ, start_response, path, method, user, body, query)
         order_id = body.get('order_id') or None
         client_id = body.get('client_id') or None
 
-        if not title:
-            return error_response(start_response, "Task title is required", status_code=400)
+        errors = validate({**body, 'title': title}, TASK_RULES)
+        if errors:
+            return validation_error(start_response, errors)
 
         if status not in VALID_STATUSES:
             status = 'Open'
@@ -292,6 +301,9 @@ def handle_task_routes(environ, start_response, path, method, user, body, query)
             updates = []
             params = []
 
+            errors = validate(body, {k: r for k, r in TASK_RULES.items() if k in body and k != 'title'})
+            if errors:
+                return validation_error(start_response, errors)
             for field in allowed_fields:
                 if field not in body:
                     continue
@@ -303,7 +315,7 @@ def handle_task_routes(environ, start_response, path, method, user, body, query)
                 if field in ('title', 'department') and isinstance(value, str):
                     value = value.strip() or None
                     if field == 'title' and not value:
-                        return error_response(start_response, "Task title is required", status_code=400)
+                        return validation_error(start_response, {'title': "Task title is required."})
                 updates.append(f"{field} = ?")
                 params.append(value)
 

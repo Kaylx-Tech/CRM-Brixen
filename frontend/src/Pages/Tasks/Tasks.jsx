@@ -62,6 +62,21 @@ import {
   toastFail,
 } from '@/lib/toastActions'
 import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
+import { useFormErrors } from '@/lib/validation'
+import { FieldMessage, RequiredMark, invalidProps } from '@/components/FormField'
+
+const TASK_SCHEMA = {
+  title: { label: 'Task title', required: true, maxLength: 200 },
+  description: { label: 'Description', maxLength: 4000 },
+  due_date: { label: 'Due date', type: 'date' },
+}
+
+const STAFF_SCHEMA = {
+  full_name: { label: 'Full name', required: true, maxLength: 120 },
+  email: { label: 'Email', required: true, type: 'email' },
+  phone: { label: 'Phone', type: 'phone' },
+  password: { label: 'Password', required: true, minLength: 10 },
+}
 
 const columnHelper = createColumnHelper()
 
@@ -241,6 +256,8 @@ const Tasks = ({ view } = {}) => {
   const canManageTasks = isManagerOrAbove(currentUser)
   const isSuperAdmin = String(currentUser?.role || '').toUpperCase() === 'SUPER_ADMIN'
   const [memberToRemove, setMemberToRemove] = useState(null)
+  const staffErrors = useFormErrors(STAFF_SCHEMA, { prefix: 'staff-' })
+  const taskErrors = useFormErrors(TASK_SCHEMA, { prefix: 'task-' })
   const [accessMember, setAccessMember] = useState(null)
   const [accessSaving, setAccessSaving] = useState(false)
   const [isRemovingMember, setIsRemovingMember] = useState(false)
@@ -334,6 +351,7 @@ const Tasks = ({ view } = {}) => {
   const openCreateTask = () => {
     setEditingTask(null)
     setTaskError('')
+    taskErrors.clear()
     setTaskForm({
       ...emptyTaskForm,
       assigned_staff_id: staff[0]?.id ? String(staff[0].id) : '',
@@ -344,6 +362,7 @@ const Tasks = ({ view } = {}) => {
   const openEditTask = (task) => {
     setEditingTask(task)
     setTaskError('')
+    taskErrors.clear()
     setTaskForm({
       title: task.title || '',
       description: task.description || '',
@@ -361,10 +380,7 @@ const Tasks = ({ view } = {}) => {
   const saveTask = async (e) => {
     e?.preventDefault?.()
     setTaskError('')
-    if (!taskForm.title.trim()) {
-      setTaskError('Task title is required.')
-      return
-    }
+    if (!taskErrors.check(taskForm)) return
     setTaskSaving(true)
     const toastId = toastProcessing(
       editingTask ? 'Updating task…' : 'Creating task…',
@@ -395,7 +411,7 @@ const Tasks = ({ view } = {}) => {
             silent: true,
           })
       if (!res.ok) {
-        setTaskError(res.reason || 'Failed to save task.')
+        if (!taskErrors.fromResponse(res)) setTaskError(res.reason || 'Failed to save task.')
         toastFail(toastId, res.reason || 'Failed to save task.')
         return
       }
@@ -456,14 +472,7 @@ const Tasks = ({ view } = {}) => {
   const saveStaff = async (e) => {
     e?.preventDefault?.()
     setStaffError('')
-    if (!staffForm.full_name.trim() || !staffForm.email.trim()) {
-      setStaffError('Full name and email are required.')
-      return
-    }
-    if (!staffForm.password || staffForm.password.length < 10) {
-      setStaffError('Password must be at least 10 characters.')
-      return
-    }
+    if (!staffErrors.check(staffForm)) return
     setStaffSaving(true)
     const toastId = toastProcessing('Adding team member…')
     try {
@@ -481,7 +490,7 @@ const Tasks = ({ view } = {}) => {
         silent: true,
       })
       if (!res.ok) {
-        setStaffError(res.reason || 'Failed to create team member.')
+        if (!staffErrors.fromResponse(res)) setStaffError(res.reason || 'Failed to create team member.')
         toastFail(toastId, res.reason || 'Failed to create team member.')
         return
       }
@@ -793,6 +802,7 @@ const Tasks = ({ view } = {}) => {
             <Button
               onClick={() => {
                 setStaffError('')
+                staffErrors.clear()
                 setStaffForm(emptyStaffForm)
                 setStaffDialogOpen(true)
               }}
@@ -876,23 +886,25 @@ const Tasks = ({ view } = {}) => {
 
             <div className="space-y-2">
               <Label htmlFor="task-title">
-                Title <span className="text-destructive">*</span>
+                Title <RequiredMark />
               </Label>
               <Input
                 id="task-title"
+                {...invalidProps(taskErrors.errors, 'title', 'task-')}
                 value={taskForm.title}
                 onChange={(e) =>
                   setTaskForm((p) => ({ ...p, title: e.target.value }))
                 }
                 placeholder="e.g. File confirmation statement for ACME Ltd"
-                required
               />
+              <FieldMessage id="task-title-error" message={taskErrors.errors.title} />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="task-desc">Description</Label>
+              <Label htmlFor="task-description">Description</Label>
               <Textarea
-                id="task-desc"
+                id="task-description"
+                {...invalidProps(taskErrors.errors, 'description', 'task-')}
                 value={taskForm.description}
                 onChange={(e) =>
                   setTaskForm((p) => ({ ...p, description: e.target.value }))
@@ -900,6 +912,7 @@ const Tasks = ({ view } = {}) => {
                 placeholder="Optional notes for the assignee…"
                 rows={3}
               />
+              <FieldMessage id="task-description-error" message={taskErrors.errors.description} />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -965,15 +978,17 @@ const Tasks = ({ view } = {}) => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="task-due">Due date</Label>
+                <Label htmlFor="task-due_date">Due date</Label>
                 <Input
-                  id="task-due"
+                  id="task-due_date"
+                  {...invalidProps(taskErrors.errors, 'due_date', 'task-')}
                   type="date"
                   value={taskForm.due_date}
                   onChange={(e) =>
                     setTaskForm((p) => ({ ...p, due_date: e.target.value }))
                   }
                 />
+                <FieldMessage id="task-due_date-error" message={taskErrors.errors.due_date} />
               </div>
             </div>
 
@@ -1033,7 +1048,7 @@ const Tasks = ({ view } = {}) => {
               Create a staff account that can be assigned to tasks.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={saveStaff} className="space-y-4">
+          <form onSubmit={saveStaff} noValidate className="space-y-4">
             {staffError ? (
               <Alert variant="destructive">
                 <IconAlertCircle className="size-4" />
@@ -1042,42 +1057,46 @@ const Tasks = ({ view } = {}) => {
             ) : null}
 
             <div className="space-y-2">
-              <Label htmlFor="staff-name">
-                Full name <span className="text-destructive">*</span>
+              <Label htmlFor="staff-full_name">
+                Full name <RequiredMark />
               </Label>
               <Input
-                id="staff-name"
+                id="staff-full_name"
+                {...invalidProps(staffErrors.errors, 'full_name', 'staff-')}
                 value={staffForm.full_name}
                 onChange={(e) =>
-                  setStaffForm((p) => ({ ...p, full_name: e.target.value }))
+                  { setStaffForm((p) => ({ ...p, full_name: e.target.value })); staffErrors.recheck('full_name', e.target.value) }
                 }
-                required
               />
+              <FieldMessage id="staff-full_name-error" message={staffErrors.errors.full_name} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="staff-email">
-                Email <span className="text-destructive">*</span>
+                Email <RequiredMark />
               </Label>
               <Input
                 id="staff-email"
+                {...invalidProps(staffErrors.errors, 'email', 'staff-')}
                 type="email"
                 value={staffForm.email}
                 onChange={(e) =>
-                  setStaffForm((p) => ({ ...p, email: e.target.value }))
+                  { setStaffForm((p) => ({ ...p, email: e.target.value })); staffErrors.recheck('email', e.target.value) }
                 }
-                required
               />
+              <FieldMessage id="staff-email-error" message={staffErrors.errors.email} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="staff-phone">Phone</Label>
                 <Input
                   id="staff-phone"
+                  {...invalidProps(staffErrors.errors, 'phone', 'staff-')}
                   value={staffForm.phone}
                   onChange={(e) =>
-                    setStaffForm((p) => ({ ...p, phone: e.target.value }))
+                    { setStaffForm((p) => ({ ...p, phone: e.target.value })); staffErrors.recheck('phone', e.target.value) }
                   }
                 />
+                <FieldMessage id="staff-phone-error" message={staffErrors.errors.phone} />
               </div>
               <div className="space-y-2">
                 <Label>Role</Label>
@@ -1100,18 +1119,19 @@ const Tasks = ({ view } = {}) => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="staff-password">
-                Temporary password <span className="text-destructive">*</span>
+                Temporary password <RequiredMark />
               </Label>
               <Input
                 id="staff-password"
+                {...invalidProps(staffErrors.errors, 'password', 'staff-')}
                 type="password"
                 value={staffForm.password}
                 onChange={(e) =>
-                  setStaffForm((p) => ({ ...p, password: e.target.value }))
+                  { setStaffForm((p) => ({ ...p, password: e.target.value })); staffErrors.recheck('password', e.target.value) }
                 }
                 placeholder="Min. 10 characters"
-                required
               />
+              <FieldMessage id="staff-password-error" message={staffErrors.errors.password} />
             </div>
             {isStaffPick(staffForm.role) && (
               <DepartmentPicker
