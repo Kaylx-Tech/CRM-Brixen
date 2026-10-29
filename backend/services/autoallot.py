@@ -184,13 +184,41 @@ def expire_stale(kind='registered_office'):
     return len(rows)
 
 
-def _office_address(number):
+def _office_address(number, base=None):
+    """"Office <number>" on one of Finstap's offices (the given one, else the owner's first, else 95 Dunstall Hill)."""
     from services.platform_services import settings
-    base = (settings().get('ro_addresses') or [DEFAULT_OFFICE])[0]
-    street = ', '.join(p for p in (base.get('line1'), base.get('line2')) if p)
+    base = base or (settings().get('ro_addresses') or [DEFAULT_OFFICE])[0]
+    street = ', '.join(p for p in (base.get('line1'), base.get('line2')) if p and not str(p).startswith('Office '))
     return {'label': f"{KINDS['registered_office']['prefix']} {number}", 'line1': f"Office {number}",
             'line2': street, 'city': base.get('city') or '', 'postal_code': base.get('postal_code') or '',
             'country': base.get('country') or 'United Kingdom'}
+
+
+def number_active_offices():
+    """Active registered offices confirmed before every office got a number: give each the next Office number,
+    oldest first, on the office it already has, and update the address in the client's portal."""
+    rows = _platform_query("""
+        SELECT * FROM ro_requests WHERE status = 'Active' AND office_number IS NULL ORDER BY id;
+    """)
+    for row in rows:
+        try:
+            base = json.loads(row.get('address_json') or 'null') or None
+        except ValueError:
+            base = None
+        number = _take_number('registered_office', row['id'], 'allotted')
+        address = _office_address(number, base)
+        _platform_execute("UPDATE ro_requests SET office_number = ?, address_json = ?, updated_at = datetime('now') "
+                          "WHERE id = ? AND office_number IS NULL;", (number, json.dumps(address), row['id']))
+        tenant = get_tenant(row['tenant_slug'])
+        if tenant and row.get('workspace_address_id'):
+            try:
+                from db import execute_db
+                with use_tenant(tenant):
+                    execute_db("UPDATE addresses SET line1 = ?, line2 = ? WHERE id = ?;",
+                               (address['line1'], address['line2'] or None, row['workspace_address_id']))
+            except Exception as exc:
+                print(f"[AutoAllot] client address for request {row['id']} not updated: {exc}")
+    return len(rows)
 
 
 # ── 1. start ─────────────────────────────────────────────────────────────────

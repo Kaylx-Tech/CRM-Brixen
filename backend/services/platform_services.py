@@ -333,8 +333,9 @@ def _ro_row(row):
 
 
 def ro_requests(slug=None, status=None):
-    from services.autoallot import expire_stale
+    from services.autoallot import expire_stale, number_active_offices
     expire_stale()  # AutoAllot bookings older than 24 hours go back before anyone sees the list
+    number_active_offices()  # any active office still without its Office number gets the next one
     sql, args = "SELECT * FROM ro_requests WHERE 1 = 1", []
     if slug:
         sql += " AND tenant_slug = ?"
@@ -437,15 +438,19 @@ def confirm_ro(request_id, admin, address_index, start_date=None, months=DEFAULT
         raise ServiceError("Length must be 1 to 60 months")
     expiry = _add_months(start, months)
     price = _money(price, 'Price') if price not in (None, '') else (row['price'] or settings()['ro_price_year'])
+    # Every registered office gets the next Office number (the same sequence as AutoAllot): Office 1001, 1002, …
+    from services.autoallot import _office_address, _take_number
+    number = _take_number('registered_office', request_id, 'allotted')
+    address = _office_address(number, address)
     tenant = get_tenant(row['tenant_slug'])
     address_id = _workspace_address(row, tenant, address, start.isoformat(), expiry.isoformat(), price) if tenant else None
     _platform_execute("""
-        UPDATE ro_requests SET status = 'Active', address_json = ?, start_date = ?, expiry_date = ?, price = ?,
-               paid = 0, workspace_address_id = ?, decided_by = ?, decided_at = datetime('now'), reason = NULL,
-               updated_at = datetime('now')
+        UPDATE ro_requests SET status = 'Active', office_number = ?, address_json = ?, start_date = ?, expiry_date = ?,
+               price = ?, paid = 0, workspace_address_id = ?, decided_by = ?, decided_at = datetime('now'),
+               reason = NULL, updated_at = datetime('now')
         WHERE id = ?;
-    """, (json.dumps(address), start.isoformat(), expiry.isoformat(), price, address_id, (admin or {}).get('email'),
-          request_id))
+    """, (number, json.dumps(address), start.isoformat(), expiry.isoformat(), price, address_id,
+          (admin or {}).get('email'), request_id))
     return _ro_row(_ro(request_id))
 
 
