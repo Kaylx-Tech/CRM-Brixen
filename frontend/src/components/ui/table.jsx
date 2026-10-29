@@ -7,8 +7,9 @@ import { cn } from "cn"
 const STACK_ON_PHONES = [
   "max-md:block max-md:[&_tbody]:block max-md:[&_thead]:hidden",
   "max-md:[&_tbody_tr]:mb-2 max-md:[&_tbody_tr]:block max-md:[&_tbody_tr]:rounded-xl max-md:[&_tbody_tr]:border max-md:[&_tbody_tr]:bg-card max-md:[&_tbody_tr]:px-3 max-md:[&_tbody_tr]:py-2",
-  // label on the left; the cell's own lines stacked on the right
-  "max-md:[&_tbody_td]:grid max-md:[&_tbody_td]:grid-cols-[auto_minmax(0,1fr)] max-md:[&_tbody_td]:items-center max-md:[&_tbody_td]:gap-x-3 max-md:[&_tbody_td]:px-0 max-md:[&_tbody_td]:py-1 max-md:[&_tbody_td]:text-right max-md:[&_tbody_td]:whitespace-normal max-md:[&_tbody_td]:break-words max-md:[&_tbody_td>*]:col-start-2 max-md:[&_tbody_td>*]:justify-self-end max-md:[&_tbody_td>*]:max-w-full",
+  // label on the left; the cell's own lines stacked on the right. max-w-none: a desktop column width
+  // (max-w-64 etc.) must not squeeze the value into the middle of the card
+  "max-md:[&_tbody_td]:max-w-none max-md:[&_tbody_td]:grid max-md:[&_tbody_td]:grid-cols-[auto_minmax(0,1fr)] max-md:[&_tbody_td]:items-center max-md:[&_tbody_td]:gap-x-3 max-md:[&_tbody_td]:px-0 max-md:[&_tbody_td]:py-1 max-md:[&_tbody_td]:text-right max-md:[&_tbody_td]:whitespace-normal max-md:[&_tbody_td]:break-words max-md:[&_tbody_td>*]:col-start-2 max-md:[&_tbody_td>*]:justify-self-end max-md:[&_tbody_td>*]:max-w-full",
   "max-md:[&_tbody_td]:before:shrink-0 max-md:[&_tbody_td]:before:text-left max-md:[&_tbody_td]:before:text-xs max-md:[&_tbody_td]:before:text-muted-foreground max-md:[&_tbody_td]:before:content-[attr(data-label)]",
 ].join(" ")
 
