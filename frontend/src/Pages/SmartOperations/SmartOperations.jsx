@@ -41,6 +41,8 @@ import RegisteredOffice from './RegisteredOffice'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
 import { m, spring } from '@/lib/motion'
 import { apiRequest } from '@/lib/api'
+import { isPlanLocked } from '@/lib/planLock'
+import PlanLocked from '@/components/PlanLocked'
 import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 // Each company / provider gets its own colour, in a fixed order
@@ -180,15 +182,22 @@ export default function SmartOperations() {
   const [isSaving, setIsSaving] = useState(false)
   const [toDelete, setToDelete] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [planLock, setPlanLock] = useState('')
 
   const load = useCallback(async () => {
     setIsLoading(true)
     try {
       const res = await apiRequest('/admin/smart-links', { label: 'Smart Operations', silent: true })
+      // Finstap Starter: Partner Perks and GOV Forms are in Pro (ID Verification and Registered Office are not)
+      if (isPlanLocked(res)) {
+        setPlanLock(res.reason || 'This is part of the Pro plan.')
+        return
+      }
       if (!res.ok) {
         toast.error(res.reason || 'Links failed to load')
         return
       }
+      setPlanLock('')
       const d = res.data?.data || {}
       setLinks(d.links || [])
       setCategories(d.categories || [])
@@ -361,6 +370,8 @@ export default function SmartOperations() {
         <IdVerification />
       ) : tab === 'registered-office' ? (
         <RegisteredOffice />
+      ) : planLock ? (
+        <PlanLocked message={planLock} />
       ) : govForms ? (
         <Tasks view="gov-forms" />
       ) : (

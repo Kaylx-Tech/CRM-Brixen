@@ -249,9 +249,11 @@ LOCK_MESSAGES = {
 }
 
 
-# Areas of the CRM that belong to a feature (path prefix → feature). Incoming website webhooks are
-# left out on purpose: a workspace never loses its customers' orders because of its plan.
+# Areas of the CRM that belong to a feature (path prefix → feature; the first match wins, None = every plan).
+# Incoming website webhooks are left out on purpose: a workspace never loses its customers' orders because of
+# its plan. ID Verification is open on every plan (its checks are limited by credits, services/autoallot.py).
 FEATURE_PATHS = (
+    ('/api/admin/smart-links/id-verification', None),
     ('/api/admin/activity-logs', 'audit_logs'),
     ('/api/activity-logs', 'audit_logs'),
     ('/api/admin/email-logs', 'email_log'),
@@ -288,7 +290,8 @@ def guard(tenant, path, method, user, body):
 
     for prefix, feature in FEATURE_PATHS:
         if path == prefix or path.startswith(prefix + '/'):
-            check_feature(tenant, feature)
+            if feature:
+                check_feature(tenant, feature)
             break
 
     if method != 'POST':
