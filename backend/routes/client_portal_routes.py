@@ -121,6 +121,18 @@ def _pending_actions(uid):
 
 
 ADDRESS_SERVICE_PRICE = 40.0  # £ per year; the first year is included when the company is formed
+# Postcodes of the addresses Brixen provides. A registered office anywhere else is the client's own
+# address, not a service bought from us, so it is not listed on the portal Addresses page.
+BRIXEN_ADDRESS_POSTCODES = ('WV6 0SR', 'IG1 4JZ', 'W3 7LT', 'CV5 4AA', 'IG2 7LD')
+# Whole postcode only, any spacing: "W3 7LT" must not match "NW3 7LT"
+_BRIXEN_POSTCODE_RE = re.compile(
+    r'(?<![A-Z0-9])(?:' + '|'.join(r'\s*'.join(code.split()) for code in BRIXEN_ADDRESS_POSTCODES) + r')(?![A-Z0-9])',
+    re.IGNORECASE,
+)
+
+
+def _is_brixen_address(text):
+    return bool(_BRIXEN_POSTCODE_RE.search(str(text or '')))
 
 
 def _parse_company_date(value):
@@ -250,14 +262,15 @@ def handle_client_portal_routes(environ, start_response, path, method, user, bod
             WHERE a.user_id = ? ORDER BY a.created_at DESC;
         """, (uid,)) or []
         addresses = [dict(r) for r in rows]
-        # Every company's registered office is an address service from the day it was incorporated
+        # A company's registered office at one of our addresses is an address service from the day it was incorporated
         listed = {a.get('company_id') for a in addresses if a.get('company_id')}
         companies = query_db("""
             SELECT id, name, reg_office, inc_date, created_at FROM companies
             WHERE user_id = ? AND TRIM(COALESCE(reg_office, '')) <> ''
             ORDER BY datetime(created_at) DESC;
         """, (uid,)) or []
-        addresses += [_company_address_service(c) for c in companies if c['id'] not in listed]
+        addresses += [_company_address_service(c) for c in companies
+                      if c['id'] not in listed and _is_brixen_address(c['reg_office'])]
         return success_response(start_response, data={'addresses': addresses})
 
     # ── Invoices & payments ──────────────────────────────────────────────
