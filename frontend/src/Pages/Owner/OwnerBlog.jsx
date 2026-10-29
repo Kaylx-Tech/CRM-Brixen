@@ -179,7 +179,7 @@ export function OwnerBlogEditor() {
             <div>
               <label htmlFor="post-slug" className="mb-1.5 block text-sm font-medium">Web address</label>
               <Input id="post-slug"
-                {...invalidProps(errors, 'slug', 'post-')} placeholder="made from the title when empty" value={post.slug} onChange={set("slug")} />
+                {...invalidProps(errors, 'slug', 'post-')} placeholder="Made from the title when empty" value={post.slug} onChange={set("slug")} />
               <FieldMessage id="post-slug-error" message={errors.slug} />
               <p className="mt-1 text-xs text-muted-foreground">finstap.com/blog/{post.slug || "your-title"}</p>
             </div>
