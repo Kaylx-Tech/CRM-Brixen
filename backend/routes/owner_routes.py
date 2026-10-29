@@ -461,6 +461,22 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
             audit(admin, 'PAYMENT_RECORDED', pay.group(1),
                   f"£{done['amount']} for {done['period_start']} – {done['period_end']}")
             return success_response(start_response, data=done, message=f"Payment saved. Paid until {done['period_end']}.")
+        if sub == '/billing/topups' and method == 'GET':
+            from services import wallet
+            return success_response(start_response, data={
+                'requests': wallet.topup_requests(status=_q(query, 'status') or None)})
+        decide = re.match(r'^/billing/topups/(\d+)/(approve|reject)$', sub)
+        if decide and method == 'POST':
+            from services import wallet
+            approve = decide.group(2) == 'approve'
+            done = wallet.decide_transfer(int(decide.group(1)), admin, approve, body.get('amount'), body.get('reason'))
+            req = done['request']
+            audit(admin, 'WALLET_TOPUP_' + ('APPROVED' if approve else 'REJECTED'), req['tenant_slug'],
+                  f"£{req.get('approved_amount') or req['amount']} {req.get('reference') or ''}".strip())
+            msg = (f"Approved: £{req['approved_amount']:.2f} added to the balance."
+                   + (f" {len(done['paid'])} due service(s) paid from it." if done['paid'] else '')) if approve \
+                else "Rejected. The workspace sees the reason."
+            return success_response(start_response, data=done, message=msg)
         top = re.match(r'^/billing/([a-z0-9-]+)/wallet$', sub)
         if top and method == 'GET':
             from services import wallet

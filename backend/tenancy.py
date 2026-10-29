@@ -266,6 +266,21 @@ CREATE TABLE IF NOT EXISTS wallet_entries (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_wallet_entries_tenant ON wallet_entries(tenant_slug);
+-- Bank transfers a workspace says it sent; the owner approves (balance goes up) or rejects them
+CREATE TABLE IF NOT EXISTS wallet_topup_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tenant_slug TEXT NOT NULL,
+    amount REAL NOT NULL,
+    reference TEXT,
+    status TEXT NOT NULL DEFAULT 'Pending',
+    approved_amount REAL,
+    reason TEXT,
+    requested_by TEXT,
+    decided_by TEXT,
+    decided_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_wallet_topup_requests_status ON wallet_topup_requests(status);
 -- A due service is charged to the balance once
 CREATE UNIQUE INDEX IF NOT EXISTS idx_wallet_entries_charge ON wallet_entries(tenant_slug, ref) WHERE ref IS NOT NULL;
 """

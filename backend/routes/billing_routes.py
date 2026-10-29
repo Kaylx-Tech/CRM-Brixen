@@ -81,8 +81,18 @@ def handle_billing_routes(environ, start_response, path, method, user, body, que
             return success_response(start_response, data={'url': None}, message="Plan changed.")
         if path == '/api/admin/billing/portal':
             return success_response(start_response, data={'url': stripe.portal(tenant['slug'], back)})
+        # Add balance: online by card, or tell Finstap about a bank transfer (approved in the owner portal)
+        if path == '/api/admin/billing/wallet/card':
+            from services import wallet
+            amount = wallet._amount(body.get('amount'), "Amount")
+            return success_response(start_response, data={'url': stripe.top_up(tenant['slug'], amount, back)})
+        if path == '/api/admin/billing/wallet/transfer':
+            from services import wallet
+            row = wallet.request_transfer(tenant['slug'], user, body.get('amount'), body.get('reference'))
+            return success_response(start_response, data=row, status_code=201,
+                                    message="Thanks. Your balance goes up when Finstap receives the transfer.")
         if path == '/api/admin/billing/services':
             return success_response(start_response, data={'url': stripe.pay_services(tenant['slug'], back)})
-    except stripe.StripeError as exc:
+    except (stripe.StripeError, ValueError) as exc:  # ValueError: wallet.WalletError
         return error_response(start_response, str(exc), status_code=400)
     return error_response(start_response, "Not found", status_code=404)

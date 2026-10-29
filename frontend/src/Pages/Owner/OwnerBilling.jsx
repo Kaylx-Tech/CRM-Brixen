@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { IconAlertTriangle, IconCash, IconClockHour4, IconId, IconMapPin, IconReceipt2, IconWallet } from "@tabler/icons-react"
+import { IconAlertTriangle, IconCash, IconClockHour4, IconId, IconMapPin, IconReceipt2, IconWallet, IconCheck } from "@tabler/icons-react"
 import { cn } from "cn"
 import { Input } from "@/components/ui/input"
 import { checkField } from "@/lib/validation"
@@ -128,6 +128,85 @@ function TopUpForm({ workspace, onDone, onCancel }) {
   )
 }
 
+/** Bank transfers workspaces say they sent: approve when the money arrived (balance goes up) or reject with a reason. */
+function TopUpRequests({ onChange }) {
+  const [rows, setRows] = useState(null)
+  const [amounts, setAmounts] = useState({})
+  const [rejecting, setRejecting] = useState(null)
+  const [reason, setReason] = useState("")
+  const [busy, setBusy] = useState(null)
+
+  const load = useCallback(() => {
+    ownerApi("/billing/topups?status=Pending").then((res) => res.ok && setRows(res.data.requests || []))
+  }, [])
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const decide = async (r, action) => {
+    setBusy(r.id)
+    const id = toastProcessing(action === "approve" ? "Approving…" : "Rejecting…")
+    const body = action === "approve" ? { amount: amounts[r.id] ?? "" } : { reason }
+    const res = await ownerApi(`/billing/topups/${r.id}/${action}`, { method: "POST", body })
+    setBusy(null)
+    if (res.ok) {
+      toastDone(id, res.message)
+      setRejecting(null)
+      setReason("")
+      load()
+      onChange()
+    } else {
+      toastFail(id, res.error)
+    }
+  }
+
+  if (!rows?.length) return null
+  return (
+    <Panel title={`Top-up requests to check (${rows.length})`} className="mb-6">
+      <div className="space-y-2">
+        {rows.map((r) => (
+          <div key={r.id} className="rounded-xl border p-3">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div className="min-w-0 text-sm">
+                <p className="font-semibold">
+                  {r.workspace_name || r.tenant_slug} · {money(r.amount)} by bank transfer
+                </p>
+                <p className="text-muted-foreground">
+                  Reference {r.reference || "—"} · {r.requested_by || "workspace"} · {shortDate(r.created_at)}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  className="w-32"
+                  inputMode="decimal"
+                  placeholder={`Received £${Number(r.amount).toFixed(2)}`}
+                  value={amounts[r.id] ?? ""}
+                  onChange={(e) => setAmounts((a) => ({ ...a, [r.id]: e.target.value }))}
+                  aria-label="Amount received"
+                />
+                <Button size="lg" disabled={busy === r.id} onClick={() => decide(r, "approve")}>
+                  <IconCheck className="size-4" /> Approve
+                </Button>
+                <Button size="lg" variant="ghost" onClick={() => setRejecting(rejecting === r.id ? null : r.id)}>
+                  Reject
+                </Button>
+              </div>
+            </div>
+            {rejecting === r.id && (
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                <Input placeholder="Why (the workspace sees this), e.g. Not received yet" value={reason} onChange={(e) => setReason(e.target.value)} />
+                <Button size="lg" variant="outline" disabled={busy === r.id || !reason.trim()} onClick={() => decide(r, "reject")}>
+                  Reject request
+                </Button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </Panel>
+  )
+}
+
 /** Billing: every workspace's subscription (paid until, overdue) and what it owes for Finstap's services. */
 export default function OwnerBilling() {
   const [data, setData] = useState(null)
@@ -161,6 +240,7 @@ export default function OwnerBilling() {
         title="Billing"
         description="Subscriptions and service charges for every workspace. Record payments here until online payment is switched on."
       />
+      <TopUpRequests onChange={load} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Monthly revenue (MRR)" value={money(t.mrr)} icon={IconCash} tone="text-emerald-600" />
         <Stat label="Collected this month" value={money(t.collected_this_month)} icon={IconReceipt2} />

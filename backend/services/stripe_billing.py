@@ -209,6 +209,20 @@ def pay_services(slug, return_url):
     })['url']
 
 
+def top_up(slug, amount, return_url):
+    """Stripe Checkout to add money to the workspace balance by card (services/wallet.py). Returns its URL."""
+    tenant = get_tenant(slug)
+    return _api('POST', '/checkout/sessions', {
+        'mode': 'payment', 'customer': _customer(tenant), 'client_reference_id': slug,
+        'line_items': [{'quantity': 1, 'price_data': {
+            'currency': CURRENCY, 'unit_amount': int(round(float(amount) * 100)),
+            'product_data': {'name': 'Finstap balance top-up'}}}],
+        'invoice_creation': {'enabled': True},
+        'success_url': f"{return_url}?topup=1", 'cancel_url': return_url,
+        'metadata': {'workspace': slug, 'kind': 'topup'},
+    })['url']
+
+
 # ── webhook ──────────────────────────────────────────────────────────────────
 
 def verify(raw_body, header, tolerance=300):
@@ -305,6 +319,12 @@ def handle_event(event):
                               (obj.get('customer'), obj['subscription'], tenant['slug']))
             apply_subscription(_api('GET', f"/subscriptions/{obj['subscription']}"))
             return 'subscription started'
+        if meta.get('kind') == 'topup' and obj.get('payment_status') == 'paid':
+            from services.wallet import credit_card_topup
+            amount = round((obj.get('amount_total') or 0) / 100, 2)
+            credit_card_topup(tenant['slug'], amount, obj['id'])
+            _save_payment(tenant['slug'], amount, 'topup', obj['id'], note='Balance top-up by card', tenant=tenant)
+            return 'balance topped up'
         if meta.get('kind') == 'services' and obj.get('payment_status') == 'paid':
             refs = [r for r in (meta.get('items') or '').split(',') if r]
             for ref in refs:
