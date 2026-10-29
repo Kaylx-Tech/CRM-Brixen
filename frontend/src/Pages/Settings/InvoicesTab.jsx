@@ -7,8 +7,9 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { IconBuildingBank, IconLink, IconPlus, IconTrash } from '@tabler/icons-react'
 import { COUNTRY, INVOICE_COUNTRIES, newId } from './invoiceSettings'
+import { FieldMessage } from '@/components/FormField'
 
-export default function InvoicesTab({ form, setField, disabled }) {
+export default function InvoicesTab({ form, setField, disabled, errors = {} }) {
   const [pick, setPick] = useState('')
   const accounts = form.invoice_bank_accounts
   const links = form.invoice_links
@@ -83,12 +84,14 @@ export default function InvoicesTab({ form, setField, disabled }) {
                     <Label htmlFor={`${account.id}-${key}`} className="text-sm">{label}</Label>
                     <Input
                       id={`${account.id}-${key}`}
+                      aria-invalid={errors[`${account.id}-${key}`] ? true : undefined}
                       value={account.values[key] || ''}
                       placeholder={placeholder}
                       maxLength={200}
                       onChange={(e) => setAccount(account.id, { values: { ...account.values, [key]: e.target.value } })}
                       disabled={disabled}
                     />
+                    <FieldMessage message={errors[`${account.id}-${key}`]} />
                   </div>
                 ))}
               </div>
@@ -147,7 +150,9 @@ export default function InvoicesTab({ form, setField, disabled }) {
             <div className="grid gap-1.5">
               <Label htmlFor={`${link.id}-url`} className="text-sm">Link</Label>
               <Input id={`${link.id}-url`} type="url" value={link.url} placeholder="https://" maxLength={500}
+                aria-invalid={errors[`${link.id}-url`] ? true : undefined}
                 onChange={(e) => setLink(link.id, { url: e.target.value })} disabled={disabled} />
+              <FieldMessage message={errors[`${link.id}-url`]} />
             </div>
             <Button
               type="button"

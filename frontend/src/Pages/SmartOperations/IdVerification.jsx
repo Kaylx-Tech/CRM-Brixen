@@ -33,6 +33,13 @@ import { apiRequest } from '@/lib/api'
 import { IS_FINSTAP } from '@/lib/workspace'
 import { useRefreshOnReturn } from '@/lib/useRefreshOnReturn'
 import { amlLabel, amlTone, checkTone, openHits, shortDate } from './idvStatus'
+import { useFormErrors, checkField } from '@/lib/validation'
+import { FieldMessage, RequiredMark, invalidProps } from '@/components/FormField'
+
+const PERSON_SCHEMA = {
+  full_name: { label: 'Full name', required: true, maxLength: 120 },
+  email: { label: 'Email', type: 'email' },
+}
 
 const PERSON_ROLES = ['Director', 'PSC', 'Director & PSC', 'Secretary', 'Member', 'Presenter', 'Other']
 const ACSP_SERVICE_URL = 'https://www.gov.uk/guidance/tell-companies-house-you-have-verified-someones-identity'
@@ -290,14 +297,15 @@ export default function IdVerification() {
       full_name: first ? order.owner_name || order.customer_name || '' : '',
       email: first ? order.customer_email || '' : '',
     })
+    personErrors.clear()
     setAdding(order)
   }
 
+  const personErrors = useFormErrors(PERSON_SCHEMA, { prefix: 'idv-' })
+  const chCodeError = chCode.trim() ? checkField(chCode, { label: 'Personal code', type: 'personal_code' }) : ''
+
   const savePerson = async () => {
-    if (!personForm.full_name.trim()) {
-      toast.error('Name is required')
-      return
-    }
+    if (!personErrors.check(personForm)) return
     setIsSaving(true)
     try {
       const res = await apiRequest(`/admin/id-verification/orders/${adding.id}/people`, {
@@ -307,6 +315,7 @@ export default function IdVerification() {
         silent: true,
       })
       if (!res.ok) {
+        if (personErrors.fromResponse(res)) return
         toast.error(res.reason || 'Could not add the person')
         return
       }
@@ -444,12 +453,14 @@ export default function IdVerification() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="idv-name">Full name *</Label>
-              <Input id="idv-name" value={personForm.full_name} onChange={(e) => setPersonForm((p) => ({ ...p, full_name: e.target.value }))} />
+              <Label htmlFor="idv-full_name">Full name <RequiredMark /></Label>
+              <Input id="idv-full_name" {...invalidProps(personErrors.errors, 'full_name', 'idv-')} value={personForm.full_name} onChange={(e) => { setPersonForm((p) => ({ ...p, full_name: e.target.value })); personErrors.recheck('full_name', e.target.value) }} />
+              <FieldMessage id="idv-full_name-error" message={personErrors.errors.full_name} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="idv-email">Email</Label>
-              <Input id="idv-email" type="email" placeholder="For emailing the link" value={personForm.email} onChange={(e) => setPersonForm((p) => ({ ...p, email: e.target.value }))} />
+              <Input id="idv-email" type="email" {...invalidProps(personErrors.errors, 'email', 'idv-')} placeholder="For emailing the link" value={personForm.email} onChange={(e) => { setPersonForm((p) => ({ ...p, email: e.target.value })); personErrors.recheck('email', e.target.value) }} />
+              <FieldMessage id="idv-email-error" message={personErrors.errors.email} />
             </div>
             <div className="space-y-1.5">
               <Label>Role</Label>
@@ -533,16 +544,18 @@ export default function IdVerification() {
                     maxLength={13}
                     value={chCode}
                     onChange={(e) => setChCode(e.target.value.toUpperCase())}
+                    aria-invalid={chCodeError && chCode.replace(/[\s-]/g, '').length >= 11 ? true : undefined}
                   />
                   <Button
                     onClick={saveChCode}
                     disabled={isSaving || chCode.trim() === (viewing.ch_personal_code || '')
-                      || (chCode.trim() !== '' && chCode.replace(/[\s-]/g, '').length !== 11)}
+                      || !!chCodeError}
                   >
                     {isSaving ? <IconLoader2 className="h-4 w-4 animate-spin" /> : <IconCheck className="h-4 w-4" />}
                     Save
                   </Button>
                 </div>
+                {chCode.replace(/[\s-]/g, '').length >= 11 ? <FieldMessage message={chCodeError} /> : null}
                 <p className="text-xs text-muted-foreground">
                   Companies House emails the person their 11-character personal code once you have reported the
                   verification. They use it to link their verified identity as a director or PSC.

@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useFormErrors } from "@/lib/validation"
+import { FieldMessage, invalidProps } from "@/components/FormField"
+
+const FORGOT_SCHEMA = {
+  workspace: { label: "Workspace", required: IS_FINSTAP },
+  email: { label: "Email", required: true, type: "email" },
+}
 
 const apiUrl = import.meta.env.VITE_API_URL || "/api"
 
@@ -16,12 +23,14 @@ export default function ForgotPassword() {
   const [workspace, setWorkspaceInput] = useState(() => normalizeSlug(params.get("workspace")) || getWorkspace())
   const [email, setEmail] = useState("")
   const [error, setError] = useState("")
+  const { errors, check, recheck } = useFormErrors(FORGOT_SCHEMA)
   const [sentTo, setSentTo] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError("")
+    if (!check({ email, workspace })) return
     setIsLoading(true)
     try {
       const res = await fetch(`${apiUrl}/auth/forgot-password`, {
@@ -70,7 +79,7 @@ export default function ForgotPassword() {
 
   return (
     <AuthLayout title="Forgot your password?" subtitle="Enter your email and we will send you a reset link">
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <FieldGroup>
           {error && (
             <Alert variant="destructive">
@@ -83,27 +92,29 @@ export default function ForgotPassword() {
               <FieldLabel htmlFor="workspace">Workspace</FieldLabel>
               <Input
                 id="workspace"
+                {...invalidProps(errors, 'workspace', '')}
                 placeholder="your-company"
                 autoCapitalize="none"
-                required
                 value={workspace}
-                onChange={(e) => setWorkspaceInput(e.target.value)}
+                onChange={(e) => { setWorkspaceInput(e.target.value); recheck('workspace', e.target.value) }}
                 disabled={isLoading}
               />
+              <FieldMessage id="workspace-error" message={errors.workspace} />
             </Field>
           )}
           <Field>
             <FieldLabel htmlFor="email">Email</FieldLabel>
             <Input
               id="email"
+              {...invalidProps(errors, 'email', '')}
               type="email"
               placeholder="you@example.com"
-              required
               autoFocus
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); recheck('email', e.target.value) }}
               disabled={isLoading}
             />
+            <FieldMessage id="email-error" message={errors.email} />
           </Field>
           <Field>
             <Button type="submit" disabled={isLoading}>

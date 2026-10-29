@@ -2,6 +2,9 @@
 Provides endpoints to manage system configuration (Brand, SMTP, Google Drive, Companies House, Webhooks)
 from database settings with fallback to environment variables.
 """
+import re
+
+from utils.validation import validate, validation_error
 from utils.response import success_response, error_response
 from services.settings_service import (
     get_all_settings,
@@ -14,6 +17,31 @@ from services.settings_service import (
 
 STAFF_ROLES = {'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF'}
 ADMIN_ROLES = {'SUPER_ADMIN', 'ADMIN'}
+
+
+def _int_rule(label, lo, hi):
+    return {'label': label, 'type': 'integer', 'min': lo, 'max': hi}
+
+
+# Same rules as SETTINGS_SCHEMA in frontend/src/Pages/Settings/Settings.jsx (only fields that were sent are checked)
+SETTINGS_RULES = {
+    'company_name': {'label': 'Company name', 'required': True, 'max_length': 120},
+    'support_email': {'label': 'Support email', 'type': 'email'},
+    'support_phone': {'label': 'Support phone', 'type': 'phone'},
+    'team_notification_emails': {'label': 'Team notification emails', 'type': 'emails'},
+    'order_number_prefix': {'label': 'Order prefix', 'validate': lambda v, _: '' if re.fullmatch(r'[A-Za-z0-9]{1,8}', str(v).strip()) else 'Use 1 to 8 letters and numbers.'},
+    'frontend_url': {'label': 'Admin URL', 'type': 'url'},
+    'portal_url': {'label': 'Portal URL', 'type': 'url'},
+    'uk_formfill_pro_url': {'label': 'UK FormFill Pro URL', 'type': 'url'},
+    'smtp_port': _int_rule('SMTP port', 1, 65535),
+    'wordpress_url': {'label': 'WordPress URL', 'type': 'url'},
+    'didit_callback_url': {'label': 'Didit callback URL', 'type': 'url'},
+    'compliance_alerts_send_hour': _int_rule('Send hour', 0, 23),
+    'compliance_alerts_interval_hours': _int_rule('Interval', 1, 720),
+    'compliance_alerts_test_recipient': {'label': 'Test recipient', 'type': 'email'},
+    'compliance_alerts_website': {'label': 'Website', 'type': 'url'},
+    'compliance_alerts_whatsapp_url': {'label': 'WhatsApp link', 'type': 'url'},
+}
 
 def handle_settings_routes(environ, start_response, path, method, user, body, query):
     """Route dispatcher for settings and configuration endpoints."""
@@ -71,6 +99,9 @@ def handle_settings_routes(environ, start_response, path, method, user, body, qu
 
         if not body or not isinstance(body, dict):
             return error_response(start_response, "Invalid JSON payload", status_code=400)
+        errors = validate(body, {k: r for k, r in SETTINGS_RULES.items() if k in body})
+        if errors:
+            return validation_error(start_response, errors)
 
         try:
             ip_addr = environ.get('HTTP_X_FORWARDED_FOR') or environ.get('REMOTE_ADDR')

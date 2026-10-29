@@ -16,6 +16,7 @@ import re
 
 from db import query_db, execute_db
 from services import didit_service
+from utils.validation import validation_error
 from utils.response import success_response, error_response
 
 TEAM_ROLES = ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
@@ -87,16 +88,16 @@ def _clean_person(body, partial=False):
         if key in body or (not partial and key != 'ch_personal_code'):
             out[key] = str(body.get(key) or '').strip()[:limit]
     if 'full_name' in out and not out['full_name']:
-        return None, "Name is required"
+        return None, {'full_name': "Full name is required."}
     if out.get('email') and not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', out['email']):
-        return None, "Enter a valid email address"
+        return None, {'email': "Enter a valid email address, like name@example.com."}
     if out.get('person_role') and out['person_role'] not in PERSON_ROLES:
         out['person_role'] = 'Other'
     # Companies House personal code: 11 letters and numbers, given once the identity is verified
     if out.get('ch_personal_code'):
         out['ch_personal_code'] = re.sub(r'[\s-]', '', out['ch_personal_code']).upper()
         if not re.fullmatch(r'[A-Z0-9]{11}', out['ch_personal_code']):
-            return None, "The Companies House personal code has 11 letters and numbers"
+            return None, {'ch_personal_code': "Personal code must be 11 letters and numbers."}
     return out, None
 
 
@@ -350,7 +351,7 @@ def handle_id_verification_routes(environ, start_response, path, method, user, b
             return error_response(start_response, "Order not found", status_code=404)
         fields, err = _clean_person(body)
         if err:
-            return error_response(start_response, err, status_code=400)
+            return validation_error(start_response, err)
         verification_id = execute_db("""
             INSERT INTO id_verifications (order_id, full_name, email, person_role, created_by, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'));
@@ -372,7 +373,7 @@ def handle_id_verification_routes(environ, start_response, path, method, user, b
     if action == '' and method in ('PUT', 'PATCH'):
         fields, err = _clean_person(body, partial=True)
         if err:
-            return error_response(start_response, err, status_code=400)
+            return validation_error(start_response, err)
         if fields:
             sets = [f"{k} = ?" for k in fields]
             params = [v or None for v in fields.values()]

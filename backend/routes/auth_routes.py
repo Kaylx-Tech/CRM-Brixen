@@ -7,6 +7,7 @@ import time
 import threading
 import urllib.parse
 from db import query_db, execute_db, verify_password, hash_password
+from utils.validation import validate, validation_error
 from utils.response import json_response, success_response, error_response
 from services.email_service import send_email
 from services.portal_compat import brand_name
@@ -355,6 +356,15 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
         if not current:
             return error_response(start_response, "User not found", status_code=404)
 
+        rules = {
+            'full_name': {'label': 'Full name', 'required': True, 'max_length': 120},
+            'phone': {'label': 'Phone', 'type': 'phone'},
+            'country': {'label': 'Country', 'max_length': 80},
+            'address': {'label': 'Address', 'max_length': 300},
+        }
+        errors = validate(body, {k: r for k, r in rules.items() if k in body})
+        if errors:
+            return validation_error(start_response, errors)
         full_name = (body.get('full_name') if 'full_name' in body else current.get('full_name')) or current.get('full_name')
         phone = body.get('phone') if 'phone' in body else current.get('phone')
         country = body.get('country') if 'country' in body else current.get('country')
@@ -368,15 +378,12 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
         if new_password:
             current_password = body.get('current_password') or ''
             if not verify_password(current_password, current.get('password_hash')):
-                return error_response(start_response, "Current password is incorrect.", status_code=400)
+                return validation_error(start_response, {'current_password': "Current password is incorrect."})
             if len(new_password) < STAFF_MIN_PASSWORD_LEN:
-                return error_response(
-                    start_response,
-                    f"Password must be at least {STAFF_MIN_PASSWORD_LEN} characters.",
-                    status_code=400,
-                )
+                return validation_error(start_response, {
+                    'new_password': f"Password must be at least {STAFF_MIN_PASSWORD_LEN} characters."})
             if 'confirm_password' in body and (body.get('confirm_password') or '') != new_password:
-                return error_response(start_response, "New passwords do not match.", status_code=400)
+                return validation_error(start_response, {'confirm_password': "New passwords do not match."})
             execute_db(
                 "UPDATE users SET password_hash = ? WHERE id = ?;",
                 (hash_password(new_password), user['id']),

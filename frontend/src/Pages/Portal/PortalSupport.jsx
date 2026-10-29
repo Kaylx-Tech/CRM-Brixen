@@ -9,6 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { IconPlus, IconLoader2, IconSend } from "@tabler/icons-react"
 import { toast } from "sonner"
 import { apiRequest } from "@/lib/api"
+import { useFormErrors } from "@/lib/validation"
+import { FieldMessage, RequiredMark, invalidProps } from "@/components/FormField"
+
+const TICKET_SCHEMA = {
+  subject: { label: "Subject", required: true, maxLength: 200 },
+  description: { label: "Message", required: true, maxLength: 5000 },
+}
 import { usePortalData, PageHeader, PageState, StatusBadge, formatDate } from "./portalShared"
 
 const PRIORITIES = ["Low", "Medium", "High", "Urgent"]
@@ -17,17 +24,18 @@ const CATEGORIES = ["General Support", "Order Question", "Documents", "Billing",
 function NewTicketDialog({ open, onClose, onCreated, orders, initialSubject }) {
   const [form, setForm] = useState({ subject: "", category: CATEGORIES[0], priority: "Medium", order_id: "none", description: "" })
   const [isSaving, setIsSaving] = useState(false)
+  const { errors, check, recheck, fromResponse, clear } = useFormErrors(TICKET_SCHEMA, { prefix: "t-" })
 
   useEffect(() => {
-    if (open) setForm((f) => ({ ...f, subject: initialSubject || "", description: "" }))
-  }, [open, initialSubject])
+    if (open) {
+      setForm((f) => ({ ...f, subject: initialSubject || "", description: "" }))
+      clear()
+    }
+  }, [open, initialSubject, clear])
 
   const submit = async (e) => {
     e.preventDefault()
-    if (!form.subject.trim() || !form.description.trim()) {
-      toast.error("Add a subject and a message")
-      return
-    }
+    if (!check(form)) return
     setIsSaving(true)
     try {
       const res = await apiRequest("/client/tickets", {
@@ -37,6 +45,7 @@ function NewTicketDialog({ open, onClose, onCreated, orders, initialSubject }) {
         label: "Support ticket",
       })
       if (!res.ok) {
+        if (fromResponse(res)) return
         toast.error(res.reason || "Could not send your request")
         return
       }
@@ -51,14 +60,15 @@ function NewTicketDialog({ open, onClose, onCreated, orders, initialSubject }) {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && !isSaving && onClose()}>
       <DialogContent className="sm:max-w-lg">
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit} noValidate className="space-y-4">
           <DialogHeader>
             <DialogTitle>Contact support</DialogTitle>
             <DialogDescription>Tell us what you need and our team will reply here.</DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">
-            <Label htmlFor="t-subject">Subject</Label>
-            <Input id="t-subject" value={form.subject} onChange={(e) => set("subject")(e.target.value)} maxLength={200} />
+            <Label htmlFor="t-subject">Subject <RequiredMark /></Label>
+            <Input id="t-subject" {...invalidProps(errors, "subject", "t-")} value={form.subject} onChange={(e) => { set("subject")(e.target.value); recheck("subject", e.target.value) }} maxLength={200} />
+            <FieldMessage id="t-subject-error" message={errors.subject} />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -91,8 +101,9 @@ function NewTicketDialog({ open, onClose, onCreated, orders, initialSubject }) {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="t-message">Message</Label>
-            <Textarea id="t-message" rows={5} value={form.description} onChange={(e) => set("description")(e.target.value)} maxLength={5000} />
+            <Label htmlFor="t-description">Message <RequiredMark /></Label>
+            <Textarea id="t-description" {...invalidProps(errors, "description", "t-")} rows={5} value={form.description} onChange={(e) => { set("description")(e.target.value); recheck("description", e.target.value) }} maxLength={5000} />
+            <FieldMessage id="t-description-error" message={errors.description} />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>

@@ -71,3 +71,38 @@ export function linksToSaved(rows) {
     .map((l) => ({ label: l.label.trim(), url: l.url.trim().replace(/^(?!https?:\/\/|mailto:)(?=\S+\.\S)/i, 'https://') }))
     .filter((l) => l.url))
 }
+
+// Format of the bank fields that have one fixed shape (spaces and dashes are ignored)
+const BANK_FORMATS = {
+  'GB.account_number': [/^\d{8}$/, 'UK account number must be 8 digits.'],
+  'GB.sort_code': [/^\d{6}$/, 'Sort code must be 6 digits, like 04-06-05.'],
+  'US.routing_number': [/^\d{9}$/, 'Routing number must be 9 digits.'],
+  'IN.ifsc': [/^[A-Z]{4}0[A-Z0-9]{6}$/, 'IFSC code is 11 characters, like ABCD0123456.'],
+  'CA.transit_number': [/^\d{5}$/, 'Transit number must be 5 digits.'],
+  'CA.institution_number': [/^\d{3}$/, 'Institution number must be 3 digits.'],
+  'AU.bsb': [/^\d{6}$/, 'BSB must be 6 digits, like 062-000.'],
+  iban: [/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/, 'IBAN starts with 2 letters and 2 numbers, like GB29 NWBK 6016 1331 9268 19.'],
+  swift: [/^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/, 'SWIFT / BIC is 8 or 11 characters, like NWBKGB2L.'],
+  bic: [/^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/, 'SWIFT / BIC is 8 or 11 characters, like NWBKGB2L.'],
+}
+
+/** Errors for the Invoices tab, keyed by input id ({row id}-{field key}); empty when all is well. */
+export function invoiceFieldErrors(accounts, links) {
+  const errors = {}
+  for (const row of accounts || []) {
+    for (const [key, value] of Object.entries(row.values || {})) {
+      const text = String(value || '').toUpperCase().replace(/[\s-]/g, '')
+      if (!text) continue
+      const rule = BANK_FORMATS[`${row.code}.${key}`] || BANK_FORMATS[key]
+      if (rule && !rule[0].test(text)) errors[`${row.id}-${key}`] = rule[1]
+    }
+  }
+  for (const link of links || []) {
+    const url = link.url.trim().replace(/^(?!https?:\/\/|mailto:)(?=\S+\.\S)/i, 'https://')
+    if (link.label.trim() && !url) errors[`${link.id}-url`] = 'Add the link for this button.'
+    else if (url && !/^(https:\/\/[^\s/$.?#][^\s]*\.[^\s]{2,}|mailto:[^\s@]+@[^\s@]+\.[^\s@]+)$/i.test(url)) {
+      errors[`${link.id}-url`] = 'Enter a web address like https://example.com/pay.'
+    }
+  }
+  return errors
+}
