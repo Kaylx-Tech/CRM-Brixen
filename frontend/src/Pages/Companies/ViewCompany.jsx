@@ -36,6 +36,15 @@ import { attentionIssues, formatUkDate } from './attention'
 import { openDocument, downloadDocument } from '@/lib/documents'
 import { toast } from 'sonner'
 import { formatGBP } from '@/lib/money'
+import { useFormErrors, validateFields, formatCompanyNumber } from '@/lib/validation'
+import { FieldMessage, invalidProps } from '@/components/FormField'
+
+const COMPLIANCE_SCHEMA = {
+  utr_number: { label: 'UTR', validate: (v) => (/^\d{10}$/.test(String(v).replace(/\s/g, '')) ? '' : 'UTR must be 10 digits.') },
+  authentication_code: { label: 'Authentication code', validate: (v) => (/^[A-Za-z0-9]{6}$/.test(String(v).trim()) ? '' : 'Authentication code must be 6 letters and numbers.') },
+  activation_code: { label: 'Personal code', type: 'personal_code' },
+}
+const REGISTER_SCHEMA = { company_number: { label: 'Company number', required: true, type: 'company_number' } }
 
 const DOC_CATEGORIES = [
   'Company Documents',
@@ -69,6 +78,8 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
   const [fileInputKey, setFileInputKey] = useState(0)
   // "Mark as registered" for a Pending (not yet registered) company
   const [regNumber, setRegNumber] = useState('')
+  const [regError, setRegError] = useState('')
+  const { errors, check, fromResponse } = useFormErrors(COMPLIANCE_SCHEMA, { prefix: 'portfolio-compliance-' })
   const [isRegistering, setIsRegistering] = useState(false)
 
   const [formData, setFormData] = useState({
@@ -172,6 +183,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
 
   const handleSaveCompliance = async () => {
     if (!company?.id) return
+    if (!check(formData)) return
     setIsSaving(true)
     try {
       // Only the fields on this tab (sending hidden ones could blank dates or the company status)
@@ -186,13 +198,14 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
         method: 'PUT',
         body: payload,
         label: 'Update Company Compliance',
+        silent: true,
       })
       if (res.ok) {
         toast.success('Company compliance & status updated successfully')
         const updatedData = res.data?.data || res.data || {}
         setDetail((prev) => ({ ...(prev || {}), ...payload, ...updatedData }))
         if (onUpdate) onUpdate({ ...(company || {}), ...payload, ...updatedData })
-      } else {
+      } else if (!fromResponse(res)) {
         toast.error(res.reason || 'Failed to update compliance status')
       }
     } catch (err) {
@@ -204,8 +217,11 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
 
   // A Pending company is now registered at Companies House: the card takes the official details
   const markRegistered = async () => {
-    const companyNumber = regNumber.trim()
-    if (!company?.id || !companyNumber || isRegistering) return
+    if (!company?.id || isRegistering) return
+    const msg = validateFields({ company_number: regNumber }, REGISTER_SCHEMA).company_number
+    setRegError(msg || '')
+    if (msg) return
+    const companyNumber = formatCompanyNumber(regNumber)
     setIsRegistering(true)
     try {
       const res = await apiRequest(`/admin/companies/${company.id}/register`, {
@@ -215,7 +231,8 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
         silent: true,
       })
       if (!res.ok) {
-        toast.error(res.reason || 'Could not register this company')
+        if (res.fieldErrors?.company_number) setRegError(res.fieldErrors.company_number)
+        else toast.error(res.reason || 'Could not register this company')
         return
       }
       const updated = res.data?.data || {}
@@ -334,14 +351,19 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                 directors and deadlines come in and the company goes live (its customer and orders stay linked).
               </p>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <div className="sm:max-w-64 w-full">
                 <Input
+                  id="register-company_number"
+                  {...invalidProps({ company_number: regError }, 'company_number', 'register-')}
                   value={regNumber}
-                  onChange={(e) => setRegNumber(e.target.value.toUpperCase())}
+                  onChange={(e) => { setRegNumber(e.target.value.toUpperCase()); setRegError('') }}
                   onKeyDown={(e) => { if (e.key === 'Enter') markRegistered() }}
                   placeholder="Company number, e.g. 16692812"
                   maxLength={12}
-                  className="bg-background sm:max-w-64"
+                  className="bg-background"
                 />
+                <FieldMessage id="register-company_number-error" message={regError} />
+                </div>
                 <Button onClick={markRegistered} disabled={isRegistering || !regNumber.trim()}>
                   {isRegistering ? <IconLoader2 className="h-4 w-4 animate-spin" /> : <IconCheck className="h-4 w-4" />}
                   Mark as registered
@@ -474,7 +496,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                   Stored on this company card for filings and HMRC / Companies House work.
                 </p>
 
-                <form
+                <form noValidate
                   onSubmit={(e) => {
                     e.preventDefault()
                     handleSaveCompliance()
@@ -483,43 +505,49 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                 >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="portfolio-compliance-utr" className="text-sm font-medium text-foreground">
+                      <Label htmlFor="portfolio-compliance-utr_number" className="text-sm font-medium text-foreground">
                         UTR number
                       </Label>
                       <Input
-                        id="portfolio-compliance-utr"
+                        id="portfolio-compliance-utr_number"
+                        {...invalidProps(errors, 'utr_number', 'portfolio-compliance-')}
                         placeholder="e.g. 1234567890"
                         maxLength={15}
                         value={formData.utr_number}
                         onChange={(e) => setFormData((prev) => ({ ...prev, utr_number: e.target.value }))}
                       />
+                      <FieldMessage id="portfolio-compliance-utr_number-error" message={errors.utr_number} />
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label htmlFor="portfolio-compliance-auth" className="text-sm font-medium text-foreground">
+                      <Label htmlFor="portfolio-compliance-authentication_code" className="text-sm font-medium text-foreground">
                         Authentication code
                       </Label>
                       <Input
-                        id="portfolio-compliance-auth"
+                        id="portfolio-compliance-authentication_code"
+                        {...invalidProps(errors, 'authentication_code', 'portfolio-compliance-')}
                         placeholder="Companies House auth code"
                         maxLength={12}
                         value={formData.authentication_code}
                         onChange={(e) => setFormData((prev) => ({ ...prev, authentication_code: e.target.value }))}
                       />
+                      <FieldMessage id="portfolio-compliance-authentication_code-error" message={errors.authentication_code} />
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="portfolio-compliance-activation" className="text-sm font-medium text-foreground">
+                    <Label htmlFor="portfolio-compliance-activation_code" className="text-sm font-medium text-foreground">
                       Personal 11 digits code
                     </Label>
                     <Input
-                      id="portfolio-compliance-activation"
+                      id="portfolio-compliance-activation_code"
+                      {...invalidProps(errors, 'activation_code', 'portfolio-compliance-')}
                       placeholder="11-digit personal code"
                       maxLength={40}
                       value={formData.activation_code}
                       onChange={(e) => setFormData((prev) => ({ ...prev, activation_code: e.target.value }))}
                     />
+                    <FieldMessage id="portfolio-compliance-activation_code-error" message={errors.activation_code} />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

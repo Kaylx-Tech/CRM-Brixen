@@ -20,6 +20,14 @@ import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import ToastSave from '@/components/ToastSave'
 import { apiRequest } from '@/lib/api'
+import { useFormErrors } from '@/lib/validation'
+import { FieldMessage, RequiredMark, invalidProps } from '@/components/FormField'
+
+const IMPORT_CLIENT_SCHEMA = {
+  client_id: { label: 'Client', required: (v) => v.client_mode === 'existing', when: (v) => v.client_mode === 'existing' },
+  new_client_full_name: { label: 'Client full name', required: true, when: (v) => v.client_mode === 'new' },
+  new_client_email: { label: 'Client email', type: 'email', required: true, when: (v) => v.client_mode === 'new' },
+}
 
 /** Same rules as the backend: strip punctuation, drop a leading "NO", pad all-digit numbers to 8. */
 function parseCompanyNumbers(text) {
@@ -236,9 +244,12 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
     }
   }
 
+  const clientErrors = useFormErrors(IMPORT_CLIENT_SCHEMA, { prefix: 'webfiling-' })
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setErrorMsg('')
+    clientErrors.clear()
 
     if (!parsedNumbers.length) {
       setErrorMsg('Search or paste at least one company.')
@@ -250,17 +261,13 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
     }
     const cleanNumbers = selectedNumbers.join('\n')
 
-    if (clientMode === 'existing' && !selectedClientId) {
-      setErrorMsg('Please select a client to assign these companies to.')
-      return
-    }
-
-    if (clientMode === 'new') {
-      if (!newClientName.trim() || !newClientEmail.trim()) {
-        setErrorMsg('Please enter both name and email for the new client.')
-        return
-      }
-    }
+    const clientOk = clientErrors.check({
+      client_mode: clientMode,
+      client_id: selectedClientId,
+      new_client_full_name: newClientName,
+      new_client_email: newClientEmail,
+    })
+    if (!clientOk) return
 
     setIsSubmitting(true)
     const toastId = toastProcessing('Importing from WebFiling…')
@@ -402,7 +409,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
           </DialogHeader>
 
           <ScrollArea className="max-h-[75vh]">
-            <form onSubmit={handleSubmit} className="px-5 pb-5 pt-2 space-y-4">
+            <form noValidate onSubmit={handleSubmit} className="px-5 pb-5 pt-2 space-y-4">
               {errorMsg && (
                 <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-2">
                   <IconAlertCircle className="h-4 w-4 shrink-0" />
@@ -453,7 +460,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="webfiling-search" className="text-sm font-semibold">
-                    Companies <span className="text-destructive">*</span>
+                    Companies <RequiredMark />
                   </Label>
                   <span className="text-[11px] text-muted-foreground">Up to 100</span>
                 </div>
@@ -626,7 +633,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
               {/* Step 2: Client Assignment Mode */}
               <div className="space-y-2">
                 <Label className="text-sm font-semibold">
-                  Client Account <span className="text-destructive">*</span>
+                  Client Account <RequiredMark />
                 </Label>
 
                 <div className="flex items-center gap-4 flex-wrap">
@@ -658,6 +665,8 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                 {clientMode === 'existing' && (
                   <div className="max-w-md">
                     <Input
+                      id="webfiling-client_id"
+                      {...invalidProps(clientErrors.errors, 'client_id', 'webfiling-')}
                       placeholder={isLoadingClients ? 'Loading clients...' : 'Type the customer name or email...'}
                       className="text-sm"
                       value={clientQuery}
@@ -705,6 +714,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                         )}
                       </div>
                     )}
+                    {!selectedClientId && <FieldMessage id="webfiling-client_id-error" message={clientErrors.errors.client_id} />}
                     {selectedClientId && (
                       <p className="mt-1 text-[11px] text-emerald-600">Selected customer will receive these companies.</p>
                     )}
@@ -714,27 +724,31 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                 {clientMode === 'new' && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     <div className="space-y-1">
-                      <Label htmlFor="new-client-name" className="text-sm font-normal">Full Name</Label>
+                      <Label htmlFor="webfiling-new_client_full_name" className="text-sm font-normal">Full Name <RequiredMark /></Label>
                       <Input
-                        id="new-client-name"
+                        id="webfiling-new_client_full_name"
+                        {...invalidProps(clientErrors.errors, 'new_client_full_name', 'webfiling-')}
                         placeholder="e.g. John Doe"
                         className="text-sm"
                         value={newClientName}
-                        onChange={(e) => setNewClientName(e.target.value)}
+                        onChange={(e) => { setNewClientName(e.target.value); clientErrors.recheck('new_client_full_name', e.target.value) }}
                         disabled={isSubmitting}
                       />
+                      <FieldMessage id="webfiling-new_client_full_name-error" message={clientErrors.errors.new_client_full_name} />
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="new-client-email" className="text-sm font-normal">Email Address</Label>
+                      <Label htmlFor="webfiling-new_client_email" className="text-sm font-normal">Email Address <RequiredMark /></Label>
                       <Input
-                        id="new-client-email"
+                        id="webfiling-new_client_email"
+                        {...invalidProps(clientErrors.errors, 'new_client_email', 'webfiling-')}
                         type="email"
                         placeholder="e.g. john@example.com"
                         className="text-sm"
                         value={newClientEmail}
-                        onChange={(e) => setNewClientEmail(e.target.value)}
+                        onChange={(e) => { setNewClientEmail(e.target.value); clientErrors.recheck('new_client_email', e.target.value) }}
                         disabled={isSubmitting}
                       />
+                      <FieldMessage id="webfiling-new_client_email-error" message={clientErrors.errors.new_client_email} />
                     </div>
                   </div>
                 )}

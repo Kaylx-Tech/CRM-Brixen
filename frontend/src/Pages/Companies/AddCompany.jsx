@@ -18,6 +18,19 @@ import { IconBuildingPlus, IconAlertCircle, IconLoader2, IconSearch, IconCheck, 
 import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import ToastSave from '@/components/ToastSave'
+import { useFormErrors } from '@/lib/validation'
+import { FieldMessage, RequiredMark, invalidProps } from '@/components/FormField'
+
+const COMPANY_SCHEMA = {
+  company_name: { label: 'Company name', required: true, maxLength: 160 },
+  company_number: { label: 'Company number', type: 'company_number' },
+  incorporation_date: { label: 'Incorporation date', type: 'date', past: true },
+  director: { label: 'Director name', maxLength: 120 },
+  reg_office: { label: 'Registered office address', maxLength: 300 },
+  client_id: { label: 'Client', required: (v) => v.client_mode === 'existing' },
+  new_client_full_name: { label: 'Client full name', required: (v) => v.client_mode === 'new', when: (v) => v.client_mode === 'new' },
+  new_client_email: { label: 'Client email', type: 'email', required: (v) => v.client_mode === 'new', when: (v) => v.client_mode === 'new' },
+}
 
 const AddCompany = ({ isOpen, onClose }) => {
   // Search state
@@ -50,6 +63,7 @@ const AddCompany = ({ isOpen, onClose }) => {
   const [isLoadingClients, setIsLoadingClients] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const { errors, check, recheck, fromResponse, clear } = useFormErrors(COMPANY_SCHEMA, { prefix: 'add-comp-' })
 
   // Load clients on modal open
   useEffect(() => {
@@ -183,15 +197,18 @@ const AddCompany = ({ isOpen, onClose }) => {
     e.preventDefault()
     setErrorMsg('')
 
-    if (!companyName.trim()) {
-      setErrorMsg('Company name is required')
-      return
-    }
-
-    if (clientType === 'new' && (!newClientName.trim() || !newClientEmail.trim())) {
-      setErrorMsg('Please enter the new client name and email')
-      return
-    }
+    const ok = check({
+      company_name: companyName,
+      company_number: companyNumber,
+      incorporation_date: incorporationDate,
+      director,
+      reg_office: regOffice,
+      client_mode: clientType,
+      client_id: selectedClientId,
+      new_client_full_name: newClientName,
+      new_client_email: newClientEmail,
+    })
+    if (!ok) return
 
     setIsSubmitting(true)
     const toastId = toastProcessing('Creating company…')
@@ -224,7 +241,11 @@ const AddCompany = ({ isOpen, onClose }) => {
       const data = await res.json().catch(() => ({}))
 
       if (!res.ok || data.success === false) {
-        throw new Error(data.message || 'Failed to create company')
+        if (fromResponse({ data })) {
+          toastFail(toastId, data.error || 'Please check the highlighted fields.')
+          return
+        }
+        throw new Error(data.message || data.error || 'Failed to create company')
       }
 
       toastDone(toastId, data.message || 'Company created successfully!')
@@ -271,6 +292,7 @@ const AddCompany = ({ isOpen, onClose }) => {
     setNewClientEmail('')
     setIsAutoFilled(false)
     setErrorMsg('')
+    clear()
     setShowUnsavedToast(false)
   }
 
@@ -286,7 +308,7 @@ const AddCompany = ({ isOpen, onClose }) => {
           </DialogHeader>
 
         <ScrollArea className="max-h-[75vh]">
-          <form onSubmit={handleSubmit} className="p-6 pt-2 space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="p-6 pt-2 space-y-4">
             {errorMsg && (
               <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-2">
                 <IconAlertCircle className="h-4 w-4 shrink-0" />
@@ -352,7 +374,7 @@ const AddCompany = ({ isOpen, onClose }) => {
             {/* Step 2: Client Assignment Mode */}
             <div className="space-y-2 pt-1">
               <Label className="text-sm font-semibold">
-                Client Account <span className="text-destructive">*</span>
+                Client Account <RequiredMark />
               </Label>
 
               <div className="flex items-center gap-4 flex-wrap">
@@ -389,7 +411,7 @@ const AddCompany = ({ isOpen, onClose }) => {
                           onValueChange={setSelectedClientId}
                           disabled={isSubmitting || isLoadingClients}
                         >
-                          <SelectTrigger className="w-full text-sm">
+                          <SelectTrigger id="add-comp-client_id" className="w-full text-sm" {...invalidProps(errors, 'client_id', 'add-comp-')}>
                             <SelectValue placeholder={isLoadingClients ? 'Loading clients...' : 'Select client...'}>
                               {selectedClient ? (selectedClient.name || selectedClient.full_name || 'Customer') : undefined}
                             </SelectValue>
@@ -408,6 +430,7 @@ const AddCompany = ({ isOpen, onClose }) => {
                         </Select>
                       )
                     })()}
+                    <FieldMessage id="add-comp-client_id-error" message={errors.client_id} />
                   </div>
                 )}
               </div>
@@ -415,27 +438,31 @@ const AddCompany = ({ isOpen, onClose }) => {
               {clientType === 'new' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div className="space-y-1">
-                    <Label htmlFor="add-new-client-name" className="text-sm font-normal">Full Name</Label>
+                    <Label htmlFor="add-comp-new_client_full_name" className="text-sm font-normal">Full Name <RequiredMark /></Label>
                     <Input
-                      id="add-new-client-name"
+                      id="add-comp-new_client_full_name"
+                      {...invalidProps(errors, 'new_client_full_name', 'add-comp-')}
                       placeholder="e.g. John Doe"
                       className="text-sm"
                       value={newClientName}
-                      onChange={(e) => setNewClientName(e.target.value)}
+                      onChange={(e) => { setNewClientName(e.target.value); recheck('new_client_full_name', e.target.value) }}
                       disabled={isSubmitting}
                     />
+                    <FieldMessage id="add-comp-new_client_full_name-error" message={errors.new_client_full_name} />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="add-new-client-email" className="text-sm font-normal">Email Address</Label>
+                    <Label htmlFor="add-comp-new_client_email" className="text-sm font-normal">Email Address <RequiredMark /></Label>
                     <Input
-                      id="add-new-client-email"
+                      id="add-comp-new_client_email"
+                      {...invalidProps(errors, 'new_client_email', 'add-comp-')}
                       type="email"
                       placeholder="e.g. john@example.com"
                       className="text-sm"
                       value={newClientEmail}
-                      onChange={(e) => setNewClientEmail(e.target.value)}
+                      onChange={(e) => { setNewClientEmail(e.target.value); recheck('new_client_email', e.target.value) }}
                       disabled={isSubmitting}
                     />
+                    <FieldMessage id="add-comp-new_client_email-error" message={errors.new_client_email} />
                   </div>
                 </div>
               )}
@@ -454,45 +481,51 @@ const AddCompany = ({ isOpen, onClose }) => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1 sm:col-span-2">
-                  <Label htmlFor="add-comp-name" className="text-sm font-normal">
-                    Company Name <span className="text-destructive">*</span>
+                  <Label htmlFor="add-comp-company_name" className="text-sm font-normal">
+                    Company Name <RequiredMark />
                   </Label>
                   <Input
-                    id="add-comp-name"
+                    id="add-comp-company_name"
+                    {...invalidProps(errors, 'company_name', 'add-comp-')}
                     placeholder="e.g. Acme Innovations Ltd"
                     className="text-sm"
                     value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
+                    onChange={(e) => { setCompanyName(e.target.value); recheck('company_name', e.target.value) }}
                     disabled={isSubmitting}
                   />
+                  <FieldMessage id="add-comp-company_name-error" message={errors.company_name} />
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="add-comp-num" className="text-sm font-normal">
+                  <Label htmlFor="add-comp-company_number" className="text-sm font-normal">
                     Company Number <span className="text-muted-foreground text-[10px]">(Optional)</span>
                   </Label>
                   <Input
-                    id="add-comp-num"
+                    id="add-comp-company_number"
+                    {...invalidProps(errors, 'company_number', 'add-comp-')}
                     placeholder="e.g. 12345678"
                     className="text-sm"
                     value={companyNumber}
-                    onChange={(e) => setCompanyNumber(e.target.value)}
+                    onChange={(e) => { setCompanyNumber(e.target.value); recheck('company_number', e.target.value) }}
                     disabled={isSubmitting}
                   />
+                  <FieldMessage id="add-comp-company_number-error" message={errors.company_number} />
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="add-comp-date" className="text-sm font-normal">
+                  <Label htmlFor="add-comp-incorporation_date" className="text-sm font-normal">
                     Incorporation Date
                   </Label>
                   <Input
-                    id="add-comp-date"
+                    id="add-comp-incorporation_date"
+                    {...invalidProps(errors, 'incorporation_date', 'add-comp-')}
                     type="date"
                     className="text-sm"
                     value={incorporationDate}
-                    onChange={(e) => setIncorporationDate(e.target.value)}
+                    onChange={(e) => { setIncorporationDate(e.target.value); recheck('incorporation_date', e.target.value) }}
                     disabled={isSubmitting}
                   />
+                  <FieldMessage id="add-comp-incorporation_date-error" message={errors.incorporation_date} />
                 </div>
 
                 <div className="space-y-1">
@@ -501,12 +534,14 @@ const AddCompany = ({ isOpen, onClose }) => {
                   </Label>
                   <Input
                     id="add-comp-director"
+                    {...invalidProps(errors, 'director', 'add-comp-')}
                     placeholder="e.g. John Smith"
                     className="text-sm"
                     value={director}
-                    onChange={(e) => setDirector(e.target.value)}
+                    onChange={(e) => { setDirector(e.target.value); recheck('director', e.target.value) }}
                     disabled={isSubmitting}
                   />
+                  <FieldMessage id="add-comp-director-error" message={errors.director} />
                 </div>
 
                 <div className="space-y-1">
@@ -526,17 +561,19 @@ const AddCompany = ({ isOpen, onClose }) => {
                 </div>
 
                 <div className="space-y-1 sm:col-span-2">
-                  <Label htmlFor="add-comp-office" className="text-sm font-normal">
+                  <Label htmlFor="add-comp-reg_office" className="text-sm font-normal">
                     Registered Office Address
                   </Label>
                   <Input
-                    id="add-comp-office"
+                    id="add-comp-reg_office"
+                    {...invalidProps(errors, 'reg_office', 'add-comp-')}
                     placeholder="Registered address"
                     className="text-sm"
                     value={regOffice}
-                    onChange={(e) => setRegOffice(e.target.value)}
+                    onChange={(e) => { setRegOffice(e.target.value); recheck('reg_office', e.target.value) }}
                     disabled={isSubmitting}
                   />
+                  <FieldMessage id="add-comp-reg_office-error" message={errors.reg_office} />
                 </div>
               </div>
             </div>
