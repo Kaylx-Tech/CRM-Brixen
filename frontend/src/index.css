@@ -307,10 +307,25 @@ html.is-non-apple,
   animation: fs-badge-pop 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   animation-delay: calc(var(--i, 0) * 28ms + 0.2s);
 }
+/* Small word tags ("Soon") pop in, then a light shine runs across them every few seconds */
+@keyframes fs-tag-shine {
+  0%, 65% { background-position: 160% 0; }
+  100% { background-position: -60% 0; }
+}
+.fs-menu-tag {
+  background-image: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.55) 50%, transparent 70%);
+  background-size: 250% 100%;
+  background-repeat: no-repeat;
+  animation:
+    fs-badge-pop 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    fs-tag-shine 3.2s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 28ms + 0.25s), calc(var(--i, 0) * 28ms + 1s);
+}
 @media (prefers-reduced-motion: reduce) {
   .fs-menu-row,
   .fs-menu-btn[data-active],
-  .fs-menu-badge {
+  .fs-menu-badge,
+  .fs-menu-tag {
     animation: none;
   }
 }

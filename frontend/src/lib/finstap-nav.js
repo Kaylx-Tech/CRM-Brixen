@@ -1,8 +1,8 @@
 /**
  * The Finstap admin menu: names, order and groups (the Brixen build keeps its own flat list in
  * Layout/Sidebar.jsx). The sidebar and the Ctrl/⌘ K search both read this, so they always match.
- * `badge` names a count from /admin/stats/nav-counts shown next to the page; `managerOnly` pages are
- * for admins and managers.
+ * `badge` names a count from /admin/stats/nav-counts shown next to the page; `tag` is a small word next to it
+ * (e.g. "Soon"); `managerOnly` pages are for admins and managers.
  */
 import {
   IconLayoutDashboard,
@@ -34,10 +34,10 @@ export const FINSTAP_NAV_GROUPS = [
   {
     label: "Operations",
     items: [
-      { title: "Smart Operations", url: "/admin/smart-operations", icon: IconLink },
-      { title: "Accountancy", url: "/admin/accountancy", icon: IconCalculator },
+      { title: "Smart Operations", url: "/admin/smart-operations", icon: IconLink, tag: "Soon" },
+      { title: "Accountancy", url: "/admin/accountancy", icon: IconCalculator, tag: "Soon" },
       { title: "Documents", url: "/admin/documents", icon: IconFileCheck, badge: "documents" },
-      { title: "Smart Intake", url: "/admin/intake", icon: IconBrain },
+      { title: "Smart Intake", url: "/admin/intake", icon: IconBrain, tag: "Soon" },
     ],
   },
   {

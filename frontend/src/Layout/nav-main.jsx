@@ -26,6 +26,9 @@ const FINSTAP = {
     "[&_svg]:size-[18px]! [&_svg]:text-sidebar-foreground/55 [&_svg]:transition-[transform,color] [&_svg]:duration-200 hover:[&_svg]:translate-x-0.5 hover:[&_svg]:text-sidebar-foreground data-active:[&_svg]:text-sidebar-primary",
   badge:
     "fs-menu-badge top-2! right-2 h-5 min-w-5 rounded-full bg-sidebar-primary px-1.5 text-[10.5px] font-semibold text-sidebar-primary-foreground! shadow-sm",
+  // A word next to the page name (`tag` in finstap-nav.js, e.g. "Soon"); hidden when the menu is folded to icons
+  tag:
+    "fs-menu-tag ml-auto shrink-0 rounded-full border border-sidebar-primary/40 bg-sidebar-primary/15 px-1.5 py-px text-[9.5px] font-semibold uppercase leading-4 tracking-wide text-sidebar-primary group-data-[collapsible=icon]:hidden",
 }
 
 export function NavMain({
@@ -79,6 +82,11 @@ export function NavMain({
                     >
                       {item.icon}
                       <span>{item.title}</span>
+                      {finstap && item.tag ? (
+                        <span className={FINSTAP.tag} style={motion.style}>
+                          {item.tag}
+                        </span>
+                      ) : null}
                     </SidebarMenuButton>
                     {count > 0 ? (
                       <SidebarMenuBadge className={finstap ? FINSTAP.badge : undefined} aria-label={`${count} open`}>
