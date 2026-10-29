@@ -78,6 +78,7 @@ def preview_webfiling_numbers(text):
             'reg_office': profile.get('reg_office') or '',
             'existing': ({
                 'company_id': existing['id'],
+                'owner_id': existing.get('user_id'),
                 'owner_name': existing.get('owner_name') or existing.get('owner_email') or '',
             } if existing else None),
         })
@@ -152,7 +153,7 @@ def import_webfiling_companies(data, actor=None):
         (e for e in (data.get('new_client_email'), (client or {}).get('email')) if is_usable_form_email(str(e or '').strip())),
         None)
     results = []
-    imported = updated = skipped = failed = 0
+    imported = updated = moved = skipped = failed = 0
 
     for number in numbers:
         profile, error = fetch_companies_house_profile(number)
@@ -171,19 +172,31 @@ def import_webfiling_companies(data, actor=None):
         reg_office = profile.get('reg_office') or 'United Kingdom'
 
         if existing:
+            owner = existing.get('owner_name') or existing.get('owner_email')
             if update_existing:
                 execute_db("""
                     UPDATE companies SET name = ?, status = ?, inc_date = ?, director = ?, reg_office = ?
                     WHERE id = ?;
                 """, (profile['name'], mapped_status, inc_date, director, reg_office, existing['id']))
+            # A company has one customer: picking another customer moves it to that customer's profile
+            if existing.get('user_id') != client_id:
+                execute_db("UPDATE companies SET user_id = ? WHERE id = ?;", (client_id, existing['id']))
+                if actor:
+                    log_activity(actor, 'COMPANY_MOVED', 'companies', str(existing['id']),
+                                 f"WebFiling import moved {profile['name']} from {owner or 'no customer'} "
+                                 f"to {(client or {}).get('full_name') or (client or {}).get('email') or client_id}")
+                results.append({'company_number': profile['company_number'], 'name': profile['name'],
+                                'status': 'moved', 'company_id': existing['id'],
+                                'message': f"Moved from {owner}" if owner else 'Added to this customer'})
+                moved += 1
+            elif update_existing:
                 results.append({'company_number': profile['company_number'], 'name': profile['name'],
                                 'status': 'updated', 'company_id': existing['id']})
                 updated += 1
             else:
-                owner = existing.get('owner_name') or existing.get('owner_email')
                 results.append({'company_number': profile['company_number'], 'name': profile['name'],
                                 'status': 'skipped',
-                                'message': f"Already in portal{f' ({owner})' if owner else ''}",
+                                'message': "Already in this customer's profile",
                                 'company_id': existing['id']})
                 skipped += 1
             continue
@@ -204,9 +217,10 @@ def import_webfiling_companies(data, actor=None):
                         'status': 'imported', 'company_id': company_id})
         imported += 1
 
-    if actor and (imported or updated):
+    if actor and (imported or updated or moved):
         log_activity(actor, 'COMPANIES_IMPORTED', 'companies', None,
-                     f"WebFiling import: {imported} added, {updated} updated, {skipped} skipped, {failed} failed")
+                     f"WebFiling import: {imported} added, {moved} moved, {updated} updated, "
+                     f"{skipped} skipped, {failed} failed")
 
-    return {'imported': imported, 'updated': updated, 'skipped': skipped, 'failed': failed,
+    return {'imported': imported, 'updated': updated, 'moved': moved, 'skipped': skipped, 'failed': failed,
             'results': results}, None
