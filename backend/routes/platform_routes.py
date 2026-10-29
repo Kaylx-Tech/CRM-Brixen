@@ -12,6 +12,7 @@ import threading
 import time
 
 from db import query_db, execute_db
+from utils.validation import validate, validation_error
 from utils.response import success_response, error_response
 from tenancy import (
     TenantError, check_slug, create_login_handoff, create_tenant, get_tenant, new_session_token,
@@ -99,6 +100,9 @@ def handle_platform_routes(environ, start_response, path, method, body, query=No
     # ── Signup step 1: the owner's email, confirmed with an emailed code (services/signup_email.py) ──
     if path == '/api/platform/signup/email-code' and method == 'POST':
         email = signup_email.normalize_email((body or {}).get('email'))
+        errors = validate({'email': email}, {'email': {'label': 'Work email', 'required': True, 'type': 'email'}})
+        if errors:
+            return validation_error(start_response, errors)
         try:
             challenge = signup_email.start(email, _client_ip(environ))
         except SignupEmailError as exc:
@@ -133,6 +137,14 @@ def handle_platform_routes(environ, start_response, path, method, body, query=No
         if not verified:
             return error_response(start_response, "Confirm your email first: we send you a 6-digit code.",
                                   status_code=400, details={'email_unverified': True})
+        # Same rules as SIGNUP_SCHEMA in FinstapSignup.jsx; the workspace address is checked by create_tenant
+        errors = validate(body, {
+            'company_name': {'label': 'Company name', 'required': True, 'max_length': 120},
+            'full_name': {'label': 'Your name', 'required': True, 'max_length': 120},
+            'password': {'label': 'Password', 'required': True, 'min_length': 8},
+        })
+        if errors:
+            return validation_error(start_response, errors)
         if not _signup_allowed(_client_ip(environ)):
             return error_response(start_response, "Too many signups from this network. Try again later.",
                                   status_code=429)
@@ -142,7 +154,11 @@ def handle_platform_routes(environ, start_response, path, method, body, query=No
                 body.get('full_name'), verified, body.get('password'),
             )
         except TenantError as exc:
-            return error_response(start_response, str(exc), status_code=400)
+            msg = str(exc)
+            # Workspace address problems belong next to the address field
+            if 'workspace' in msg.lower() or 'url' in msg.lower():
+                return validation_error(start_response, {'slug': msg})
+            return error_response(start_response, msg, status_code=400)
         signup_email.use_token(email_token)
 
         # Sign the owner straight into the new workspace

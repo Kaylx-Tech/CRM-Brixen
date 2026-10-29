@@ -3,6 +3,8 @@ import { Link } from "react-router-dom"
 import { IconAlertTriangle, IconCash, IconClockHour4, IconId, IconMapPin, IconReceipt2 } from "@tabler/icons-react"
 import { cn } from "cn"
 import { Input } from "@/components/ui/input"
+import { checkField } from "@/lib/validation"
+import { FieldMessage } from "@/components/FormField"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { money, ownerApi, shortDate } from "@/lib/owner"
 import { Button, FilterTabs, LoadError, PageTitle, Panel, PlanBadge, SELECT, Stat } from "./ownerUi"
@@ -28,11 +30,18 @@ const FILTERS = [
 function PaymentForm({ workspace, methods, onDone, onCancel }) {
   const [form, setForm] = useState({ periods: "1", amount: "", method: methods[0], note: "" })
   const [busy, setBusy] = useState(false)
-  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+  const [amountError, setAmountError] = useState("")
+  const set = (key) => (e) => {
+    setForm((f) => ({ ...f, [key]: e.target.value }))
+    if (key === "amount") setAmountError("")
+  }
   const expected = workspace.cycle_amount * Number(form.periods || 1)
 
   const save = async (e) => {
     e.preventDefault()
+    const msg = checkField(form.amount, { label: "Amount paid", required: true, type: "amount", min: 0.01 })
+    setAmountError(msg)
+    if (msg) return
     setBusy(true)
     const id = toastProcessing("Saving payment…")
     const res = await ownerApi(`/billing/${workspace.slug}/payments`, { method: "POST", body: form })
@@ -54,7 +63,10 @@ function PaymentForm({ workspace, methods, onDone, onCancel }) {
           </option>
         ))}
       </select>
-      <Input inputMode="decimal" placeholder={`£${expected.toFixed(2)}`} value={form.amount} onChange={set("amount")} aria-label="Amount paid" />
+      <div>
+        <Input inputMode="decimal" placeholder={`£${expected.toFixed(2)}`} value={form.amount} onChange={set("amount")} aria-label="Amount paid" aria-invalid={amountError ? true : undefined} />
+        <FieldMessage message={amountError} />
+      </div>
       <select className={SELECT} value={form.method} onChange={set("method")} aria-label="Paid by">
         {methods.map((m) => (
           <option key={m}>{m}</option>

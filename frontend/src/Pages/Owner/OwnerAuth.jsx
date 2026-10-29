@@ -10,8 +10,19 @@ import { getApiBase } from "@/lib/api"
 import { ownerApi } from "@/lib/owner"
 import finstapLogo from "@/assets/finstap-logo.svg"
 import finstapLogoLight from "@/assets/finstap-logo-light.svg"
+import { useFormErrors } from "@/lib/validation"
+import { FieldMessage, invalidProps } from "@/components/FormField"
 
 const MIN_PASSWORD = 12
+const OWNER_LOGIN_SCHEMA = {
+  email: { label: "Email", required: true, type: "email" },
+  password: { label: "Password", required: true },
+}
+const OWNER_FORGOT_SCHEMA = { email: { label: "Email", required: true, type: "email" } }
+const OWNER_PASSWORD_SCHEMA = {
+  password: { label: "Password", required: true, minLength: MIN_PASSWORD },
+  repeat: { label: "Repeat password", required: true, match: "password", matchMessage: "The two passwords are not the same." },
+}
 
 /** The owner portal's own sign-in pages: one plain card in the middle of the screen. */
 function OwnerCard({ title, subtitle, children, footer }) {
@@ -59,9 +70,11 @@ export function OwnerLogin({ onSignedIn }) {
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
   const [code, setCode] = useState(null)
+  const { errors, check, recheck } = useFormErrors(OWNER_LOGIN_SCHEMA, { prefix: "owner-" })
 
   const submit = async (e) => {
     e.preventDefault()
+    if (!check({ email, password })) return
     setBusy(true)
     setError("")
     const res = await ownerApi("/login", { method: "POST", body: { email, password } })
@@ -104,7 +117,7 @@ export function OwnerLogin({ onSignedIn }) {
         </Link>
       }
     >
-      <form onSubmit={submit}>
+      <form onSubmit={submit} noValidate>
         <FieldGroup>
           <ErrorBox error={error} />
           {params.get("ready") && !error && (
@@ -117,26 +130,28 @@ export function OwnerLogin({ onSignedIn }) {
             <FieldLabel htmlFor="owner-email">Email</FieldLabel>
             <Input
               id="owner-email"
+              {...invalidProps(errors, 'email', 'owner-')}
               type="email"
               autoComplete="username"
               autoFocus
-              required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); recheck('email', e.target.value) }}
               disabled={busy}
             />
+            <FieldMessage id="owner-email-error" message={errors.email} />
           </Field>
           <Field>
             <FieldLabel htmlFor="owner-password">Password</FieldLabel>
             <Input
               id="owner-password"
+              {...invalidProps(errors, 'password', 'owner-')}
               type="password"
               autoComplete="current-password"
-              required
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => { setPassword(e.target.value); recheck('password', e.target.value) }}
               disabled={busy}
             />
+            <FieldMessage id="owner-password-error" message={errors.password} />
           </Field>
           <Button type="submit" disabled={busy} className="w-full">
             {busy ? "Checking..." : "Continue"}
@@ -154,8 +169,11 @@ export function OwnerForgot() {
   const [sent, setSent] = useState("")
   const [busy, setBusy] = useState(false)
 
+  const forgotErrors = useFormErrors(OWNER_FORGOT_SCHEMA, { prefix: "owner-forgot-" })
+
   const submit = async (e) => {
     e.preventDefault()
+    if (!forgotErrors.check({ email })) return
     setBusy(true)
     setError("")
     const res = await ownerApi("/password-link", { method: "POST", body: { email } })
@@ -180,21 +198,22 @@ export function OwnerForgot() {
           <p>{sent}</p>
         </div>
       ) : (
-        <form onSubmit={submit}>
+        <form onSubmit={submit} noValidate>
           <FieldGroup>
             <ErrorBox error={error} />
             <Field>
               <FieldLabel htmlFor="owner-forgot-email">Owner email</FieldLabel>
               <Input
                 id="owner-forgot-email"
+                {...invalidProps(forgotErrors.errors, 'email', 'owner-forgot-')}
                 type="email"
                 autoComplete="email"
                 autoFocus
-                required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); forgotErrors.recheck('email', e.target.value) }}
                 disabled={busy}
               />
+              <FieldMessage id="owner-forgot-email-error" message={forgotErrors.errors.email} />
             </Field>
             <Button type="submit" disabled={busy} className="w-full">
               {busy ? "Sending..." : "Email me a link"}
@@ -215,6 +234,7 @@ export function OwnerSetPassword() {
   const [name, setName] = useState("")
   const [password, setPassword] = useState("")
   const [repeat, setRepeat] = useState("")
+  const pwErrors = useFormErrors(OWNER_PASSWORD_SCHEMA, { prefix: "owner-" })
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
 
@@ -227,8 +247,7 @@ export function OwnerSetPassword() {
   const submit = async (e) => {
     e.preventDefault()
     setError("")
-    if (password.length < MIN_PASSWORD) return setError(`Use at least ${MIN_PASSWORD} characters.`)
-    if (password !== repeat) return setError("The two passwords are not the same.")
+    if (!pwErrors.check({ password, repeat })) return
     setBusy(true)
     const res = await ownerApi("/password", {
       method: "POST",
@@ -261,7 +280,7 @@ export function OwnerSetPassword() {
           <p className="text-sm text-muted-foreground">Checking the link…</p>
         )
       ) : (
-        <form onSubmit={submit}>
+        <form onSubmit={submit} noValidate>
           <FieldGroup>
             <ErrorBox error={error} />
             <Field>
@@ -278,26 +297,28 @@ export function OwnerSetPassword() {
               <FieldLabel htmlFor="owner-new-password">New password</FieldLabel>
               <Input
                 id="owner-new-password"
+                {...invalidProps(pwErrors.errors, 'password', 'owner-new-')}
                 type="password"
                 autoComplete="new-password"
-                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={busy}
               />
+              <FieldMessage id="owner-new-password-error" message={pwErrors.errors.password} />
               <FieldDescription>At least {MIN_PASSWORD} characters.</FieldDescription>
             </Field>
             <Field>
-              <FieldLabel htmlFor="owner-repeat-password">Repeat password</FieldLabel>
+              <FieldLabel htmlFor="owner-repeat">Repeat password</FieldLabel>
               <Input
-                id="owner-repeat-password"
+                id="owner-repeat"
+                {...invalidProps(pwErrors.errors, 'repeat', 'owner-')}
                 type="password"
                 autoComplete="new-password"
-                required
                 value={repeat}
                 onChange={(e) => setRepeat(e.target.value)}
                 disabled={busy}
               />
+              <FieldMessage id="owner-repeat-error" message={pwErrors.errors.repeat} />
             </Field>
             <Button type="submit" disabled={busy} className="w-full">
               {busy ? "Saving..." : "Save password"}

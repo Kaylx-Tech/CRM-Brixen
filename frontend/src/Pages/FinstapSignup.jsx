@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react"
+import { useFormErrors } from "@/lib/validation"
+import { FieldMessage, invalidProps } from "@/components/FormField"
 import { Link, useNavigate } from "react-router-dom"
 import { cn } from "cn"
 import {
@@ -31,6 +33,13 @@ import {
 } from "@/lib/workspace"
 
 const MIN_PASSWORD_LEN = 8
+// Same rules as the signup checks in backend/routes/platform_routes.py
+const SIGNUP_SCHEMA = {
+  email: { label: "Work email", required: true, type: "email" },
+  company_name: { label: "Company name", required: true, maxLength: 120 },
+  full_name: { label: "Your name", required: true, maxLength: 120 },
+  password: { label: "Password", required: true, minLength: MIN_PASSWORD_LEN },
+}
 
 const STEPS = ["Email", "Company", "Your account"]
 
@@ -96,6 +105,7 @@ export default function FinstapSignup() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const { errors, check, recheck, fromResponse } = useFormErrors(SIGNUP_SCHEMA)
   const [isLoading, setIsLoading] = useState(false)
   // Three steps: 1 = the owner's email, confirmed with a code, 2 = the company and its address,
   // 3 = the owner's own account
@@ -107,6 +117,7 @@ export default function FinstapSignup() {
   const sendEmailCode = async (e) => {
     e.preventDefault()
     setError("")
+    if (!check({ email }, null, ["email"])) return
     setIsLoading(true)
     try {
       const res = await fetch(`${getApiBase()}/platform/signup/email-code`, {
@@ -120,7 +131,7 @@ export default function FinstapSignup() {
         setEmailCode({ challenge: data.data.challenge, resendAfter: data.data.resend_after || 60 })
         return
       }
-      setError(data.error || data.message || "Could not send the code. Please try again.")
+      if (!fromResponse({ data })) setError(data.error || data.message || "Could not send the code. Please try again.")
     } catch {
       setError("Failed to connect to server. Please check your connection.")
     } finally {
@@ -175,10 +186,7 @@ export default function FinstapSignup() {
 
   // Step 2 → 3 only with a company name and a free address
   const goToAccount = () => {
-    if (!companyName.trim()) {
-      setError("Enter your company name.")
-      return
-    }
+    if (!check({ company_name: companyName }, null, ["company_name"])) return
     if (toWorkspaceName(slug).length < 3) {
       setError("Choose your Finstap address: one word, 3-30 letters or numbers.")
       return
@@ -202,10 +210,7 @@ export default function FinstapSignup() {
       return
     }
     setError("")
-    if (password.length < MIN_PASSWORD_LEN) {
-      setError(`Password must be at least ${MIN_PASSWORD_LEN} characters.`)
-      return
-    }
+    if (!check({ full_name: fullName, password }, null, ["full_name", "password"])) return
     if (slugState.status === "taken") {
       setError(slugState.error)
       return
@@ -256,9 +261,9 @@ export default function FinstapSignup() {
         toastFail(toastId, msg)
         return
       }
-      setError(msg)
+      if (!fromResponse({ data })) setError(msg)
       // A problem with the company or its address is fixed on step 2
-      if (/workspace|address|company/i.test(msg)) setStep(2)
+      if (data.fields?.company_name || data.fields?.slug || (!data.fields && /workspace|address|company/i.test(msg))) setStep(2)
       toastFail(toastId, msg)
     } catch {
       const msg = "Failed to connect to server. Please check your connection."
@@ -321,21 +326,22 @@ export default function FinstapSignup() {
               />
             </>
           ) : (
-            <form onSubmit={sendEmailCode}>
+            <form onSubmit={sendEmailCode} noValidate>
               <FieldGroup>
                 <Field>
                   <FieldLabel htmlFor="email">Work email</FieldLabel>
                   <Input
                     id="email"
+                    {...invalidProps(errors, 'email', '')}
                     type="email"
                     placeholder="you@company.com"
                     autoComplete="email"
                     autoFocus
-                    required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => { setEmail(e.target.value); recheck('email', e.target.value) }}
                     disabled={isLoading}
                   />
+                  <FieldMessage id="email-error" message={errors.email} />
                   <FieldDescription>
                     You'll use this email to sign in. We'll send it a code to confirm it's yours.
                   </FieldDescription>
@@ -351,7 +357,7 @@ export default function FinstapSignup() {
           )}
         </FieldGroup>
       ) : (
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <FieldGroup>
           <SignupSteps step={step} />
           {error && (
@@ -363,16 +369,17 @@ export default function FinstapSignup() {
           {step === 2 ? (
             <>
               <Field>
-                <FieldLabel htmlFor="company">Company name</FieldLabel>
+                <FieldLabel htmlFor="company_name">Company name</FieldLabel>
                 <Input
-                  id="company"
+                  id="company_name"
+                  {...invalidProps(errors, 'company_name', '')}
                   placeholder="Acme Accountants Ltd"
-                  required
                   autoFocus
                   value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
+                  onChange={(e) => { setCompanyName(e.target.value); recheck('company_name', e.target.value) }}
                   disabled={isLoading}
                 />
+                <FieldMessage id="company_name-error" message={errors.company_name} />
               </Field>
               <Field>
                 <FieldLabel htmlFor="slug">Your Finstap address</FieldLabel>
@@ -446,16 +453,17 @@ export default function FinstapSignup() {
                 </button>
               </div>
               <Field>
-                <FieldLabel htmlFor="name">Your name</FieldLabel>
+                <FieldLabel htmlFor="full_name">Your name</FieldLabel>
                 <Input
-                  id="name"
+                  id="full_name"
+                  {...invalidProps(errors, 'full_name', '')}
                   autoComplete="name"
                   autoFocus
-                  required
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e) => { setFullName(e.target.value); recheck('full_name', e.target.value) }}
                   disabled={isLoading}
                 />
+                <FieldMessage id="full_name-error" message={errors.full_name} />
               </Field>
               {/* The email confirmed on step 1; changing it means confirming the new one */}
               <Field>
@@ -479,13 +487,14 @@ export default function FinstapSignup() {
                 <FieldLabel htmlFor="password">Password</FieldLabel>
                 <Input
                   id="password"
+                  {...invalidProps(errors, 'password', '')}
                   type="password"
                   autoComplete="new-password"
-                  required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); recheck('password', e.target.value) }}
                   disabled={isLoading}
                 />
+                <FieldMessage id="password-error" message={errors.password} />
                 <FieldDescription>At least {MIN_PASSWORD_LEN} characters.</FieldDescription>
               </Field>
               <Field orientation="horizontal" className="gap-2">

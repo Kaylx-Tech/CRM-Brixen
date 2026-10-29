@@ -9,6 +9,14 @@ import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { ownerApi, shortDate } from "@/lib/owner"
 import { TENANT_DOMAIN } from "@/lib/workspace"
 import { Button, Empty, LoadError, PageTitle, Panel } from "./ownerUi"
+import { useFormErrors } from "@/lib/validation"
+import { FieldMessage, RequiredMark, invalidProps } from "@/components/FormField"
+
+const POST_SCHEMA = {
+  title: { label: "Title", required: true, maxLength: 200 },
+  slug: { label: "Web address", validate: (v) => (/^[a-z0-9]+(-[a-z0-9]+)*$/.test(String(v).trim()) ? "" : "Use small letters, numbers and dashes, like my-first-post.") },
+  cover_url: { label: "Cover picture link", type: "url" },
+}
 
 /** Where a post is read: finstap.com/blog/<slug> (or this site when subdomains are off). */
 function publicUrl(slug) {
@@ -108,9 +116,11 @@ export function OwnerBlogEditor() {
     ownerApi(`/content/posts/${id}`).then((res) => (res.ok ? setPost(res.data) : setError(res.error)))
   }, [id, isNew])
 
+  const { errors, check } = useFormErrors(POST_SCHEMA, { prefix: "post-" })
   const set = (key) => (e) => setPost((p) => ({ ...p, [key]: e.target.value }))
 
   const save = async (status) => {
+    if (!check(post)) return
     setBusy(true)
     const toast = toastProcessing("Saving…")
     const res = await ownerApi(isNew ? "/content/posts" : `/content/posts/${id}`, {
@@ -161,12 +171,16 @@ export function OwnerBlogEditor() {
         <Panel title="Post">
           <div className="space-y-4">
             <div>
-              <label htmlFor="post-title" className="mb-1.5 block text-sm font-medium">Title</label>
-              <Input id="post-title" value={post.title} onChange={set("title")} />
+              <label htmlFor="post-title" className="mb-1.5 block text-sm font-medium">Title <RequiredMark /></label>
+              <Input id="post-title"
+                {...invalidProps(errors, 'title', 'post-')} value={post.title} onChange={set("title")} />
+              <FieldMessage id="post-title-error" message={errors.title} />
             </div>
             <div>
               <label htmlFor="post-slug" className="mb-1.5 block text-sm font-medium">Web address</label>
-              <Input id="post-slug" placeholder="made from the title when empty" value={post.slug} onChange={set("slug")} />
+              <Input id="post-slug"
+                {...invalidProps(errors, 'slug', 'post-')} placeholder="made from the title when empty" value={post.slug} onChange={set("slug")} />
+              <FieldMessage id="post-slug-error" message={errors.slug} />
               <p className="mt-1 text-xs text-muted-foreground">finstap.com/blog/{post.slug || "your-title"}</p>
             </div>
             <div>
@@ -174,8 +188,10 @@ export function OwnerBlogEditor() {
               <Textarea id="post-excerpt" rows={2} value={post.excerpt || ""} onChange={set("excerpt")} />
             </div>
             <div>
-              <label htmlFor="post-cover" className="mb-1.5 block text-sm font-medium">Cover picture link (optional)</label>
-              <Input id="post-cover" placeholder="https://…" value={post.cover_url || ""} onChange={set("cover_url")} />
+              <label htmlFor="post-cover_url" className="mb-1.5 block text-sm font-medium">Cover picture link (optional)</label>
+              <Input id="post-cover_url"
+                {...invalidProps(errors, 'cover_url', 'post-')} placeholder="https://…" value={post.cover_url || ""} onChange={set("cover_url")} />
+              <FieldMessage id="post-cover_url-error" message={errors.cover_url} />
             </div>
             <div>
               <label htmlFor="post-body" className="mb-1.5 block text-sm font-medium">Text</label>
