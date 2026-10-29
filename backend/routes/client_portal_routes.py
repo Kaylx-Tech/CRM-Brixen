@@ -12,6 +12,7 @@ import re
 import secrets
 
 from db import query_db, execute_db
+from utils.validation import validation_error
 from utils.response import success_response, error_response
 from services.invoice_service import enrich_invoice_row
 from services.notification_service import notify_staff
@@ -377,8 +378,13 @@ def handle_client_portal_routes(environ, start_response, path, method, user, bod
     if path == '/api/client/tickets' and method == 'POST':
         subject = str(body.get('subject') or '').strip()[:200]
         message = str(body.get('description') or body.get('message') or '').strip()[:5000]
-        if not subject or not message:
-            return error_response(start_response, "Add a subject and a message", status_code=400)
+        errors = {}
+        if not subject:
+            errors['subject'] = "Subject is required."
+        if not message:
+            errors['description'] = "Message is required."
+        if errors:
+            return validation_error(start_response, errors)
         priority = body.get('priority') if body.get('priority') in TICKET_PRIORITIES else 'Medium'
         category = str(body.get('category') or 'General Support').strip()[:80]
         order_id = body.get('order_id') if body.get('order_id') and query_db(

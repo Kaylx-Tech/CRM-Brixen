@@ -22,6 +22,13 @@ import { homePath } from "@/lib/permissions"
 import { getDeviceId } from "@/lib/device"
 import { useLightOnly } from "@/hooks/theme-provider"
 import { LoginCodeStep } from "@/components/login-code-step"
+import { useFormErrors } from "@/lib/validation"
+import { FieldMessage, invalidProps } from "@/components/FormField"
+
+const LOGIN_SCHEMA = {
+  email: { label: "Email", required: true, type: "email" },
+  password: { label: "Password", required: true },
+}
 
 export function LoginForm({ className, ...props }) {
   // The sign-in pages are always light (white form next to the blue brand panel)
@@ -30,6 +37,7 @@ export function LoginForm({ className, ...props }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const { errors, check, recheck } = useFormErrors(LOGIN_SCHEMA)
   const [websiteUrl, setWebsiteUrl] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   // Second step: the emailed login code ({ challenge, emailHint, resendAfter } while it is shown)
@@ -60,6 +68,7 @@ export function LoginForm({ className, ...props }) {
     e.preventDefault()
     setError("")
     setWebsiteUrl("")
+    if (!check({ email, password })) return
     setIsLoading(true)
     const toastId = toastProcessing("Signing in…")
 
@@ -144,7 +153,7 @@ export function LoginForm({ className, ...props }) {
             />
           </div>
         ) : (
-        <form className="w-full max-w-sm" onSubmit={handleSubmit}>
+        <form className="w-full max-w-sm" onSubmit={handleSubmit} noValidate>
           <FieldGroup>
             <div className="flex flex-col py-8 items-center gap-2 text-center">
               {/* Phones hide the blue brand panel, so the logo sits above the form */}
@@ -171,13 +180,14 @@ export function LoginForm({ className, ...props }) {
               <FieldLabel htmlFor="email">Email</FieldLabel>
               <Input
                 id="email"
+                {...invalidProps(errors, 'email', '')}
                 type="email"
                 placeholder="Enter your email"
-                required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); recheck('email', e.target.value) }}
                 disabled={isLoading}
               />
+              <FieldMessage id="email-error" message={errors.email} />
             </Field>
             <Field>
               <div className="flex items-center">
@@ -191,12 +201,13 @@ export function LoginForm({ className, ...props }) {
               </div>
               <PasswordInput
                 id="password"
+                {...invalidProps(errors, 'password', '')}
                 autoComplete="current-password"
-                required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => { setPassword(e.target.value); recheck('password', e.target.value) }}
                 disabled={isLoading}
               />
+              <FieldMessage id="password-error" message={errors.password} />
             </Field>
             <Field>
               <Button type="submit" disabled={isLoading}>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,11 +11,12 @@ import { IconDeviceFloppy, IconLoader2, IconMail, IconBuilding, IconCloud, IconW
 import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import { apiRequest, getApiBase } from '@/lib/api'
+import { validateFields, focusFirstError } from '@/lib/validation'
+import { FieldMessage, RequiredMark } from '@/components/FormField'
 
 // Where Didit posts verification results (the API may live on another address than this page)
 const diditWebhookUrl = new URL(`${getApiBase()}/webhooks/didit`, window.location.origin).href
 
-const MIN_PASSWORD = 10
 const SETTINGS_TABS = new Set(['general', 'email', 'integrations', 'compliance', 'profile'])
 
 function syncLocalUser(user) {
@@ -88,15 +89,58 @@ function asBool(val, fallback = false) {
   return fallback
 }
 
-function Field({ id, label, hint, children }) {
+// Field errors for the whole page ({ input id: message }); each Field shows its own
+const FieldErrorsContext = createContext({})
+
+function Field({ id, label, hint, required, children }) {
+  const error = useContext(FieldErrorsContext)[id]
+  const child = error && React.isValidElement(children)
+    ? React.cloneElement(children, { 'aria-invalid': true, 'aria-describedby': `${id}-error` })
+    : children
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={id} className="text-sm">{label}</Label>
-      {children}
+      <Label htmlFor={id} className="text-sm">{label}{required ? <RequiredMark className="ml-0" /> : null}</Label>
+      {child}
+      <FieldMessage id={`${id}-error`} message={error} className="mt-0" />
       {hint ? <p className="text-[11px] text-muted-foreground m-0">{hint}</p> : null}
     </div>
   )
 }
+
+const MIN_PASSWORD = 10
+const hourRule = (label, min, max) => ({ label, type: 'integer', min, max })
+// System settings (keys are the input ids); same rules as SETTINGS_RULES in settings_routes.py
+const SETTINGS_SCHEMA = {
+  company_name: { label: 'Company name', required: true, maxLength: 120 },
+  support_email: { label: 'Support email', type: 'email' },
+  support_phone: { label: 'Support phone', type: 'phone' },
+  team_notification_emails: { label: 'Team notification emails', type: 'emails' },
+  order_number_prefix: { label: 'Order prefix', validate: (v) => (/^[A-Za-z0-9]{1,8}$/.test(String(v).trim()) ? '' : 'Use 1 to 8 letters and numbers.') },
+  frontend_url: { label: 'Admin URL', type: 'url' },
+  portal_url: { label: 'Portal URL', type: 'url' },
+  uk_formfill_pro_url: { label: 'UK FormFill Pro URL', type: 'url' },
+  smtp_port: hourRule('SMTP port', 1, 65535),
+  wordpress_url: { label: 'WordPress URL', type: 'url' },
+  didit_callback_url: { label: 'Didit callback URL', type: 'url' },
+  compliance_alerts_send_hour: hourRule('Send hour', 0, 23),
+  compliance_alerts_interval_hours: hourRule('Interval', 1, 720),
+  compliance_alerts_test_recipient: { label: 'Test recipient', type: 'email' },
+  compliance_alerts_website: { label: 'Website', type: 'url' },
+  compliance_alerts_whatsapp_url: { label: 'WhatsApp link', type: 'url' },
+}
+const SETTINGS_TAB_OF = (key) =>
+  key.startsWith('compliance_') ? 'compliance'
+    : /^(smtp_|login_smtp_)/.test(key) ? 'email'
+      : /^(didit_|wordpress_|google_|companies_house|getaddress)/.test(key) ? 'integrations'
+        : 'general'
+const PROFILE_SCHEMA = {
+  prof_full_name: { label: 'Full name', required: true, maxLength: 120 },
+  prof_phone: { label: 'Phone', type: 'phone' },
+  prof_current_password: { label: 'Current password', required: (v) => !!(v.prof_new_password || v.prof_confirm_password) },
+  prof_new_password: { label: 'New password', minLength: MIN_PASSWORD, required: (v) => !!v.prof_current_password },
+  prof_confirm_password: { label: 'Confirm password', match: 'prof_new_password', matchMessage: 'New passwords do not match.' },
+}
+const profileValues = (p) => Object.fromEntries(Object.entries(p).map(([k, v]) => [`prof_${k}`, v]))
 
 function Section({ title, description, children }) {
   return (
@@ -158,12 +202,32 @@ export default function Settings() {
   const [isSaving, setIsSaving] = useState(false)
   const [testing, setTesting] = useState('')
   const [loadError, setLoadError] = useState(null)
+  const [fieldErrors, setFieldErrors] = useState({})
 
+  const dropError = (id) =>
+    setFieldErrors((prev) => {
+      if (!prev[id]) return prev
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
   const setField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }))
+    dropError(key)
   }
   const setProfileField = (key, value) => {
     setProfile((prev) => ({ ...prev, [key]: value }))
+    dropError(`prof_${key}`)
+  }
+  // Show errors; switch to the tab of the first one so it is visible
+  const showFieldErrors = (errors) => {
+    setFieldErrors(errors)
+    const first = Object.keys(errors)[0]
+    if (!first) return
+    // Changing the URL to the tab already open would reload the page and lose the messages
+    if (!first.startsWith('prof_') && SETTINGS_TAB_OF(first) !== tab) setTab(SETTINGS_TAB_OF(first))
+    setTimeout(() => focusFirstError(errors), 50)
+    toast.error(errors[first])
   }
 
   const loadProfile = useCallback(async () => {
@@ -286,24 +350,12 @@ export default function Settings() {
       profile.new_password ||
       profile.confirm_password
     )
-    if (changingPassword) {
-      if (!profile.current_password) {
-        toast.error('Enter your current password to change it.')
-        return
-      }
-      if (profile.new_password.length < MIN_PASSWORD) {
-        toast.error(`New password must be at least ${MIN_PASSWORD} characters.`)
-        return
-      }
-      if (profile.new_password !== profile.confirm_password) {
-        toast.error('New passwords do not match.')
-        return
-      }
-    }
-    if (!profile.full_name.trim()) {
-      toast.error('Full name is required.')
+    const errors = validateFields(profileValues(profile), PROFILE_SCHEMA)
+    if (Object.keys(errors).length) {
+      showFieldErrors(errors)
       return
     }
+    setFieldErrors({})
 
     setIsSaving(true)
     const toastId = toastProcessing(
@@ -328,6 +380,7 @@ export default function Settings() {
         silent: true,
       })
       if (!res.ok) {
+        if (res.fieldErrors) setFieldErrors(Object.fromEntries(Object.entries(res.fieldErrors).map(([k, v]) => [`prof_${k}`, v])))
         toastFail(toastId, res.reason || 'Failed to save profile')
         return
       }
@@ -352,6 +405,12 @@ export default function Settings() {
       await handleSaveProfile()
       return
     }
+    const errors = validateFields(form, SETTINGS_SCHEMA)
+    if (Object.keys(errors).length) {
+      showFieldErrors(errors)
+      return
+    }
+    setFieldErrors({})
     setIsSaving(true)
     try {
       const payload = {
@@ -415,6 +474,11 @@ export default function Settings() {
         silent: true,
       })
       if (!res.ok) {
+        if (res.fieldErrors) {
+          setFieldErrors(res.fieldErrors)
+          const first = Object.keys(res.fieldErrors)[0]
+          if (first && SETTINGS_TAB_OF(first) !== tab) setTab(SETTINGS_TAB_OF(first))
+        }
         toastFail(toastId, res.reason || 'Failed to save settings')
         return
       }
@@ -533,6 +597,7 @@ export default function Settings() {
         </div>
       )}
 
+      <FieldErrorsContext.Provider value={fieldErrors}>
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList >
           {[
@@ -551,11 +616,11 @@ export default function Settings() {
           ))}
         </TabsList>
 
-        <form onSubmit={handleSave} className="mt-4 space-y-4">
+        <form noValidate onSubmit={handleSave} className="mt-4 space-y-4">
           <TabsContent value="general" className="mt-0 space-y-4">
             <Section title="Brand & contact" description="Shown across admin CRM and client-facing emails.">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field id="company_name" label="Company name">
+                <Field id="company_name" required label="Company name">
                   <Input
                     id="company_name"
                     value={form.company_name}
@@ -1193,7 +1258,7 @@ export default function Settings() {
                     />
                   </Field>
                 )}
-                <Field id="prof_full_name" label="Full name">
+                <Field id="prof_full_name" required label="Full name">
                   <Input
                     id="prof_full_name"
                     value={profile.full_name}
@@ -1283,6 +1348,7 @@ export default function Settings() {
           </div>
         </form>
       </Tabs>
+      </FieldErrorsContext.Provider>
     </div>
   )
 }
