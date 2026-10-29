@@ -278,7 +278,7 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
             return error_response(start_response, error, status_code=503 if 'API key' in error else 400)
         return success_response(
             start_response, data=summary,
-            message=(f"Imported {summary['imported']}, updated {summary['updated']}, "
+            message=(f"Imported {summary['imported']}, moved {summary.get('moved', 0)}, updated {summary['updated']}, "
                      f"skipped {summary['skipped']}, failed {summary['failed']}."))
 
     # ── GET /api/companies/ch-details?number= (order form: details of the selected company) ──

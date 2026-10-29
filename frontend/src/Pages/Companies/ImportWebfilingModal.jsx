@@ -324,6 +324,31 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
   }
 
   const clientLabel = (c) => c.name || c.full_name || c.email || 'Customer'
+
+  // The customer whose profile the companies go to (a company already in the portal moves there)
+  const targetClient = clientMode === 'new'
+    ? { id: null, label: newClientName.trim() || 'the new client' }
+    : selectedClientId
+      ? { id: Number(selectedClientId), label: clientLabel(clients.find((c) => String(c.id) === selectedClientId) || {}) }
+      : null
+
+  const existingNote = (existing) => {
+    const owner = existing.owner_name || 'another customer'
+    if (!targetClient) {
+      return { moving: false, text: `Already in portal (${owner}) · select a customer to add it to their profile` }
+    }
+    if (targetClient.id && targetClient.id === Number(existing.owner_id)) {
+      return {
+        moving: false,
+        text: `Already in ${targetClient.label}'s profile${updateExisting ? ' · will be refreshed' : ' · will be skipped'}`,
+      }
+    }
+    return {
+      moving: true,
+      text: `Now with ${owner} · will move to ${targetClient.label}'s profile${updateExisting ? ' and be refreshed' : ''}`,
+    }
+  }
+
   const suggestions = React.useMemo(() => {
     const q = clientQuery.trim().toLowerCase()
     if (!q) return []
@@ -392,6 +417,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                     <span className="font-semibold text-sm">Import Results</span>
                     <div className="flex items-center gap-2">
                       <Badge className="badge-green">{importResults.imported ?? 0} Added</Badge>
+                      {importResults.moved ? <Badge className="badge-sky">{importResults.moved} Moved</Badge> : null}
                       <Badge className="badge-blue">{importResults.updated ?? 0} Updated</Badge>
                       <Badge className="badge-amber">{importResults.skipped ?? 0} Skipped</Badge>
                     </div>
@@ -411,6 +437,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                           <Badge className={
                             r.status === 'imported' ? 'badge-green' :
                               r.status === 'updated' ? 'badge-blue' :
+                                r.status === 'moved' ? 'badge-sky' :
                                 r.status === 'skipped' ? 'badge-amber' : 'badge-red'
                           }>
                             {r.status}
@@ -551,12 +578,14 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                                       {info.inc_date ? ` · Inc. ${info.inc_date}` : ''}
                                       {info.reg_office ? ` · ${info.reg_office}` : ''}
                                     </p>
-                                    {info.existing ? (
-                                      <p className="mt-0.5 text-xs text-amber-600">
-                                        Already in portal{info.existing.owner_name ? ` (${info.existing.owner_name})` : ''}
-                                        {updateExisting ? ' · will be refreshed' : ' · will be skipped'}
-                                      </p>
-                                    ) : null}
+                                    {info.existing ? (() => {
+                                      const note = existingNote(info.existing)
+                                      return (
+                                        <p className={`mt-0.5 text-xs ${note.moving ? 'text-sky-600' : 'text-amber-600'}`}>
+                                          {note.text}
+                                        </p>
+                                      )
+                                    })() : null}
                                   </>
                                 ) : info.lookupFailed ? (
                                   <p className="text-sm">
