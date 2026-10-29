@@ -127,6 +127,16 @@ def apply_result(verification_id, status, decision=None):
         sets.append("result_json = ?")
         params.append(json.dumps(didit_service.summarise_decision(decision)))
     execute_db(f"UPDATE id_verifications SET {', '.join(sets)} WHERE id = ?;", tuple(params + [verification_id]))
+    if status != row['status'] and status in didit_service.FINAL_STATUSES:
+        # Finstap AutoAllot: a registered office waiting for this check is allotted (or stopped) now
+        try:
+            from tenancy import current_tenant
+            from services.autoallot import verification_finished
+            verification_finished(current_tenant(), verification_id, status)
+        except ImportError:
+            pass
+        except Exception as exc:
+            print(f"[AutoAllot] check {verification_id}: {exc}")
     if status != row['status'] and status in didit_service.FINAL_STATUSES + ('In Review',) and row.get('created_by'):
         try:
             from services.notification_service import create_notification

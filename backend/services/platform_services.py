@@ -355,7 +355,7 @@ def request_ro(tenant, user, company_id, notes=''):
     if not company:
         raise ServiceError("Choose a company from your Companies list")
     open_one = _platform_query("""
-        SELECT id, status FROM ro_requests WHERE tenant_slug = ? AND company_id = ? AND status IN ('Pending', 'Active');
+        SELECT id, status FROM ro_requests WHERE tenant_slug = ? AND company_id = ? AND status IN ('Pending', 'Verifying', 'Active');
     """, (tenant['slug'], company['id']), one=True)
     if open_one:
         raise ServiceError(f"This company already has a {open_one['status'].lower()} registered office request")

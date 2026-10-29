@@ -11,14 +11,17 @@ import { useServiceSettings } from "./useServiceSettings"
 const EMPTY_ADDRESS = { label: "", line1: "", line2: "", city: "", postal_code: "", country: "United Kingdom" }
 const FILTERS = [
   ["Pending", "Waiting"],
+  ["Verifying", "AutoAllot: verifying"],
   ["Active", "Active"],
   ["", "All"],
 ]
 
 const STATUS_TONE = {
   Pending: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+  Verifying: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
   Active: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   Rejected: "bg-destructive/10 text-destructive",
+  "Verification failed": "bg-destructive/10 text-destructive",
   Cancelled: "bg-muted text-muted-foreground",
 }
 
@@ -245,6 +248,16 @@ export default function OwnerRegisteredOffice() {
                     <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-semibold", STATUS_TONE[r.status])}>
                       {r.status}
                     </span>
+                    {r.office_number ? (
+                      <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                        Office {r.office_number}
+                      </span>
+                    ) : null}
+                    {r.source === "autoallot" && (
+                      <span className="text-xs text-muted-foreground">
+                        AutoAllot{r.order_number ? ` · order ${r.order_number}` : ""}
+                      </span>
+                    )}
                     {r.status === "Active" && (
                       <span className={cn("text-xs font-semibold", r.paid ? "text-emerald-600" : "text-amber-700 dark:text-amber-300")}>
                         {r.paid ? "Paid" : "Unpaid"}

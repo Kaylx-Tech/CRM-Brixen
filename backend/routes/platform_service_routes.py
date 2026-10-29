@@ -3,11 +3,13 @@
 GET  /api/admin/finstap-services                    prices, and this workspace's registered office requests
 POST /api/admin/registered-office {company_id, notes}  ask Finstap for a registered office (admins, managers)
 POST /api/admin/registered-office/<id>/cancel        take back a request that is still pending
+POST /api/admin/registered-office/autoallot {order_number}  AutoAllot: Didit check, then the next Office number
 """
 import re
 
 from tenancy import current_tenant
 from utils.response import success_response, error_response
+from services import autoallot
 from services import platform_services as svc
 
 MANAGERS = ('SUPER_ADMIN', 'ADMIN', 'MANAGER')
@@ -33,7 +35,11 @@ def handle_platform_service_routes(environ, start_response, path, method, user, 
                 'ro_price_year': prices['ro_price_year'],
                 'ro_available': bool(prices['ro_addresses']),
                 'requests': svc.ro_requests(slug=tenant['slug']),
+                'autoallot': autoallot.credits(tenant),
             })
+        if path == '/api/admin/registered-office/autoallot' and method == 'POST':
+            row, message = autoallot.start(tenant, user, body.get('order_number'))
+            return success_response(start_response, data=row, status_code=201, message=message)
         if path == '/api/admin/registered-office' and method == 'POST':
             row = svc.request_ro(tenant, user, body.get('company_id'), body.get('notes'))
             return success_response(start_response, data=row, status_code=201,
@@ -42,6 +48,6 @@ def handle_platform_service_routes(environ, start_response, path, method, user, 
         if match and method == 'POST':
             svc.cancel_ro_request(tenant, int(match.group(1)))
             return success_response(start_response, message="Request cancelled.")
-    except svc.ServiceError as exc:
+    except (svc.ServiceError, autoallot.AutoAllotError) as exc:
         return error_response(start_response, str(exc), status_code=400)
     return error_response(start_response, "Not found", status_code=404)

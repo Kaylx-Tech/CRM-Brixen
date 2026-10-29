@@ -229,7 +229,25 @@ CREATE TABLE IF NOT EXISTS stripe_events (
     type TEXT,
     received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+-- AutoAllot (services/autoallot.py): every number given out, once per kind (Office 1000, 1001, …)
+CREATE TABLE IF NOT EXISTS autoallot_numbers (
+    kind TEXT NOT NULL,
+    number INTEGER NOT NULL,
+    request_id INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (kind, number)
+);
 """
+
+# AutoAllot details on registered office requests, added to databases made before AutoAllot
+RO_COLUMNS = (
+    ('source', "TEXT"),                        # 'autoallot', or empty for a request the owner confirms
+    ('order_id', "INTEGER"),                   # the workspace order it came from
+    ('order_number', "TEXT"),
+    ('verification_id', "INTEGER"),            # the workspace's id_verifications row (Didit)
+    ('office_number', "INTEGER"),              # Office 1000, 1001, …
+    ('allotted_at', "TIMESTAMP"),
+)
 
 # Card payments from Stripe on the payments list, added to databases made before Stripe
 PAYMENT_COLUMNS = (
@@ -330,6 +348,10 @@ def ensure_platform():
             for column, kind in PAYMENT_COLUMNS:
                 if column not in have:
                     conn.execute(f"ALTER TABLE subscription_payments ADD COLUMN {column} {kind};")
+            have = {row['name'] for row in conn.execute("PRAGMA table_info(ro_requests);").fetchall()}
+            for column, kind in RO_COLUMNS:
+                if column not in have:
+                    conn.execute(f"ALTER TABLE ro_requests ADD COLUMN {column} {kind};")
             conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_subscription_payments_stripe "
                          "ON subscription_payments(stripe_ref) WHERE stripe_ref IS NOT NULL;")
             known =conn.execute("SELECT 1 FROM tenants WHERE slug = ?;", (DEFAULT_TENANT,)).fetchone()
