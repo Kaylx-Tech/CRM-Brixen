@@ -23,6 +23,8 @@ import { apiRequest } from "@/lib/api"
 import ToastSave from "@/components/ToastSave"
 import { DateOfBirthInput } from "@/components/date-of-birth-input"
 import { isDateOfBirthLabel } from "@/lib/date-of-birth"
+import { checkField, ruleFromLabel, parseDate } from "@/lib/validation"
+import { FieldMessage } from "@/components/FormField"
 import { canViewPrices } from "@/lib/permissions"
 import { formatGBP } from "@/lib/money"
 import {
@@ -541,7 +543,7 @@ function ServiceFileInput({ field, file, onFile, hint }) {
 }
 
 /** One text input, radio question or company check from a service's order form. */
-function ServiceFieldInput({ field, value, onChange, hint }) {
+function ServiceFieldInput({ field, value, onChange, hint, error }) {
   const id = `svc-field-${field.key.replace(/[^a-z0-9]+/gi, "-")}`
   return (
     <div className="space-y-2">
@@ -572,8 +574,11 @@ function ServiceFieldInput({ field, value, onChange, hint }) {
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={field.placeholder || undefined}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
         />
       )}
+      <FieldMessage id={`${id}-error`} message={error} />
       {hint ? <p className="text-[11px] text-muted-foreground">{hint}</p> : null}
     </div>
   )
@@ -660,6 +665,8 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
   const steps = portal ? STEPS.filter((s) => s.id !== 1) : STEPS
   const [step, setStep] = useState(firstStep)
   const [error, setError] = useState("")
+  // Inline messages under the service form questions ({ field key: message })
+  const [svcErrors, setSvcErrors] = useState({})
   const [loadingCustomers, setLoadingCustomers] = useState(false)
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -944,7 +951,26 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
         if (f.type === "company" || f.type === "company_name") return !String(fieldValues[f.key]?.input || "").trim()
         return !String(fieldValues[f.key] || "").trim()
       })
+      // Answers in the wrong format: dates, and text questions whose label asks for an email, phone, postcode…
+      const badFormat = {}
+      textFields.forEach((f) => {
+        const v = fieldValues[f.key]
+        if (typeof v !== "string" || !v.trim()) return
+        if (f.type === "date" || isDateOfBirthLabel(f.label)) {
+          if (!parseDate(v)) badFormat[f.key] = "Enter a valid date as DD/MM/YYYY."
+          return
+        }
+        if (f.type !== "text") return
+        const rule = ruleFromLabel(f.label)
+        const msg = rule ? checkField(v, { label: f.label, ...rule }) : ""
+        if (msg) badFormat[f.key] = msg
+      })
+      const nextErrors = { ...badFormat }
+      missingText.forEach((f) => { if (f.type !== "checkbox") nextErrors[f.key] = `${f.label || "This field"} is required.` })
+      setSvcErrors(nextErrors)
       if (missingText.length) return `Complete: ${missingText.map(fieldTitle).join(", ")}.`
+      const bad = textFields.filter((f) => badFormat[f.key])
+      if (bad.length) return `Check: ${bad.map(fieldTitle).join(", ")}.`
     }
     if (targetStep > 4) {
       // Uploads are asked on the Documents step, so they are checked when leaving it
@@ -1134,7 +1160,16 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
     f.type === "file" ? (
       <ServiceFileInput field={f} file={fieldFiles[f.key]} onFile={(file) => setFieldFile(f.key, file)} hint={hint} />
     ) : (
-      <ServiceFieldInput field={f} value={fieldValues[f.key]} onChange={(val) => setFieldValue(f.key, val)} hint={hint} />
+      <ServiceFieldInput
+        field={f}
+        value={fieldValues[f.key]}
+        onChange={(val) => {
+          setFieldValue(f.key, val)
+          if (svcErrors[f.key]) setSvcErrors((prev) => { const next = { ...prev }; delete next[f.key]; return next })
+        }}
+        hint={hint}
+        error={svcErrors[f.key]}
+      />
     )
 
   // The selected services' own order form, shown first on the Details step

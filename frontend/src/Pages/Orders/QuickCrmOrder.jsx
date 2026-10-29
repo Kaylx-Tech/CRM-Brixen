@@ -26,6 +26,20 @@ import { apiRequest } from "@/lib/api"
 import { canViewPrices } from "@/lib/permissions"
 import { formatGBP } from "@/lib/money"
 import ToastSave from "@/components/ToastSave"
+import { useFormErrors, checkField } from "@/lib/validation"
+import { FieldMessage, RequiredMark, invalidProps } from "@/components/FormField"
+
+const QUICK_ORDER_SCHEMA = {
+  client_id: { label: "Client", required: true, when: (v) => v.client_mode === "existing" },
+  new_client_full_name: { label: "Client full name", required: true, when: (v) => v.client_mode === "new" },
+  new_client_email: { label: "Portal login email", required: true, type: "email", when: (v) => v.client_mode === "new" },
+  company_name: { label: "Company name", maxLength: 160 },
+  company_email: { label: "Company notification email", required: true, type: "email" },
+  company_phone: { label: "Company phone", type: "phone" },
+  registered_postcode: { label: "Postcode", type: "postcode" },
+  owner_name: { label: "Director name", maxLength: 120 },
+  director_phone: { label: "Director phone", type: "phone" },
+}
 import { IconLoader2, IconPlus, IconTrash } from "@tabler/icons-react"
 
 const COMPANY_TYPES = [
@@ -88,6 +102,8 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
   // Staff Operations add products without prices; the server takes the catalogue price
   const showPrices = canViewPrices()
   const [error, setError] = useState("")
+  const { errors, check, recheck, fromResponse, clear } = useFormErrors(QUICK_ORDER_SCHEMA, { prefix: "qo-" })
+  const [lineError, setLineError] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [loadingClients, setLoadingClients] = useState(false)
   const [loadingCompanies, setLoadingCompanies] = useState(false)
@@ -146,6 +162,8 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
 
   const resetForm = useCallback(() => {
     setError("")
+    clear()
+    setLineError("")
     setClientMode("existing")
     setClientId("")
     setNewClientName("")
@@ -168,7 +186,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
     setPaymentMode("Manual CRM")
     setStatus("Pending")
     setNotes("")
-  }, [])
+  }, [clear])
 
   const loadClients = useCallback(async () => {
     setLoadingClients(true)
@@ -259,22 +277,28 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
       }))
       .filter((l) => l.product_name)
 
-    if (!line_items.length) {
-      setError("Please add at least one product or service.")
-      return
-    }
-    if (clientMode === "existing" && !clientId) {
-      setError("Please select a client.")
-      return
-    }
-    if (clientMode === "new" && (!newClientName.trim() || !newClientEmail.trim())) {
-      setError("Please enter the new client name and email.")
-      return
-    }
-    if (!companyEmail.trim()) {
-      setError("Please enter the company notification email.")
-      return
-    }
+    // Each named line needs a valid price (0 or more, up to 2 decimals)
+    const badPrice = showPrices
+      ? lines.find((l) => String(l.product_name || "").trim() && String(l.price ?? "").trim() !== "" &&
+          checkField(String(l.price), { label: "Price", type: "amount" }))
+      : null
+    const nextLineError = !line_items.length
+      ? "Add at least one product or service."
+      : badPrice ? `Price for "${badPrice.product_name.trim()}": ${checkField(String(badPrice.price), { label: "Price", type: "amount" })}` : ""
+    setLineError(nextLineError)
+    const ok = check({
+      client_mode: clientMode,
+      client_id: clientId,
+      new_client_full_name: newClientName,
+      new_client_email: newClientEmail,
+      company_name: companyName,
+      company_email: companyEmail,
+      company_phone: companyPhone,
+      registered_postcode: regPostcode,
+      owner_name: ownerName,
+      director_phone: directorPhone,
+    })
+    if (!ok || nextLineError) return
 
     const payload = {
       client_mode: clientMode,
@@ -310,7 +334,8 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
         label: "Create manual order",
         silent: true,
       })
-      if (!res.ok) {
+      // Older servers only have /orders (a 400 is a real validation answer, not a missing route)
+      if (!res.ok && res.status !== 400) {
         res = await apiRequest("/orders", {
           method: "POST",
           body: JSON.stringify(payload),
@@ -319,7 +344,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
         })
       }
       if (!res.ok) {
-        setError(res.reason || "Could not create order.")
+        if (!fromResponse(res)) setError(res.reason || "Could not create order.")
         toastFail(toastId, res.reason || "Could not create order.")
         return
       }
@@ -356,7 +381,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
           </DrawerDescription>
         </DrawerHeader>
 
-        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <form noValidate onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-hidden">
             <ScrollArea className="h-full">
               <div className="px-6 py-4 space-y-5">
@@ -395,9 +420,9 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
 
                 {clientMode === "existing" ? (
                   <div className="space-y-2">
-                    <Label className="text-sm font-semibold">Select Client Account *</Label>
-                    <Select value={clientId || undefined} onValueChange={setClientId} disabled={loadingClients}>
-                      <SelectTrigger className="w-full">
+                    <Label htmlFor="qo-client_id" className="text-sm font-semibold">Select Client Account <RequiredMark /></Label>
+                    <Select value={clientId || undefined} onValueChange={(v) => { setClientId(v); recheck("client_id", v) }} disabled={loadingClients}>
+                      <SelectTrigger id="qo-client_id" className="w-full" {...invalidProps(errors, "client_id", "qo-")}>
                         <SelectValue placeholder="-- Select Client --" />
                       </SelectTrigger>
                       <SelectContent className="max-h-60 overflow-hidden p-0">
@@ -412,27 +437,32 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                         </ScrollArea>
                       </SelectContent>
                     </Select>
+                    <FieldMessage id="qo-client_id-error" message={errors.client_id} />
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-sm font-semibold">Client Full Name *</Label>
-                      <Input
+                      <Label htmlFor="qo-new_client_full_name" className="text-sm font-semibold">Client Full Name <RequiredMark /></Label>
+                      <Input id="qo-new_client_full_name"
+                        {...invalidProps(errors, 'new_client_full_name', 'qo-')}
                         className="w-full"
                         value={newClientName}
-                        onChange={(e) => setNewClientName(e.target.value)}
+                        onChange={(e) => { setNewClientName(e.target.value); recheck('new_client_full_name', e.target.value) }}
                         placeholder="e.g. Alexander Vance"
                       />
+                      <FieldMessage id="qo-new_client_full_name-error" message={errors.new_client_full_name} />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-sm font-semibold">Portal Login Email *</Label>
-                      <Input
+                      <Label htmlFor="qo-new_client_email" className="text-sm font-semibold">Portal Login Email <RequiredMark /></Label>
+                      <Input id="qo-new_client_email"
+                        {...invalidProps(errors, 'new_client_email', 'qo-')}
                         type="email"
                         className="w-full"
                         value={newClientEmail}
-                        onChange={(e) => setNewClientEmail(e.target.value)}
+                        onChange={(e) => { setNewClientEmail(e.target.value); recheck('new_client_email', e.target.value) }}
                         placeholder="client@example.com"
                       />
+                      <FieldMessage id="qo-new_client_email-error" message={errors.new_client_email} />
                     </div>
                   </div>
                 )}
@@ -460,12 +490,14 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold">Company Registered Name</Label>
-                    <Input
+                    <Input id="qo-company_name"
+                      {...invalidProps(errors, 'company_name', 'qo-')}
                       className="w-full"
                       value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
+                      onChange={(e) => { setCompanyName(e.target.value); recheck('company_name', e.target.value) }}
                       placeholder="e.g. BRIXEN CONSULTANTS LTD"
                     />
+                    <FieldMessage id="qo-company_name-error" message={errors.company_name} />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold">Company Entity Type</Label>
@@ -498,24 +530,27 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm font-semibold">Company Work Notification Email *</Label>
-                    <Input
+                    <Label htmlFor="qo-company_email" className="text-sm font-semibold">Company Work Notification Email <RequiredMark /></Label>
+                    <Input id="qo-company_email"
+                      {...invalidProps(errors, 'company_email', 'qo-')}
                       type="email"
-                      required
                       className="w-full"
                       value={companyEmail}
-                      onChange={(e) => setCompanyEmail(e.target.value)}
+                      onChange={(e) => { setCompanyEmail(e.target.value); recheck('company_email', e.target.value) }}
                       placeholder="contact@company.co.uk"
                     />
+                    <FieldMessage id="qo-company_email-error" message={errors.company_email} />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold">Company Contact Phone</Label>
-                    <Input
+                    <Input id="qo-company_phone"
+                      {...invalidProps(errors, 'company_phone', 'qo-')}
                       className="w-full"
                       value={companyPhone}
-                      onChange={(e) => setCompanyPhone(e.target.value)}
+                      onChange={(e) => { setCompanyPhone(e.target.value); recheck('company_phone', e.target.value) }}
                       placeholder="+44 20 7946 0912"
                     />
+                    <FieldMessage id="qo-company_phone-error" message={errors.company_phone} />
                   </div>
                 </div>
 
@@ -534,12 +569,14 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                       onChange={(e) => setRegCity(e.target.value)}
                       placeholder="City (e.g. London)"
                     />
-                    <Input
+                    <Input id="qo-registered_postcode"
+                      {...invalidProps(errors, 'registered_postcode', 'qo-')}
                       className="w-full"
                       value={regPostcode}
-                      onChange={(e) => setRegPostcode(e.target.value)}
+                      onChange={(e) => { setRegPostcode(e.target.value); recheck('registered_postcode', e.target.value) }}
                       placeholder="Postcode (e.g. EC1V 2NX)"
                     />
+                    <FieldMessage id="qo-registered_postcode-error" message={errors.registered_postcode} />
                   </div>
                 </div>
               </Section>
@@ -548,21 +585,25 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold">Director / Owner Full Name</Label>
-                    <Input
+                    <Input id="qo-owner_name"
+                      {...invalidProps(errors, 'owner_name', 'qo-')}
                       className="w-full"
                       value={ownerName}
-                      onChange={(e) => setOwnerName(e.target.value)}
+                      onChange={(e) => { setOwnerName(e.target.value); recheck('owner_name', e.target.value) }}
                       placeholder="e.g. Eleanor Finch"
                     />
+                    <FieldMessage id="qo-owner_name-error" message={errors.owner_name} />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold">Director Direct Phone</Label>
-                    <Input
+                    <Input id="qo-director_phone"
+                      {...invalidProps(errors, 'director_phone', 'qo-')}
                       className="w-full"
                       value={directorPhone}
-                      onChange={(e) => setDirectorPhone(e.target.value)}
+                      onChange={(e) => { setDirectorPhone(e.target.value); recheck('director_phone', e.target.value) }}
                       placeholder="+44 7700 900077"
                     />
+                    <FieldMessage id="qo-director_phone-error" message={errors.director_phone} />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold">Director Nationality</Label>
@@ -637,6 +678,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                       </Button>
                     </div>
                   ))}
+                  <FieldMessage message={lineError} />
                   <datalist id="manual-order-service-list">
                     {services.map((s) => (
                       <option key={s.id || s.name} value={s.name} />
