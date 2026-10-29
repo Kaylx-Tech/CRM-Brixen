@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { IconCash, IconMapPin, IconPlus, IconRefresh, IconTrash } from "@tabler/icons-react"
+import { IconCash, IconMapPin, IconPlus, IconRefresh, IconSearch, IconTrash } from "@tabler/icons-react"
 import { cn } from "cn"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { money, ownerApi, shortDate } from "@/lib/owner"
 import { Button, Empty, FilterTabs, LoadError, PageTitle, Panel, SELECT, Stat } from "./ownerUi"
@@ -12,10 +13,12 @@ import { useServiceSettings } from "./useServiceSettings"
 const EMPTY_ADDRESS = { label: "", line1: "", line2: "", city: "", postal_code: "", country: "United Kingdom" }
 const FILTERS = [
   ["Pending", "Waiting"],
-  ["Verifying", "AutoAllot: verifying"],
+  ["Verifying", "Verifying"],
   ["Active", "Active"],
+  ["Expired", "Expired"],
   ["", "All"],
 ]
+const PAGE_SIZE = 25
 
 const STATUS_TONE = {
   Pending: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
@@ -190,10 +193,16 @@ function RequestActions({ request, offices, defaultPrice, onDone }) {
 /** Registered office: workspaces ask for Finstap's address for a client company; the owner confirms and charges it. */
 export default function OwnerRegisteredOffice() {
   const { settings, save, saving } = useServiceSettings()
-  const [filter, setFilter] = useState("Pending")
+  const [filter, setFilter] = useState("")
   const [rows, setRows] = useState(null)
   const [error, setError] = useState("")
   const [showSettings, setShowSettings] = useState(false)
+  const [search, setSearch] = useState("")
+  const [workspace, setWorkspace] = useState("")
+  const [view, setView] = useState("")
+  const [sort, setSort] = useState("newest")
+  const [page, setPage] = useState(0)
+  const [openId, setOpenId] = useState(null)
 
   const load = useCallback(() => {
     ownerApi("/registered-office").then((res) => (res.ok ? setRows(res.data.requests) : setError(res.error)))
@@ -214,14 +223,39 @@ export default function OwnerRegisteredOffice() {
     }
   }, [rows])
 
-  const shown = (rows || []).filter((r) => !filter || r.status === filter)
+  const workspaces = useMemo(
+    () => [...new Map((rows || []).map((r) => [r.tenant_slug, r.workspace_name || r.tenant_slug])).entries()].sort((a, b) => a[1].localeCompare(b[1])),
+    [rows],
+  )
+  const shown = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    const list = (rows || []).filter((r) => {
+      if (filter && r.status !== filter) return false
+      if (workspace && r.tenant_slug !== workspace) return false
+      if (view === "unpaid" && (r.status !== "Active" || r.paid)) return false
+      if (view === "paid" && (r.status !== "Active" || !r.paid)) return false
+      if (view === "ending" && !(r.status === "Active" && (daysLeft(r.expiry_date) ?? 999) <= 30)) return false
+      if (!q) return true
+      return [r.office_number && `office ${r.office_number}`, r.office_number, r.company_name, r.company_number, r.workspace_name,
+        r.tenant_slug, r.client_name, r.client_email, r.order_number, r.requested_by]
+        .some((v) => String(v ?? "").toLowerCase().includes(q))
+    })
+    const by = {
+      newest: (a, b) => b.id - a.id,
+      office: (a, b) => (a.office_number ?? 1e9) - (b.office_number ?? 1e9),
+      ending: (a, b) => String(a.expiry_date || "9999").localeCompare(String(b.expiry_date || "9999")),
+      company: (a, b) => String(a.company_name).localeCompare(String(b.company_name)),
+    }
+    return list.sort(by[sort] || by.newest)
+  }, [rows, filter, workspace, view, search, sort])
+  const pageRows = shown.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
   const offices = settings?.ro_addresses || []
 
   return (
     <>
       <PageTitle
         title="Registered office"
-        description="Workspaces ask for Finstap's address for a client's company. Confirm it here and it appears in the client's portal."
+        description="Every Finstap office address given to a workspace's client company, by Office number."
       >
         <Button variant="outline" size="lg" onClick={() => setShowSettings((v) => !v)}>
           <IconMapPin className="size-4" /> Prices & addresses
@@ -242,75 +276,138 @@ export default function OwnerRegisteredOffice() {
         <Stat label="Unpaid" value={money(stats.unpaid)} hint={settings?.ro_price_year ? `${money(settings.ro_price_year)} a year` : "No price set"} />
       </div>
 
-      <FilterTabs value={filter} onChange={setFilter} options={FILTERS} className="mt-8 mb-4" />
-
-      <div className="space-y-3">
-        {rows === null && !error && <p className="text-sm text-muted-foreground">Loading…</p>}
-        {rows !== null && !shown.length && (
-          <Empty icon={IconMapPin} title={filter === "Pending" ? "No requests waiting" : "Nothing here"}>
-            Workspaces ask for a registered office from Smart Operations → Registered Office.
-          </Empty>
-        )}
-        {shown.map((r) => {
-          const left = daysLeft(r.expiry_date)
-          return (
-            <Panel key={r.id}>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold">{r.company_name}</span>
-                    {r.company_number && <span className="text-sm text-muted-foreground">{r.company_number}</span>}
-                    <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-semibold", STATUS_TONE[r.status])}>
-                      {r.status}
-                    </span>
-                    {r.office_number ? (
-                      <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                        Office {r.office_number}
-                        {r.status === "Verifying" ? " · booked" : ""}
-                      </span>
-                    ) : null}
-                    {r.source === "autoallot" && (
-                      <span className="text-xs text-muted-foreground">
-                        AutoAllot{r.order_number ? ` · order ${r.order_number}` : ""}
-                      </span>
-                    )}
-                    {r.status === "Active" && (
-                      <span className={cn("text-xs font-semibold", r.paid ? "text-emerald-600" : "text-amber-700 dark:text-amber-300")}>
-                        {r.paid ? "Paid" : "Unpaid"}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    <Link to={`/owner/workspaces/${r.tenant_slug}`} className="font-medium text-foreground hover:text-primary">
-                      {r.workspace_name}
-                    </Link>
-                    {r.client_name ? ` · client ${r.client_name}` : ""} · asked {shortDate(r.created_at)}
-                    {r.requested_by ? ` by ${r.requested_by}` : ""}
-                  </p>
-                  {r.notes && <p className="mt-1 text-sm">“{r.notes}”</p>}
-                  {r.address && (
-                    <p className="mt-1 text-sm">
-                      <IconMapPin className="mr-1 inline size-4 text-muted-foreground" />
-                      {[r.address.line1, r.address.line2, r.address.city, r.address.postal_code].filter(Boolean).join(", ")}
-                    </p>
-                  )}
-                </div>
-                <div className="shrink-0 text-sm sm:text-right">
-                  {r.price != null && <div className="font-semibold">{money(r.price)}</div>}
-                  {r.expiry_date && (
-                    <div className={cn("text-muted-foreground", left !== null && left <= 30 && r.status === "Active" && "text-amber-700 dark:text-amber-300")}>
-                      {shortDate(r.start_date)} – {shortDate(r.expiry_date)}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="mt-4 border-t pt-4">
-                <RequestActions request={r} offices={offices} defaultPrice={settings?.ro_price_year} onDone={load} />
-              </div>
-            </Panel>
-          )
-        })}
+      {/* Built for many rows: search, filters, sorting and pages; "Manage" opens a row's actions */}
+      <div className="mt-8 mb-3 flex flex-col gap-3">
+        <FilterTabs value={filter} onChange={(v) => { setFilter(v); setPage(0) }} options={FILTERS} />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <IconSearch className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder="Search office, company, workspace, client, order…"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(0) }}
+              aria-label="Search registered offices"
+            />
+          </div>
+          <select className={cn(SELECT, "sm:w-44 sm:shrink-0")} value={workspace} onChange={(e) => { setWorkspace(e.target.value); setPage(0) }} aria-label="Workspace">
+            <option value="">All workspaces</option>
+            {workspaces.map(([slug, name]) => (
+              <option key={slug} value={slug}>{name}</option>
+            ))}
+          </select>
+          <select className={cn(SELECT, "sm:w-44 sm:shrink-0")} value={view} onChange={(e) => { setView(e.target.value); setPage(0) }} aria-label="Show">
+            <option value="">Any payment</option>
+            <option value="unpaid">Unpaid only</option>
+            <option value="paid">Paid only</option>
+            <option value="ending">Ending in 30 days</option>
+          </select>
+          <select className={cn(SELECT, "sm:w-44 sm:shrink-0")} value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort">
+            <option value="newest">Newest first</option>
+            <option value="office">Office number</option>
+            <option value="ending">Ending soonest</option>
+            <option value="company">Company A–Z</option>
+          </select>
+        </div>
       </div>
+
+      {rows === null && !error && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {rows !== null && !shown.length && (
+        <Empty icon={IconMapPin} title={search || workspace || view ? "No matches" : filter === "Pending" ? "No requests waiting" : "Nothing here"}>
+          {search || workspace || view ? "Try another search or filter." : "Workspaces ask for a registered office from Smart Operations → Registered Office."}
+        </Empty>
+      )}
+      {shown.length > 0 && (
+        <div className="overflow-hidden rounded-2xl border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Office</TableHead>
+                <TableHead>Company</TableHead>
+                <TableHead>Workspace · client</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Period</TableHead>
+                <TableHead className="text-right">Price</TableHead>
+                <TableHead className="w-0" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pageRows.map((r) => {
+                const left = daysLeft(r.expiry_date)
+                const opened = openId === r.id
+                return (
+                  <Fragment key={r.id}>
+                    <TableRow className={cn(opened && "bg-muted/40")}>
+                      <TableCell className="whitespace-nowrap font-semibold text-primary">
+                        {r.office_number ? `Office ${r.office_number}` : "—"}
+                        {r.status === "Verifying" && r.office_number ? <span className="ml-1 text-xs font-normal text-muted-foreground">booked</span> : null}
+                      </TableCell>
+                      <TableCell className="md:max-w-56">
+                        <span className="block font-medium md:truncate">{r.company_name}</span>
+                        <span className="block text-xs text-muted-foreground">{r.company_number || ""}</span>
+                      </TableCell>
+                      <TableCell className="md:max-w-48">
+                        <Link to={`/owner/workspaces/${r.tenant_slug}`} className="block font-medium hover:text-primary md:truncate">
+                          {r.workspace_name}
+                        </Link>
+                        <span className="block text-xs text-muted-foreground md:truncate">{r.client_name || "—"}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-semibold", STATUS_TONE[r.status])}>{r.status}</span>
+                          {r.status === "Active" && (
+                            <span className={cn("text-xs font-semibold", r.paid ? "text-emerald-600" : "text-amber-700 dark:text-amber-300")}>
+                              {r.paid ? "Paid" : "Unpaid"}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className={cn("whitespace-nowrap text-sm text-muted-foreground", left !== null && left <= 30 && r.status === "Active" && "font-medium text-amber-700 dark:text-amber-300")}>
+                        {r.expiry_date ? `${shortDate(r.start_date)} – ${shortDate(r.expiry_date)}` : shortDate(r.created_at)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-right font-medium tabular-nums">{r.price != null ? money(r.price) : "—"}</TableCell>
+                      <TableCell>
+                        <Button size="sm" variant={opened ? "default" : "outline"} onClick={() => setOpenId(opened ? null : r.id)}>
+                          {opened ? "Close" : "Manage"}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                    {opened && (
+                      <TableRow className="bg-muted/20 hover:bg-muted/20">
+                        <TableCell colSpan={7} className="space-y-3">
+                          <div className="grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
+                            {r.address && (
+                              <p className="sm:col-span-2">
+                                <IconMapPin className="mr-1 inline size-4" />
+                                <span className="text-foreground">{[r.address.line1, r.address.line2, r.address.city, r.address.postal_code].filter(Boolean).join(", ")}</span>
+                              </p>
+                            )}
+                            <p>Asked {shortDate(r.created_at)}{r.requested_by ? ` by ${r.requested_by}` : ""}</p>
+                            {r.order_number && <p>{r.source === "autoallot" ? "AutoAllot · " : ""}Order {r.order_number}</p>}
+                            {r.notes && <p className="sm:col-span-2">“{r.notes}”</p>}
+                          </div>
+                          <RequestActions request={r} offices={offices} defaultPrice={settings?.ro_price_year} onDone={load} />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+      {shown.length > PAGE_SIZE && (
+        <div className="mt-3 flex items-center justify-between gap-2 text-sm text-muted-foreground">
+          <span>
+            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, shown.length)} of {shown.length}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Previous</Button>
+            <Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= shown.length} onClick={() => setPage((p) => p + 1)}>Next</Button>
+          </div>
+        </div>
+      )}
     </>
   )
 }
