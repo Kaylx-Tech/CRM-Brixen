@@ -114,8 +114,9 @@ def _customer(user):
     return customer['id']
 
 
-def start_auto_renew(user, company, expiry_date, price, return_url):
-    """Stripe Checkout for a yearly subscription on this company's address. Returns the page URL."""
+def start_auto_renew(user, company, expiry_date, price, return_url, late_fee=0):
+    """Stripe Checkout for a yearly subscription on this company's address. Returns the page URL.
+    An address that already expired pays the late fee once with the first charge."""
     if subscription_for(company['id']):
         raise StripeError("Auto-renew is already on for this address.")
     data = {
@@ -128,6 +129,10 @@ def start_auto_renew(user, company, expiry_date, price, return_url):
         'metadata': {'kind': 'address', 'company_id': company['id'], 'user_id': user['id']},
         'subscription_data': {'metadata': {'kind': 'address', 'company_id': company['id'], 'user_id': user['id']}},
     }
+    if late_fee:
+        data['line_items'].append({'quantity': 1, 'price_data': {
+            'currency': CURRENCY, 'unit_amount': int(round(float(late_fee) * 100)),
+            'product_data': {'name': 'Late renewal fee (address had expired)'}}})
     # First charge when the paid year ends; an address already due is charged today
     if expiry_date:
         ends = datetime.datetime.combine(expiry_date, datetime.time(9, 0), tzinfo=datetime.timezone.utc)

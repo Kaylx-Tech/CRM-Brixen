@@ -1059,6 +1059,16 @@ def ensure_rbac():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+        # services/address_expiry.py: one "your address expired" email per company per expiry
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS address_expiry_notices (
+                company_id INTEGER NOT NULL,
+                expiry_date DATE NOT NULL,
+                emailed INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (company_id, expiry_date)
+            );
+        """)
         if 'stripe_customer_id' not in {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}:
             conn.execute("ALTER TABLE users ADD COLUMN stripe_customer_id TEXT")
         # Genuine business-data locks — never auto-delete real orders / companies / invoices.

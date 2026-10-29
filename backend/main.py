@@ -194,6 +194,10 @@ def run_server():
     from services.order_companies import start_pending_registration_worker
     start_pending_registration_worker()
 
+    # Registered office addresses unpaid 7 days after renewal → Expired: one email to the customer
+    from services.address_expiry import start_address_expiry_worker
+    start_address_expiry_worker()
+
     print("=" * 60)
     print("Brixen CRM Modular API Server Started")
     print(f"Listening on http://{HOST}:{PORT}")

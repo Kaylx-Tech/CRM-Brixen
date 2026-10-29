@@ -193,6 +193,7 @@ export function PortalAddresses() {
                   <TableCell className="text-muted-foreground md:max-w-48 md:truncate">{a.company_name || "—"}</TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">
                     {a.price != null ? `£${Number(a.price).toFixed(2)}${a.billing_period ? ` / ${a.billing_period}` : ""}` : "—"}
+                    {a.late_fee > 0 ? <span className="block text-xs text-destructive">+ £{Number(a.late_fee).toFixed(2)} late fee</span> : null}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatDate(a.expiry_date)}

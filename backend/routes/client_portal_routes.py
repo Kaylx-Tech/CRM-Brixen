@@ -120,7 +120,9 @@ def _pending_actions(uid):
     return actions
 
 
-ADDRESS_SERVICE_PRICE = 40.0  # £ per year; the first year is included when the company is formed
+ADDRESS_SERVICE_PRICE = 50.0  # £ per year; the first year is included when the company is formed
+ADDRESS_GRACE_DAYS = 7  # unpaid this many days after the renewal date → Expired (services/address_expiry.py emails)
+ADDRESS_LATE_FEE = 5.0  # £ added to a renewal paid after the address expired
 # Postcodes of the addresses Brixen provides. A registered office anywhere else is the client's own
 # address, not a service bought from us, so it is not listed on the portal Addresses page.
 BRIXEN_ADDRESS_POSTCODES = ('WV6 0SR', 'IG1 4JZ', 'W3 7LT', 'CV5 4AA', 'IG2 7LD')
@@ -174,7 +176,8 @@ def _address_renewals(company_id):
 
 def _company_address_service(company):
     """A company's registered office as a yearly £40 address subscription: paid for the first year
-    from incorporation, a year more for every paid renewal, 'Renews soon' in its last 30 days, then 'Renewal due'.
+    from incorporation, a year more for every paid renewal, 'Renews soon' in its last 30 days, then 'Renewal due',
+    and 'Expired' 7 days after the renewal date; renewing an expired address costs £50 + £5 late fee.
     The customer can renew from 30 days before the end; an unpaid renewal invoice is returned as renewal_invoice.
     With card auto-renew on (services/address_billing.py) Stripe charges on the renewal date instead."""
     from services.address_billing import subscription_for
@@ -187,8 +190,10 @@ def _company_address_service(company):
     if start:
         expiry = _add_years(start, 1 + paid_years)
         days_left = (expiry - datetime.date.today()).days
-        status = 'Renewal due' if days_left < 0 else 'Renews soon' if days_left <= RENEW_WINDOW_DAYS else 'Paid'
+        status = ('Expired' if days_left < -ADDRESS_GRACE_DAYS else 'Renewal due' if days_left < 0
+                  else 'Renews soon' if days_left <= RENEW_WINDOW_DAYS else 'Paid')
         can_renew = days_left <= RENEW_WINDOW_DAYS and not open_invoice
+    late_fee = ADDRESS_LATE_FEE if status == 'Expired' else 0.0
     if sub and sub['status'] == 'active':
         # Stripe takes the payment itself; a subscription started after the year ran out renews on its own date
         status = 'Auto-renew' if not sub.get('cancel_at') else status
@@ -206,7 +211,8 @@ def _company_address_service(company):
         'line1': str(company.get('reg_office') or '').strip(), 'line2': '', 'city': '', 'postal_code': '', 'country': '',
         'start_date': start.isoformat() if start else None, 'expiry_date': expiry.isoformat() if expiry else None,
         'price': ADDRESS_SERVICE_PRICE, 'billing_period': 'year', 'status': status,
-        'payment_status': 'Paid' if status != 'Renewal due' else 'Due',
+        'payment_status': 'Due' if status in ('Renewal due', 'Expired') else 'Paid',
+        'late_fee': late_fee, 'renewal_price': ADDRESS_SERVICE_PRICE + late_fee,
         'can_renew': can_renew, 'renewal_invoice': open_invoice, 'auto_renew': auto_renew,
     }
 
@@ -228,7 +234,8 @@ def _renewal_pay_details():
 
 
 def _renew_company_address(user, company_id):
-    """Customer clicked Renew: place a £40 renewal order (its invoice follows), or return the open one."""
+    """Customer clicked Renew: place a £50 renewal order (+ £5 late fee once expired; its invoice follows),
+    or return the open one."""
     company = query_db("SELECT id, name, reg_office, inc_date, created_at FROM companies WHERE id = ? AND user_id = ?;",
                        (company_id, user['id']), one=True)
     if not company or not _is_brixen_address(company.get('reg_office')):
@@ -242,21 +249,23 @@ def _renew_company_address(user, company_id):
     from services.order_numbers import next_order_number
     from services.invoice_service import ensure_invoice_for_order
     expiry = _parse_company_date(service['expiry_date'])
+    price = service['renewal_price']
+    late = f" + £{service['late_fee']:.2f} late fee (renewed after the address expired)" if service['late_fee'] else ''
     order_number = next_order_number()
     order_id = execute_db("""
         INSERT INTO orders (
             order_number, user_id, company_id, service_name, price, vat, total, status, notes,
             owner_name, owner_form_email, is_draft, current_step, created_at
         ) VALUES (?, ?, ?, ?, ?, 0, ?, 'Pending', ?, ?, ?, 0, 5, datetime('now'));
-    """, (order_number, user['id'], company['id'], ADDRESS_RENEWAL_SERVICE, ADDRESS_SERVICE_PRICE,
-          ADDRESS_SERVICE_PRICE,
-          f"Renewed by the customer from the portal: {expiry.isoformat()} to {_add_years(expiry, 1).isoformat()}",
+    """, (order_number, user['id'], company['id'], ADDRESS_RENEWAL_SERVICE, price, price,
+          f"Renewed by the customer from the portal: {expiry.isoformat()} to {_add_years(expiry, 1).isoformat()}. "
+          f"£{ADDRESS_SERVICE_PRICE:.2f}{late}",
           user.get('full_name'), user.get('email')))
     ensure_invoice_for_order(order_id)
     notify_staff(
         'Address renewal requested',
         f"{user.get('full_name') or 'A customer'} renewed the registered office for {company.get('name')} "
-        f"(order {order_number}, £{ADDRESS_SERVICE_PRICE:.2f}). Mark the invoice paid when the payment arrives.",
+        f"(order {order_number}, £{price:.2f}). Mark the invoice paid when the payment arrives.",
         'order_update', '/admin/orders',
     )
     return _company_address_service(company), None, 201
@@ -377,7 +386,8 @@ def handle_client_portal_routes(environ, start_response, path, method, user, bod
         service = _company_address_service(company)
         try:
             url = address_billing.start_auto_renew(user, company, _parse_company_date(service['expiry_date']),
-                                                   ADDRESS_SERVICE_PRICE, _portal_return_url(environ))
+                                                   ADDRESS_SERVICE_PRICE, _portal_return_url(environ),
+                                                   late_fee=service['late_fee'])
         except address_billing.StripeError as exc:
             return error_response(start_response, str(exc), status_code=400)
         return success_response(start_response, data={'url': url})
