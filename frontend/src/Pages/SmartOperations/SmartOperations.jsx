@@ -320,7 +320,7 @@ export default function SmartOperations() {
           )}
           {tab === 'registered-office' && (
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Finstap's office address for your clients' companies, confirmed by Finstap.
+              Finstap's office address for your clients' companies, given after an ID check.
             </p>
           )}
         </div>

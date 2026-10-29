@@ -269,6 +269,18 @@ def _verification_for(order, user):
     return dict(row), mail_error
 
 
+def start_for_company(tenant, user, company_id, kind='registered_office'):
+    """AutoAllot from a company picked in the list: its latest order carries the identity check."""
+    from db import query_db
+    order = query_db("""
+        SELECT order_number FROM orders WHERE company_id = ? AND COALESCE(is_draft, 0) = 0
+          AND status NOT IN ('Cancelled', 'Refunded') ORDER BY id DESC LIMIT 1;
+    """, (company_id,), one=True)
+    if not order:
+        raise AutoAllotError("This company has no order yet. Create an order for it first.")
+    return start(tenant, user, order['order_number'], kind)
+
+
 def start(tenant, user, order_number, kind='registered_office'):
     """Begin an AutoAllot for an order. Returns (request, message)."""
     order = _order(order_number)

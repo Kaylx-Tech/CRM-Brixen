@@ -38,7 +38,10 @@ def handle_platform_service_routes(environ, start_response, path, method, user, 
                 'autoallot': autoallot.credits(tenant),
             })
         if path == '/api/admin/registered-office/autoallot' and method == 'POST':
-            row, message = autoallot.start(tenant, user, body.get('order_number'))
+            if body.get('company_id') and not body.get('order_number'):
+                row, message = autoallot.start_for_company(tenant, user, int(body['company_id']))
+            else:
+                row, message = autoallot.start(tenant, user, body.get('order_number'))
             return success_response(start_response, data=row, status_code=201, message=message)
         if path == '/api/admin/registered-office' and method == 'POST':
             row = svc.request_ro(tenant, user, body.get('company_id'), body.get('notes'))

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { IconBolt, IconBuilding, IconCopy, IconLoader2, IconMapPin, IconSearch, IconSend } from '@tabler/icons-react'
+import { IconBolt, IconBuilding, IconCopy, IconLoader2, IconMapPin, IconSearch } from '@tabler/icons-react'
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -117,16 +117,17 @@ function shortDate(value) {
 }
 
 /**
- * Smart Operations > Registered Office (Finstap): ask Finstap for its office address for a client's
- * company. Finstap confirms it, charges it yearly, and the address appears in the client's portal.
+ * Smart Operations > Registered Office (Finstap): Finstap's office address for a client's company, by order
+ * number or by picking the company. Either way the client verifies their ID (Didit) and the next Office number
+ * is given by itself (AutoAllot); it is charged yearly and shows in the client's portal.
  */
 export default function RegisteredOffice() {
   const [data, setData] = useState(null)
   const [companies, setCompanies] = useState([])
   const [search, setSearch] = useState('')
   const [companyId, setCompanyId] = useState('')
-  const [notes, setNotes] = useState('')
   const [busy, setBusy] = useState(false)
+  const [link, setLink] = useState('')
 
   const load = useCallback(() => {
     apiRequest('/admin/finstap-services', { label: 'Registered office', silent: true }).then((res) => res.ok && setData(res.data.data))
@@ -155,17 +156,18 @@ export default function RegisteredOffice() {
     e.preventDefault()
     if (!companyId) return
     setBusy(true)
-    const id = toastProcessing('Sending request…')
-    const res = await apiRequest('/admin/registered-office', {
+    setLink('')
+    const id = toastProcessing('Starting identity check…')
+    const res = await apiRequest('/admin/registered-office/autoallot', {
       method: 'POST',
-      body: { company_id: Number(companyId), notes },
+      body: { company_id: Number(companyId) },
       silent: true,
     })
     setBusy(false)
     if (res.ok) {
-      toastDone(id, res.data?.message || 'Request sent')
+      toastDone(id, res.data?.message || 'Started')
+      setLink(res.data?.data?.verification_link || '')
       setCompanyId('')
-      setNotes('')
       setSearch('')
       load()
     } else {
@@ -197,13 +199,12 @@ export default function RegisteredOffice() {
           <div>
             <h3 className="font-semibold">Finstap registered office</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Pick a company; Finstap reviews and confirms it.
+              Pick a company. Client verifies ID, then gets the next Office address automatically.
               {data.ro_price_year ? ` ${money(data.ro_price_year)}/year.` : ''}
             </p>
           </div>
         </div>
-        {data.ro_available ? (
-          <form onSubmit={send} className="mt-5 space-y-3">
+        <form onSubmit={send} className="mt-5 space-y-3">
             <div className="relative">
               <IconSearch className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input className="pl-9" placeholder="Search your companies…" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -229,20 +230,22 @@ export default function RegisteredOffice() {
                 <p className="px-3 py-4 text-sm text-muted-foreground">No companies to choose. Add the company under Companies first.</p>
               )}
             </div>
-            <Input placeholder="Note for Finstap (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
-            <Button type="submit" disabled={busy || !companyId} className="w-full">
-              {busy ? <IconLoader2 className="size-4 animate-spin" /> : <IconSend className="size-4" />}
-              Ask Finstap
+            <Button type="submit" disabled={busy || !companyId || data.autoallot?.available < 1} className="w-full">
+              {busy ? <IconLoader2 className="size-4 animate-spin" /> : <IconBolt className="size-4" />}
+              Verify & allot
             </Button>
+            {link && (
+              <div className="flex items-center gap-2 rounded-xl border bg-muted/40 p-2 text-xs">
+                <span className="min-w-0 flex-1 truncate">{link}</span>
+                <Button type="button" variant="outline" size="sm" onClick={() => navigator.clipboard?.writeText(link).then(() => toastDone(undefined, 'Link copied'))}>
+                  <IconCopy className="size-3.5" /> Copy link
+                </Button>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
               Then file AD01 at Companies House.
             </p>
-          </form>
-        ) : (
-          <p className="mt-5 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-            Finstap's registered office service is not open yet.
-          </p>
-        )}
+        </form>
       </Card>
       </div>
 
