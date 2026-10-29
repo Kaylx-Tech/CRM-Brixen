@@ -229,7 +229,8 @@ CREATE TABLE IF NOT EXISTS stripe_events (
     type TEXT,
     received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
--- AutoAllot (services/autoallot.py): every number given out, once per kind (Office 1000, 1001, …)
+-- AutoAllot (services/autoallot.py): every number given out, once per kind (Office 1000, 1001, …).
+-- Kept for history; numbers now live in autoallot_slots.
 CREATE TABLE IF NOT EXISTS autoallot_numbers (
     kind TEXT NOT NULL,
     number INTEGER NOT NULL,
@@ -237,6 +238,36 @@ CREATE TABLE IF NOT EXISTS autoallot_numbers (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (kind, number)
 );
+-- AutoAllot numbers: 'held' for a customer while their ID check runs (until held_until), 'allotted' once it
+-- passed, 'released' when it failed or ran out of time (the number goes to the next customer).
+CREATE TABLE IF NOT EXISTS autoallot_slots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL,
+    number INTEGER NOT NULL,
+    request_id INTEGER,
+    status TEXT NOT NULL DEFAULT 'held',
+    held_until TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- One live owner per number: two customers can never hold or get the same office
+CREATE UNIQUE INDEX IF NOT EXISTS idx_autoallot_slots_live
+    ON autoallot_slots(kind, number) WHERE status IN ('held', 'allotted');
+CREATE INDEX IF NOT EXISTS idx_autoallot_slots_request ON autoallot_slots(request_id);
+-- Workspace wallet (services/wallet.py): bank transfer top-ups (+) and services paid from the balance (-)
+CREATE TABLE IF NOT EXISTS wallet_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tenant_slug TEXT NOT NULL,
+    amount REAL NOT NULL,
+    kind TEXT NOT NULL,
+    ref TEXT,
+    note TEXT,
+    created_by TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_wallet_entries_tenant ON wallet_entries(tenant_slug);
+-- A due service is charged to the balance once
+CREATE UNIQUE INDEX IF NOT EXISTS idx_wallet_entries_charge ON wallet_entries(tenant_slug, ref) WHERE ref IS NOT NULL;
 """
 
 # AutoAllot details on registered office requests, added to databases made before AutoAllot
@@ -352,6 +383,13 @@ def ensure_platform():
             for column, kind in RO_COLUMNS:
                 if column not in have:
                     conn.execute(f"ALTER TABLE ro_requests ADD COLUMN {column} {kind};")
+            # Numbers given out before slots existed stay taken
+            conn.execute("""
+                INSERT INTO autoallot_slots (kind, number, request_id, status)
+                SELECT n.kind, n.number, n.request_id, 'allotted' FROM autoallot_numbers n
+                WHERE NOT EXISTS (SELECT 1 FROM autoallot_slots s WHERE s.kind = n.kind AND s.number = n.number
+                                  AND s.status IN ('held', 'allotted'));
+            """)
             conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_subscription_payments_stripe "
                          "ON subscription_payments(stripe_ref) WHERE stripe_ref IS NOT NULL;")
             known =conn.execute("SELECT 1 FROM tenants WHERE slug = ?;", (DEFAULT_TENANT,)).fetchone()

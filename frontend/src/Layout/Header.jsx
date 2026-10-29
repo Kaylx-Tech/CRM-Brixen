@@ -14,7 +14,9 @@ import { ModeToggle } from '@/components/ThemeTogge'
 import Notification from '@/components/Notification'
 import { PrivacyToggle } from '@/components/PrivacyToggle'
 import TeamSwitcher from '@/components/TeamSwitcher'
+import WalletButton from '@/components/WalletButton'
 import { IS_FINSTAP } from '@/lib/workspace'
+import { isAdminRole } from '@/lib/permissions'
 
 const ROUTE_LABELS = {
   admin: 'Admin',
@@ -111,7 +113,9 @@ export function SiteHeader({ homeHref = '/admin/dashboard' }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <PrivacyToggle />
+          {/* Finstap: the workspace balance and the hide-amounts eye are for the workspace's admins only */}
+          {IS_FINSTAP && isAdminRole() && <WalletButton />}
+          {(!IS_FINSTAP || isAdminRole()) && <PrivacyToggle />}
           <Notification />
           <ModeToggle />
           <Separator orientation="vertical" className="mx-1 h-6 data-vertical:self-auto" />

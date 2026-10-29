@@ -53,6 +53,7 @@ def _state(tenant, today):
 
 
 def overview():
+    from services.wallet import balance as wallet_balance
     today = datetime.date.today()
     tenants = [t for t in _platform_query("SELECT * FROM tenants WHERE status != 'Failed' ORDER BY name COLLATE NOCASE;")
                if t.get('plan') != 'legacy']
@@ -80,6 +81,7 @@ def overview():
             'state': state, 'days_left': (end - today).days if end else None,
             'subscription_due': plans.cycle_amount(t) if state == 'overdue' else 0.0,
             'services_unpaid': round((ro_unpaid.get(t['slug']) or 0) + (kyc_unpaid.get(t['slug']) or 0), 2),
+            'balance': wallet_balance(t['slug']),
             'ro_unpaid': round(ro_unpaid.get(t['slug']) or 0, 2),
             'kyc_unpaid': round(kyc_unpaid.get(t['slug']) or 0, 2),
             'last_payment': last.get(t['slug']),

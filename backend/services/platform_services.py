@@ -65,6 +65,7 @@ def settings():
         'kyc_price': _money(_setting('kyc_price'), 'KYC price'),
         'ro_price_year': _money(_setting('ro_price_year'), 'Registered office price'),
         'ro_addresses': addresses,
+        'topup_bank_details': _setting('topup_bank_details', ''),
     }
 
 
@@ -79,6 +80,11 @@ def save_settings(body):
             INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;
         """, (key, '' if value is None else str(value)))
+    if 'topup_bank_details' in body:  # Finstap's account for workspace balance top-ups (services/wallet.py)
+        _platform_execute("""
+            INSERT INTO platform_settings (key, value, updated_at) VALUES ('topup_bank_details', ?, datetime('now'))
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;
+        """, (str(body.get('topup_bank_details') or '').strip()[:1000],))
     _platform_execute("""
         INSERT INTO platform_settings (key, value, updated_at) VALUES ('ro_addresses', ?, datetime('now'))
         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;
@@ -249,6 +255,9 @@ def set_kyc_billing(slug, period, status):
         ON CONFLICT(tenant_slug, period) DO UPDATE SET checks = excluded.checks, amount = excluded.amount,
             status = excluded.status, updated_at = excluded.updated_at;
     """, (slug, period, row['checks'], row['amount'], status))
+    if status == 'invoiced':  # paid from the workspace balance when it covers it
+        from services.wallet import settle
+        settle(slug)
 
 
 def _check(slug, check_id):
@@ -324,6 +333,8 @@ def _ro_row(row):
 
 
 def ro_requests(slug=None, status=None):
+    from services.autoallot import expire_stale
+    expire_stale()  # AutoAllot bookings older than 24 hours go back before anyone sees the list
     sql, args = "SELECT * FROM ro_requests WHERE 1 = 1", []
     if slug:
         sql += " AND tenant_slug = ?"

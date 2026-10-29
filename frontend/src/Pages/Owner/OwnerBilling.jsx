@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { IconAlertTriangle, IconCash, IconClockHour4, IconId, IconMapPin, IconReceipt2 } from "@tabler/icons-react"
+import { IconAlertTriangle, IconCash, IconClockHour4, IconId, IconMapPin, IconReceipt2, IconWallet } from "@tabler/icons-react"
 import { cn } from "cn"
 import { Input } from "@/components/ui/input"
 import { checkField } from "@/lib/validation"
@@ -85,12 +85,56 @@ function PaymentForm({ workspace, methods, onDone, onCancel }) {
   )
 }
 
+/** The owner records a bank transfer a workspace sent to top up its balance (due services are paid from it). */
+function TopUpForm({ workspace, onDone, onCancel }) {
+  const [amount, setAmount] = useState("")
+  const [note, setNote] = useState("")
+  const [error, setError] = useState("")
+  const [busy, setBusy] = useState(false)
+
+  const save = async (e) => {
+    e.preventDefault()
+    const msg = checkField(amount, { label: "Amount received", required: true, type: "amount", min: 0.01 })
+    setError(msg)
+    if (msg) return
+    setBusy(true)
+    const id = toastProcessing("Adding to balance…")
+    const res = await ownerApi(`/billing/${workspace.slug}/wallet`, { method: "POST", body: { amount, note } })
+    setBusy(false)
+    if (res.ok) {
+      toastDone(id, res.message)
+      onDone()
+    } else {
+      toastFail(id, res.error)
+    }
+  }
+
+  return (
+    <form onSubmit={save} className="grid gap-2 rounded-xl border bg-muted/30 p-3 sm:grid-cols-6">
+      <div className="sm:col-span-2">
+        <Input inputMode="decimal" placeholder="Amount received (£)" value={amount} onChange={(e) => { setAmount(e.target.value); setError("") }} aria-label="Amount received" aria-invalid={error ? true : undefined} />
+        <FieldMessage message={error} />
+      </div>
+      <Input className="sm:col-span-4" placeholder={`Note (e.g. bank reference FINSTAP-${workspace.slug.toUpperCase()})`} value={note} onChange={(e) => setNote(e.target.value)} />
+      <div className="flex gap-2 sm:col-span-6">
+        <Button type="submit" size="lg" disabled={busy}>
+          Add to balance
+        </Button>
+        <Button type="button" size="lg" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  )
+}
+
 /** Billing: every workspace's subscription (paid until, overdue) and what it owes for Finstap's services. */
 export default function OwnerBilling() {
   const [data, setData] = useState(null)
   const [error, setError] = useState("")
   const [filter, setFilter] = useState("")
   const [paying, setPaying] = useState("")
+  const [topping, setTopping] = useState("")
 
   const load = useCallback(() => {
     ownerApi("/billing").then((res) => (res.ok ? setData(res.data) : setError(res.error)))
@@ -165,6 +209,7 @@ export default function OwnerBilling() {
                     {w.current_period_end ? ` · paid until ${shortDate(w.current_period_end)}` : ""}
                     {w.last_payment ? ` · last paid ${money(w.last_payment.amount)} on ${shortDate(w.last_payment.created_at)}` : ""}
                   </p>
+                  <p className="mt-1 text-sm text-muted-foreground">Balance: {money(w.balance)}</p>
                   {w.services_unpaid > 0 && (
                     <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
                       Services unpaid: {money(w.services_unpaid)}
@@ -186,6 +231,11 @@ export default function OwnerBilling() {
                       <IconId className="size-4" /> KYC
                     </Button>
                   )}
+                  {topping !== w.slug && (
+                    <Button size="lg" variant="outline" onClick={() => setTopping(w.slug)}>
+                      <IconWallet className="size-4" /> Top up balance
+                    </Button>
+                  )}
                   {!["trial", "no_price"].includes(w.state) && paying !== w.slug && (
                     <Button size="lg" variant={w.state === "overdue" ? "default" : "outline"} onClick={() => setPaying(w.slug)}>
                       <IconCash className="size-4" /> Record payment
@@ -193,6 +243,18 @@ export default function OwnerBilling() {
                   )}
                 </div>
               </div>
+              {topping === w.slug && (
+                <div className="mt-3">
+                  <TopUpForm
+                    workspace={w}
+                    onCancel={() => setTopping("")}
+                    onDone={() => {
+                      setTopping("")
+                      load()
+                    }}
+                  />
+                </div>
+              )}
               {paying === w.slug && (
                 <div className="mt-3">
                   <PaymentForm

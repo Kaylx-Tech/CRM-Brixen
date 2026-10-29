@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { IconCash, IconMapPin, IconPlus, IconRefresh, IconTrash } from "@tabler/icons-react"
 import { cn } from "cn"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { money, ownerApi, shortDate } from "@/lib/owner"
 import { Button, Empty, FilterTabs, LoadError, PageTitle, Panel, SELECT, Stat } from "./ownerUi"
@@ -22,6 +23,7 @@ const STATUS_TONE = {
   Active: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   Rejected: "bg-destructive/10 text-destructive",
   "Verification failed": "bg-destructive/10 text-destructive",
+  Expired: "bg-muted text-muted-foreground",
   Cancelled: "bg-muted text-muted-foreground",
 }
 
@@ -34,6 +36,7 @@ function daysLeft(date) {
 function OfficeSettings({ settings, save, saving }) {
   const [price, setPrice] = useState(settings.ro_price_year ?? "")
   const [addresses, setAddresses] = useState(settings.ro_addresses?.length ? settings.ro_addresses : [EMPTY_ADDRESS])
+  const [bank, setBank] = useState(settings.topup_bank_details ?? "")
 
   const change = (i, key, value) => setAddresses((list) => list.map((a, j) => (j === i ? { ...a, [key]: value } : a)))
 
@@ -42,7 +45,7 @@ function OfficeSettings({ settings, save, saving }) {
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault()
-        save({ ro_price_year: price, ro_addresses: addresses })
+        save({ ro_price_year: price, ro_addresses: addresses, topup_bank_details: bank })
       }}
     >
       <div className="flex flex-wrap items-center gap-2">
@@ -74,6 +77,18 @@ function OfficeSettings({ settings, save, saving }) {
         <Button type="button" variant="outline" onClick={() => setAddresses((list) => [...list, EMPTY_ADDRESS])}>
           <IconPlus className="size-4" /> Add address
         </Button>
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor="topup-bank" className="text-sm font-medium">
+          Bank details for workspace balance top-ups
+        </label>
+        <Textarea
+          id="topup-bank"
+          rows={3}
+          placeholder={"Account name, sort code, account number (workspaces see this in their Balance button)"}
+          value={bank}
+          onChange={(e) => setBank(e.target.value)}
+        />
       </div>
       <Button type="submit" disabled={saving}>
         Save
@@ -251,6 +266,7 @@ export default function OwnerRegisteredOffice() {
                     {r.office_number ? (
                       <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                         Office {r.office_number}
+                        {r.status === "Verifying" ? " · booked" : ""}
                       </span>
                     ) : null}
                     {r.source === "autoallot" && (

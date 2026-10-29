@@ -2,13 +2,15 @@
 
 The same three steps can be used for other Finstap services later (add an entry to KINDS):
   1. Start  — the workspace names an order; the order's customer gets a Didit identity check (link by email).
-  2. Allot  — when Didit approves, the next number in the kind's sequence is given out (one sequence for all
-              workspaces, so the same number is never given twice) and the item is written into the workspace.
+  2. Allot  — when the check starts, the lowest free number in the kind's sequence is booked for that customer
+              (one sequence for all workspaces). When Didit approves, it is theirs and the item is written into
+              the workspace. Not verified within 24 hours (or declined): the number goes back and the next
+              customer gets it, so the sequence has no gaps. A late approval still gets the next free number.
   3. Credit — a workspace may hold only so many allotted items that Finstap has not been paid for yet
               (per plan). When Finstap is paid (Billing → services, or the owner marks it paid) the credit
               comes back.
 
-First kind: registered office. "Office 1000, <Finstap office address>", then Office 1001, … The request is a
+First kind: registered office. "Office 1001, 95 Dunstall Hill, Wolverhampton", then Office 1002, … The request is a
 ro_requests row (source 'autoallot'), so the owner portal (admin.finstap.com) lists it with the others and Billing
 charges it like any registered office. Nothing here deletes data.
 """
@@ -21,6 +23,7 @@ from tenancy import _platform_execute, _platform_query, get_tenant, use_tenant
 SOURCE = 'autoallot'
 VERIFYING = 'Verifying'
 FAILED = 'Verification failed'
+EXPIRED = 'Expired'  # not verified within the hold time
 
 # Unpaid items a workspace may hold, per plan (a free trial gets 2 to try it): AutoAllot kinds and ID checks
 PLAN_CREDITS = {'trial': 2, 'starter': 3, 'pro': 5, 'business': 10, 'enterprise': 20}
@@ -29,14 +32,15 @@ KINDS = {
     'registered_office': {
         'label': 'Registered office',
         'prefix': 'Office',
-        'first_number': 1000,
+        'first_number': 1001,
+        'hold_hours': 24,
         'credits': PLAN_CREDITS,
     },
 }
 
-# Used until the Finstap owner adds the real office address (owner portal → Registered office → Settings)
-SAMPLE_OFFICE = {'line1': 'Finstap House, 1 Sample Street', 'line2': '', 'city': 'London', 'postal_code': 'EC1A 1AA',
-                 'country': 'United Kingdom', 'label': 'Sample office (set the real one in the owner portal)'}
+# Finstap's office; the first address in the owner portal (Registered office → Prices & addresses) wins over it
+DEFAULT_OFFICE = {'line1': '95 Dunstall Hill', 'line2': '', 'city': 'Wolverhampton', 'postal_code': 'WV6 0SR',
+                  'country': 'United Kingdom', 'label': '95 Dunstall Hill, Wolverhampton'}
 
 
 class AutoAllotError(ValueError):
@@ -58,6 +62,7 @@ def _limit(tenant, key, table):
 def credits(tenant, kind='registered_office'):
     """{'limit', 'used', 'available'}: unpaid allotted items (and checks still running) count against the limit."""
     limit = _limit(tenant, f'autoallot_{kind}', KINDS[kind]['credits'])
+    expire_stale(kind)
     row = _platform_query("""
         SELECT COUNT(*) AS c FROM ro_requests
         WHERE tenant_slug = ? AND source = ? AND paid = 0 AND status IN (?, 'Active');
@@ -109,24 +114,79 @@ def check_kyc_credit(tenant):
 
 # ── sequence ─────────────────────────────────────────────────────────────────
 
-def _next_number(kind, request_id):
-    """Take the next free number for this kind; the unique key makes two at the same moment impossible."""
-    first = KINDS[kind]['first_number']
-    for _ in range(20):
-        row = _platform_query("SELECT MAX(number) AS n FROM autoallot_numbers WHERE kind = ?;", (kind,), one=True)
-        number = max(int((row or {}).get('n') or 0) + 1, first)
-        try:
-            _platform_execute("INSERT INTO autoallot_numbers (kind, number, request_id) VALUES (?, ?, ?);",
-                              (kind, number, request_id))
-            return number
-        except sqlite3.IntegrityError:
-            continue
-    raise AutoAllotError("Could not give out a number. Please try again.")
+def _take_number(kind, request_id, status, hours=None):
+    """The lowest free number of this kind, held (for `hours`) or allotted to the request. Runs under one write
+    lock (BEGIN IMMEDIATE) and a unique index, so customers applying at the same moment each get their own number.
+    A request that already holds a number keeps it."""
+    from tenancy import _platform_conn, ensure_platform
+    ensure_platform()
+    held_until = f"+{int(hours)} hours" if hours else None
+    conn = _platform_conn()
+    try:
+        conn.execute("BEGIN IMMEDIATE;")
+        mine = conn.execute("""
+            SELECT id, number FROM autoallot_slots WHERE kind = ? AND request_id = ? AND status IN ('held', 'allotted')
+            ORDER BY id DESC LIMIT 1;
+        """, (kind, request_id)).fetchone()
+        if mine:
+            conn.execute("UPDATE autoallot_slots SET status = ?, held_until = datetime('now', ?), "
+                         "updated_at = datetime('now') WHERE id = ?;", (status, held_until, mine['id']))
+            conn.commit()
+            return mine['number']
+        # Holds that ran out go back first
+        conn.execute("""
+            UPDATE autoallot_slots SET status = 'released', updated_at = datetime('now')
+            WHERE kind = ? AND status = 'held' AND held_until < datetime('now');
+        """, (kind,))
+        number = KINDS[kind]['first_number']
+        for (taken,) in conn.execute("""
+            SELECT number FROM autoallot_slots WHERE kind = ? AND status IN ('held', 'allotted') AND number >= ?
+            ORDER BY number;
+        """, (kind, number)).fetchall():
+            if taken != number:
+                break
+            number += 1
+        conn.execute("""
+            INSERT INTO autoallot_slots (kind, number, request_id, status, held_until)
+            VALUES (?, ?, ?, ?, datetime('now', ?));
+        """, (kind, number, request_id, status, held_until))
+        conn.commit()
+        return number
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def _release(request_id):
+    """The request's held number goes back to the queue."""
+    _platform_execute("UPDATE autoallot_slots SET status = 'released', updated_at = datetime('now') "
+                      "WHERE request_id = ? AND status = 'held';", (request_id,))
+
+
+def expire_stale(kind='registered_office'):
+    """Requests whose customer did not pass the ID check within the hold time: their number goes to the next
+    customer. Called whenever requests are listed or started (cheap: one indexed query)."""
+    hours = KINDS[kind]['hold_hours']
+    rows = _platform_query("""
+        SELECT * FROM ro_requests WHERE source = ? AND status = ? AND datetime(created_at) < datetime('now', ?);
+    """, (SOURCE, VERIFYING, f"-{hours} hours"))
+    for row in rows:
+        _platform_execute("""
+            UPDATE ro_requests SET status = ?, reason = ?, updated_at = datetime('now') WHERE id = ? AND status = ?;
+        """, (EXPIRED, f"Not verified within {hours} hours: Office {row.get('office_number') or ''} went to the next "
+                       "customer. Start again to book a new number.", row['id'], VERIFYING))
+        _release(row['id'])
+        _tell_workspace(get_tenant(row['tenant_slug']), row, 'Registered office booking expired',
+                        f"{row['company_name']}: the ID check was not done within {hours} hours, so the booked "
+                        "office number was released.")
+    return len(rows)
 
 
 def _office_address(number):
     from services.platform_services import settings
-    base = (settings().get('ro_addresses') or [SAMPLE_OFFICE])[0]
+    base = (settings().get('ro_addresses') or [DEFAULT_OFFICE])[0]
     street = ', '.join(p for p in (base.get('line1'), base.get('line2')) if p)
     return {'label': f"{KINDS['registered_office']['prefix']} {number}", 'line1': f"Office {number}",
             'line2': street, 'city': base.get('city') or '', 'postal_code': base.get('postal_code') or '',
@@ -207,8 +267,12 @@ def start(tenant, user, order_number, kind='registered_office'):
           SOURCE, order['id'], order['order_number'], verification['id']))
     if verification['status'] == 'Approved':
         return allot(request_id), "Identity already verified: the address was allotted."
-    message = ("Identity check sent to the customer. The address is allotted as soon as Didit approves it."
-               if not mail_error else f"Identity check started. {mail_error}")
+    hours = KINDS[kind]['hold_hours']
+    number = _take_number(kind, request_id, 'held', hours)
+    _platform_execute("UPDATE ro_requests SET office_number = ? WHERE id = ?;", (number, request_id))
+    message = (f"Office {number} is booked for {hours} hours. The customer was sent the ID check; the address is "
+               "theirs as soon as Didit approves it." if not mail_error
+               else f"Office {number} is booked for {hours} hours. {mail_error}")
     return {**request(request_id), 'verification_link': verification.get('session_url')}, message
 
 
@@ -218,9 +282,10 @@ def allot(request_id):
     """Give the next Office number to a verified request and write the address into the workspace."""
     from services.platform_services import DEFAULT_MONTHS, _add_months, _workspace_address
     row = _platform_query("SELECT * FROM ro_requests WHERE id = ?;", (request_id,), one=True)
-    if not row or row['status'] != VERIFYING:
+    if not row or row['status'] not in (VERIFYING, EXPIRED):
         return request(request_id) if row else None
-    number = _next_number('registered_office', request_id)
+    # The booked number, or (approved after the booking ran out) the next free one
+    number = _take_number('registered_office', request_id, 'allotted')
     address = _office_address(number)
     start_day = datetime.date.today()
     expiry = _add_months(start_day, DEFAULT_MONTHS)
@@ -230,11 +295,17 @@ def allot(request_id):
     _platform_execute("""
         UPDATE ro_requests SET status = 'Active', office_number = ?, address_json = ?, start_date = ?, expiry_date = ?,
                workspace_address_id = ?, allotted_at = datetime('now'), decided_by = 'AutoAllot',
-               decided_at = datetime('now'), updated_at = datetime('now')
-        WHERE id = ? AND status = ?;
-    """, (number, json.dumps(address), start_day.isoformat(), expiry.isoformat(), address_id, request_id, VERIFYING))
+               decided_at = datetime('now'), reason = NULL, updated_at = datetime('now')
+        WHERE id = ? AND status IN (?, ?);
+    """, (number, json.dumps(address), start_day.isoformat(), expiry.isoformat(), address_id, request_id, VERIFYING,
+          EXPIRED))
     _tell_workspace(tenant, row, f"Office {number} allotted",
                     f"{row['company_name']}: registered office Office {number} is active (order {row['order_number']}).")
+    try:  # paid from the workspace balance straight away when it covers it
+        from services.wallet import settle
+        settle(row['tenant_slug'])
+    except Exception as exc:
+        print(f"[AutoAllot] balance not charged for request {request_id}: {exc}")
     return request(request_id)
 
 
@@ -243,13 +314,15 @@ def verification_finished(tenant, verification_id, status):
     if not tenant:
         return None
     row = _platform_query("""
-        SELECT id FROM ro_requests WHERE tenant_slug = ? AND verification_id = ? AND status = ? ORDER BY id DESC LIMIT 1;
-    """, (tenant['slug'], verification_id, VERIFYING), one=True)
+        SELECT id, status FROM ro_requests WHERE tenant_slug = ? AND verification_id = ? AND status IN (?, ?)
+        ORDER BY id DESC LIMIT 1;
+    """, (tenant['slug'], verification_id, VERIFYING, EXPIRED), one=True)
     if not row:
         return None
     if status == 'Approved':
         return allot(row['id'])
-    if status in ('Declined', 'Abandoned', 'Expired', 'Kyc Expired'):
+    if row['status'] == VERIFYING and status in ('Declined', 'Abandoned', 'Expired', 'Kyc Expired'):
+        _release(row['id'])
         _platform_execute("UPDATE ro_requests SET status = ?, reason = ?, updated_at = datetime('now') WHERE id = ?;",
                           (FAILED, f"Identity check {status.lower()}", row['id']))
         req = _platform_query("SELECT * FROM ro_requests WHERE id = ?;", (row['id'],), one=True)

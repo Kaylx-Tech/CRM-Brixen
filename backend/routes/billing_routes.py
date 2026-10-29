@@ -48,6 +48,11 @@ def handle_billing_routes(environ, start_response, path, method, user, body, que
     if role not in ADMINS:
         return error_response(start_response, "Only the workspace's admins can open Billing", status_code=403)
 
+    # The Balance button (header): balance, what is due, how to top up or pay by card
+    if path == '/api/admin/billing/wallet' and method == 'GET':
+        from services import wallet
+        return success_response(start_response, data=wallet.summary(tenant['slug']))
+
     if path == '/api/admin/billing' and method == 'GET':
         data = plans.summary(tenant)
         data.update({

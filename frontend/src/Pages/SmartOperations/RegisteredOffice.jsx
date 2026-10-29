@@ -16,6 +16,7 @@ const STATUS = {
   Active: ['Active', 'badge-green'],
   Rejected: ['Rejected', 'bg-destructive/15 text-destructive'],
   'Verification failed': ['ID check failed', 'bg-destructive/15 text-destructive'],
+  Expired: ['Booking expired', 'bg-muted text-muted-foreground'],
   Cancelled: ['Cancelled', 'bg-muted text-muted-foreground'],
 }
 
@@ -261,6 +262,7 @@ export default function RegisteredOffice() {
                       {r.office_number ? (
                         <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                           Office {r.office_number}
+                          {r.status === 'Verifying' ? ' · booked' : ''}
                         </span>
                       ) : null}
                     </div>

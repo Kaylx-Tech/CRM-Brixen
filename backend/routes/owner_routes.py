@@ -25,6 +25,7 @@
        | renew {months, price} | end {reason} | paid {paid}
   GET  /billing                          → every workspace's subscription state and unpaid service charges
   GET/POST /billing/<slug>/payments      {amount, method, note, periods} → records a payment
+  GET/POST /billing/<slug>/wallet        {amount, note} → a bank transfer top-up of the workspace balance
   GET/POST /content/posts, /content/posts/<id>          blog posts
   GET  /content/newsletter               → subscribers and newsletters
   POST /content/newsletter/issues[/<id>[/test|/send]]   draft, save, test to yourself, send to all
@@ -460,7 +461,21 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
             audit(admin, 'PAYMENT_RECORDED', pay.group(1),
                   f"£{done['amount']} for {done['period_start']} – {done['period_end']}")
             return success_response(start_response, data=done, message=f"Payment saved. Paid until {done['period_end']}.")
+        top = re.match(r'^/billing/([a-z0-9-]+)/wallet$', sub)
+        if top and method == 'GET':
+            from services import wallet
+            return success_response(start_response, data={'balance': wallet.balance(top.group(1)),
+                                                          'entries': wallet.entries(top.group(1))})
+        if top and method == 'POST':
+            from services import wallet
+            paid = wallet.top_up(top.group(1), body.get('amount'), body.get('note'), admin)
+            audit(admin, 'WALLET_TOP_UP', top.group(1), f"£{body.get('amount')} ({body.get('note') or 'bank transfer'})")
+            return success_response(start_response, data={'balance': wallet.balance(top.group(1)), 'paid': paid},
+                                    message=f"Balance topped up. {len(paid)} due service(s) paid from it."
+                                    if paid else "Balance topped up.")
     except billing.BillingError as exc:
+        return error_response(start_response, str(exc), status_code=400)
+    except ValueError as exc:  # wallet.WalletError
         return error_response(start_response, str(exc), status_code=400)
 
     # ── content: blog posts and the newsletter (services/platform_content.py) ──
