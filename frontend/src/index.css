@@ -321,11 +321,37 @@ html.is-non-apple,
     fs-tag-shine 3.2s ease-in-out infinite;
   animation-delay: calc(var(--i, 0) * 28ms + 0.25s), calc(var(--i, 0) * 28ms + 1s);
 }
+/* Partner Perks (Smart Operations): the gift gives a small wiggle and a shine crosses the banner now and then */
+@keyframes fs-gift-wiggle {
+  0%, 82%, 100% { transform: none; }
+  86% { transform: rotate(-12deg) scale(1.08); }
+  90% { transform: rotate(10deg) scale(1.08); }
+  94% { transform: rotate(-6deg); }
+}
+@keyframes fs-banner-shine {
+  0%, 70% { transform: translateX(-120%) skewX(-20deg); }
+  100% { transform: translateX(320%) skewX(-20deg); }
+}
+.fs-perks-gift {
+  animation: fs-gift-wiggle 4s ease-in-out 1s infinite;
+}
+.fs-perks-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 35%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: translateX(-120%) skewX(-20deg);
+  pointer-events: none;
+  animation: fs-banner-shine 5s ease-in-out 1.5s infinite;
+}
 @media (prefers-reduced-motion: reduce) {
   .fs-menu-row,
   .fs-menu-btn[data-active],
   .fs-menu-badge,
-  .fs-menu-tag {
+  .fs-menu-tag,
+  .fs-perks-gift,
+  .fs-perks-banner::after {
     animation: none;
   }
 }

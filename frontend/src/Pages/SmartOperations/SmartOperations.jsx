@@ -19,7 +19,9 @@ import {
   IconDownload,
   IconExternalLink,
   IconFileText,
+  IconGift,
   IconMapPin,
+  IconSparkles,
   IconId,
   IconLink,
   IconLoader2,
@@ -63,6 +65,34 @@ function hostOf(url) {
   }
 }
 
+// Finstap: the partner (affiliate) links are "Partner Perks": signing up through them helps Finstap, and Finstap
+// helps the workspace set the service up for free
+const PERK_OFFER = 'Free setup help from Finstap'
+
+function PerksBanner() {
+  return (
+    <m.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={spring}
+      className="fs-perks-banner relative overflow-hidden rounded-2xl border border-primary/25 bg-linear-to-r from-primary/15 via-primary/5 to-card p-4"
+    >
+      <div className="flex items-start gap-3">
+        <span className="fs-perks-gift flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+          <IconGift className="size-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="font-semibold">Perks from our partners, set up free by Finstap</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Open a business account, send money abroad or buy a domain through these partner links, and the Finstap
+            team helps you and your clients get started at no cost.
+          </p>
+        </div>
+      </div>
+    </m.div>
+  )
+}
+
 function LinkRow({ link, canManage, onEdit, onDelete }) {
   const [copied, setCopied] = useState(false)
   const copy = async () => {
@@ -76,7 +106,7 @@ function LinkRow({ link, canManage, onEdit, onDelete }) {
     }
   }
   return (
-    <div className="group flex items-start gap-3 rounded-xl border bg-background/60 p-3 transition-colors hover:border-primary/30">
+    <div className="group flex flex-wrap items-start gap-x-3 gap-y-2 rounded-xl border bg-background/60 p-3 transition-colors hover:border-primary/30">
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold" title={link.title}>{link.title}</p>
         <a
@@ -88,7 +118,9 @@ function LinkRow({ link, canManage, onEdit, onDelete }) {
         >
           {hostOf(link.url)}
         </a>
-        {link.note ? <p className="mt-1 text-xs text-muted-foreground whitespace-pre-line line-clamp-3">{link.note}</p> : null}
+        {!IS_FINSTAP && link.note ? (
+          <p className="mt-1 text-xs text-muted-foreground whitespace-pre-line line-clamp-3">{link.note}</p>
+        ) : null}
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <Button variant="outline" size="xs" className="h-7 gap-1" onClick={copy} title="Copy link">
@@ -116,6 +148,13 @@ function LinkRow({ link, canManage, onEdit, onDelete }) {
           </>
         )}
       </div>
+      {IS_FINSTAP && (
+        // Partner Perks: the note is the offer; without one, the help Finstap gives with every partner
+        <p className="flex basis-full items-start gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+          <IconSparkles className="mt-px size-3.5 shrink-0" />
+          <span className="min-w-0 whitespace-pre-line line-clamp-3">{link.note || PERK_OFFER}</span>
+        </p>
+      )}
     </div>
   )
 }
@@ -259,7 +298,9 @@ export default function SmartOperations() {
           <h2 className="text-2xl font-bold tracking-tight">Smart Operations</h2>
           {linksTab && (
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Quick links for the team: partner portals, referral links and forms, grouped by company.
+              {IS_FINSTAP
+                ? 'Trusted partner services for you and your clients, with free setup help from Finstap.'
+                : 'Quick links for the team: partner portals, referral links and forms, grouped by company.'}
             </p>
           )}
           {tab === 'id-verification' && (
@@ -298,8 +339,8 @@ export default function SmartOperations() {
             ID Verification
           </TabsTrigger>
           <TabsTrigger value="links">
-            <IconLink className="size-4" />
-            Links
+            {IS_FINSTAP ? <IconGift className="size-4" /> : <IconLink className="size-4" />}
+            {IS_FINSTAP ? 'Partner Perks' : 'Links'}
           </TabsTrigger>
           {IS_FINSTAP && (
             <TabsTrigger value="gov-forms">
@@ -324,6 +365,7 @@ export default function SmartOperations() {
         <Tasks view="gov-forms" />
       ) : (
       <>
+      {IS_FINSTAP && <PerksBanner />}
       <div className="relative w-full md:max-w-sm">
         <IconSearch className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input className="pl-9" placeholder="Search company, link or note…" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -442,11 +484,11 @@ export default function SmartOperations() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="sl-note">Note</Label>
+              <Label htmlFor="sl-note">{IS_FINSTAP ? 'Offer' : 'Note'}</Label>
               <Textarea
                 id="sl-note"
                 rows={3}
-                placeholder="When to use it, referral code, who to contact…"
+                placeholder={IS_FINSTAP ? `The partner's offer, e.g. a sign-up bonus (empty: "${PERK_OFFER}")` : 'When to use it, referral code, who to contact…'}
                 value={form.note}
                 onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))}
               />

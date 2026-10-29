@@ -105,6 +105,16 @@ def start_session(verification_id):
     """Start (or pick up) the person's Didit session. Returns (row, error)."""
     row = _row(verification_id)
     order = _order(row['order_id'])
+    if not row.get('didit_session_id'):
+        # Finstap: a new check needs an ID check credit (unpaid checks per plan, services/autoallot.py)
+        try:
+            from tenancy import current_tenant
+            from services.autoallot import AutoAllotError, check_kyc_credit
+            check_kyc_credit(current_tenant())
+        except ImportError:
+            pass
+        except AutoAllotError as exc:
+            return dict(row), str(exc)
     session, err = didit_service.create_session(
         vendor_data=vendor_data_for(verification_id), full_name=row['full_name'], email=row.get('email') or '',
         order_number=(order or {}).get('order_number') or '')

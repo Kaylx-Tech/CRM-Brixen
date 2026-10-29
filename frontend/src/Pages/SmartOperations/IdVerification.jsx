@@ -220,6 +220,7 @@ function PersonRow({ person, busy, onAction, onOpen }) {
 export default function IdVerification() {
   const [orders, setOrders] = useState([])
   const [configured, setConfigured] = useState(true)
+  const [credits, setCredits] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [busyId, setBusyId] = useState(null)
@@ -239,6 +240,7 @@ export default function IdVerification() {
       }
       setOrders(res.data?.data?.orders || [])
       setConfigured(res.data?.data?.didit_configured !== false)
+      setCredits(res.data?.data?.credits || null)
     } finally {
       setIsLoading(false)
     }
@@ -384,9 +386,20 @@ export default function IdVerification() {
           <Input className="pl-9" placeholder="Search customer, company, person or order…" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         {!isLoading && (
-          <p className="text-sm text-muted-foreground">
-            {shown.length === orders.length ? `${orders.length} KYC order${orders.length === 1 ? '' : 's'}` : `${shown.length} of ${orders.length}`}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Finstap: unpaid ID checks the plan allows (none shown when checks are free) */}
+            {credits?.limit != null && (
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${credits.available < 1 ? 'bg-destructive/15 text-destructive' : 'badge-green'}`}
+                title="Unpaid ID checks your plan allows. Paying the KYC checks in Billing frees them."
+              >
+                {credits.available} of {credits.limit} ID check credits left
+              </span>
+            )}
+            <p className="text-sm text-muted-foreground">
+              {shown.length === orders.length ? `${orders.length} KYC order${orders.length === 1 ? '' : 's'}` : `${shown.length} of ${orders.length}`}
+            </p>
+          </div>
         )}
       </div>
 

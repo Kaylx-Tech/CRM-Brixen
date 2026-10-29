@@ -22,13 +22,15 @@ SOURCE = 'autoallot'
 VERIFYING = 'Verifying'
 FAILED = 'Verification failed'
 
+# Unpaid items a workspace may hold, per plan (a free trial gets 2 to try it): AutoAllot kinds and ID checks
+PLAN_CREDITS = {'trial': 2, 'starter': 3, 'pro': 5, 'business': 10, 'enterprise': 20}
+
 KINDS = {
     'registered_office': {
         'label': 'Registered office',
         'prefix': 'Office',
         'first_number': 1000,
-        # Unpaid allotted addresses a workspace may hold, per plan (a free trial gets 2 to try it)
-        'credits': {'trial': 2, 'starter': 3, 'pro': 5, 'business': 10, 'enterprise': 20},
+        'credits': PLAN_CREDITS,
     },
 }
 
@@ -43,20 +45,66 @@ class AutoAllotError(ValueError):
 
 # ── credits ──────────────────────────────────────────────────────────────────
 
-def credits(tenant, kind='registered_office'):
-    """{'limit', 'used', 'available'}: unpaid allotted items (and checks still running) count against the limit."""
+def _limit(tenant, key, table):
+    """The plan's number, or the owner portal's own number for this workspace (custom_limits[key])."""
     plan = str((tenant or {}).get('plan') or 'trial').lower()
     try:
-        custom = json.loads((tenant or {}).get('custom_limits') or '{}').get(f'autoallot_{kind}')
+        custom = json.loads((tenant or {}).get('custom_limits') or '{}').get(key)
     except (TypeError, ValueError):
         custom = None
-    limit = int(custom) if str(custom or '').isdigit() else KINDS[kind]['credits'].get(plan, 0)
+    return int(custom) if str(custom or '').isdigit() else table.get(plan, 0)
+
+
+def credits(tenant, kind='registered_office'):
+    """{'limit', 'used', 'available'}: unpaid allotted items (and checks still running) count against the limit."""
+    limit = _limit(tenant, f'autoallot_{kind}', KINDS[kind]['credits'])
     row = _platform_query("""
         SELECT COUNT(*) AS c FROM ro_requests
         WHERE tenant_slug = ? AND source = ? AND paid = 0 AND status IN (?, 'Active');
     """, (tenant['slug'], SOURCE, VERIFYING), one=True)
     used = int((row or {}).get('c') or 0)
     return {'limit': limit, 'used': used, 'available': max(limit - used, 0)}
+
+
+def _since(key):
+    """The day a credit rule started (saved on first use): older checks never count against it."""
+    row = _platform_query("SELECT value FROM platform_settings WHERE key = ?;", (key,), one=True)
+    if row and row.get('value'):
+        return row['value']
+    # UTC, like the created_at it is compared with
+    today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+    _platform_execute("INSERT OR IGNORE INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'));",
+                      (key, today))
+    return (_platform_query("SELECT value FROM platform_settings WHERE key = ?;", (key,), one=True) or {}).get('value') \
+        or today
+
+
+def kyc_credits(tenant):
+    """ID checks the active workspace started that Finstap has not been paid for (months not marked paid in the
+    owner portal's KYC billing), against the plan's number. Unlimited when no KYC price is set (nothing to pay)."""
+    from db import query_db
+    from services.platform_services import settings
+    if not tenant or tenant.get('plan') == 'legacy' or not settings().get('kyc_price'):
+        return {'limit': None, 'used': 0, 'available': None}
+    limit = _limit(tenant, 'id_checks', PLAN_CREDITS)
+    paid = {r['period'] for r in _platform_query(
+        "SELECT period FROM kyc_billing WHERE tenant_slug = ? AND status = 'paid';", (tenant['slug'],))}
+    rows = query_db("""
+        SELECT strftime('%Y-%m', created_at) AS period, COUNT(*) AS c FROM id_verifications
+        WHERE didit_session_id IS NOT NULL AND didit_session_id != '' AND date(created_at) >= date(?)
+        GROUP BY period;
+    """, (_since('kyc_credits_since'),)) or []
+    used = sum(int(r['c'] or 0) for r in rows if r['period'] not in paid)
+    return {'limit': limit, 'used': used, 'available': max(limit - used, 0)}
+
+
+def check_kyc_credit(tenant):
+    """Raise AutoAllotError when the workspace has no ID check credit left."""
+    left = kyc_credits(tenant)
+    if left['available'] is not None and left['available'] < 1:
+        raise AutoAllotError(
+            f"Your plan allows {left['limit']} unpaid ID check(s) and this workspace has {left['used']}. "
+            "Pay the KYC checks in Billing to free a credit, or upgrade your plan.")
 
 
 # ── sequence ─────────────────────────────────────────────────────────────────
