@@ -31,6 +31,14 @@ import { toast } from "sonner"
 import { toastUndoableDelete, toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
 import { apiRequest } from "@/lib/api"
 import { IconFileCheck, IconLoader2, IconTrash, IconUpload } from "@tabler/icons-react"
+import { useFormErrors } from "@/lib/validation"
+import { FieldMessage, RequiredMark, invalidProps } from "@/components/FormField"
+
+const BOOK_ENTRY_SCHEMA = {
+  entry_date: { label: "Date", required: true, type: "date" },
+  description: { label: "Description", required: true, maxLength: 200 },
+  amount: { label: "Amount", required: true, type: "amount", min: 0.01 },
+}
 
 const IDENTITY_STATUSES = ["Not started", "In progress", "Verified", "Failed"]
 const PSC_STATUSES = ["Not started", "In progress", "Verified", "Update required"]
@@ -129,6 +137,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
   const [uploading, setUploading] = useState(false)
   const [uploadStatus, setUploadStatus] = useState("")
   const [entryDate, setEntryDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const entryErrors = useFormErrors(BOOK_ENTRY_SCHEMA, { prefix: "book-" })
   const [entryDesc, setEntryDesc] = useState("")
   const [entryCategory, setEntryCategory] = useState("Turnover")
   const [entryAmount, setEntryAmount] = useState("")
@@ -349,10 +358,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
 
   const handleAddEntry = async (event) => {
     event.preventDefault()
-    if (!entryDesc.trim() || !entryAmount) {
-      toast.error("Please enter a description and amount")
-      return
-    }
+    if (!entryErrors.check({ entry_date: entryDate, description: entryDesc, amount: entryAmount })) return
     setSavingEntry(true)
     const toastId = toastProcessing("Saving cash book line…")
     try {
@@ -370,6 +376,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
         silent: true,
       })
       if (!res.ok) {
+        entryErrors.fromResponse(res)
         toastFail(toastId, res.reason || "Failed to add line")
         return
       }
@@ -574,17 +581,18 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                     </p>
                   </div>
 
-                  <form onSubmit={handleAddEntry} className="space-y-4 rounded-xl border bg-card p-4">
+                  <form onSubmit={handleAddEntry} noValidate className="space-y-4 rounded-xl border bg-card p-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label className="text-sm font-semibold">Date</Label>
-                        <Input
+                        <Label htmlFor="book-entry_date" className="text-sm font-semibold">Date <RequiredMark /></Label>
+                        <Input id="book-entry_date"
+                          {...invalidProps(entryErrors.errors, 'entry_date', 'book-')}
                           type="date"
                           value={entryDate}
                           onChange={(e) => setEntryDate(e.target.value)}
                           className="w-full text-sm"
-                          required
                         />
+                        <FieldMessage id="book-entry_date-error" message={entryErrors.errors.entry_date} />
                       </div>
                       <div className="space-y-2">
                         <Label className="text-sm font-semibold">Heading</Label>
@@ -612,21 +620,23 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm font-semibold">Description</Label>
-                      <Input
+                      <Label htmlFor="book-description" className="text-sm font-semibold">Description <RequiredMark /></Label>
+                      <Input id="book-description"
+                        {...invalidProps(entryErrors.errors, 'description', 'book-')}
                         value={entryDesc}
                         onChange={(e) => setEntryDesc(e.target.value)}
                         placeholder="Statement narrative"
                         maxLength={200}
                         className="w-full text-sm"
-                        required
                       />
+                      <FieldMessage id="book-description-error" message={entryErrors.errors.description} />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label className="text-sm font-semibold">Amount (£)</Label>
-                        <Input
+                        <Label htmlFor="book-amount" className="text-sm font-semibold">Amount (£) <RequiredMark /></Label>
+                        <Input id="book-amount"
+                          {...invalidProps(entryErrors.errors, 'amount', 'book-')}
                           type="number"
                           step="0.01"
                           min="0.01"
@@ -634,8 +644,8 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                           onChange={(e) => setEntryAmount(e.target.value)}
                           placeholder="0.00"
                           className="w-full text-sm"
-                          required
                         />
+                        <FieldMessage id="book-amount-error" message={entryErrors.errors.amount} />
                       </div>
                       <div className="space-y-2">
                         <Label className="text-sm font-semibold">Direction</Label>

@@ -12,16 +12,26 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import { IconLoader2 } from '@tabler/icons-react'
 import ToastSave from '@/components/ToastSave'
+import { useFormErrors } from '@/lib/validation'
+import { FieldMessage, RequiredMark, invalidProps } from '@/components/FormField'
+
+/** Same rules as SERVICE_RULES in backend/routes/catalog_routes.py (also used by the Edit Service dialog) */
+export const SERVICE_SCHEMA = {
+  name: { label: 'Service name', required: true, maxLength: 160 },
+  description: { label: 'Description', maxLength: 4000 },
+  sellPrice: { label: 'Sell price', required: true, type: 'amount' },
+  originalPrice: { label: 'Original price', type: 'amount' },
+}
 import FormFieldsBuilder, { formFieldsError } from './FormFieldsBuilder'
 
 const AddService = ({ isOpen, onClose, onSuccess }) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showUnsavedToast, setShowUnsavedToast] = useState(false)
   const [toastSaveState, setToastSaveState] = useState('initial')
+  const { errors, setErrors, check, recheck, fromResponse, clear } = useFormErrors(SERVICE_SCHEMA)
   
   const [formData, setFormData] = useState({
     name: '',
@@ -43,6 +53,7 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
       duration: '12 Months',
       form_fields: [],
     })
+    clear()
     setShowUnsavedToast(false)
   }
 
@@ -64,6 +75,7 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
   const handleChange = (e) => {
     const { id, value } = e.target
     setFormData(prev => ({ ...prev, [id]: value }))
+    recheck(id, value)
   }
 
   const handleSelectChange = (id, value) => {
@@ -71,15 +83,10 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
   }
 
   const handleSubmit = async () => {
-    if (!formData.name.trim() || !formData.sellPrice.trim()) {
-      toast.error("Name and Sell price are required fields.")
-      return
-    }
     const formError = formFieldsError(formData.form_fields)
-    if (formError) {
-      toast.error(formError)
-      return
-    }
+    const ok = check(formData)
+    if (formError) setErrors((prev) => ({ ...prev, form_fields: formError }))
+    if (!ok || formError) return
 
     setIsSubmitting(true)
     const toastId = toastProcessing('Adding service…')
@@ -102,6 +109,7 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
         if (onSuccess) onSuccess()
         onClose()
       } else {
+        fromResponse({ data })
         toastFail(toastId, data.message || data.error || "Failed to add service")
       }
     } catch (error) {
@@ -125,18 +133,20 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
           <div className="-mx-6 min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="grid gap-4 px-6 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Name *</Label>
+              <Label htmlFor="name">Name <RequiredMark /></Label>
               <Input 
-                id="name" 
+                id="name"
+                {...invalidProps(errors, 'name', '')} 
                 placeholder="Enter service name" 
                 value={formData.name}
                 onChange={handleChange}
                 disabled={isSubmitting}
               />
+              <FieldMessage id="name-error" message={errors.name} />
             </div>
             
             <div className="grid gap-2">
-              <Label htmlFor="category">Category *</Label>
+              <Label htmlFor="category">Category <RequiredMark /></Label>
               <Select 
                 value={formData.category} 
                 onValueChange={(val) => handleSelectChange('category', val)}
@@ -160,36 +170,42 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
             <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>
               <Textarea 
-                id="description" 
+                id="description"
+                {...invalidProps(errors, 'description', '')} 
                 placeholder="Optional service description" 
                 className="min-h-20" 
                 value={formData.description}
                 onChange={handleChange}
                 disabled={isSubmitting}
               />
+              <FieldMessage id="description-error" message={errors.description} />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="sellPrice">Sell price (£) *</Label>
+                <Label htmlFor="sellPrice">Sell price (£) <RequiredMark /></Label>
                 <Input 
-                  id="sellPrice" 
+                  id="sellPrice"
+                  {...invalidProps(errors, 'sellPrice', '')} 
                   type="number" 
                   placeholder="0" 
                   value={formData.sellPrice}
                   onChange={handleChange}
                   disabled={isSubmitting}
                 />
+                <FieldMessage id="sellPrice-error" message={errors.sellPrice} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="originalPrice">Original / cost price (£)</Label>
                 <Input 
-                  id="originalPrice" 
+                  id="originalPrice"
+                  {...invalidProps(errors, 'originalPrice', '')} 
                   type="number" 
                   value={formData.originalPrice}
                   onChange={handleChange}
                   disabled={isSubmitting}
                 />
+                <FieldMessage id="originalPrice-error" message={errors.originalPrice} />
               </div>
             </div>
 
@@ -198,6 +214,7 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
               onChange={(form_fields) => setFormData((prev) => ({ ...prev, form_fields }))}
               disabled={isSubmitting}
             />
+            <FieldMessage message={errors.form_fields} />
           </div>
           </div>
           <DialogFooter className="gap-3 shrink-0">

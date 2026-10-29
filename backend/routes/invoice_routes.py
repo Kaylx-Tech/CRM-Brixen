@@ -1,6 +1,7 @@
 """Invoices & Billing Routes (/api/invoices) — aligned with app.py admin invoices."""
 import re
 from db import query_db, execute_db
+from utils.validation import validate, validation_error
 from utils.response import json_response, success_response, error_response
 from services.invoice_service import (enrich_invoice_row, load_invoice_for_staff, update_admin_invoice,
                                       backfill_invoices_from_orders, invoice_number_for_order, next_invoice_number)
@@ -157,6 +158,16 @@ def handle_invoice_routes(environ, start_response, path, method, user, body, que
         if not is_staff:
             return error_response(start_response, "Only staff can generate invoices", status_code=403)
 
+        errors = validate(body, {
+            'user_id': {'label': 'Client', 'required': True},
+            'order_id': {'label': 'Order', 'required': True},
+            'amount': {'label': 'Amount', 'required': True, 'type': 'amount', 'min': 0.01},
+            'tax': {'label': 'Tax', 'type': 'amount'},
+            'total': {'label': 'Total', 'type': 'amount'},
+            'due_date': {'label': 'Due date', 'required': True, 'type': 'date'},
+        })
+        if errors:
+            return validation_error(start_response, errors)
         client_id = body.get('user_id')
         order_id = body.get('order_id')
         amount = float(body.get('amount', 0))
@@ -192,6 +203,21 @@ def handle_invoice_routes(environ, start_response, path, method, user, body, que
         if not is_staff:
             return error_response(start_response, "Only staff can update invoices", status_code=403)
         inv_id = int(match_update.group(1))
+        b = body or {}
+        to_num = lambda v: float(re.sub(r'[£,\s]', '', str(v or 0)) or 0)  # noqa: E731
+        rules = {
+            'due_date': {'label': 'Due date', 'type': 'date'},
+            'total': {'label': 'Total', 'required': True, 'type': 'amount'},
+            'deposit_amount': {'label': 'Deposit', 'type': 'amount'},
+            'amount_paid': {'label': 'Received so far', 'type': 'amount'},
+        }
+        errors = validate(b, {k: r for k, r in rules.items() if k in b})
+        if not errors and 'total' in b:
+            for key, label in (('deposit_amount', 'Deposit'), ('amount_paid', 'Received')):
+                if b.get(key) not in (None, '') and to_num(b[key]) > to_num(b['total']) + 0.004:
+                    errors[key] = f'{label} cannot be more than the total.'
+        if errors:
+            return validation_error(start_response, errors)
         updated, error, mail = update_admin_invoice(inv_id, body or {}, actor=user)
         if error:
             code = 404 if error == 'Invoice not found' else 400

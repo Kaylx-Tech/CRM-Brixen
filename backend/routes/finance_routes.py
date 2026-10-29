@@ -12,6 +12,7 @@ import datetime
 import re
 
 from db import query_db, execute_db
+from utils.validation import validation_error
 from utils.response import success_response, error_response
 from services.audit_service import log_activity
 from services.finance_ledger import CURRENCIES, balance_sheet, month_key
@@ -28,7 +29,7 @@ def _money(value):
 
 
 def _clean_expense(body, partial=False):
-    """Validated expense fields. Returns (fields, error)."""
+    """Validated expense fields. Returns (fields, {field: message} or None)."""
     body = body if isinstance(body, dict) else {}
     out = {}
     if 'spent_on' in body or not partial:
@@ -36,23 +37,23 @@ def _clean_expense(body, partial=False):
         try:
             datetime.datetime.strptime(text, '%Y-%m-%d')
         except ValueError:
-            return None, "Choose the date of the expense"
+            return None, {'spent_on': "Choose the date of the expense."}
         out['spent_on'] = text
     if 'category' in body or not partial:
         out['category'] = str(body.get('category') or '').strip()[:60]
         if not out['category']:
-            return None, "Choose a category (Salary, Rent, Other …)"
+            return None, {'category': "Choose a category (Salary, Rent, Other …)."}
     if 'description' in body or not partial:
         out['description'] = str(body.get('description') or '').strip()[:500]
     if 'amount' in body or not partial:
         amount = _money(body.get('amount'))
         if amount is None or amount <= 0:
-            return None, "Enter the amount spent"
+            return None, {'amount': "Enter the amount spent, more than 0."}
         out['amount'] = amount
     if 'currency' in body or not partial:
         out['currency'] = str(body.get('currency') or 'GBP').strip().upper()
         if out['currency'] not in CURRENCIES:
-            return None, "Currency must be GBP or PKR"
+            return None, {'currency': "Currency must be GBP or PKR."}
     return out, None
 
 
@@ -72,7 +73,7 @@ def handle_finance_routes(environ, start_response, path, method, user, body, que
     if path == '/api/admin/finance/expenses' and method == 'POST':
         fields, err = _clean_expense(body)
         if err:
-            return error_response(start_response, err, status_code=400)
+            return validation_error(start_response, err)
         expense_id = execute_db("""
             INSERT INTO finance_expenses (spent_on, category, description, amount, currency, created_by,
                                           created_at, updated_at)
@@ -92,7 +93,7 @@ def handle_finance_routes(environ, start_response, path, method, user, body, que
         if method == 'PUT':
             fields, err = _clean_expense(body, partial=True)
             if err:
-                return error_response(start_response, err, status_code=400)
+                return validation_error(start_response, err)
             if fields:
                 sets = ', '.join(f"{k} = ?" for k in fields)
                 execute_db(f"UPDATE finance_expenses SET {sets}, updated_at = datetime('now') WHERE id = ?;",
@@ -113,10 +114,13 @@ def handle_finance_routes(environ, start_response, path, method, user, body, que
         data = body if isinstance(body, dict) else {}
         amount = _money(data.get('amount'))
         start_month = month_key(data.get('start_month'))
+        errors = {}
         if amount is None:
-            return error_response(start_response, "Enter the starting balance", status_code=400)
+            errors['amount'] = "Enter the starting balance, like 1200 or 1200.50."
         if not start_month:
-            return error_response(start_response, "Choose the month this balance starts from", status_code=400)
+            errors['start_month'] = "Choose the month this balance starts from."
+        if errors:
+            return validation_error(start_response, errors)
         execute_db("""
             INSERT INTO finance_opening_balances (currency, amount, start_month, updated_by, updated_at)
             VALUES (?, ?, ?, ?, datetime('now'))
@@ -142,7 +146,7 @@ def handle_finance_routes(environ, start_response, path, method, user, body, que
             return success_response(start_response, message="Rupee amount reset")
         amount = _money(data.get('amount'))
         if amount is None or amount < 0:
-            return error_response(start_response, "Enter the rupees received", status_code=400)
+            return validation_error(start_response, {'amount': "Enter the rupees received, 0 or more."})
         execute_db("UPDATE finance_invoice_receipts SET amount = ?, edited = 1, updated_at = datetime('now') "
                    "WHERE invoice_id = ?;", (amount, invoice_id))
         log_activity(uid, 'Finance rupees received corrected', 'invoice', invoice_id, f"PKR {amount}")

@@ -40,6 +40,9 @@ import { SectionCards } from "../../Layout/StatsCard";
 import { toast } from "sonner";
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api";
 import { toastUndoableDelete, toastProcessing, toastDone, toastFail } from "@/lib/toastActions";
+import { useFormErrors } from "@/lib/validation";
+import { FieldMessage, RequiredMark, invalidProps } from "@/components/FormField";
+import { SERVICE_SCHEMA } from "./AddService";
 
 const columnHelper = createColumnHelper();
 
@@ -56,6 +59,7 @@ const Services = () => {
 
   // Edit state
   const [editService, setEditService] = useState(null);
+  const editErrors = useFormErrors(SERVICE_SCHEMA, { prefix: "edit-" });
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     name: "",
@@ -170,6 +174,7 @@ const Services = () => {
   // ── Open Edit Dialog ──
   const openEditDialog = (service) => {
     setEditService(service);
+    editErrors.clear();
     setEditForm({
       name: service.name || "",
       category: service.category || "Corporate",
@@ -184,15 +189,10 @@ const Services = () => {
 
   // ── Submit Edit ──
   const handleEditSubmit = async () => {
-    if (!editForm.name.trim() || !editForm.sellPrice) {
-      toast.error("Name and Sell price are required.");
-      return;
-    }
     const formError = formFieldsError(editForm.form_fields);
-    if (formError) {
-      toast.error(formError);
-      return;
-    }
+    const ok = editErrors.check({ ...editForm, sellPrice: String(editForm.sellPrice ?? ""), originalPrice: String(editForm.originalPrice ?? "") });
+    if (formError) editErrors.setErrors((prev) => ({ ...prev, form_fields: formError }));
+    if (!ok || formError) return;
 
     setIsEditing(true);
     const toastId = toastProcessing("Updating service…");
@@ -219,6 +219,7 @@ const Services = () => {
         setEditService(null);
         fetchServices();
       } else {
+        editErrors.fromResponse({ data: json });
         toastFail(toastId, json.message || json.error || "Failed to update service");
       }
     } catch (error) {
@@ -520,17 +521,19 @@ const Services = () => {
           <div className="-mx-6 min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <div className="grid gap-4 px-6 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="edit-name">Name *</Label>
+                <Label htmlFor="edit-name">Name <RequiredMark /></Label>
                 <Input
                   id="edit-name"
+                  {...invalidProps(editErrors.errors, 'name', 'edit-')}
                   value={editForm.name}
                   onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
                   disabled={isEditing}
                 />
+                <FieldMessage id="edit-name-error" message={editErrors.errors.name} />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="edit-category">Category *</Label>
+                <Label htmlFor="edit-category">Category <RequiredMark /></Label>
                 <Select
                   value={editForm.category}
                   onValueChange={(val) => setEditForm((prev) => ({ ...prev, category: val }))}
@@ -554,6 +557,7 @@ const Services = () => {
                 <Label htmlFor="edit-description">Description</Label>
                 <Textarea
                   id="edit-description"
+                  {...invalidProps(editErrors.errors, 'description', 'edit-')}
                   className="min-h-20"
                   value={editForm.description}
                   onChange={(e) =>
@@ -561,13 +565,15 @@ const Services = () => {
                   }
                   disabled={isEditing}
                 />
+                <FieldMessage id="edit-description-error" message={editErrors.errors.description} />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-sellPrice">Sell price (£) *</Label>
+                  <Label htmlFor="edit-sellPrice">Sell price (£) <RequiredMark /></Label>
                   <Input
                     id="edit-sellPrice"
+                    {...invalidProps(editErrors.errors, 'sellPrice', 'edit-')}
                     type="number"
                     value={editForm.sellPrice}
                     onChange={(e) =>
@@ -575,11 +581,13 @@ const Services = () => {
                     }
                     disabled={isEditing}
                   />
+                  <FieldMessage id="edit-sellPrice-error" message={editErrors.errors.sellPrice} />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="edit-originalPrice">Original / cost price (£)</Label>
                   <Input
                     id="edit-originalPrice"
+                    {...invalidProps(editErrors.errors, 'originalPrice', 'edit-')}
                     type="number"
                     value={editForm.originalPrice}
                     onChange={(e) =>
@@ -587,6 +595,7 @@ const Services = () => {
                     }
                     disabled={isEditing}
                   />
+                  <FieldMessage id="edit-originalPrice-error" message={editErrors.errors.originalPrice} />
                 </div>
               </div>
 
@@ -614,6 +623,7 @@ const Services = () => {
                 onChange={(form_fields) => setEditForm((prev) => ({ ...prev, form_fields }))}
                 disabled={isEditing}
               />
+              <FieldMessage message={editErrors.errors.form_fields} />
             </div>
           </div>
           <DialogFooter className="gap-3 shrink-0">

@@ -20,13 +20,27 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { format } from 'date-fns'
 import { IconCalendar } from '@tabler/icons-react'
 import ToastSave from '@/components/ToastSave'
+import { useFormErrors, parseDate } from '@/lib/validation'
+import { FieldMessage, RequiredMark, invalidProps } from '@/components/FormField'
+
+const FILING_SCHEMA = {
+  company_id: { label: 'Company', required: true },
+  period_start: { label: 'Period start', required: true, type: 'date' },
+  period_end: {
+    label: 'Year end',
+    required: true,
+    type: 'date',
+    validate: (v, all) => (parseDate(all.period_start) && parseDate(v) <= parseDate(all.period_start) ? 'Year end must be after the period start.' : ''),
+  },
+  due_date: { label: 'Due date', type: 'date' },
+  confirmation_number: { label: 'Confirmation number', maxLength: 60 },
+}
 
 // Helper to convert DD/MM/YYYY or ISO date string to YYYY-MM-DD for standard date input
 const toDateInputValue = (dateStr) => {
@@ -144,13 +158,19 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
   const currentCompany =
     companies.find((c) => String(c.id || c.company_id) === String(selectedCompanyId)) || company
 
+  const filingErrors = useFormErrors(FILING_SCHEMA, { prefix: 'filing-' })
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     const targetId = selectedCompanyId || company?.id
-    if (!targetId) {
-      toast.error('Please select a company to file accounts.')
-      return
-    }
+    const ok = filingErrors.check({
+      company_id: targetId,
+      period_start: periodStart,
+      period_end: periodEnd,
+      due_date: dueDate,
+      confirmation_number: confirmationNumber,
+    })
+    if (!ok) return
 
     setIsSubmitting(true)
     const toastId = toastProcessing('Filing accounts…')
@@ -186,6 +206,7 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
         if (onFileSubmitted) onFileSubmitted()
         onClose()
       } else {
+        filingErrors.fromResponse({ data })
         toastFail(toastId, data.message || data.error || 'Failed to file accounts.')
       }
     } catch (err) {
@@ -209,10 +230,10 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
           </DialogHeader>
 
           <ScrollArea className="max-h-[75vh]">
-            <form onSubmit={handleSubmit} className="p-6 pt-2 space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="p-6 pt-2 space-y-4">
               {/* Company * */}
               <div className="space-y-2">
-                <Label htmlFor="company-select">Company *</Label>
+                <Label htmlFor="company-select">Company <RequiredMark /></Label>
                 <Select
                   value={String(selectedCompanyId || '')}
                   onValueChange={handleCompanySelect}
@@ -241,24 +262,27 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
                     </ScrollArea>
                   </SelectContent>
                 </Select>
+                <FieldMessage message={filingErrors.errors.company_id} />
               </div>
 
               {/* Row 1: Period start & Year end */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="period-start">Period start</Label>
+                  <Label htmlFor="period-start">Period start <RequiredMark /></Label>
                   <InlineDatePicker
                     dateString={periodStart}
                     onChange={setPeriodStart}
                   />
+                  <FieldMessage message={filingErrors.errors.period_start} />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="year-end">Year end</Label>
+                  <Label htmlFor="year-end">Year end <RequiredMark /></Label>
                   <InlineDatePicker
                     dateString={periodEnd}
                     onChange={setPeriodEnd}
                   />
+                  <FieldMessage message={filingErrors.errors.period_end} />
                 </div>
               </div>
 
@@ -270,6 +294,7 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
                     dateString={dueDate}
                     onChange={setDueDate}
                   />
+                  <FieldMessage message={filingErrors.errors.due_date} />
                 </div>
 
                 <div className="space-y-2">
@@ -311,14 +336,16 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmation-no">Confirmation number</Label>
+                  <Label htmlFor="filing-confirmation_number">Confirmation number</Label>
                   <Input
-                    id="confirmation-no"
+                    id="filing-confirmation_number"
+                    {...invalidProps(filingErrors.errors, 'confirmation_number', 'filing-')}
                     type="text"
                     placeholder="Companies House receipt"
                     value={confirmationNumber}
                     onChange={(e) => setConfirmationNumber(e.target.value)}
                   />
+                  <FieldMessage id="filing-confirmation_number-error" message={filingErrors.errors.confirmation_number} />
                 </div>
               </div>
 
