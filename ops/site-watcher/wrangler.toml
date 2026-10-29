@@ -1,0 +1,24 @@
+name = "site-watcher"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[triggers]
+# every 2 minutes: checks and fixes; 04:00 UTC (09:00 Pakistan): daily "all good" message
+crons = ["*/2 * * * *", "0 4 * * *"]
+
+[[kv_namespaces]]
+binding = "STATE"
+id = "PASTE_KV_NAMESPACE_ID"   # npx wrangler kv namespace create STATE
+
+[vars]
+DAILY_CRON = "0 4 * * *"
+CF_ACCOUNT_ID = "ad9bbc92aae32cc0382c930d3b81b6ae"
+CF_ZONE_ID = "PASTE_FINSTAP_ZONE_ID"   # Cloudflare > finstap.com > Overview > API > Zone ID
+SERVER_IP = "191.215.45.157"
+R2_PRIVATE_BUCKETS = "finstap"
+
+# Secrets (never in this file): npx wrangler secret put <NAME>
+#   CF_API_TOKEN        token with Zone DNS:Edit (finstap.com) + Account Workers R2 Storage:Edit
+#   TELEGRAM_BOT_TOKEN  from @BotFather
+#   TELEGRAM_CHAT_ID    your chat id
+#   HEARTBEAT_KEY       long random string, same value in the server watchdog config
