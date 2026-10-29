@@ -10,6 +10,7 @@ import threading
 from db import query_db, execute_db, unusable_password_hash
 from tenancy import run_in_thread
 from utils.response import json_response, success_response, error_response
+from utils.validation import validate, validation_error, format_company_number, clean_personal_code
 from services.companies_house_service import (
     fetch_company_profile,
     fetch_company_officers,
@@ -273,6 +274,15 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
             if error:
                 return error_response(start_response, error, status_code=503 if 'API key' in error else 400)
             return success_response(start_response, data=data)
+        new_mode = payload.get('client_mode') == 'new'
+        errors = validate(payload, {
+            'company_numbers': {'label': 'Companies', 'required': True},
+            'client_id': {'label': 'Client', 'required': True, 'when': lambda v: not new_mode},
+            'new_client_full_name': {'label': 'Client full name', 'required': True, 'when': lambda v: new_mode},
+            'new_client_email': {'label': 'Client email', 'type': 'email', 'required': True, 'when': lambda v: new_mode},
+        })
+        if errors:
+            return validation_error(start_response, errors)
         summary, error = import_webfiling_companies(payload, actor=user)
         if error:
             return error_response(start_response, error, status_code=503 if 'API key' in error else 400)
@@ -594,6 +604,10 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
         if not get_ch_api_key():
             return error_response(start_response, "Companies House API key is not set (Settings > Integrations).",
                                   status_code=503)
+        errors = validate(body or {}, {'company_number': {'label': 'Company number', 'required': True, 'type': 'company_number'}})
+        if errors:
+            return validation_error(start_response, errors)
+        body['company_number'] = format_company_number(body['company_number'])
         from services.order_companies import register_pending_company
         comp_id, error = register_pending_company(int(match_register.group(1)),
                                                   str((body or {}).get('company_number') or '').strip()[:12])
@@ -642,6 +656,25 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
             if db_key in updatable_fields:
                 updates[db_key] = val
 
+        # Fields that were sent must be in a valid format (errors use the database field names)
+        rules = {
+            'name': {'label': 'Company name', 'required': True, 'max_length': 160},
+            'director': {'label': 'Director name', 'max_length': 120},
+            'reg_office': {'label': 'Registered office address', 'max_length': 300},
+            'registered_email': {'label': 'Registered email', 'type': 'email'},
+            'whatsapp_number': {'label': 'WhatsApp number', 'type': 'phone'},
+            'utr_number': {'label': 'UTR', 'validate': lambda v, _: '' if re.fullmatch(r'\d{10}', re.sub(r'\s', '', str(v))) else 'UTR must be 10 digits.'},
+            'authentication_code': {'label': 'Authentication code', 'validate': lambda v, _: '' if re.fullmatch(r'[A-Za-z0-9]{6}', str(v).strip()) else 'Authentication code must be 6 letters and numbers.'},
+            'activation_code': {'label': 'Personal code', 'type': 'personal_code'},
+            'accounts_next_due': {'label': 'Accounts due date', 'type': 'date'},
+            'confirmation_next_due': {'label': 'Confirmation statement due date', 'type': 'date'},
+        }
+        errors = validate(updates, {k: r for k, r in rules.items() if k in updates})
+        if errors:
+            return validation_error(start_response, errors)
+        if updates.get('activation_code'):
+            updates['activation_code'] = clean_personal_code(updates['activation_code'])
+
         # Only real company statuses (a whole API response once saved its "success" as the status)
         if 'status' in updates:
             wanted = str(updates['status'] or '').strip().lower()
@@ -685,6 +718,21 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
         status = body.get('status') or 'Active'
         
         client_mode = body.get('client_mode') or 'existing'
+        errors = validate({**body, 'company_name': name, 'company_number': comp_number, 'incorporation_date': inc_date,
+                           'new_client_full_name': body.get('new_client_full_name') or body.get('client_name'),
+                           'new_client_email': body.get('new_client_email') or body.get('client_email')}, {
+            'company_name': {'label': 'Company name', 'required': True, 'max_length': 160},
+            'company_number': {'label': 'Company number', 'type': 'company_number'},
+            'incorporation_date': {'label': 'Incorporation date', 'type': 'date', 'past': True},
+            'director': {'label': 'Director name', 'max_length': 120},
+            'reg_office': {'label': 'Registered office address', 'max_length': 300},
+            'new_client_full_name': {'label': 'Client full name', 'required': True, 'when': lambda v: client_mode == 'new'},
+            'new_client_email': {'label': 'Client email', 'type': 'email', 'required': True, 'when': lambda v: client_mode == 'new'},
+        })
+        if errors:
+            return validation_error(start_response, errors)
+        if comp_number:
+            comp_number = format_company_number(comp_number)
         client_id = None
         if client_mode == 'new':
             new_name = (body.get('new_client_full_name') or body.get('client_name') or '').strip()
@@ -700,11 +748,9 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
                     """, (new_name, new_email, unusable_password_hash()))
         if not client_id:
             client_id = body.get('user_id') or body.get('client_id') or user_id
+
         if not is_staff:
             client_id = user_id
-
-        if not name:
-            return error_response(start_response, "Company name is required", status_code=400)
 
         if not comp_number:
             import secrets
