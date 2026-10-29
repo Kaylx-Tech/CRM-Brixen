@@ -175,9 +175,12 @@ def _address_renewals(company_id):
 def _company_address_service(company):
     """A company's registered office as a yearly £40 address subscription: paid for the first year
     from incorporation, a year more for every paid renewal, 'Renews soon' in its last 30 days, then 'Renewal due'.
-    The customer can renew from 30 days before the end; an unpaid renewal invoice is returned as renewal_invoice."""
+    The customer can renew from 30 days before the end; an unpaid renewal invoice is returned as renewal_invoice.
+    With card auto-renew on (services/address_billing.py) Stripe charges on the renewal date instead."""
+    from services.address_billing import subscription_for
     start = _parse_company_date(company.get('inc_date')) or _parse_company_date(company.get('created_at'))
     paid_years, open_invoice = _address_renewals(company['id'])
+    sub = subscription_for(company['id'])
     expiry = None
     status = 'Paid'
     can_renew = False
@@ -186,6 +189,17 @@ def _company_address_service(company):
         days_left = (expiry - datetime.date.today()).days
         status = 'Renewal due' if days_left < 0 else 'Renews soon' if days_left <= RENEW_WINDOW_DAYS else 'Paid'
         can_renew = days_left <= RENEW_WINDOW_DAYS and not open_invoice
+    if sub and sub['status'] == 'active':
+        # Stripe takes the payment itself; a subscription started after the year ran out renews on its own date
+        status = 'Auto-renew' if not sub.get('cancel_at') else status
+        can_renew = can_renew and bool(sub.get('cancel_at'))
+        next_charge = _parse_company_date(sub.get('current_period_end'))
+        if next_charge and (not expiry or next_charge > expiry):
+            expiry = next_charge
+    elif sub:
+        status = 'Payment failed'
+    auto_renew = {'status': sub['status'], 'next_charge': sub.get('current_period_end'),
+                  'cancel_at': sub.get('cancel_at')} if sub else None
     return {
         'id': f"company-{company['id']}", 'company_id': company['id'], 'company_name': company.get('name'),
         'type': 'Registered Office', 'service_name': 'Registered Office Address',
@@ -193,8 +207,18 @@ def _company_address_service(company):
         'start_date': start.isoformat() if start else None, 'expiry_date': expiry.isoformat() if expiry else None,
         'price': ADDRESS_SERVICE_PRICE, 'billing_period': 'year', 'status': status,
         'payment_status': 'Paid' if status != 'Renewal due' else 'Due',
-        'can_renew': can_renew, 'renewal_invoice': open_invoice,
+        'can_renew': can_renew, 'renewal_invoice': open_invoice, 'auto_renew': auto_renew,
     }
+
+
+def _portal_return_url(environ):
+    """Back to the portal Addresses page after Stripe: the page the request came from, if it is ours."""
+    from config import FRONTEND_URL, PORTAL_URL
+    origin = (environ.get('HTTP_ORIGIN') or '').strip().rstrip('/')
+    host = re.sub(r'^https?://', '', origin).split(':')[0].lower()
+    ours = {re.sub(r'^https?://', '', u).split(':')[0].split('/')[0].lower() for u in (FRONTEND_URL, PORTAL_URL)}
+    base = origin if host in ('localhost', '127.0.0.1') or host in ours else PORTAL_URL
+    return f"{base}/portal/addresses"
 
 
 def _renewal_pay_details():
@@ -338,7 +362,33 @@ def handle_client_portal_routes(environ, start_response, path, method, user, bod
         """, (uid,)) or []
         addresses += [_company_address_service(c) for c in companies
                       if c['id'] not in listed and _is_brixen_address(c['reg_office'])]
-        return success_response(start_response, data={'addresses': addresses, 'pay': _renewal_pay_details()})
+        from services.address_billing import configured as card_auto_renew
+        return success_response(start_response, data={'addresses': addresses, 'pay': _renewal_pay_details(),
+                                                      'auto_renew_available': card_auto_renew()})
+
+    # Card auto-renew: Stripe Checkout for this address, and Stripe's page to change the card or cancel
+    m = re.match(r'^/api/client/addresses/company-(\d+)/auto-renew$', path)
+    if m and method == 'POST':
+        from services import address_billing
+        company = query_db("SELECT id, name, reg_office, inc_date, created_at FROM companies WHERE id = ? AND user_id = ?;",
+                           (int(m.group(1)), uid), one=True)
+        if not company or not _is_brixen_address(company.get('reg_office')):
+            return error_response(start_response, "Address service not found", status_code=404)
+        service = _company_address_service(company)
+        try:
+            url = address_billing.start_auto_renew(user, company, _parse_company_date(service['expiry_date']),
+                                                   ADDRESS_SERVICE_PRICE, _portal_return_url(environ))
+        except address_billing.StripeError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        return success_response(start_response, data={'url': url})
+
+    if path == '/api/client/addresses/card' and method == 'POST':
+        from services import address_billing
+        try:
+            url = address_billing.portal(user, _portal_return_url(environ))
+        except address_billing.StripeError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        return success_response(start_response, data={'url': url})
 
     m = re.match(r'^/api/client/addresses/company-(\d+)/renew$', path)
     if m and method == 'POST':

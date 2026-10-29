@@ -1023,6 +1023,44 @@ def ensure_rbac():
                 completed_at TIMESTAMP
             );
         """)
+
+        # Address auto-renew by card (services/address_billing.py): one Stripe subscription per company address,
+        # each paid Stripe invoice saved once, each Stripe webhook event handled once
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS address_subscriptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                stripe_subscription_id TEXT UNIQUE NOT NULL,
+                stripe_customer_id TEXT,
+                status TEXT NOT NULL,
+                current_period_end DATE,
+                cancel_at DATE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_address_subscriptions_company ON address_subscriptions(company_id);")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS address_renewal_payments (
+                stripe_invoice_id TEXT PRIMARY KEY,
+                company_id INTEGER NOT NULL,
+                order_id INTEGER,
+                invoice_id INTEGER,
+                amount REAL NOT NULL DEFAULT 0,
+                receipt_url TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS stripe_events (
+                event_id TEXT PRIMARY KEY,
+                type TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        if 'stripe_customer_id' not in {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}:
+            conn.execute("ALTER TABLE users ADD COLUMN stripe_customer_id TEXT")
         # Genuine business-data locks — never auto-delete real orders / companies / invoices.
         tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
         _should_lock = False

@@ -28,6 +28,8 @@ SENSITIVE_KEYS = {
     'ch_xml_gateway_password',
     'didit_api_key',
     'didit_webhook_secret',
+    'stripe_secret_key',
+    'stripe_webhook_secret',
 }
 
 DEFAULT_SETTINGS = {

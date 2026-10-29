@@ -53,6 +53,7 @@ const STATUS_TONES = {
   "in progress": "badge-sky", processing: "badge-sky", open: "badge-sky",
   pending: "badge-amber", "partial paid": "badge-amber", "documents required": "badge-amber",
   "information required": "badge-amber", "pending review": "badge-amber", "due soon": "badge-amber", "renews soon": "badge-amber", "renewal due": "badge-red",
+  "auto-renew": "badge-green", "payment failed": "badge-red",
   cancelled: "badge-red", overdue: "badge-red", refunded: "badge-red", dissolved: "badge-red", closed: "bg-muted text-muted-foreground",
 }
 

@@ -40,6 +40,15 @@ def handle_webhook_routes(environ, start_response, path, method, user, body, que
     if not path.startswith('/api/webhooks'):
         return None
 
+    # ── POST /api/webhooks/stripe (address auto-renew, services/address_billing.py) ──
+    if path == '/api/webhooks/stripe' and method == 'POST':
+        from services.address_billing import handle_webhook as handle_stripe_webhook
+        raw_body = environ.get('brixen.raw_body') or b''
+        status_code, note = handle_stripe_webhook(raw_body, environ.get('HTTP_STRIPE_SIGNATURE') or '')
+        if status_code != 200:
+            return error_response(start_response, note, status_code=status_code)
+        return success_response(start_response, message=note)
+
     # ── POST /api/webhooks/woocommerce ─────────────────────────────────────
     if path == '/api/webhooks/woocommerce' and method == 'POST':
         secret = _webhook_secret()

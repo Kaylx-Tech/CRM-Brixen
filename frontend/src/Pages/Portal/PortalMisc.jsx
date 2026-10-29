@@ -1,12 +1,12 @@
-import React, { useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import React, { useEffect, useMemo, useRef, useState } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SectionCards } from "@/Layout/StatsCard"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { IconSearch, IconMessagePlus, IconShoppingCartPlus, IconRefresh, IconCreditCard, IconFileText, IconExternalLink, IconLoader2 } from "@tabler/icons-react"
+import { IconSearch, IconMessagePlus, IconShoppingCartPlus, IconRefresh, IconCreditCard, IconFileText, IconExternalLink, IconLoader2, IconRepeat } from "@tabler/icons-react"
 import { toast } from "sonner"
 import { apiRequest } from "@/lib/api"
 import { openInvoice } from "@/lib/invoices"
@@ -137,6 +137,32 @@ export function PortalAddresses() {
     setPayFor((res.data?.data ?? res.data)?.address || null)
     reload()
   }
+
+  // Card auto-renew and "Manage card" both continue on Stripe's own pages
+  const goToStripe = async (key, path, failText) => {
+    setRenewing(key)
+    const res = await apiRequest(path, { method: "POST", silent: true })
+    const url = (res.data?.data ?? res.data)?.url
+    if (!res.ok || !url) {
+      setRenewing(null)
+      toast.error(res.reason || failText)
+      return
+    }
+    window.location.assign(url)
+  }
+
+  // Back from Stripe Checkout: Stripe tells the CRM a moment later, so load the page again shortly
+  const [searchParams, setSearchParams] = useSearchParams()
+  const returnHandled = useRef(false)
+  useEffect(() => {
+    if (!searchParams.get("auto_renew") || returnHandled.current) return
+    returnHandled.current = true
+    toast.success("Auto-renew is on", { description: "Your card is charged on the renewal date." })
+    // Not cleared on purpose: clearing the ?auto_renew=1 below re-runs this effect
+    setTimeout(reload, 4000)
+    setSearchParams({}, { replace: true })
+  }, [searchParams, setSearchParams, reload])
+
   return (
     <div className="flex flex-col gap-6 w-full pb-10">
       <PageHeader title="Addresses" description="Registered office and mail forwarding addresses" onRefresh={reload} isLoading={isLoading} />
@@ -168,19 +194,36 @@ export function PortalAddresses() {
                   <TableCell className="whitespace-nowrap text-muted-foreground">
                     {a.price != null ? `£${Number(a.price).toFixed(2)}${a.billing_period ? ` / ${a.billing_period}` : ""}` : "—"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(a.expiry_date)}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatDate(a.expiry_date)}
+                    {a.auto_renew?.cancel_at ? <span className="block text-xs">Auto-renew ends</span> : null}
+                  </TableCell>
                   <TableCell><StatusBadge status={a.status} /></TableCell>
                   <TableCell>
-                    {/* Renew opens 30 days before the year ends; an unpaid renewal shows how to pay it */}
-                    {a.renewal_invoice ? (
-                      <Button size="sm" className="h-7 gap-1" onClick={() => setPayFor(a)}>
-                        <IconCreditCard className="size-3.5" /> Pay renewal
-                      </Button>
-                    ) : a.can_renew ? (
-                      <Button size="sm" className="h-7 gap-1" disabled={renewing === a.id} onClick={() => renew(a)}>
-                        {renewing === a.id ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconRefresh className="size-3.5" />} Renew
-                      </Button>
-                    ) : null}
+                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                      {/* Renew opens 30 days before the year ends; an unpaid renewal shows how to pay it */}
+                      {a.renewal_invoice ? (
+                        <Button size="sm" className="h-7 gap-1" onClick={() => setPayFor(a)}>
+                          <IconCreditCard className="size-3.5" /> Pay renewal
+                        </Button>
+                      ) : a.can_renew ? (
+                        <Button size="sm" className="h-7 gap-1" disabled={renewing === a.id} onClick={() => renew(a)}>
+                          {renewing === a.id ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconRefresh className="size-3.5" />} Renew
+                        </Button>
+                      ) : null}
+                      {/* Card auto-renew (Stripe) for our registered office addresses */}
+                      {a.auto_renew ? (
+                        <Button size="sm" variant="outline" className="h-7 gap-1" disabled={renewing === "card"}
+                          onClick={() => goToStripe("card", "/client/addresses/card", "Could not open your card details")}>
+                          {renewing === "card" ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconCreditCard className="size-3.5" />} Manage card
+                        </Button>
+                      ) : data?.auto_renew_available && String(a.id).startsWith("company-") ? (
+                        <Button size="sm" variant="outline" className="h-7 gap-1" disabled={renewing === `auto-${a.id}`}
+                          onClick={() => goToStripe(`auto-${a.id}`, `/client/addresses/${a.id}/auto-renew`, "Could not start auto-renew")}>
+                          {renewing === `auto-${a.id}` ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconRepeat className="size-3.5" />} Auto-renew
+                        </Button>
+                      ) : null}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
