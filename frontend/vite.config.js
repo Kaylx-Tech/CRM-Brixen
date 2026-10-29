@@ -51,6 +51,12 @@ export default defineConfig(({ mode }) => ({
   },
   optimizeDeps: {
     include: ['@react-trace/kit', 'react-is'],
+    // Dev only: the JSXCanvas overlay loads Monaco, which sets a global AMD `define`. Libraries with a
+    // UMD wrapper (recharts' decimal.js-light) then register there instead of exporting, and charts crash
+    // with "import_decimal.default is not a constructor". Pre-bundled libraries never see `define`.
+    rolldownOptions: {
+      transform: { define: { define: 'undefined' } },
+    },
   },
   resolve: {
     alias: {
