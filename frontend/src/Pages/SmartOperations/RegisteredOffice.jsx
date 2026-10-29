@@ -77,8 +77,7 @@ function AutoAllotCard({ credits, price, onDone }) {
             )}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Enter the client's order number. They verify their identity, then the next Office address is given to
-            their company by itself.{price ? ` ${money(price)} a year, billed to your workspace.` : ''}
+            Client verifies ID, then gets the next Office address automatically.{price ? ` ${money(price)}/year.` : ''}
           </p>
         </div>
       </div>
@@ -198,8 +197,8 @@ export default function RegisteredOffice() {
           <div>
             <h3 className="font-semibold">Finstap registered office</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Give a client's company Finstap's office as its registered address.
-              {data.ro_price_year ? ` ${money(data.ro_price_year)} a year, billed to your workspace by Finstap.` : ''}
+              Pick a company; Finstap reviews and confirms it.
+              {data.ro_price_year ? ` ${money(data.ro_price_year)}/year.` : ''}
             </p>
           </div>
         </div>
@@ -236,7 +235,7 @@ export default function RegisteredOffice() {
               Ask Finstap
             </Button>
             <p className="text-xs text-muted-foreground">
-              After Finstap confirms it, file the change of registered office (AD01) at Companies House.
+              Then file AD01 at Companies House.
             </p>
           </form>
         ) : (
