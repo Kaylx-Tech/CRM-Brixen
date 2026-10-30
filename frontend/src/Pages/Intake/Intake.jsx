@@ -60,6 +60,22 @@ const INTAKE_DOC_CATEGORIES = [
   { id: 'Invoice', label: 'Invoices & Bills', icon: IconFileText, color: 'text-amber-500' },
 ]
 
+// Per-file type in the queue: "auto" lets the server read the document and decide; a picked type is
+// treated as the admin's choice and wins over what the server reads
+const AUTO_CATEGORY = { id: 'auto', label: 'Auto-detect' }
+
+/** Type from the file or folder name when it is clear; otherwise auto-detect from the content. */
+function guessCategoryFromPath(path) {
+  const lower = String(path || '').toLowerCase()
+  if (/passport|\bid\b|id[\s_-]?card|identity|licen[cs]e|\bcnic\b|\bbrp\b/.test(lower)) return 'ID Card'
+  if (/bank|statement|utility/.test(lower)) return 'Bank Statement'
+  if (/invoice|receipt|\bbill\b/.test(lower)) return 'Invoice'
+  if (/incorporation|certificate|memorandum|articles|confirmation[\s_-]?statement|\bcs01\b|\bin01\b|companies[\s_-]?house/.test(lower)) {
+    return 'Company Document'
+  }
+  return AUTO_CATEGORY.id
+}
+
 const SOURCE_MODES = [
   { id: 'CUSTOMER_UPLOADS', label: 'Customer Files', desc: 'Standard batch file intake' },
   { id: 'IMPORT_FOLDER', label: 'Folder Import', desc: 'Preserve tree hierarchy' },
@@ -156,15 +172,7 @@ export default function Intake() {
       .filter((f) => f && f.name && !f.name.startsWith('.'))
       .map((file, idx) => {
         const path = file.webkitRelativePath || file.name
-        let guessedCategory = 'Company Document'
-        const lower = path.toLowerCase()
-        if (lower.includes('passport') || lower.includes('id') || lower.includes('licence') || lower.includes('license') || lower.includes('cnic')) {
-          guessedCategory = 'ID Card'
-        } else if (lower.includes('bank') || lower.includes('statement') || lower.includes('utility')) {
-          guessedCategory = 'Bank Statement'
-        } else if (lower.includes('invoice') || lower.includes('receipt') || lower.includes('bill')) {
-          guessedCategory = 'Invoice'
-        }
+        const guessedCategory = guessCategoryFromPath(path)
 
         return {
           id: `intake_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 7)}`,
@@ -236,7 +244,7 @@ export default function Intake() {
     formData.append('file_name', item.name || uploadFile.name || 'document.jpg')
     formData.append('folder_path', item.relPath || item.name || '')
     formData.append('source_mode', sourceMode)
-    formData.append('document_type', item.category || '')
+    formData.append('document_type', item.category === AUTO_CATEGORY.id ? '' : item.category || '')
     formData.append('allowed_types', JSON.stringify(selectedCategories))
     formData.append('batch_identities', JSON.stringify(currentIdentities || []))
     formData.append('hq_ocr', '1')
@@ -295,10 +303,12 @@ export default function Intake() {
     let failCount = 0
     let localIdentities = [...batchIdentities]
 
-    // Sort queue: Passports & IDs first for same-person linking, then others
+    // Sort queue: Passports & IDs first for same-person linking, then others. Auto-detect files go first
+    // too, since a camera photo or screenshot is often the passport the other files are linked to.
     const pendingItems = queue.filter((i) => i.upload_status !== 'PROCESSED')
-    const idWave = pendingItems.filter((i) => i.category === 'ID Card')
-    const otherWave = pendingItems.filter((i) => i.category !== 'ID Card')
+    const isFirstWave = (i) => i.category === 'ID Card' || i.category === AUTO_CATEGORY.id
+    const idWave = pendingItems.filter(isFirstWave)
+    const otherWave = pendingItems.filter((i) => !isFirstWave(i))
 
     let completed = 0
     const totalToProcess = pendingItems.length
@@ -770,7 +780,9 @@ export default function Intake() {
                       <TableCell>
                         {isProcessed ? (
                           <Badge className="bg-muted text-muted-foreground text-[11px]">
-                            {item.category}
+                            {item.result?.file_results?.[0]?.doc_type ||
+                              [AUTO_CATEGORY, ...INTAKE_DOC_CATEGORIES].find((c) => c.id === item.category)?.label ||
+                              item.category}
                           </Badge>
                         ) : (
                           <Select
@@ -779,12 +791,14 @@ export default function Intake() {
                             disabled={isAnyProcessing}
                           >
                             <SelectTrigger className="h-7 w-[150px] text-sm">
-                              <SelectValue />
+                              <SelectValue>
+                                {[AUTO_CATEGORY, ...INTAKE_DOC_CATEGORIES].find((c) => c.id === item.category)?.label}
+                              </SelectValue>
                             </SelectTrigger>
-                            
+
                             <SelectContent>
                               <SelectGroup>
-                              {INTAKE_DOC_CATEGORIES.map((cat) => (
+                              {[AUTO_CATEGORY, ...INTAKE_DOC_CATEGORIES].map((cat) => (
                                 <SelectItem key={cat.id} value={cat.id} className="text-sm">
                                     {cat.label}
                                   </SelectItem>
