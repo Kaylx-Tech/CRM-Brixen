@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import {
+import { IconChevronRight,
   IconArrowRight,
   IconAlertTriangle,
   IconBuildingSkyscraper,
@@ -161,19 +161,20 @@ export default function OwnerOverview() {
           <ul className="divide-y">
             {data.recent.map((w) => (
               <li key={w.slug}>
-                <Link
-                  to={`/owner/workspaces/${w.slug}`}
-                  className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm hover:text-primary"
-                >
-                  <span className="min-w-0">
-                    <span className="font-medium">{w.name}</span>
-                    <span className="ml-2 text-muted-foreground">{w.slug}</span>
+                {/* Same two lines on every screen: name and date, then address and badges */}
+                <Link to={`/owner/workspaces/${w.slug}`} className="group flex items-center gap-3 py-3 text-sm">
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline justify-between gap-3">
+                      <span className="truncate font-medium group-hover:text-primary">{w.name}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">{shortDate(w.created_at)}</span>
+                    </span>
+                    <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <span className="mr-1 text-xs text-muted-foreground">{w.slug}</span>
+                      <PlanBadge plan={w.plan} />
+                      <StatusBadge workspace={w} />
+                    </span>
                   </span>
-                  <span className="flex items-center gap-2">
-                    <PlanBadge plan={w.plan} />
-                    <StatusBadge workspace={w} />
-                    <span className="text-muted-foreground">{shortDate(w.created_at)}</span>
-                  </span>
+                  <IconChevronRight className="size-4 shrink-0 text-muted-foreground/60" />
                 </Link>
               </li>
             ))}
