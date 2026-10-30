@@ -270,7 +270,7 @@ export default function OwnerBilling() {
         description="Subscriptions and service charges for every workspace. Record payments here until online payment is switched on."
       />
       <TopUpRequests onChange={load} />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Stat label="Monthly revenue (MRR)" value={money(t.mrr)} icon={IconCash} tone="text-emerald-600" />
         <Stat label="Collected this month" value={money(t.collected_this_month)} icon={IconReceipt2} />
         <Stat
@@ -441,7 +441,7 @@ export default function OwnerBilling() {
       <Panel title="Recent payments" className="mt-6">
         {data.payments.length ? (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-sm">
+            <Table className="w-full md:min-w-[640px] text-left text-sm">
               <thead className="border-b text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="py-2.5 pr-4 font-semibold">Date</th>
@@ -467,7 +467,7 @@ export default function OwnerBilling() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">No payments recorded yet.</p>

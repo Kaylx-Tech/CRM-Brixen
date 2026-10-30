@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { Table } from "@/components/ui/table"
 import { Link, useNavigate } from "react-router-dom"
 import { IconSearch } from "@tabler/icons-react"
 import { Input } from "@/components/ui/input"
@@ -73,7 +74,7 @@ export default function OwnerWorkspaces() {
       </div>
 
       <div className="overflow-x-auto rounded-2xl border bg-card shadow-xs">
-        <table className="w-full min-w-[900px] text-left text-sm">
+        <Table className="w-full md:min-w-[900px] text-left text-sm">
           <thead className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-semibold">Workspace</th>
@@ -139,7 +140,7 @@ export default function OwnerWorkspaces() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       </div>
     </>
   )

@@ -9,6 +9,7 @@ import {
   IconLayoutDashboard,
   IconLogout,
   IconMapPin,
+  IconMenu2,
   IconPlugConnected,
   IconReceipt2,
   IconSettings,
@@ -62,6 +63,66 @@ const NAV = [
 
 const NAV_ITEM = "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition"
 
+// Phones: an Instagram-style tab bar at the bottom (icons only); the rest of the menu opens from "More"
+const TAB_BAR = [
+  ["Overview", "/owner/overview", IconLayoutDashboard],
+  ["Workspaces", "/owner/workspaces", IconBuildingSkyscraper],
+  ["Registered office", "/owner/registered-office", IconMapPin],
+  ["Billing", "/owner/billing", IconReceipt2],
+]
+const MORE = [
+  ["Plans", "/owner/plans", IconTags],
+  ["Activity log", "/owner/activity", IconActivity],
+  ["KYC", "/owner/kyc", IconId],
+  ["Integrations", "/owner/integrations", IconPlugConnected],
+  ["Settings", "/owner/settings", IconSettings],
+]
+const TAB = "relative flex h-14 flex-1 items-center justify-center transition-colors"
+
+function MobileTabBar() {
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const moreActive = MORE.some(([, to]) => pathname === to || pathname.startsWith(`${to}/`))
+  return (
+    <nav
+      aria-label="Owner menu"
+      className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden"
+    >
+      <div className="mx-auto flex max-w-md">
+        {TAB_BAR.map(([label, to, Icon]) => (
+          <NavLink
+            key={to}
+            to={to}
+            aria-label={label}
+            className={({ isActive }) => cn(TAB, isActive ? "text-foreground" : "text-muted-foreground")}
+          >
+            {({ isActive }) => (
+              <>
+                <Icon className="size-6" stroke={isActive ? 2.4 : 1.6} />
+                {isActive && <span className="absolute bottom-2 size-1 rounded-full bg-primary" />}
+              </>
+            )}
+          </NavLink>
+        ))}
+        <DropdownMenu>
+          <DropdownMenuTrigger aria-label="More" className={cn(TAB, "outline-none", moreActive ? "text-foreground" : "text-muted-foreground")}>
+            <IconMenu2 className="size-6" stroke={moreActive ? 2.4 : 1.6} />
+            {moreActive && <span className="absolute bottom-2 size-1 rounded-full bg-primary" />}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="end" className="mb-2 min-w-52">
+            {MORE.map(([label, to, Icon]) => (
+              <DropdownMenuItem key={to} onClick={() => navigate(to)} className={cn("py-2.5", pathname.startsWith(to) && "text-primary")}>
+                <Icon className="size-4" />
+                {label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </nav>
+  )
+}
+
 function NavGroup({ group }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
@@ -73,7 +134,7 @@ function NavGroup({ group }) {
         className={cn(NAV_ITEM, "outline-none", active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}
       >
         <Icon className="size-4" />
-        <span className="hidden sm:inline">{group.label}</span>
+        <span className="hidden lg:inline">{group.label}</span>
         <IconChevronDown className="size-3.5 opacity-60" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-48">
@@ -92,7 +153,7 @@ function OwnerShell({ admin, onSignOut, children }) {
   return (
     <div className="min-h-screen bg-muted/30">
       <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 md:h-16 md:justify-start">
           <NavLink to="/owner/overview" className="flex shrink-0 items-center gap-2">
             <img src={finstapLogo} alt="Finstap" className="h-7 w-auto dark:hidden" />
             <img src={finstapLogoLight} alt="Finstap" className="hidden h-7 w-auto dark:block" />
@@ -100,7 +161,8 @@ function OwnerShell({ admin, onSignOut, children }) {
               Owner
             </span>
           </NavLink>
-          <nav className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+          {/* Tablets and computers: the menu as header tabs (phones use the tab bar at the bottom) */}
+          <nav className="hidden min-w-0 flex-1 gap-1 overflow-x-auto md:flex">
             {NAV.map((entry) => {
               if (!Array.isArray(entry)) return <NavGroup key={entry.label} group={entry} />
               const [label, to, Icon] = entry
@@ -113,7 +175,7 @@ function OwnerShell({ admin, onSignOut, children }) {
                   }
                 >
                   <Icon className="size-4" />
-                  <span className="hidden sm:inline">{label}</span>
+                  <span className="hidden lg:inline">{label}</span>
                 </NavLink>
               )
             })}
@@ -121,16 +183,17 @@ function OwnerShell({ admin, onSignOut, children }) {
           <div className="flex shrink-0 items-center gap-2">
             <ModeToggle />
             <span className="hidden text-sm text-muted-foreground 2xl:inline">{admin?.full_name || admin?.email}</span>
-            <Button variant="outline" size="lg" onClick={onSignOut}>
+            <Button variant="outline" size="lg" onClick={onSignOut} aria-label="Sign out">
               <IconLogout className="size-4" />
-              <span className="hidden sm:inline">Sign out</span>
+              <span className="hidden lg:inline">Sign out</span>
             </Button>
           </div>
         </div>
       </header>
       <PageTransition>
-        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+        <main className="mx-auto max-w-7xl px-4 pt-5 pb-28 sm:px-6 md:py-8">{children}</main>
       </PageTransition>
+      <MobileTabBar />
     </div>
   )
 }

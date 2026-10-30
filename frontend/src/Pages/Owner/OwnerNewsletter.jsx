@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { Table } from "@/components/ui/table"
 import { IconDownload, IconMailForward, IconSend, IconUserMinus, IconUsers } from "@tabler/icons-react"
 import { cn } from "cn"
 import { Input } from "@/components/ui/input"
@@ -174,7 +175,7 @@ export default function OwnerNewsletter() {
       >
         {data.subscribers.length ? (
           <div className="max-h-96 overflow-auto">
-            <table className="w-full min-w-[520px] text-left text-sm">
+            <Table className="w-full md:min-w-[520px] text-left text-sm">
               <thead className="sticky top-0 border-b bg-card text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="py-2.5 pr-4 font-semibold">Email</th>
@@ -191,7 +192,7 @@ export default function OwnerNewsletter() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           </div>
         ) : (
           <Empty icon={IconUsers} title="No subscribers yet">

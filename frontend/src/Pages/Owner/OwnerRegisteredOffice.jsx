@@ -269,7 +269,7 @@ export default function OwnerRegisteredOffice() {
         </Panel>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Stat label="Waiting for you" value={stats.pending} tone="text-amber-600" />
         <Stat label="Active" value={stats.active} tone="text-emerald-600" />
         <Stat label="Ending in 30 days" value={stats.expiring} tone="text-sky-600" />

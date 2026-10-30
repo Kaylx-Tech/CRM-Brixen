@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { Table } from "@/components/ui/table"
 import { Link } from "react-router-dom"
 import {
   IconCash,
@@ -265,7 +266,7 @@ export default function OwnerKyc() {
 
       {data && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
             <Stat label="Checks this month" value={data.totals.checks} icon={IconId} />
             <Stat label="Approved" value={data.totals.approved} icon={IconCircleCheck} tone="text-emerald-600" />
             <Stat label="Declined" value={data.totals.declined} icon={IconCircleX} tone="text-destructive" />
@@ -282,7 +283,7 @@ export default function OwnerKyc() {
           <Panel title="By workspace" description="Mark each month as invoiced, then paid." className="mt-4">
             {data.workspaces.length ? (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-left text-sm">
+                <Table className="w-full md:min-w-[720px] text-left text-sm">
                   <thead className="border-b text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
                       <th className="py-2.5 pr-4 font-semibold">Workspace</th>
@@ -328,7 +329,7 @@ export default function OwnerKyc() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </Table>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No ID checks were started this month.</p>
@@ -373,7 +374,7 @@ export default function OwnerKyc() {
             </div>
             {checks.length ? (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1100px] text-left text-sm">
+                <Table className="w-full md:min-w-[1100px] text-left text-sm">
                   <thead className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
                       <th className="px-3 py-2.5 font-semibold">Client</th>
@@ -432,7 +433,7 @@ export default function OwnerKyc() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </Table>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No checks to show.</p>

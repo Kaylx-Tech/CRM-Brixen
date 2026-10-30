@@ -95,16 +95,16 @@ const STAT_BG = {
 
 export function Stat({ label, value, hint, icon: Icon, tone = "text-primary" }) {
   return (
-    <div className="group relative overflow-hidden rounded-2xl border bg-card p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition hover:shadow-md">
+    <div className="group relative overflow-hidden rounded-2xl border bg-card p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition hover:shadow-md sm:p-5">
       <span aria-hidden className="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full bg-primary/5 blur-2xl transition group-hover:bg-primary/10" />
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[13px] font-medium text-muted-foreground">{label}</div>
-          <div className="mt-2 text-[26px] font-bold leading-none tabular-nums tracking-tight">{value}</div>
+          <div className="mt-2 text-xl font-bold leading-none tabular-nums tracking-tight sm:text-[26px]">{value}</div>
         </div>
         {Icon && (
-          <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", STAT_BG[tone] || "bg-primary/10")}>
-            <Icon className={cn("size-5", tone)} />
+          <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-xl sm:size-10", STAT_BG[tone] || "bg-primary/10")}>
+            <Icon className={cn("size-4 sm:size-5", tone)} />
           </span>
         )}
       </div>
