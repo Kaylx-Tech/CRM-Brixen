@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { IconLoader2 } from "@tabler/icons-react"
-import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { ownerApi, shortDate } from "@/lib/owner"
 import { Button, PageTitle, Panel } from "./ownerUi"
@@ -73,9 +73,8 @@ export default function OwnerSettings({ admin }) {
                 <label htmlFor={`pw-${key}`} className="mb-1.5 block text-sm font-medium">
                   {label}
                 </label>
-                <Input
+                <PasswordInput
                   id={`pw-${key}`}
-                  type="password"
                   autoComplete={auto}
                   required
                   value={form[key]}

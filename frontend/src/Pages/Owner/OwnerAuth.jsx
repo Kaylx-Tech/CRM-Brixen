@@ -5,6 +5,7 @@ import { LoginCodeStep } from "@/components/login-code-step"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { getApiBase } from "@/lib/api"
 import { ownerApi } from "@/lib/owner"
@@ -111,11 +112,6 @@ export function OwnerLogin({ onSignedIn }) {
     <OwnerCard
       title="Sign in"
       subtitle="Use your owner email and password."
-      footer={
-        <Link to="/owner/forgot" className="font-medium text-primary hover:underline">
-          Set up or reset your password
-        </Link>
-      }
     >
       <form onSubmit={submit} noValidate>
         <FieldGroup>
@@ -141,11 +137,16 @@ export function OwnerLogin({ onSignedIn }) {
             <FieldMessage id="owner-email-error" message={errors.email} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="owner-password">Password</FieldLabel>
-            <Input
+            {/* Same as the workspace sign-in: the reset link sits next to the label */}
+            <div className="flex items-center">
+              <FieldLabel htmlFor="owner-password">Password</FieldLabel>
+              <Link to="/owner/forgot" className="ml-auto text-sm underline-offset-4 hover:underline">
+                Forgot your password?
+              </Link>
+            </div>
+            <PasswordInput
               id="owner-password"
               {...invalidProps(errors, 'password', 'owner-')}
-              type="password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => { setPassword(e.target.value); recheck('password', e.target.value) }}
@@ -295,10 +296,9 @@ export function OwnerSetPassword() {
             </Field>
             <Field>
               <FieldLabel htmlFor="owner-new-password">New password</FieldLabel>
-              <Input
+              <PasswordInput
                 id="owner-new-password"
                 {...invalidProps(pwErrors.errors, 'password', 'owner-new-')}
-                type="password"
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -309,10 +309,9 @@ export function OwnerSetPassword() {
             </Field>
             <Field>
               <FieldLabel htmlFor="owner-repeat">Repeat password</FieldLabel>
-              <Input
+              <PasswordInput
                 id="owner-repeat"
                 {...invalidProps(pwErrors.errors, 'repeat', 'owner-')}
-                type="password"
                 autoComplete="new-password"
                 value={repeat}
                 onChange={(e) => setRepeat(e.target.value)}
