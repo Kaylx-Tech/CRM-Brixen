@@ -31,6 +31,25 @@ const SKELETON_COUNT = 9
 
 // Not registered yet: no real Companies House number (REG- / PENDING placeholder), whatever its status says
 const isNotRegistered = (c) => c.isRegistered === false || c.status === 'Pending' || c.status === 'Draft'
+
+// Month filter: "2026-10" from the incorporation date (2026-10-14, 14/10/2026 or 14 Oct 2026)
+const ALL_MONTHS = 'all'
+function incorporationMonth(value) {
+  const text = String(value || '').trim()
+  let m = text.match(/^(\d{4})-(\d{1,2})/)
+  if (m) return `${m[1]}-${m[2].padStart(2, '0')}`
+  m = text.match(/^\d{1,2}[/.-](\d{1,2})[/.-](\d{4})$/)
+  if (m) return `${m[2]}-${m[1].padStart(2, '0')}`
+  const parsed = text ? new Date(text) : null
+  if (parsed && !Number.isNaN(parsed.getTime())) {
+    return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`
+  }
+  return null
+}
+const monthLabel = (key) => {
+  const [year, month] = key.split('-').map(Number)
+  return new Date(year, month - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+}
 import { SectionCards } from '../../Layout/StatsCard'
 import CompanyCard from './CompanyCard'
 import AddCompany from './AddCompany'
@@ -162,7 +181,17 @@ const Companies = () => {
     { title: 'Not Registered', tone: 'violet', icon: IconBuildingPlus, value: String(pendingCount), footerSubText: `${closedCount} closed or dissolved`, onClick: () => setActiveTab('not-registered'), active: activeTab === 'not-registered' },
   ]
 
+  // Months that have registered companies, newest first, with how many in each
+  const [incMonth, setIncMonth] = useState(ALL_MONTHS)
+  const monthCounts = companies.reduce((acc, c) => {
+    const key = incorporationMonth(c.incDate)
+    if (key) acc[key] = (acc[key] || 0) + 1
+    return acc
+  }, {})
+  const monthOptions = Object.keys(monthCounts).sort().reverse()
+
   const filteredCompanies = companies.filter((company) => {
+    if (incMonth !== ALL_MONTHS && incorporationMonth(company.incDate) !== incMonth) return false
     const term = searchTerm.toLowerCase()
     const matchesSearch =
       (company.name && company.name.toLowerCase().includes(term)) ||
@@ -182,7 +211,7 @@ const Companies = () => {
 
   // A new search, tab or page size starts again on page 1
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0])
-  const filterKey = `${activeTab}|${searchTerm}|${pageSize}`
+  const filterKey = `${activeTab}|${searchTerm}|${pageSize}|${incMonth}`
   const [pageInfo, setPageInfo] = useState({ key: filterKey, page: 1 })
   const totalPages = Math.max(1, Math.ceil(filteredCompanies.length / pageSize))
   const currentPage = Math.min(pageInfo.key === filterKey ? pageInfo.page : 1, totalPages)
@@ -346,17 +375,44 @@ const Companies = () => {
           </TabsList>
         </Tabs>
 
-        {/* Search */}
-        <div className="relative w-full md:w-auto shrink-0">
-          <IconSearch className="absolute left-2.5 top-1.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search name, number, director…"
-            className="w-full md:w-[280px] pl-9"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        {/* Month registered + search */}
+        <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto shrink-0">
+          <Select value={incMonth} onValueChange={(v) => setIncMonth(v || ALL_MONTHS)}>
+            <SelectTrigger className="w-full sm:w-[200px]" aria-label="Month registered">
+              <IconCalendarDue className="h-4 w-4 text-muted-foreground" />
+              <SelectValue>
+                {incMonth === ALL_MONTHS ? 'All months' : `${monthLabel(incMonth)} (${monthCounts[incMonth] || 0})`}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_MONTHS}>All months</SelectItem>
+              {monthOptions.map((key) => (
+                <SelectItem key={key} value={key}>
+                  {monthLabel(key)} ({monthCounts[key]})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="relative w-full md:w-auto">
+            <IconSearch className="absolute left-2.5 top-1.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search name, number, director…"
+              className="w-full md:w-[280px] pl-9"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
       </div>
+
+      {incMonth !== ALL_MONTHS && !isLoading && (
+        <p className="text-sm text-muted-foreground -mt-2">
+          Companies registered at Companies House in {monthLabel(incMonth)}.{' '}
+          <button type="button" className="text-primary underline-offset-2 hover:underline" onClick={() => setIncMonth(ALL_MONTHS)}>
+            Show all months
+          </button>
+        </p>
+      )}
 
       {activeTab === 'attention' && !isLoading && (
         <p className="text-sm text-muted-foreground -mt-2">
@@ -424,6 +480,8 @@ const Companies = () => {
           <p className="text-sm text-muted-foreground max-w-sm mt-1 mb-4">
             {searchTerm
               ? `No records found matching "${searchTerm}". Try searching by a different name or number.`
+              : incMonth !== ALL_MONTHS
+                ? `No companies registered in ${monthLabel(incMonth)} for this view.`
               : activeTab === 'attention'
                 ? 'No Companies House attention items right now.'
                 : 'No registered company records available for the selected view.'}
