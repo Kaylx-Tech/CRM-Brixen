@@ -224,12 +224,29 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
             linked.append({"id": r['id'], "customer": r['customer']})
         return success_response(start_response, data={"result": "LINKED", "filename": filename, "linked": linked})
 
+    # ── GET /api/admin/documents/intake/options (what this server can import from) ──
+    if path == '/api/admin/documents/intake/options' and method == 'GET':
+        if not is_staff:
+            return error_response(start_response, "Access denied", status_code=403)
+        from services.smart_intake import drive_import_available
+        return success_response(start_response, data={"drive_import": drive_import_available()})
+
     # ── POST /api/admin/documents/intake/process ───────────────────────────
     if path == '/api/admin/documents/intake/process' and method == 'POST':
         if not is_staff:
             return error_response(start_response, "Access denied", status_code=403)
         try:
-            from services.smart_intake import process_smart_intake_files
+            from services.smart_intake import process_smart_intake_files, fetch_drive_link_files
+
+            # A Drive link only fetches the files; the page queues them and sends each back to be processed
+            if not (body or {}).get('_files') and str((body or {}).get('source_mode') or '').upper() == 'GOOGLE_DRIVE':
+                imported, drive_error = fetch_drive_link_files((body or {}).get('drive_url'))
+                if drive_error:
+                    return error_response(start_response, drive_error, status_code=400)
+                return success_response(start_response, data={
+                    "imported_files": imported['files'],
+                    "skipped": imported['skipped'],
+                })
 
             files_data = []
             batch_identities = []
@@ -282,6 +299,10 @@ def handle_document_routes(environ, start_response, path, method, user, body, qu
                 return error_response(start_response, payload.get('message', 'Intake failed'), status_code=status_int)
             return json_response(start_response, payload)
         except Exception as err:
+            import traceback
+            traceback.print_exc()
+            from services.error_tracking import capture_api_error
+            capture_api_error(err, path, method, user)
             return error_response(start_response, f"Smart intake failed: {err}", status_code=500)
 
     # ── POST /api/admin/documents/intake/link-company ───────────────────────

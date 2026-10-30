@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -154,6 +154,18 @@ export default function Intake() {
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false)
   const [driveLink, setDriveLink] = useState('')
   const [isImportingDrive, setIsImportingDrive] = useState(false)
+  // Drive links work only where the server's own Google Drive is connected (Brixen); Finstap stores files in R2
+  const [driveImportAvailable, setDriveImportAvailable] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    apiRequest('/admin/documents/intake/options', { silent: true, label: 'Intake options' }).then((res) => {
+      if (!cancelled && res.ok) setDriveImportAvailable(Boolean(res.data?.data?.drive_import))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const [isLinkingCompany, setIsLinkingCompany] = useState(false)
 
@@ -171,7 +183,7 @@ export default function Intake() {
     const newItems = Array.from(rawFiles)
       .filter((f) => f && f.name && !f.name.startsWith('.'))
       .map((file, idx) => {
-        const path = file.webkitRelativePath || file.name
+        const path = file.webkitRelativePath || file.intakePath || file.name
         const guessedCategory = guessCategoryFromPath(path)
 
         return {
@@ -462,20 +474,25 @@ export default function Intake() {
         silent: true,
       })
 
-      if (res.ok && res.data?.imported_files) {
-        enqueueFiles(res.data.imported_files)
+      const imported = res.ok ? res.data?.data?.imported_files : null
+      if (Array.isArray(imported) && imported.length) {
+        // The server sends each file's bytes; turn them into Files so they queue like a normal upload
+        const files = imported.map((item) => {
+          const bytes = Uint8Array.from(atob(item.content_base64 || ''), (c) => c.charCodeAt(0))
+          const file = new File([bytes], item.file_name, { type: item.mime_type || 'application/octet-stream' })
+          file.intakePath = item.folder_path || item.file_name
+          return file
+        })
+        enqueueFiles(files)
         setIsDriveModalOpen(false)
         setDriveLink('')
+        const skipped = Number(res.data?.data?.skipped) || 0
         toastDone(
           toastId,
-          `Imported ${res.data.imported_files.length} document(s) from Google Drive.`,
+          `Imported ${files.length} document(s) from Google Drive${skipped ? ` (${skipped} other file(s) left out)` : ''}. Click Process to file them.`,
         )
       } else {
-        toastDone(
-          toastId,
-          'Google Drive folder connected. Use the file selector if needed.',
-        )
-        setIsDriveModalOpen(false)
+        toastFail(toastId, res.reason || 'Nothing could be imported from this Google Drive link.')
       }
     } catch (err) {
       toastFail(toastId, err?.message || 'Could not import from Google Drive.')
@@ -665,7 +682,7 @@ export default function Intake() {
                 : 'Drag & drop files or folders here'}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              PDF, PNG, JPG, DOCX, ZIP · OCR + Companies House matching
+              PDF, PNG, JPG, WEBP, TIFF, DOCX · OCR + Companies House matching
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-2">
@@ -689,16 +706,18 @@ export default function Intake() {
               <IconFolderPlus className="mr-1.5 h-4 w-4" />
               {queue.length > 0 ? 'Add Folder' : 'Browse Folder'}
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 text-sm"
-              onClick={() => setIsDriveModalOpen(true)}
-            >
-              <IconBrandGoogleDrive className="mr-1.5 h-4 w-4" />
-              Google Drive
-            </Button>
+            {driveImportAvailable ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-sm"
+                onClick={() => setIsDriveModalOpen(true)}
+              >
+                <IconBrandGoogleDrive className="mr-1.5 h-4 w-4" />
+                Google Drive
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -706,7 +725,7 @@ export default function Intake() {
           type="file"
           ref={filesInputRef}
           multiple
-          accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.zip,.txt"
+          accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.docx"
           className="hidden"
           onChange={(e) => {
             enqueueFiles(e.target.files, false)
@@ -1010,7 +1029,8 @@ export default function Intake() {
           <DialogHeader>
             <DialogTitle>Google Drive Import</DialogTitle>
             <DialogDescription>
-              Paste a shared Google Drive folder or file link to import into the intake queue.
+              Paste a Google Drive folder or file link. The folder must be shared with the Google account
+              connected to the CRM. PDFs, images and Word files are added to the queue (up to 40 files, 40 MB).
             </DialogDescription>
           </DialogHeader>
 
