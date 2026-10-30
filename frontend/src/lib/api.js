@@ -136,15 +136,17 @@ export async function apiRequest(path, options = {}) {
     ? path
     : `${base}${path.startsWith("/") ? path : `/${path}`}`
 
+  const headers = { ...authHeaders(), ...(extraHeaders || {}) }
+  // File uploads: the browser sets multipart/form-data with its boundary; a JSON Content-Type
+  // would make the server read the upload as empty JSON
+  if (fetchOpts.body instanceof FormData) delete headers["Content-Type"]
+
   let res
   try {
     res = await fetch(url, {
       credentials: "include",
       ...fetchOpts,
-      headers: {
-        ...authHeaders(),
-        ...(extraHeaders || {}),
-      },
+      headers,
     })
   } catch (err) {
     const info = {
