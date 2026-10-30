@@ -2090,8 +2090,14 @@ _DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder'
 
 
 def drive_import_available():
-    """Google Drive links can be imported when the CRM's own Drive account is connected."""
-    from services.google_drive_service import is_drive_configured
+    """Google Drive links can be imported when the CRM's own Drive account is connected.
+
+    Finstap: never inside a company's workspace. The Drive account is Finstap's own and holds every company's
+    folder, so a pasted link could reach another company's files. Only Brixen's own database (no workspace
+    folder) can use it."""
+    from services.google_drive_service import is_drive_configured, workspace_folder_name
+    if workspace_folder_name():
+        return False
     return is_drive_configured()
 
 
