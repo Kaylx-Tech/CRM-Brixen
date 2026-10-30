@@ -1195,6 +1195,39 @@ def _valid_person_name(raw):
         return None
     return _title_person_name(' '.join(words))
 
+_NEXT_FIELD_LABEL_RE = re.compile(
+    r'\b(?:date|d\.?o\.?b|born|birth|nationality|citizenship|sex|gender|address|e-?mail|phone|tel|mobile|'
+    r'passport|document|occupation|residence|country|director|secretary|shareholder|signature|'
+    r'appointed|company|number|no)\b',
+    re.IGNORECASE,
+)
+
+
+def _field_value(raw):
+    """Value of a labelled field: its own line only, cut where the next label ("Date of birth", "Email") starts."""
+    line = re.split(r'[\r\n]', str(raw or ''), maxsplit=1)[0]
+    line = _NEXT_FIELD_LABEL_RE.split(line, maxsplit=1)[0]
+    return re.sub(r'\s+', ' ', line).strip(' ,.;:-')
+
+
+_ORGANISATION_WORD_RE = re.compile(r'\b(?:ltd|limited|llp|plc|bank|company|inc|corp)\b', re.IGNORECASE)
+_NAME_TITLE_RE = re.compile(r'^(?:mr|mrs|ms|miss|mx|dr|sir|madam)\.?\s+', re.IGNORECASE)
+
+
+def _name_from_field(raw):
+    """Person name from a labelled field, trying 4, 3 then 2 words so a trailing stray word does not spoil it.
+    "Mr" / "Mrs" in front is dropped; a company or bank name ("BLUE SKY TRADING LIMITED") is not a person."""
+    value = _field_value(raw)
+    if _ORGANISATION_WORD_RE.search(value):
+        return None
+    words = _NAME_TITLE_RE.sub('', value).split()
+    for size in range(min(4, len(words)), 1, -1):
+        candidate = _valid_person_name(' '.join(words[:size]))
+        if candidate:
+            return candidate
+    return None
+
+
 def _compact_mrz_text(text):
     """Normalize noisy OCR into MRZ-friendly A-Z0-9< lines."""
     def repair_line(compact):
@@ -1318,14 +1351,8 @@ def _extract_nationality(text):
         re.IGNORECASE,
     )
     if labeled:
-        raw = re.sub(r'\s+', ' ', labeled.group(1)).strip(' ,.-')
-        # Stop at next field labels that often follow on the same OCR line.
-        raw = re.split(
-            r'\b(?:sex|gender|date of birth|d\.?o\.?b|place of birth|passport|document)\b',
-            raw,
-            maxsplit=1,
-            flags=re.IGNORECASE,
-        )[0].strip(' ,.-')
+        # Its own line only, stopping at the next field label ("British  Email: ..." -> "British")
+        raw = _field_value(labeled.group(1))
         if raw and len(raw) >= 3 and raw.lower() not in INTAKE_NAME_NOISE:
             return raw.title()
     word_map = {
@@ -1389,13 +1416,11 @@ def _extract_person_name(text, filename_clean):
     for pattern in labeled[:2]:
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
-            candidate = _valid_person_name(match.group(1))
+            # Each label's own line only ("Surname: KHAN" / "Given names: AHMED RAZA")
             if 'surname' in pattern or 'family' in pattern:
-                surname = match.group(1).strip()
+                surname = _field_value(match.group(1))
             else:
-                given = match.group(1).strip()
-            if candidate and 'name' not in pattern[:20]:
-                pass
+                given = _field_value(match.group(1))
     if surname and given:
         if given.upper().startswith('PASSPORT '):
             given = given[9:].strip()
@@ -1409,16 +1434,15 @@ def _extract_person_name(text, filename_clean):
         raw = match.group(1).strip()
         if raw.upper().startswith('PASSPORT '):
             raw = raw[9:].strip()
-        candidate = _valid_person_name(raw)
+        candidate = _name_from_field(raw)
         if candidate:
             return candidate
-    fallback = re.search(
-        r'(?:director|client|customer|holder)\.?\s*[:\-]\s*([A-Za-z]+(?:\s+[A-Za-z]+){1,3})',
+    for fallback in re.finditer(
+        r'(?:director|client|customer|holder|shareholder|applicant)\.?[ \t]*[:\-][ \t]*([^\r\n]{3,80})',
         text,
         re.IGNORECASE,
-    )
-    if fallback:
-        candidate = _valid_person_name(fallback.group(1))
+    ):
+        candidate = _name_from_field(fallback.group(1))
         if candidate:
             return candidate
     cleaned_fn = re.sub(r'[\._\-\(\)\[\]]', ' ', filename_clean)
@@ -1513,24 +1537,47 @@ def _extract_company_number(text, filename=None):
     # Filename often carries the definitive CH number when OCR text is weak/empty.
     return extract_company_number_from_filename(filename or text)
 
+_COMPANY_NAME_NOISE_RE = re.compile(
+    r'^(?:bank statement|name of|certificate of|the registrar|registrar of|incorporation of)'
+    r'|\b(?:a|an|the)\s+(?:private|public)\s+limited\b|^(?:private|public)\s+limited\b'
+    r'|\bcompanies act\b|\bcompany limited by\b',
+    re.IGNORECASE,
+)
+
+
 def _extract_company_name(text):
-    match = re.search(
-        r'\b([A-Z][A-Za-z0-9\&\'\.\-]+(?:\s+[A-Z][A-Za-z0-9\&\'\.\-]+){0,6}\s+(?:LTD|LIMITED|LLP|PLC))\b',
-        text,
+    """First company name ("ACME TESTING LTD") on the document, skipping phrases like "a private limited company"."""
+    patterns = (
+        (r'\b([A-Z][A-Za-z0-9\&\'\.\-]+(?:[ \t]+[A-Z][A-Za-z0-9\&\'\.\-]+){0,6}[ \t]+(?:LTD|LIMITED|LLP|PLC))\b', 0),
+        (r'([A-Za-z0-9\&\'\.\-]{2,40}(?:[ \t]+[A-Za-z0-9\&\'\.\-]{2,40}){0,5}[ \t]+(?:LTD|LIMITED|LLP|PLC))\b', re.IGNORECASE),
     )
-    if not match:
-        match = re.search(
-            r'([A-Za-z0-9\&\'\.\-]{2,40}(?:\s+[A-Za-z0-9\&\'\.\-]{2,40}){0,5}\s+(?:LTD|LIMITED|LLP|PLC))',
-            text,
-            re.IGNORECASE,
-        )
-    if not match:
-        return None
-    name = re.sub(r'\s+', ' ', match.group(1)).strip(' ,.-')
-    lowered = name.lower()
-    if lowered.startswith(('bank statement', 'name of', 'certificate of')):
-        return None
-    return name
+    for pattern, flags in patterns:
+        for match in re.finditer(pattern, text or '', flags):
+            name = re.sub(r'\s+', ' ', match.group(1)).strip(' ,.-')
+            if _COMPANY_NAME_NOISE_RE.search(name):
+                continue
+            return name
+    return None
+
+
+_COMPANY_SUFFIX_RE = re.compile(r'\b(?:ltd|limited|llp|plc|co|company|uk)\b\.?', re.IGNORECASE)
+
+
+def _company_name_tokens(name):
+    text = _COMPANY_SUFFIX_RE.sub(' ', str(name or '').lower().replace('&', ' and '))
+    return [t for t in re.findall(r'[a-z0-9]+', text) if t not in ('the', 'and')]
+
+
+def company_names_agree(left, right):
+    """True when two company names are the same company ("Acme Testing Ltd" / "ACME TESTING LIMITED")."""
+    a, b = _company_name_tokens(left), _company_name_tokens(right)
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    sa, sb = set(a), set(b)
+    overlap = len(sa & sb) / max(len(sa), len(sb))
+    return overlap >= 0.75 or ''.join(a) == ''.join(b)
 
 def _extract_email_phone(text):
     email_match = re.search(r'\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b', text)
@@ -1624,7 +1671,7 @@ def _extract_bank_account_holder_name(text):
             continue
         if any(tok in raw.lower() for tok in ('statement', 'period', 'sort code', 'account number', 'iban')):
             continue
-        candidate = _valid_person_name(raw)
+        candidate = _name_from_field(match.group(1)) or _valid_person_name(raw)
         if candidate:
             return candidate
     return None
@@ -1736,7 +1783,8 @@ def extract_document_text_and_metadata(filename, b64_content, high_quality=True)
         return {'error': decode_err or 'Empty file'}
 
     file_hash = hashlib.sha256(file_bytes).hexdigest()
-    ocr_version = 'v2.2-identity' if high_quality else 'v2.0'
+    # Bump when extraction changes, so files read before the change are read again
+    ocr_version = 'v2.3-identity' if high_quality else 'v2.1'
 
     # SHA-256 Deduplication Cache Check (<5ms hit)
     cached_entry = query_db(
@@ -1793,6 +1841,13 @@ def extract_document_text_and_metadata(filename, b64_content, high_quality=True)
         holder = _extract_bank_account_holder_name(combined_text)
         if holder:
             person_name = holder
+        # The "Ltd/PLC" name on a statement is usually the bank itself; only a business account holder is the
+        # customer's company
+        business_holder = re.search(
+            r'(?im)(?:account\s*(?:holder|name)|customer\s*name)\s*[:\-]?[ \t]*([^\r\n]*?\b(?:ltd|limited|llp|plc))\b',
+            combined_text,
+        )
+        company_name = re.sub(r'\s+', ' ', business_holder.group(1)).strip(' ,.-') if business_holder else None
     passport_num = _parse_mrz_passport_num(combined_text) if is_passport else None
     # Identity documents: ignore noisy company numbers — match via name/DOB/nationality.
     identity_primary = is_passport or cat in ('ID Document', 'Passport')
@@ -1839,7 +1894,7 @@ def extract_document_text_and_metadata(filename, b64_content, high_quality=True)
     return result_dict
 
 INTAKE_ALLOWED_EXTENSIONS = frozenset({
-    '.pdf', '.png', '.jpg', '.jpeg', '.webp', '.tif', '.tiff',
+    '.pdf', '.png', '.jpg', '.jpeg', '.webp', '.tif', '.tiff', '.docx',
 })
 
 INTAKE_JUNK_BASENAMES = frozenset({
@@ -1992,7 +2047,7 @@ def assess_intake_file_relevance(
     forced = normalize_intake_document_kind(forced_kind)
 
     if ext not in INTAKE_ALLOWED_EXTENSIONS:
-        return False, f'Unsupported type ({ext or "unknown"}) — use PDF, JPEG, or PNG'
+        return False, f'Unsupported type ({ext or "unknown"}) — use PDF, JPEG, PNG or Word (.docx)'
     if lower_base in INTAKE_JUNK_BASENAMES:
         return False, 'System/junk file'
     if any(part in lower_path for part in ('__macosx', '/.git/', '/.svn/', '/node_modules/', '/.trash/')):
@@ -2028,6 +2083,116 @@ def assess_intake_file_relevance(
     if ext in INTAKE_ALLOWED_EXTENSIONS:
         return True, 'Scan queued — high-quality OCR will confirm document type'
     return False, 'Only passports, licences, ID cards, bank statements, company docs, or invoices'
+
+DRIVE_IMPORT_MAX_FILES = 40
+DRIVE_IMPORT_MAX_BYTES = 40 * 1024 * 1024
+_DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder'
+
+
+def drive_import_available():
+    """Google Drive links can be imported when the CRM's own Drive account is connected."""
+    from services.google_drive_service import is_drive_configured
+    return is_drive_configured()
+
+
+def drive_id_from_link(url):
+    """File or folder id from a Drive share link (…/folders/<id>, …/file/d/<id>/view, …?id=<id>) or a bare id."""
+    text = str(url or '').strip()
+    for pattern in (r'/folders/([\w-]{10,})', r'/file/d/([\w-]{10,})', r'/d/([\w-]{10,})', r'[?&]id=([\w-]{10,})'):
+        match = re.search(pattern, text)
+        if match:
+            return match.group(1)
+    return text if re.fullmatch(r'[\w-]{20,}', text) else None
+
+
+def fetch_drive_link_files(url):
+    """Download the files behind a Drive link for the intake queue: one file, or a folder with its sub-folders.
+
+    Only files the CRM's Drive account can open are reached, so the link must be shared with that account.
+    Returns (files, error): files = [{file_name, folder_path, mime_type, size, content_base64}].
+    """
+    from services.google_drive_service import get_drive_service
+    if not drive_import_available():
+        return None, 'Google Drive is not connected on the server, so links cannot be imported.'
+    file_id = drive_id_from_link(url)
+    if not file_id:
+        return None, 'That does not look like a Google Drive file or folder link.'
+    service = get_drive_service()
+    try:
+        from googleapiclient.http import MediaIoBaseDownload  # type: ignore
+        import io
+        root = service.files().get(
+            fileId=file_id, fields='id,name,mimeType,size', supportsAllDrives=True,
+        ).execute()
+    except Exception as exc:
+        status = getattr(getattr(exc, 'resp', None), 'status', None)
+        if str(status) in ('403', '404'):
+            return None, ('Google Drive could not open this link. Share the file or folder with the '
+                          'Google account connected to the CRM, then try again.')
+        return None, 'Google Drive could not be reached. Try again shortly.'
+
+    found = []
+    skipped = 0
+    if root.get('mimeType') == _DRIVE_FOLDER_MIME:
+        pending = [(root['id'], root.get('name') or 'Drive folder', 0)]
+        while pending and len(found) < DRIVE_IMPORT_MAX_FILES:
+            folder_id, folder_path, depth = pending.pop(0)
+            page_token = None
+            while True:
+                listing = service.files().list(
+                    q=f"'{folder_id}' in parents and trashed = false",
+                    fields='nextPageToken, files(id,name,mimeType,size)',
+                    pageSize=100, pageToken=page_token,
+                    supportsAllDrives=True, includeItemsFromAllDrives=True,
+                ).execute()
+                for item in listing.get('files') or []:
+                    if item.get('mimeType') == _DRIVE_FOLDER_MIME:
+                        if depth < 3:
+                            pending.append((item['id'], f"{folder_path}/{item.get('name')}", depth + 1))
+                    else:
+                        found.append((item, folder_path))
+                page_token = listing.get('nextPageToken')
+                if not page_token:
+                    break
+    else:
+        found.append((root, ''))
+
+    files = []
+    total = 0
+    for item, folder_path in found:
+        name = item.get('name') or 'document'
+        size = int(item.get('size') or 0)
+        ext = os.path.splitext(name)[1].lower()
+        # Google Docs/Sheets have no file to download; unsupported types and oversize files are left out
+        if ext not in INTAKE_ALLOWED_EXTENSIONS or not size or size > 45 * 1024 * 1024:
+            skipped += 1
+            continue
+        if len(files) >= DRIVE_IMPORT_MAX_FILES or total + size > DRIVE_IMPORT_MAX_BYTES:
+            skipped += 1
+            continue
+        try:
+            buffer = io.BytesIO()
+            downloader = MediaIoBaseDownload(buffer, service.files().get_media(fileId=item['id'], supportsAllDrives=True))
+            done = False
+            while not done:
+                _status, done = downloader.next_chunk()
+        except Exception:
+            skipped += 1
+            continue
+        data = buffer.getvalue()
+        total += len(data)
+        files.append({
+            'file_name': name,
+            'folder_path': f"{folder_path}/{name}" if folder_path else name,
+            'mime_type': mimetypes.guess_type(name)[0] or 'application/octet-stream',
+            'size': len(data),
+            'content_base64': base64.b64encode(data).decode('ascii'),
+        })
+    if not files:
+        return None, ('No PDF, image or Word files were found in this Drive link'
+                      + (f' ({skipped} other file(s) left out).' if skipped else '.'))
+    return {'files': files, 'skipped': skipped}, None
+
 
 def process_smart_intake_files(files_data, user, batch_identities=None, source_mode='CUSTOMER_UPLOADS'):
     """
@@ -2365,7 +2530,7 @@ def process_smart_intake_files(files_data, user, batch_identities=None, source_m
                 }
 
         if not company_obj and (extracted_company_num or extracted_company_name) and not is_passport_doc:
-            company_obj = auto_import_companies_house_from_intake(
+            company_obj, doc_confidence, reasons, no_match_msg = match_company_from_document(
                 extracted_company_name,
                 extracted_company_num,
                 client_user_id=client_id,
@@ -2373,20 +2538,20 @@ def process_smart_intake_files(files_data, user, batch_identities=None, source_m
             if company_obj:
                 ch_status = 'matched'
                 ch_msg = f"Automatically matched {company_obj['name']} (#{company_obj.get('company_number', '')})"
-                reasons = ['Company name/number present on document']
                 if linked_identity:
                     reasons.insert(0, f"Same person as ID/passport ({linked_identity.get('full_name')})")
+                confidence_label = 'HIGH' if doc_confidence >= 80 else 'MEDIUM' if doc_confidence >= 60 else 'LOW'
                 match_meta = {
-                    'confidence': 100,
-                    'confidence_label': 'HIGH',
-                    'score': 100,
+                    'confidence': doc_confidence,
+                    'confidence_label': confidence_label,
+                    'score': doc_confidence,
                     'reasons': reasons,
-                    'score_gap': 100,
+                    'score_gap': doc_confidence,
                     'top_candidates': [{
                         'name': company_obj.get('name'),
                         'company_number': company_obj.get('company_number'),
-                        'score': 100,
-                        'confidence_label': 'HIGH',
+                        'score': doc_confidence,
+                        'confidence_label': confidence_label,
                         'reasons': reasons,
                     }],
                     'extracted_name': extracted_client_name,
@@ -2397,7 +2562,7 @@ def process_smart_intake_files(files_data, user, batch_identities=None, source_m
                 }
             else:
                 ch_status = 'no_ch_match'
-                ch_msg = 'No Companies House match found for company name/number.'
+                ch_msg = no_match_msg or 'No Companies House match found for company name/number.'
         elif not company_obj and extracted_client_name:
             resolve_dob = extracted_dob or (linked_identity or {}).get('dob')
             resolve_nat = extracted_nat or (linked_identity or {}).get('nationality')
@@ -2685,9 +2850,11 @@ def process_smart_intake_files(files_data, user, batch_identities=None, source_m
         'skipped_irrelevant': skipped_irrelevant,
     }, None
 
-def auto_import_companies_house_from_intake(company_name, company_number, client_user_id=None):
+def auto_import_companies_house_from_intake(company_name, company_number, client_user_id=None, search_by_name=True):
+    """Find or create the company. Without a number, `search_by_name` takes the first Companies House result for
+    the name (staff picked it by hand); Smart Intake passes False and checks the name itself (match_company_from_document)."""
     ch_num = normalize_company_number(company_number) if company_number else None
-    if not ch_num and company_name:
+    if not ch_num and company_name and search_by_name:
         matches, _err = search_companies_house(company_name)
         if matches and len(matches) > 0:
             ch_num = matches[0].get('company_number')
@@ -2734,6 +2901,84 @@ def auto_import_companies_house_from_intake(company_name, company_number, client
         VALUES (?, ?, ?, 'Active', DATE('now'), 'Director', 'United Kingdom', CURRENT_TIMESTAMP);
     """, (uid, company_name or f"Company #{ch_num}", ch_num))
     return query_db("SELECT * FROM companies WHERE id = ?;", (comp_id,), one=True)
+
+
+def _official_company_name(company_number):
+    """(name, checked) for a company number: the CRM's record, else Companies House. checked=False when Companies
+    House could not be asked (no key, down), so the number could not be confirmed either way."""
+    existing = query_db("SELECT name FROM companies WHERE company_number = ?;", (company_number,), one=True)
+    if existing and existing.get('name'):
+        return existing['name'], True
+    if not companies_house_api_key():
+        return None, False
+    profile, err = fetch_companies_house_profile(company_number)
+    if profile:
+        return profile.get('name'), True
+    return None, err == 'Company not found at Companies House'
+
+
+def _company_by_name_at_companies_house(company_name):
+    """Companies House result whose name is the same company as `company_name` (not just the first hit)."""
+    if not company_name or not companies_house_api_key():
+        return None
+    matches, _err = search_companies_house(company_name)
+    for match in matches or []:
+        if match.get('company_number') and company_names_agree(company_name, match.get('name')):
+            return match
+    return None
+
+
+def match_company_from_document(company_name, company_number, client_user_id=None):
+    """Link a company read from a document, checking the number against the name.
+
+    OCR can misread one digit of a company number, which points at someone else's company, so the number is
+    trusted only when its Companies House name matches the name on the document (or no name was read).
+    Returns (company_row or None, confidence 0-100, reasons, message).
+    """
+    number = normalize_company_number(company_number) if company_number else None
+    name = (company_name or '').strip() or None
+
+    if number:
+        official, checked = _official_company_name(number)
+        if official and name and company_names_agree(name, official):
+            company = auto_import_companies_house_from_intake(name, number, client_user_id=client_user_id)
+            return company, 100, ['Company number and name on the document match Companies House'], None
+        if official and not name:
+            company = auto_import_companies_house_from_intake(None, number, client_user_id=client_user_id)
+            return company, 85, ['Company number on the document (no company name read to double-check)'], None
+        if official and name:
+            by_name = _company_by_name_at_companies_house(name)
+            if by_name:
+                company = auto_import_companies_house_from_intake(
+                    by_name.get('name'), by_name['company_number'], client_user_id=client_user_id,
+                )
+                return company, 80, [
+                    f"Number {number} on the document belongs to {official}, so the company was matched by its name",
+                ], None
+            return None, 0, [], (
+                f"Company number {number} belongs to {official}, but the document names {name}. "
+                "Check the document and link the company by hand."
+            )
+        if not checked:
+            # Companies House could not be asked: keep the number, flagged for review
+            company = auto_import_companies_house_from_intake(name, number, client_user_id=client_user_id)
+            return company, 60, ['Company number on the document, not checked at Companies House'], None
+        # The number is not at Companies House (misread, or a company still being formed): fall back to the name
+
+    if name:
+        by_name = _company_by_name_at_companies_house(name)
+        if by_name:
+            company = auto_import_companies_house_from_intake(
+                by_name.get('name'), by_name['company_number'], client_user_id=client_user_id,
+            )
+            return company, 90, ['Company name on the document matches Companies House'], None
+        # Not registered (yet): the CRM's own record with this name, or a pending company to check later
+        company = auto_import_companies_house_from_intake(
+            name, None, client_user_id=client_user_id, search_by_name=False,
+        )
+        if company:
+            return company, 50, ['Company name on the document; not found at Companies House (pending)'], None
+    return None, 0, [], 'No Companies House match found for the company name or number.'
 
 def companies_house_registered_office(address):
     if not isinstance(address, dict):
