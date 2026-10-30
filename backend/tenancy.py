@@ -254,6 +254,18 @@ CREATE TABLE IF NOT EXISTS autoallot_slots (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_autoallot_slots_live
     ON autoallot_slots(kind, number) WHERE status IN ('held', 'allotted');
 CREATE INDEX IF NOT EXISTS idx_autoallot_slots_request ON autoallot_slots(request_id);
+-- One-time codes the owner must type to confirm a risky action (suspend or delete a workspace)
+CREATE TABLE IF NOT EXISTS platform_action_codes (
+    challenge TEXT PRIMARY KEY,
+    admin_id INTEGER NOT NULL,
+    action TEXT NOT NULL,
+    target TEXT NOT NULL,
+    code_hash TEXT NOT NULL,
+    tries INTEGER NOT NULL DEFAULT 0,
+    expires_at TIMESTAMP NOT NULL,
+    used_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 -- Workspace wallet (services/wallet.py): bank transfer top-ups (+) and services paid from the balance (-)
 CREATE TABLE IF NOT EXISTS wallet_entries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -314,6 +326,8 @@ TENANT_COLUMNS = (
     ('stripe_customer_id', "TEXT"),            # Stripe (services/stripe_billing.py)
     ('stripe_subscription_id', "TEXT"),
     ('cancel_at', "TIMESTAMP"),                # the subscription ends then (cancelled in Stripe, still paid)
+    ('deleted_at', "TIMESTAMP"),               # deleted by the owner: hidden, nobody signs in, database kept
+    ('deleted_by', "TEXT"),
 )
 
 HANDOFF_SECONDS = 120

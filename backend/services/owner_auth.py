@@ -210,6 +210,75 @@ def admin_for_token(token):
     """, (_hash(token),), one=True)
 
 
+ACTION_LABELS = {'suspend': 'suspend', 'delete': 'delete'}
+
+
+def request_action_code(admin, action, target):
+    """Email the signed-in owner a 6-digit code to confirm a risky action on `target`. Returns the challenge."""
+    if action not in ACTION_LABELS:
+        raise OwnerAuthError("Unknown action")
+    challenge = secrets.token_urlsafe(24)
+    code = f"{secrets.randbelow(1000000):06d}"
+    _platform_execute("""
+        INSERT INTO platform_action_codes (challenge, admin_id, action, target, code_hash, expires_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now', ?));
+    """, (challenge, admin['id'], action, target, _code_hash(challenge, code), f'+{CODE_MINUTES} minutes'))
+    from services.email_service import send_email
+    verb = ACTION_LABELS[action]
+    subject = f"{code} confirms: {verb} workspace {target}"
+    text = (f"Your code to {verb} the workspace \"{target}\" is {code}.\n\nIt works for {CODE_MINUTES} minutes. "
+            "If you did not ask for this, change your owner password straight away.")
+    html = (f'<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:520px;margin:0 auto;'
+            f'padding:32px 16px;color:#111827;"><p style="font-size:20px;font-weight:700;margin:0 0 16px;">'
+            f'Finstap owner portal</p><p style="margin:0 0 20px;color:#4b5563;">Code to {verb} the workspace '
+            f'<strong>{target}</strong>:</p><p style="font-size:40px;letter-spacing:8px;font-weight:600;'
+            f'background:#f1f4f8;border-radius:14px;padding:24px;text-align:center;margin:0 0 20px;">{code}</p>'
+            f'<p style="color:#6b7280;font-size:14px;">It works for {CODE_MINUTES} minutes. If you did not ask for '
+            f'this, change your owner password straight away.</p></div>')
+    with use_tenant(None):
+        sent = send_email(admin['email'], subject, html, text, category='SECURITY', log=False, store_body=False,
+                          sender_name='Finstap', mailbox='platform')
+    if not sent:
+        from config import IS_PRODUCTION
+        if IS_PRODUCTION:
+            raise OwnerAuthError("The code email could not be sent. Please try again.")
+        print(f"[Owner action code] {admin['email']} {action} {target}: {code} (no SMTP in development)")
+    return challenge
+
+
+def confirm_action_code(admin, challenge, code, action, target):
+    """Check the code for this exact owner, action and workspace; it works once. Raises OwnerAuthError."""
+    challenge = str(challenge or '')
+    code = ''.join(ch for ch in str(code or '') if ch.isdigit())
+    if not challenge:
+        raise OwnerAuthError("Confirm it with the code we email you first.")
+    ensure_platform()
+    conn = _platform_conn()
+    try:
+        conn.execute("BEGIN IMMEDIATE;")
+        row = conn.execute("""
+            SELECT * FROM platform_action_codes
+            WHERE challenge = ? AND admin_id = ? AND action = ? AND target = ? AND used_at IS NULL
+              AND datetime(expires_at) > datetime('now') LIMIT 1;
+        """, (challenge, admin['id'], action, target)).fetchone()
+        if not row:
+            conn.commit()
+            raise OwnerAuthError("This code has expired. Ask for a new one.")
+        if row['tries'] >= MAX_TRIES:
+            conn.execute("UPDATE platform_action_codes SET used_at = datetime('now') WHERE challenge = ?;", (challenge,))
+            conn.commit()
+            raise OwnerAuthError("Too many wrong codes. Ask for a new one.")
+        if len(code) != 6 or not hmac.compare_digest(row['code_hash'], _code_hash(challenge, code)):
+            conn.execute("UPDATE platform_action_codes SET tries = tries + 1 WHERE challenge = ?;", (challenge,))
+            conn.commit()
+            left = MAX_TRIES - row['tries'] - 1
+            raise OwnerAuthError("That code is not right." + (f" {left} tries left." if left > 0 else ""))
+        conn.execute("UPDATE platform_action_codes SET used_at = datetime('now') WHERE challenge = ?;", (challenge,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def _send_link(email, url):
     from services.email_service import send_email
     subject = "Set your Finstap owner portal password"

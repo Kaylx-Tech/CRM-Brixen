@@ -14,7 +14,9 @@
   POST /workspaces/<slug>/subscription   {plan, billing_cycle, subscription_status, current_period_end,
                                           price_override, custom_limits, owner_notes}
   POST /workspaces/<slug>/trial {days}   → longer free trial
-  POST /workspaces/<slug>/status {status: Active|Suspended, reason}
+  POST /workspaces/<slug>/status {status: Active|Suspended, reason, challenge, code}  (suspending needs the code)
+  POST /workspaces/<slug>/code {action: suspend|delete}  emails the signed-in owner a 6-digit code
+  POST /workspaces/<slug>/delete {reason, challenge, code}  hidden, nobody signs in, database kept
   GET  /activity                         → what owners changed, newest first
   GET/POST /services/settings            → KYC price per check, registered office price a year, office addresses
   GET  /kyc?period=YYYY-MM               → KYC checks per workspace that month and what to charge
@@ -131,7 +133,7 @@ def _all_tenants():
     return _platform_query("""
         SELECT *, CASE WHEN trial_ends_at IS NULL OR datetime(trial_ends_at) > datetime('now') THEN 1 ELSE 0 END
                   AS trial_running
-        FROM tenants ORDER BY created_at DESC, id DESC;
+        FROM tenants WHERE deleted_at IS NULL ORDER BY created_at DESC, id DESC;
     """)
 
 
@@ -590,6 +592,36 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
         audit(admin, 'TRIAL_EXTENDED', slug, f"+{days} days (was {tenant.get('trial_ends_at') or '-'})")
         return success_response(start_response, data=_row(get_tenant(slug)), message=f"Trial extended by {days} days.")
 
+    # Suspend and delete need a code emailed to the signed-in owner
+    if action == '/code' and method == 'POST':
+        from services.owner_auth import request_action_code
+        what = str(body.get('action') or '').strip().lower()
+        try:
+            challenge = request_action_code(admin, what, slug)
+        except OwnerAuthError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        return success_response(start_response, data={'challenge': challenge},
+                                message=f"We emailed a 6-digit code to {admin['email']}.")
+
+    if action == '/delete' and method == 'POST':
+        from services.owner_auth import confirm_action_code
+        reason = str(body.get('reason') or '').strip()[:500]
+        if not reason:
+            return error_response(start_response, "Write why the workspace is deleted.", status_code=400)
+        try:
+            confirm_action_code(admin, body.get('challenge'), body.get('code'), 'delete', slug)
+        except OwnerAuthError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        # Nothing is erased: the workspace is hidden, nobody can sign in, and its database stays where it is.
+        # The address stays taken (the workspace's files are stored under it).
+        _platform_execute("""
+            UPDATE tenants SET status = CASE WHEN status = 'Active' THEN 'Suspended' ELSE status END,
+                   suspended_reason = ?, deleted_at = datetime('now'), deleted_by = ?, updated_at = datetime('now')
+            WHERE slug = ? AND deleted_at IS NULL;
+        """, (f"Deleted: {reason}", admin.get('email'), slug))
+        audit(admin, 'WORKSPACE_DELETED', slug, reason)
+        return success_response(start_response, data={'slug': slug}, message="Workspace deleted. Its data is kept.")
+
     if action == '/status' and method == 'POST':
         status = str(body.get('status') or '').strip().title()
         if status not in ('Active', 'Suspended'):
@@ -600,6 +632,12 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
         reason = str(body.get('reason') or '').strip()[:500] or None
         if status == 'Suspended' and not reason:
             return error_response(start_response, "Write why the workspace is suspended.", status_code=400)
+        if status == 'Suspended':
+            from services.owner_auth import confirm_action_code
+            try:
+                confirm_action_code(admin, body.get('challenge'), body.get('code'), 'suspend', slug)
+            except OwnerAuthError as exc:
+                return error_response(start_response, str(exc), status_code=400)
         _platform_execute("UPDATE tenants SET status = ?, suspended_reason = ?, updated_at = datetime('now') "
                           "WHERE slug = ?;", (status, reason if status == 'Suspended' else None, slug))
         audit(admin, 'WORKSPACE_SUSPENDED' if status == 'Suspended' else 'WORKSPACE_REACTIVATED', slug, reason)

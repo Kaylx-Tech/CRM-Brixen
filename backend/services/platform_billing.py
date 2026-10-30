@@ -55,7 +55,7 @@ def _state(tenant, today):
 def overview():
     from services.wallet import balance as wallet_balance
     today = datetime.date.today()
-    tenants = [t for t in _platform_query("SELECT * FROM tenants WHERE status != 'Failed' ORDER BY name COLLATE NOCASE;")
+    tenants = [t for t in _platform_query("SELECT * FROM tenants WHERE status != 'Failed' AND deleted_at IS NULL ORDER BY name COLLATE NOCASE;")
                if t.get('plan') != 'legacy']
     ro_unpaid = {r['tenant_slug']: r['amount'] for r in _platform_query("""
         SELECT tenant_slug, SUM(COALESCE(price, 0)) AS amount FROM ro_requests

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
-import { Link, useParams } from "react-router-dom"
-import { IconArrowLeft, IconExternalLink, IconLoader2 } from "@tabler/icons-react"
+import { Link, useNavigate, useParams } from "react-router-dom"
+import { IconArrowLeft, IconExternalLink, IconLoader2, IconMailCheck, IconTrash } from "@tabler/icons-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { PlanUsage } from "@/components/plan-usage"
@@ -154,11 +154,73 @@ function SubscriptionForm({ workspace, onSaved }) {
   )
 }
 
-/** Longer trial, suspend or reactivate. */
+/** The 6-digit code the owner gets by email before a suspend or delete goes through. */
+function CodeStep({ pending, busy, onConfirm, onCancel, label, destructive = true }) {
+  const [code, setCode] = useState("")
+  if (!pending) return null
+  return (
+    <div className="mt-2 space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-3">
+      <p className="flex items-center gap-2 text-sm">
+        <IconMailCheck className="size-4 text-primary" /> Enter the 6-digit code we emailed you.
+      </p>
+      <div className="flex gap-2">
+        <Input
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          placeholder="123456"
+          className="w-36 tracking-[0.3em]"
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          aria-label="Confirmation code"
+          autoFocus
+        />
+        <Button variant={destructive ? "destructive" : "default"} disabled={busy || code.length !== 6} onClick={() => onConfirm(code)}>
+          {label}
+        </Button>
+        <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+      </div>
+    </div>
+  )
+}
+
+/** Longer trial, suspend or reactivate, delete. Suspend and delete need a code emailed to the owner. */
 function Actions({ workspace, onSaved }) {
+  const navigate = useNavigate()
   const [days, setDays] = useState("7")
   const [reason, setReason] = useState("")
+  const [deleteReason, setDeleteReason] = useState("")
   const [busy, setBusy] = useState("")
+  const [pending, setPending] = useState(null) // {action, challenge}
+
+  const askCode = async (what) => {
+    setBusy(what)
+    const id = toastProcessing("Sending code…")
+    const res = await ownerApi(`/workspaces/${workspace.slug}/code`, { method: "POST", body: { action: what } })
+    setBusy("")
+    if (res.ok) {
+      toastDone(id, res.message)
+      setPending({ action: what, challenge: res.data.challenge })
+    } else {
+      toastFail(id, res.error)
+    }
+  }
+
+  const removeWorkspace = async (code) => {
+    setBusy("delete")
+    const id = toastProcessing("Deleting workspace…")
+    const res = await ownerApi(`/workspaces/${workspace.slug}/delete`, {
+      method: "POST",
+      body: { reason: deleteReason, challenge: pending.challenge, code },
+    })
+    setBusy("")
+    if (res.ok) {
+      toastDone(id, res.message)
+      navigate("/owner/workspaces")
+    } else {
+      toastFail(id, res.error)
+    }
+  }
 
   const run = async (key, path, body, working) => {
     setBusy(key)
@@ -168,6 +230,7 @@ function Actions({ workspace, onSaved }) {
     if (res.ok) {
       toastDone(id, res.message)
       setReason("")
+      setPending(null)
       onSaved()
     } else {
       toastFail(id, res.error)
@@ -221,16 +284,37 @@ function Actions({ workspace, onSaved }) {
             The team and its clients cannot sign in until you reactivate it. Nothing is deleted.
           </p>
           <Input placeholder="Why (for example: unpaid since 1 Oct)" value={reason} onChange={(e) => setReason(e.target.value)} />
-          <Button
-            variant="destructive"
-            className="mt-2"
-            disabled={Boolean(busy) || !reason.trim()}
-            onClick={() => run("status", "/status", { status: "Suspended", reason }, "Suspending…")}
-          >
-            Suspend workspace
-          </Button>
+          {pending?.action === "suspend" ? (
+            <CodeStep
+              pending={pending}
+              busy={Boolean(busy)}
+              label="Suspend"
+              onCancel={() => setPending(null)}
+              onConfirm={(code) => run("status", "/status", { status: "Suspended", reason, challenge: pending.challenge, code }, "Suspending…")}
+            />
+          ) : (
+            <Button variant="destructive" className="mt-2" disabled={Boolean(busy) || !reason.trim()} onClick={() => askCode("suspend")}>
+              Suspend workspace
+            </Button>
+          )}
         </div>
       ) : null}
+
+      {/* Delete: hidden, nobody signs in; the data is kept (Finstap can bring it back) */}
+      <div className="border-t pt-4">
+        <p className="text-sm font-medium text-destructive">Delete workspace</p>
+        <p className="mb-2 text-xs text-muted-foreground">
+          Removes it from Finstap: nobody can sign in and it leaves every list. Its data is archived, not erased.
+        </p>
+        <Input placeholder="Why it is deleted" value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} />
+        {pending?.action === "delete" ? (
+          <CodeStep pending={pending} busy={Boolean(busy)} label="Delete" onCancel={() => setPending(null)} onConfirm={removeWorkspace} />
+        ) : (
+          <Button variant="destructive" className="mt-2" disabled={Boolean(busy) || !deleteReason.trim()} onClick={() => askCode("delete")}>
+            <IconTrash className="size-4" /> Delete workspace
+          </Button>
+        )}
+      </div>
     </div>
   )
 }
