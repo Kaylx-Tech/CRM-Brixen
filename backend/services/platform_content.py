@@ -16,6 +16,7 @@ import secrets
 import threading
 import time
 
+from services import indexnow
 from tenancy import _platform_execute, _platform_query, use_tenant
 
 EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
@@ -85,11 +86,15 @@ def import_articles():
             cover = fields.get('cover') or None
             if cover and cover.startswith('/'):
                 cover = site + cover
+            slug = slugify(fields.get('slug') or fields['title'])
+            if _platform_query("SELECT id FROM blog_posts WHERE slug = ?;", (slug,), one=True):
+                continue
             _platform_execute("""
                 INSERT OR IGNORE INTO blog_posts (slug, title, excerpt, body, cover_url, status, author, published_at)
                 VALUES (?, ?, ?, ?, ?, 'Published', ?, datetime('now'));
-            """, (slugify(fields.get('slug') or fields['title']), fields['title'][:200],
+            """, (slug, fields['title'][:200],
                   (fields.get('excerpt') or '')[:400] or None, body, cover, fields.get('author') or 'Finstap'))
+            indexnow.notify([f'blog/{slug}', 'blog'])
         except Exception as exc:  # a bad file must never break the blog
             print(f"[Blog] {name}: not imported ({exc})")
 
@@ -165,6 +170,8 @@ def save_post(data, admin, post_id=None):
             INSERT INTO blog_posts (slug, title, excerpt, body, cover_url, status, author, published_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'Published' THEN datetime('now') END);
         """, (*values, status))
+    if status == 'Published':
+        indexnow.notify([f'blog/{slug}', 'blog'])  # new or changed post: search engines re-read it now
     return get_post(post_id=post_id)
 
 
