@@ -1098,7 +1098,7 @@ export default function Payments() {
               </div>
 
               <p className="text-[11px] text-muted-foreground m-0">
-                GBP uses Tide 32546658 / 04-06-05. PKR uses the UBL IBAN. Save invoice only updates the record.
+                GBP uses 01108984 / 04-19-19. PKR uses the UBL IBAN. Save invoice only updates the record.
                 Send invoice emails payment details. When paid in full, Send thank you emails a complete-payment notice.
               </p>
             </div>

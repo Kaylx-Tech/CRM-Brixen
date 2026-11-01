@@ -18,9 +18,10 @@ from services.portal_compat import brand_settings
 INVOICE_BANK_GBP = {
     'currency': 'GBP',
     'account_name': 'Brixen Consultants LTD',
-    'account_number': '32546658',
-    'sort_code': '04-06-05',
-    'pay_url': 'https://pay.tide.co/pay/f2dfe046-691c-49a5-8b58-340c6c23453c',
+    'account_number': '01108984',
+    'sort_code': '04-19-19',
+    # Card payment link (Stripe, to come); empty = no "Pay now" button on the invoice PDF or client portal
+    'pay_url': '',
 }
 INVOICE_BANK_PKR = {
     'currency': 'PKR',

@@ -372,20 +372,21 @@ def _render_pdf(payload, s=1.0):
 
     bank_block('GBP', (('Account title', gbp['account_name']), ('Account number', gbp['account_number']),
                        ('Sort code', gbp['sort_code'])))
-    # "Pay now" pill linking to the Tide payment page
-    label = 'Pay now in GBP'
-    pdf.set_font('Helvetica', 'B', 10)
-    pill_w, pill_h, pill_y = pdf.get_string_width(label) + 10, 7.5, pdf.get_y()
-    pdf.set_fill_color(*navy)
-    try:
-        pdf.rounded_rect(16, pill_y, pill_w, pill_h, pill_h / 2, style='F')
-    except Exception:
-        pdf.rect(16, pill_y, pill_w, pill_h, style='F')
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_xy(16, pill_y + 0.6)
-    pdf.cell(pill_w, pill_h - 1.2, label, align='C', link=gbp['pay_url'])
-    pdf.set_text_color(*ink)
-    pdf.set_y(pill_y + pill_h + 8 * s)
+    # "Pay now" pill linking to the card payment page (only when a payment link is set)
+    if gbp.get('pay_url'):
+        label = 'Pay now in GBP'
+        pdf.set_font('Helvetica', 'B', 10)
+        pill_w, pill_h, pill_y = pdf.get_string_width(label) + 10, 7.5, pdf.get_y()
+        pdf.set_fill_color(*navy)
+        try:
+            pdf.rounded_rect(16, pill_y, pill_w, pill_h, pill_h / 2, style='F')
+        except Exception:
+            pdf.rect(16, pill_y, pill_w, pill_h, style='F')
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_xy(16, pill_y + 0.6)
+        pdf.cell(pill_w, pill_h - 1.2, label, align='C', link=gbp['pay_url'])
+        pdf.set_text_color(*ink)
+        pdf.set_y(pill_y + pill_h + 8 * s)
 
     bank_block('PKR', (('Account title', pkr['account_name']), ('Bank name', pkr['bank_name']), ('IBAN', pkr['iban'])))
 
