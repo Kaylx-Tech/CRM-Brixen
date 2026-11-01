@@ -203,9 +203,28 @@ def handle_catalog_routes(environ, start_response, path, method, user, body, que
             db_services = []
 
         if db_services:
+            # How many placed orders each service is on (as the order's service or one of its products), so the
+            # order wizard lists the most ordered services first
+            order_counts = {}
+            if is_staff:
+                try:
+                    order_counts = {r['sid']: r['n'] for r in query_db("""
+                        SELECT sid, COUNT(DISTINCT oid) AS n FROM (
+                            SELECT o.service_id AS sid, o.id AS oid FROM orders o
+                            WHERE o.service_id IS NOT NULL AND COALESCE(o.is_draft, 0) = 0
+                            UNION
+                            SELECT s.id AS sid, li.order_id AS oid FROM order_line_items li
+                            JOIN services s ON LOWER(TRIM(s.name)) = LOWER(TRIM(li.product_name))
+                            JOIN orders o ON o.id = li.order_id AND COALESCE(o.is_draft, 0) = 0
+                        ) GROUP BY sid;
+                    """) or []}
+                except Exception as exc:
+                    print(f"[Catalog] Order counts skipped: {exc}")
             products = []
             for s in db_services:
                 item = dict(s)
+                if is_staff:
+                    item['orders_count'] = int(order_counts.get(item['id']) or 0)
                 item['form_fields'] = form_fields_of(item)
                 item.pop('form_config_json', None)
                 if user_role not in ('SUPER_ADMIN', 'ADMIN'):
