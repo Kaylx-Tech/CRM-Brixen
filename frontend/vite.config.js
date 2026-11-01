@@ -7,6 +7,30 @@ import { jsxcanvas } from '@jsxcanvas/vite'
 const FINSTAP_TITLE = 'Finstap — Corporate management CRM'
 const FINSTAP_DESCRIPTION = 'Corporate management CRM for accountants: customers, UK companies, orders, invoices and compliance deadlines in one place.'
 
+/** schema.org data so Google knows finstap.com is the Finstap company and its web app (name, logo, what it does). */
+function structuredData(domain) {
+  const site = `https://${domain}/`
+  const org = { '@type': 'Organization', '@id': `${site}#organization`, name: 'Finstap', url: site, logo: `${site}finstap-favicon-512.png` }
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      org,
+      { '@type': 'WebSite', '@id': `${site}#website`, name: 'Finstap', url: site, publisher: { '@id': org['@id'] } },
+      {
+        '@type': 'SoftwareApplication',
+        name: 'Finstap',
+        url: site,
+        applicationCategory: 'BusinessApplication',
+        applicationSubCategory: 'CRM for accountants and company formation agents',
+        operatingSystem: 'Web browser',
+        description: FINSTAP_DESCRIPTION,
+        image: `${site}finstap-og.png`,
+        publisher: { '@id': org['@id'] },
+      },
+    ],
+  }
+}
+
 /**
  * The Finstap build writes its own name, tab icons and link-preview tags into index.html itself, so the
  * Brixen ones never show while the app loads, and WhatsApp / Slack / Google (which do not run the app's
@@ -34,6 +58,7 @@ function productHtml(env) {
         `<meta name="twitter:title" content="${esc(FINSTAP_TITLE)}" />`,
         `<meta name="twitter:description" content="${esc(FINSTAP_DESCRIPTION)}" />`,
         `<meta name="twitter:image" content="${image}" />`,
+        `<script type="application/ld+json">${JSON.stringify(structuredData(domain)).replace(/</g, '\\u003c')}</script>`,
       ].join('\n    ')
       return html
         // Tags may carry extra attributes (dev tools add some), so match the tag, not exact text

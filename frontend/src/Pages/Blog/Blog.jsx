@@ -186,8 +186,25 @@ export function BlogPost() {
     getJson(`/platform/blog/${encodeURIComponent(slug)}`).then((res) => {
       setPost(res.ok ? res.data : null)
       document.title = res.ok ? `${res.data.title} · Finstap` : "Post not found · Finstap"
+      // Google reads the page after it runs, so the post's own summary replaces the site description
+      if (res.ok && res.data.excerpt) document.querySelector('meta[name="description"]')?.setAttribute("content", res.data.excerpt)
     })
   }, [slug])
+
+  // schema.org Article data: Google can show the date, author and picture in search results
+  const iso = (value) => (value ? String(value).replace(" ", "T") + "Z" : undefined)
+  const articleData = post && {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: post.title,
+    description: post.excerpt || undefined,
+    image: post.cover_url || `${window.location.origin}/finstap-og.png`,
+    datePublished: iso(post.published_at),
+    dateModified: iso(post.updated_at || post.published_at),
+    author: post.author ? { "@type": "Person", name: post.author } : { "@type": "Organization", name: "Finstap" },
+    publisher: { "@type": "Organization", name: "Finstap", logo: { "@type": "ImageObject", url: `${window.location.origin}/finstap-favicon-512.png` } },
+    mainEntityOfPage: window.location.href,
+  }
 
   return (
     <PublicShell>
@@ -201,6 +218,7 @@ export function BlogPost() {
           <p className="mt-10 text-slate-600">This post does not exist or is no longer published.</p>
         ) : (
           <article className="mt-6">
+            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleData).replace(/</g, "\\u003c") }} />
             <p className="text-sm font-medium text-[#5f5cff]">
               {date(post.published_at)}
               {post.author ? ` · ${post.author}` : ""}

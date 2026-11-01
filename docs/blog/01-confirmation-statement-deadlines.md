@@ -1,0 +1,80 @@
+Title: Confirmation statement deadlines: dates, fees and what happens if you miss one
+Slug: confirmation-statement-deadline
+Excerpt: Every UK company must file a confirmation statement at least once every 12 months. Here is how the deadline is worked out, what it costs, what has to be in it now that identity verification is law, and how to make sure a client never misses one.
+
+---- body (paste everything below into the post body) ----
+
+Every UK limited company has to file a confirmation statement with Companies House at least once every 12 months. It is one of the easiest filings to get right and one of the easiest to forget, especially when you look after dozens or hundreds of client companies with different dates.
+
+This guide covers how the deadline is worked out, what it costs, what the statement has to include in 2026, and what happens if it is late.
+
+## What is a confirmation statement?
+
+A confirmation statement (form CS01) confirms that the information Companies House holds about a company is correct. When you file it, you check the company's:
+
+- registered office address and where its records are kept
+- officers (directors and secretary)
+- people with significant control (PSCs)
+- SIC code (what the company does)
+- statement of capital and shareholder information, if the company has shares
+
+If something has changed and has not been reported yet, some changes can be made with the statement itself, such as the SIC code, statement of capital, shareholder information and trading status of shares. Other changes, such as a new director, are filed separately first.
+
+## How the deadline works
+
+The deadline is based on the company's review period.
+
+- The review period ends 12 months after the confirmation statement date on the last statement filed.
+- For a company's first statement, it ends 12 months after the date the company was incorporated.
+- The company then has 14 days after the review period ends to file.
+
+Example: a company incorporated on 10 March 2025 has a review period ending on 10 March 2026, and must file by 24 March 2026. If its statement is dated 10 March 2026, the next review period ends on 10 March 2027.
+
+You do not have to wait for the review period to end. A company can file early, and a new review period starts from the date of that statement. This is a simple way to move a client's date to a quieter time of year, or to line it up with their accounts.
+
+## How much does it cost?
+
+The fee is paid once a year, with the first statement in each 12-month period:
+
+- £50 to file online or through filing software
+- £110 to file on paper
+
+If a company files more than one confirmation statement in the same 12-month period, there is no extra fee for the later ones.
+
+## What it must include in 2026
+
+Two things catch people out:
+
+- A registered email address. If the company has not given Companies House an email address yet, it must give one in the confirmation statement. It is not shown on the public register, but Companies House sends official messages there, and the company is expected to read them.
+- Verified directors. Identity verification became a legal requirement on 18 November 2025. Existing directors give their Companies House personal code as part of the company's next confirmation statement, and the company cannot file its statement unless all its directors are verified.
+
+People with significant control have their own 14-day window to give their personal code. If someone is both a director and a PSC, their PSC window starts the day after the company's confirmation statement date, and it does not move if the company files early. A PSC who is not a director uses the first 14 days of their birth month.
+
+For a firm with many clients, verification is the step most likely to hold up a filing. Start collecting personal codes well before each client's date, not in the last week.
+
+## What happens if it is late?
+
+Unlike annual accounts, there is no automatic late filing penalty for a confirmation statement. That does not make it optional:
+
+- not filing is an offence, and the company and its officers can be fined up to £5,000
+- Companies House can strike the company off the register, which ends its existence and can freeze its bank account
+- failing to verify identity when required is a separate offence, and Companies House can add a note against the person's name on the public register
+
+If a deadline has passed, file as soon as you can. Companies House usually writes before it takes action, which is one more reason the registered email address needs to be one that someone actually reads.
+
+## A simple checklist for every client
+
+- Keep every client's review period end date in one place, not in separate calendars
+- Send a reminder at least 30 days before the date, and again at 14 days
+- Collect identity verification personal codes from new and existing directors early
+- Check officers, PSCs, shareholders and the SIC code before filing
+- Check the company has a registered email address on file
+- After filing, record the new confirmation statement date so the next deadline is right
+
+## How Finstap helps
+
+Finstap keeps all your client companies in one place and works out their Companies House deadlines for you, including confirmation statements and accounts. You see what is due this month across every client, can send reminders and collect documents through the client portal, and nothing depends on one person's spreadsheet.
+
+You can try it free for 14 days, no card needed.
+
+Sources: GOV.UK, "Running a limited company: confirmation statement", the Companies House fees list (updated 25 September 2026) and "When you need to verify your identity for Companies House". Rules and fees change, so always check GOV.UK before filing.

@@ -72,6 +72,14 @@ def handle_platform_routes(environ, start_response, path, method, body, query=No
     # Finstap blog and newsletter, for finstap.com (services/platform_content.py)
     if path == '/api/platform/blog' and method == 'GET':
         return success_response(start_response, data={'posts': content.list_posts(published_only=True)})
+    if path == '/api/platform/sitemap.xml' and method == 'GET':
+        payload = content.sitemap_xml().encode('utf-8')
+        start_response('200 OK', [
+            ('Content-Type', 'application/xml; charset=utf-8'),
+            ('Content-Length', str(len(payload))),
+            ('Cache-Control', 'public, max-age=900'),
+        ])
+        return [payload]
     if path.startswith('/api/platform/blog/') and method == 'GET':
         post = content.get_post(slug=path.rsplit('/', 1)[-1], published_only=True)
         return (success_response(start_response, data=post) if post

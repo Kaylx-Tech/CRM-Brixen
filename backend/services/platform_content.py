@@ -10,6 +10,7 @@ in the background; a sent issue keeps how many went out and how many failed. Not
 an unsubscribed address stays on the list as Unsubscribed so it is never emailed again.
 """
 import html
+import os
 import re
 import secrets
 import threading
@@ -57,6 +58,26 @@ def get_post(slug=None, post_id=None, published_only=False):
     if not row or (published_only and (row['status'] != 'Published')):
         return None
     return _post_out(row)
+
+
+# Public pages of finstap.com; the blog posts are added from the database
+SITEMAP_PAGES = ('', 'signup', 'blog', 'security', 'privacy', 'terms')
+
+
+def sitemap_xml():
+    """finstap.com/sitemap.xml (nginx passes it through), so a newly published post reaches Google by itself."""
+    site = f"https://{os.environ.get('TENANT_BASE_DOMAIN', 'finstap.com').strip() or 'finstap.com'}/"
+    urls = [(site + page, None) for page in SITEMAP_PAGES]
+    for post in list_posts(published_only=True):
+        changed = str(post.get('updated_at') or post.get('published_at') or '')[:10]
+        urls.append((f"{site}blog/{post['slug']}", changed or None))
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for loc, changed in urls:
+        lastmod = f"<lastmod>{changed}</lastmod>" if changed else ''
+        lines.append(f"  <url><loc>{html.escape(loc)}</loc>{lastmod}</url>")
+    lines.append('</urlset>')
+    return '\n'.join(lines) + '\n'
 
 
 def save_post(data, admin, post_id=None):
