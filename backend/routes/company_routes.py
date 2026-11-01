@@ -121,6 +121,7 @@ def public_client_company(row, for_staff=True):
         'psc_verified': str(src.get('psc_verified') or 'Not started').strip() or 'Not started',
         'sic_codes': str(src.get('sic_codes') or '').strip(),
         'registered_email': str(src.get('registered_email') or '').strip(),
+        'business_email_verified': int(src.get('business_email_verified') or 0),
         'whatsapp_number': str(src.get('whatsapp_number') or '').strip(),
         'accounts_next_due': src.get('accounts_next_due'),
         'accounts_overdue': int(src.get('accounts_overdue') or 0),
@@ -246,6 +247,7 @@ COMPANY_STAFF_SELECT = (
     "c.id, c.name, c.company_number, c.status, c.inc_date, c.director, c.reg_office, c.package, c.account_status, "
     "c.created_at, c.user_id, c.utr_number, c.authentication_code, c.activation_code, "
     "c.identity_verified, c.psc_verified, c.sic_codes, c.registered_email, c.whatsapp_number, "
+    "c.business_email_verified, "
     "c.accounts_next_due, c.accounts_overdue, c.confirmation_next_due, c.confirmation_overdue, "
     "c.ch_attention_json, c.ch_checked_at, c.b2b_id, c.client_type, c.data_locked, "
     "u.full_name as client_name, u.email as client_email"
@@ -683,6 +685,22 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
                 updates['status'] = match
             else:
                 updates.pop('status')
+
+        # The company's own (business) email: kept in its history and locked once verified
+        # (services/compliance_alerts.py); compliance reminders go to it
+        if 'registered_email' in updates:
+            new_email = str(updates.pop('registered_email') or '').strip().lower()
+            if new_email != str(comp.get('registered_email') or '').strip().lower():
+                if new_email:
+                    from services.compliance_alerts import set_company_business_email
+                    _row, email_error = set_company_business_email(comp_id, new_email, actor=user, source='staff')
+                    if email_error:
+                        return error_response(start_response, email_error, status_code=409)
+                elif int(comp.get('business_email_verified') or 0):
+                    return error_response(start_response, 'Verified business email is locked and cannot be changed',
+                                          status_code=409)
+                else:
+                    execute_db("UPDATE companies SET registered_email = NULL WHERE id = ?;", (comp_id,))
 
         if updates:
             set_clauses = [f"{k} = ?" for k in updates.keys()]
