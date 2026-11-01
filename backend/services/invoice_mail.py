@@ -1,11 +1,13 @@
 """Invoice payment emails — mirrors app.py send_payment_details behaviour.
 
-Staff must explicitly click Send. Pending / due → payment request (bank details).
-Paid / nothing due → payment received thank-you.
+Payment request (bank details): only when staff click Send.
+Payment received thank-you: when staff click Send on a paid invoice, and on its own when an invoice becomes
+Paid (send_payment_received_later), naming the amount, date and method of the payment.
 Recipient: order owner_form_email, then client email.
 """
 from __future__ import annotations
 
+import datetime
 from html import escape as html_escape
 
 from db import query_db
@@ -244,6 +246,25 @@ def send_payment_requested(invoice, order):
     }
 
 
+def _payment_date(invoice):
+    """"1 November 2026" from paid_at (today when it is missing). No %-d: it fails on Windows."""
+    raw = str(invoice.get('paid_at') or '').strip()
+    try:
+        when = datetime.datetime.strptime(raw[:10], '%Y-%m-%d') if raw else datetime.datetime.now()
+    except ValueError:
+        when = datetime.datetime.now()
+    return f"{when.day} {when.strftime('%B %Y')}"
+
+
+def _payment_rows(invoice, paid, due):
+    rows = [('Amount received', _format_gbp(paid)), ('Received on', _payment_date(invoice))]
+    method = str(invoice.get('payment_method') or '').strip()
+    if method:
+        rows.append(('Payment method', method))
+    rows.append(('Balance', _format_gbp(due) + ' still due' if due > 0.004 else 'Nothing left to pay'))
+    return rows
+
+
 def send_payment_received(invoice, order):
     to = _recipient_email(invoice, order)
     if not to:
@@ -252,29 +273,35 @@ def send_payment_received(invoice, order):
     total = _money(invoice.get('total') or invoice.get('amount'))
     paid = _money(invoice.get('amount_paid')) or total
     due = max(total - paid, 0.0)
-    if due > 0.004:
-        title = 'Deposit received'
-        intro = (
-            'Thank you. Your deposit is in. The remaining balance is due when the work is done.'
-        )
-    else:
-        title = 'Thank you for your complete payment'
-        intro = (
-            'We’ve received the full amount for this invoice. Thank you — this payment is now complete.'
-        )
 
     company = brand_settings().get('company_name') or 'Brixen Consultants'
     invoice_number = str(invoice.get('invoice_number') or '').strip()
     order_number = str(order.get('order_number') or '').strip()
     service = str(order.get('service_name') or '').strip()
     ref = invoice_number or order_number or service or 'invoice'
+
+    if due > 0.004:
+        title = 'Deposit received'
+        intro = (
+            f'Thank you for your payment of {_format_gbp(paid)} towards invoice {ref}. '
+            f'Your deposit is in; the remaining {_format_gbp(due)} is due when the work is done.'
+        )
+    else:
+        title = 'Thank you for your payment'
+        intro = (
+            f'Thank you for your payment of {_format_gbp(paid)}. We’ve received the full amount for '
+            f'invoice {ref}, so it is now fully paid. The payment details are below for your records.'
+        )
     subject = f"{title} — {ref} — {company}"
 
     subject, text, html = _compose_email(
         subject=subject,
         greeting=_greeting_name(invoice, order),
         intro=intro,
-        sections_html=_build_sections(invoice, order, include_bank=False),
+        sections_html=(
+            _build_sections(invoice, order, include_bank=False)
+            + _section_html('Payment', _payment_rows(invoice, paid, due))
+        ),
         category='PAYMENT',
     )
     ok = send_email(to, subject, html, text_content=text, category='INVOICE',
@@ -301,3 +328,27 @@ def send_invoice_email(invoice_id):
     if kind == 'payment_received':
         return send_payment_received(invoice, order)
     return send_payment_requested(invoice, order)
+
+
+def send_payment_received_later(invoice_id):
+    """The thank-you for a payment, sent in the background when an invoice becomes Paid (by staff, the
+    website or Stripe), so marking it paid does not wait for the email server."""
+    if not invoice_id:
+        return
+    try:
+        from tenancy import run_in_thread  # Finstap: keep the request's workspace database
+    except ImportError:
+        import threading
+
+        def run_in_thread(target, *args):
+            threading.Thread(target=target, args=args, daemon=True).start()
+
+    def _send(iid):
+        try:
+            invoice, order = _load_invoice_context(iid)
+            if invoice and invoice.get('order_id') and str(invoice.get('status') or '') == 'Paid':
+                send_payment_received(invoice, order)
+        except Exception as exc:  # emails must never break anything
+            print(f"[Invoice mail] Payment received for invoice #{iid}: {exc}")
+
+    run_in_thread(_send, invoice_id)
