@@ -236,9 +236,13 @@ def update_admin_invoice(invoice_id, data, *, actor=None):
         )
 
     mail = None
-    # Only email when staff explicitly click Send (send_payment_details).
+    # The payment request goes out only when staff click Send (send_payment_details)
     if data.get('send_payment_details') and invoice.get('order_id') and status != 'Cancelled':
         mail = send_invoice_email(invoice_id)
+    elif status == 'Paid' and not was_paid and invoice.get('order_id'):
+        # Just paid (staff, website or Stripe): thank the customer, naming the payment
+        from services.invoice_mail import send_payment_received_later
+        send_payment_received_later(invoice_id)
 
     updated = load_invoice_for_staff(invoice_id)
     return updated, None, mail
@@ -291,7 +295,7 @@ def ensure_invoice_for_order(order_id, paid=False):
     invoice_number = invoice_number_for_order(order.get('order_number')) or next_invoice_number()
     for _ in range(8):
         try:
-            return execute_db("""
+            invoice_id = execute_db("""
                 INSERT INTO invoices (invoice_number, order_id, user_id, amount, tax, total, status, due_date, paid_at,
                                       payment_method, payment_timing, deposit_amount, amount_paid, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, date('now', '+30 days'),
@@ -299,6 +303,11 @@ def ensure_invoice_for_order(order_id, paid=False):
             """, (invoice_number, order_id, order['user_id'], float(order.get('price') or total),
                   float(order.get('vat') or 0), total, status, status, method, timing,
                   total if status == 'Paid' else 0))
+            if status == 'Paid':
+                # Paid when it was created (website / online payment): the same thank-you as a later payment
+                from services.invoice_mail import send_payment_received_later
+                send_payment_received_later(invoice_id)
+            return invoice_id
         except Exception as exc:
             if 'unique' not in str(exc).lower():
                 raise
