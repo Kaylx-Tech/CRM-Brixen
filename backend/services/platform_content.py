@@ -42,7 +42,60 @@ def _post_out(row, full=True):
     return out
 
 
+# Articles shipped with the code (services/blog_articles/<slug>.txt): each is published once, the first
+# time the blog is read after a deploy. After that the post belongs to the owner portal: edits, Draft or
+# changes made there are kept, and the file is never imported again.
+# File: "Title:", "Slug:", "Excerpt:", "Cover:" (https:// or /path on the site), "Author:", a "---" line, the body.
+ARTICLES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'blog_articles')
+_articles_done = False
+
+
+def _parse_article(text):
+    head, sep, body = text.partition('\n---\n')
+    if not sep:
+        return None
+    fields = {}
+    for line in head.splitlines():
+        key, colon, value = line.partition(':')
+        if colon:
+            fields[key.strip().lower()] = value.strip()
+    if not fields.get('title') or not body.strip():
+        return None
+    return fields, body.strip() + '\n'
+
+
+def import_articles():
+    global _articles_done
+    if _articles_done:
+        return
+    _articles_done = True
+    if not os.path.isdir(ARTICLES_DIR):
+        return
+    site = f"https://{os.environ.get('TENANT_BASE_DOMAIN', 'finstap.com').strip() or 'finstap.com'}"
+    for name in sorted(os.listdir(ARTICLES_DIR)):
+        if not name.endswith('.txt'):
+            continue
+        try:
+            with open(os.path.join(ARTICLES_DIR, name), encoding='utf-8') as fh:
+                parsed = _parse_article(fh.read())
+            if not parsed:
+                print(f"[Blog] {name}: needs Title, a --- line and a body; skipped")
+                continue
+            fields, body = parsed
+            cover = fields.get('cover') or None
+            if cover and cover.startswith('/'):
+                cover = site + cover
+            _platform_execute("""
+                INSERT OR IGNORE INTO blog_posts (slug, title, excerpt, body, cover_url, status, author, published_at)
+                VALUES (?, ?, ?, ?, ?, 'Published', ?, datetime('now'));
+            """, (slugify(fields.get('slug') or fields['title']), fields['title'][:200],
+                  (fields.get('excerpt') or '')[:400] or None, body, cover, fields.get('author') or 'Finstap'))
+        except Exception as exc:  # a bad file must never break the blog
+            print(f"[Blog] {name}: not imported ({exc})")
+
+
 def list_posts(published_only=False):
+    import_articles()
     sql = "SELECT * FROM blog_posts"
     if published_only:
         sql += " WHERE status = 'Published' AND datetime(published_at) <= datetime('now')"
@@ -51,6 +104,7 @@ def list_posts(published_only=False):
 
 
 def get_post(slug=None, post_id=None, published_only=False):
+    import_articles()
     if post_id is not None:
         row = _platform_query("SELECT * FROM blog_posts WHERE id = ?;", (post_id,), one=True)
     else:

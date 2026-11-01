@@ -1,8 +1,9 @@
 Title: Confirmation statement deadlines: dates, fees and what happens if you miss one
 Slug: confirmation-statement-deadline
 Excerpt: Every UK company must file a confirmation statement at least once every 12 months. Here is how the deadline is worked out, what it costs, what has to be in it now that identity verification is law, and how to make sure a client never misses one.
-
----- body (paste everything below into the post body) ----
+Cover: /blog-images/confirmation-statement-deadline.jpg
+Author: Finstap Team
+---
 
 Every UK limited company has to file a confirmation statement with Companies House at least once every 12 months. It is one of the easiest filings to get right and one of the easiest to forget, especially when you look after dozens or hundreds of client companies with different dates.
 
