@@ -45,6 +45,11 @@ const COMPLIANCE_SCHEMA = {
   activation_code: { label: 'Personal code', type: 'personal_code' },
 }
 const REGISTER_SCHEMA = { company_number: { label: 'Company number', required: true, type: 'company_number' } }
+// The company's own contact details (the customer's login email is not changed here)
+const CONTACT_SCHEMA = {
+  registered_email: { label: 'Business email', type: 'email' },
+  whatsapp_number: { label: 'WhatsApp number', type: 'phone' },
+}
 
 const DOC_CATEGORIES = [
   'Company Documents',
@@ -81,6 +86,9 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
   const [regError, setRegError] = useState('')
   const { errors, check, fromResponse } = useFormErrors(COMPLIANCE_SCHEMA, { prefix: 'portfolio-compliance-' })
   const [isRegistering, setIsRegistering] = useState(false)
+  const [contact, setContact] = useState({ registered_email: '', whatsapp_number: '' })
+  const [isSavingContact, setIsSavingContact] = useState(false)
+  const contactErrors = useFormErrors(CONTACT_SCHEMA, { prefix: 'company-contact-' })
 
   const [formData, setFormData] = useState({
     identity_verified: 'Not started',
@@ -179,7 +187,36 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
       accounts_next_due: src.accounts_next_due ? String(src.accounts_next_due).slice(0, 10) : '',
       confirmation_next_due: (src.confirmation_next_due || src.confirmation_statement_next_due) ? String(src.confirmation_next_due || src.confirmation_statement_next_due).slice(0, 10) : '',
     })
+    setContact({ registered_email: src.registered_email || '', whatsapp_number: src.whatsapp_number || '' })
   }, [detail, company])
+
+  const handleSaveContact = async () => {
+    if (!company?.id) return
+    const payload = {
+      registered_email: contact.registered_email.trim().toLowerCase(),
+      whatsapp_number: contact.whatsapp_number.trim(),
+    }
+    if (!contactErrors.check(payload)) return
+    setIsSavingContact(true)
+    try {
+      const res = await apiRequest(`/admin/companies/${company.id}`, {
+        method: 'PUT',
+        body: payload,
+        label: 'Company contact',
+        silent: true,
+      })
+      if (res.ok) {
+        toast.success('Company email and phone saved')
+        const updatedData = res.data?.data || res.data || {}
+        setDetail((prev) => ({ ...(prev || {}), ...payload, ...updatedData }))
+        if (onUpdate) onUpdate({ ...(company || {}), raw: { ...(company.raw || {}), ...updatedData } })
+      } else if (!contactErrors.fromResponse(res)) {
+        toast.error(res.reason || 'Could not save the company email')
+      }
+    } finally {
+      setIsSavingContact(false)
+    }
+  }
 
   const handleSaveCompliance = async () => {
     if (!company?.id) return
@@ -276,6 +313,10 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
   const clientName = d.client_name || raw.client_name || '—'
   const clientEmail = d.client_email || raw.client_email || raw.email || ''
   const clientPhone = d.client_phone || raw.client_phone || raw.phone || ''
+  const emailLocked = Number(d.business_email_verified || raw.business_email_verified || 0) === 1
+  const contactChanged =
+    contact.registered_email.trim().toLowerCase() !== String(d.registered_email || raw.registered_email || '').trim().toLowerCase() ||
+    contact.whatsapp_number.trim() !== String(d.whatsapp_number || raw.whatsapp_number || '').trim()
   const isGenuine = Boolean(d.is_genuine || d.data_locked || raw.is_genuine || raw.data_locked || company.is_genuine || company.data_locked)
   const accountsDue = d.accounts_next_due || raw.accounts_next_due || company.deadlineText || 'No upcoming deadlines'
   const confirmationDue = d.confirmation_statement_next_due || d.confirmation_next_due || raw.confirmation_statement_next_due || raw.confirmation_next_due || '—'
@@ -444,19 +485,53 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Business / Contact Email</Label>
+                    <Label htmlFor="company-contact-registered_email" className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+                      Business / Contact Email
+                    </Label>
                     <div className="flex items-center gap-3">
-                      <Input value={clientEmail || '—'} className="max-w-md bg-muted/40" readOnly />
-                      {clientEmail && <Badge variant="secondary" className="shrink-0">Verified</Badge>}
+                      <Input
+                        id="company-contact-registered_email"
+                        type="email"
+                        value={contact.registered_email}
+                        onChange={(e) => setContact((c) => ({ ...c, registered_email: e.target.value }))}
+                        placeholder={clientEmail || 'name@company.co.uk'}
+                        className="max-w-md"
+                        disabled={emailLocked || isSavingContact}
+                        maxLength={160}
+                        {...invalidProps(contactErrors.errors, 'registered_email', 'company-contact-')}
+                      />
+                      {emailLocked && <Badge variant="secondary" className="shrink-0">Verified</Badge>}
                     </div>
+                    <FieldMessage id="company-contact-registered_email-error" message={contactErrors.errors.registered_email} />
+                    <p className="text-xs text-muted-foreground">
+                      {emailLocked
+                        ? 'This email is verified and locked.'
+                        : `The company's own email for compliance reminders. Left empty, emails go to the customer's login email${clientEmail ? ` (${clientEmail})` : ''}.`}
+                    </p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Phone / WhatsApp Number</Label>
-                    <div className="flex items-center gap-3">
-                      <Input value={clientPhone || '—'} className="max-w-md bg-muted/40" readOnly />
-                    </div>
+                    <Label htmlFor="company-contact-whatsapp_number" className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+                      Phone / WhatsApp Number
+                    </Label>
+                    <Input
+                      id="company-contact-whatsapp_number"
+                      type="tel"
+                      value={contact.whatsapp_number}
+                      onChange={(e) => setContact((c) => ({ ...c, whatsapp_number: e.target.value }))}
+                      placeholder={clientPhone || '+44 7700 900123'}
+                      className="max-w-md"
+                      disabled={isSavingContact}
+                      maxLength={30}
+                      {...invalidProps(contactErrors.errors, 'whatsapp_number', 'company-contact-')}
+                    />
+                    <FieldMessage id="company-contact-whatsapp_number-error" message={contactErrors.errors.whatsapp_number} />
                   </div>
+
+                  <Button onClick={handleSaveContact} disabled={!contactChanged || isSavingContact}>
+                    {isSavingContact ? <IconLoader2 className="mr-2 h-4 w-4 animate-spin" /> : <IconDeviceFloppy className="mr-2 h-4 w-4" />}
+                    Save email & phone
+                  </Button>
                 </div>
               </TabsContent>
 
