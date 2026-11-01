@@ -57,6 +57,13 @@ function statusTone(status) {
 // The KYC product(s) of an order: its KYC line items, or the service name for a one-product order
 const kycProduct = (o) => o.kyc_products || o.service_name
 
+// Registered company with its number, or the desired name from the order form while it is not registered yet
+const companyLabel = (o) => {
+  if (!o.company_name) return 'No company'
+  if (!o.company_registered) return `${o.company_name} (not registered yet)`
+  return `${o.company_name}${o.company_number ? ` (${o.company_number})` : ''}`
+}
+
 async function copyText(text, label) {
   try {
     await navigator.clipboard.writeText(text)
@@ -433,7 +440,7 @@ export default function IdVerification() {
                   </div>
                   <p className="truncate text-sm font-medium" title={o.customer_email}>{o.customer_name || '—'}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {o.company_name ? `${o.company_name}${o.company_number ? ` (${o.company_number})` : ''}` : 'No company'}
+                    {companyLabel(o)}
                     {' · '}
                     {kycProduct(o)}
                   </p>
@@ -512,7 +519,8 @@ export default function IdVerification() {
               <Badge className={checkTone(viewing?.status)}>{viewing?.status || 'Not Started'}</Badge>
             </DialogTitle>
             <DialogDescription>
-              {[viewing?.person_role, viewingOrder?.order_number, viewingOrder?.company_name].filter(Boolean).join(' · ')}
+              {[viewing?.person_role, viewingOrder?.order_number, viewingOrder?.company_name && companyLabel(viewingOrder)]
+                .filter(Boolean).join(' · ')}
             </DialogDescription>
           </DialogHeader>
 
