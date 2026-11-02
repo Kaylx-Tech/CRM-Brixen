@@ -399,11 +399,18 @@ export default function Orders() {
       header: 'Company',
       cell: ({ row }) => {
         const name = row.getValue('company_name') || '—'
+        // Not registered yet: the desired name from the order form, marked as such
+        const desired = row.original.company_name && !row.original.company_registered
         return (
-          <TruncatedTooltip
-            text={name}
-            className="block max-w-[140px] truncate text-left text-sm cursor-default"
-          />
+          <div className="min-w-0">
+            <TruncatedTooltip
+              text={name}
+              className="block max-w-[140px] truncate text-left text-sm cursor-default"
+            />
+            {desired ? (
+              <Badge className="badge-amber mt-0.5 rounded-full text-[10px]">Not registered yet</Badge>
+            ) : null}
+          </div>
         )
       },
     }),
@@ -510,7 +517,12 @@ export default function Orders() {
         <div className="mt-2 min-w-0">
           <p className="truncate text-sm font-semibold">{o.owner_name || o.client_name || '—'}</p>
           <p className="truncate text-xs text-muted-foreground">{o.owner_form_email || o.client_email || '—'}</p>
-          {o.company_name ? <p className="mt-1 truncate text-sm">{o.company_name}</p> : null}
+          {o.company_name ? (
+            <p className="mt-1 truncate text-sm">
+              {o.company_name}
+              {!o.company_registered ? <span className="text-xs text-muted-foreground"> (not registered yet)</span> : null}
+            </p>
+          ) : null}
           {/* Phones cannot hover: the internal notes show here, two lines at most */}
           {String(o.notes || '').trim() ? (
             <p className="mt-2 flex items-start gap-1.5 rounded-md bg-muted/60 px-2 py-1.5 text-xs text-muted-foreground">
