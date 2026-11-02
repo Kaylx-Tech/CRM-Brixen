@@ -272,6 +272,13 @@ body {
   html {
     @apply font-sans;
   }
+  /* Laptops and desktops (Mac, Windows) show the app at 90% size, like a 90% browser zoom; phones and
+     tablets keep full size (text boxes under 16px make iPhones zoom in) */
+  @media (min-width: 1024px) {
+    html {
+      font-size: 90%;
+    }
+  }
 }
 
 @keyframes shimmer {
