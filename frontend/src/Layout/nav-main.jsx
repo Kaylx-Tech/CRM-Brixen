@@ -29,7 +29,7 @@ const FINSTAP = {
   // A tiny word raised just above the end of the title (`tag` in finstap-nav.js, e.g. "Soon"), like a
   // superscript: an accent gradient pill with a fine light edge and a shine that passes now and then
   tag:
-    "fs-menu-tag relative -ml-2 shrink-0 self-start -translate-y-1.5 overflow-hidden rounded-full px-1.5 py-px text-[8px] leading-[11px] font-semibold uppercase tracking-[0.12em] text-sidebar-primary-foreground group-data-[collapsible=icon]:hidden",
+    "fs-menu-tag relative -ml-2 shrink-0 self-start -translate-y-1.5 overflow-hidden rounded-full px-1.5 py-px text-[9px] leading-[11px] font-semibold lowercase tracking-[0.02em] text-sidebar-primary-foreground group-data-[collapsible=icon]:hidden",
 }
 
 export function NavMain({
