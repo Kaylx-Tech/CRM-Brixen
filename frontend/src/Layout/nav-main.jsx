@@ -14,22 +14,22 @@ import {
 // in the menu's own (accent-derived) colours with its icon in the accent, and count badges
 const FINSTAP = {
   group: "px-3 py-1.5",
-  label: "h-7 px-3 text-[11px] font-medium uppercase tracking-wider text-sidebar-foreground/45",
+  label: "h-7 px-3 text-[0.6875rem] font-medium uppercase tracking-wider text-sidebar-foreground/45",
   menu: "gap-0.5",
   // fs-menu-btn: the pill's settle-in animation (index.css); hover nudges the icon to the right,
   // and a short accent bar grows at the left of the active page
   button:
-    "fs-menu-btn relative h-9 gap-3 rounded-lg px-3 text-[13.5px] text-sidebar-foreground/75 transition-[background-color,color,box-shadow] duration-200 hover:bg-white/[0.07] hover:text-sidebar-foreground " +
+    "fs-menu-btn relative h-9 gap-3 rounded-lg px-3 text-[0.84375rem] text-sidebar-foreground/75 transition-[background-color,color,box-shadow] duration-200 hover:bg-white/[0.07] hover:text-sidebar-foreground " +
     "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:font-medium " +
     "data-active:shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_1px_3px_rgba(0,0,0,0.3)] " +
     "before:absolute before:left-1 before:top-1/2 before:h-4 before:w-[3px] before:-translate-y-1/2 before:scale-y-0 before:rounded-full before:bg-sidebar-primary before:transition-transform before:duration-300 data-active:before:scale-y-100 " +
-    "[&_svg]:size-[18px]! [&_svg]:text-sidebar-foreground/55 [&_svg]:transition-[transform,color] [&_svg]:duration-200 hover:[&_svg]:translate-x-0.5 hover:[&_svg]:text-sidebar-foreground data-active:[&_svg]:text-sidebar-primary",
+    "[&_svg]:size-[1.125rem]! [&_svg]:text-sidebar-foreground/55 [&_svg]:transition-[transform,color] [&_svg]:duration-200 hover:[&_svg]:translate-x-0.5 hover:[&_svg]:text-sidebar-foreground data-active:[&_svg]:text-sidebar-primary",
   badge:
-    "fs-menu-badge top-2! right-2 h-5 min-w-5 rounded-full bg-sidebar-primary px-1.5 text-[10.5px] font-semibold text-sidebar-primary-foreground! shadow-sm",
+    "fs-menu-badge top-2! right-2 h-5 min-w-5 rounded-full bg-sidebar-primary px-1.5 text-[0.65625rem] font-semibold text-sidebar-primary-foreground! shadow-sm",
   // A tiny word raised just above the end of the title (`tag` in finstap-nav.js, e.g. "Soon"), like a
   // superscript: an accent gradient pill with a fine light edge and a shine that passes now and then
   tag:
-    "fs-menu-tag relative -ml-2 shrink-0 self-start -translate-y-1.5 overflow-hidden rounded-full px-1.5 py-px text-[9px] leading-[11px] font-semibold lowercase tracking-[0.02em] text-sidebar-primary-foreground group-data-[collapsible=icon]:hidden",
+    "fs-menu-tag relative -ml-2 shrink-0 self-start -translate-y-1.5 overflow-hidden rounded-full px-1.5 py-px text-[0.5625rem] leading-[0.6875rem] font-semibold lowercase tracking-[0.02em] text-sidebar-primary-foreground group-data-[collapsible=icon]:hidden",
 }
 
 export function NavMain({
