@@ -197,7 +197,7 @@ export default function BalanceSheet({ embedded = false }) {
     }
     return [
       { title: `${cur} opening`, value: formatMoney(t.opening, cur), footerSubText: `On 1 ${label}`, tone: 'blue' },
-      { title: `${cur} money in`, value: formatMoney(t.money_in, cur), footerSubText: 'Paid invoices', tone: 'emerald' },
+      { title: `${cur} money in`, value: formatMoney(t.money_in, cur), footerSubText: 'Payments received', tone: 'emerald' },
       { title: `${cur} expenses`, value: formatMoney(t.money_out, cur), footerSubText: 'Salary, rent, other', tone: 'rose' },
       { title: `${cur} closing`, value: formatMoney(t.closing, cur), footerSubText: 'Opens next month', tone: t.closing < 0 ? 'orange' : 'violet' },
     ]
@@ -226,6 +226,15 @@ export default function BalanceSheet({ embedded = false }) {
         </Badge>
       ),
     }),
+    incomeCol.accessor('method', {
+      header: 'Paid by',
+      cell: ({ row }) => (
+        <div className="flex flex-col">
+          <span className="text-sm">{row.original.method || '—'}</span>
+          {row.original.note ? <span className="text-xs text-muted-foreground">{row.original.note}</span> : null}
+        </div>
+      ),
+    }),
     incomeCol.accessor('currency', { header: 'Account' }),
     incomeCol.accessor('amount', {
       header: 'Received',
@@ -247,7 +256,11 @@ export default function BalanceSheet({ embedded = false }) {
               variant="ghost"
               size="icon-xs"
               title="Correct the rupees received"
-              onClick={() => setRupeeForm({ invoice: inv, amount: inv.amount == null ? '' : plainAmount(inv.amount) })}
+              onClick={() => {
+                // Rupees are corrected for the whole invoice, not just this payment
+                const rupees = inv.invoice_rupees ?? inv.amount
+                setRupeeForm({ invoice: inv, amount: rupees == null ? '' : plainAmount(rupees) })
+              }}
             >
               <IconPencil className="size-3.5" />
             </Button>
@@ -497,7 +510,7 @@ export default function BalanceSheet({ embedded = false }) {
           <DialogHeader>
             <DialogTitle>Rupees received</DialogTitle>
             <DialogDescription>
-              {rupeeForm && `${rupeeForm.invoice.invoice_number}: ${formatMoney(rupeeForm.invoice.gbp_amount, 'GBP')} paid into the PKR account. Type what actually reached the bank.`}
+              {rupeeForm && `${rupeeForm.invoice.invoice_number}: ${formatMoney(rupeeForm.invoice.invoice_pkr_gbp ?? rupeeForm.invoice.gbp_amount, 'GBP')} paid into the PKR account. Type what actually reached the bank.`}
             </DialogDescription>
           </DialogHeader>
           {rupeeForm && (

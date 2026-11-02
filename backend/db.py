@@ -762,6 +762,19 @@ def ensure_schema():
             edited INTEGER NOT NULL DEFAULT 0,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+        -- Each payment on an invoice (part payments too): how much, the day it came in and how it was paid.
+        -- The balance sheet counts every payment in its own month; a negative row corrects a mistake.
+        CREATE TABLE IF NOT EXISTS invoice_payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            invoice_id INTEGER NOT NULL,
+            amount REAL NOT NULL,
+            paid_on TEXT NOT NULL,
+            method TEXT,
+            note TEXT,
+            created_by INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_invoice_payments_invoice ON invoice_payments(invoice_id);
         CREATE TABLE IF NOT EXISTS roles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE NOT NULL,

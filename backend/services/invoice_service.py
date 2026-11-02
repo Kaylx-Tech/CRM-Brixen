@@ -119,7 +119,73 @@ def load_invoice_for_staff(invoice_id):
         (invoice_id,),
         one=True,
     )
-    return enrich_invoice_row(row) if row else None
+    if not row:
+        return None
+    invoice = enrich_invoice_row(row)
+    sync_invoice_payments(row)
+    invoice['payments'] = invoice_payments(invoice_id)
+    return invoice
+
+
+# ── Payments: each part payment with its own day and method ─────────────────────────────────────
+
+def _actor_id(actor):
+    if isinstance(actor, dict):
+        return actor.get('id') or actor.get('user_id')
+    return actor if isinstance(actor, int) else None
+
+
+def payment_date_value(raw):
+    """The day the money came in as 'YYYY-MM-DD' (today when blank); None when it is not a date or in the future."""
+    text = str(raw or '').strip()[:10]
+    if not text:
+        return datetime.date.today().isoformat()
+    try:
+        day = datetime.date.fromisoformat(text)
+    except ValueError:
+        return None
+    return day.isoformat() if day <= datetime.date.today() else None
+
+
+def invoice_payments(invoice_id):
+    rows = query_db("""
+        SELECT p.id, p.amount, p.paid_on, p.method, p.note, p.created_at, u.full_name AS created_by_name
+        FROM invoice_payments p LEFT JOIN users u ON u.id = p.created_by
+        WHERE p.invoice_id = ? ORDER BY p.paid_on, p.id;
+    """, (invoice_id,)) or []
+    return [dict(r) for r in rows]
+
+
+def record_payment(invoice_id, amount, paid_on, method, *, note=None, actor=None):
+    execute_db(
+        "INSERT INTO invoice_payments (invoice_id, amount, paid_on, method, note, created_by) VALUES (?, ?, ?, ?, ?, ?);",
+        (invoice_id, round(float(amount), 2), paid_on, method, note, _actor_id(actor)),
+    )
+
+
+def sync_invoice_payments(invoice=None):
+    """Money on an invoice that no payment row covers yet (older invoices, or a payment saved some other way)
+    gets one row, dated the day the invoice was paid, or the invoice date while it is part paid; that is
+    where the balance sheet counted it before, so earlier months do not change. One invoice, or all."""
+    if invoice is None:
+        rows = query_db("""
+            SELECT i.id, i.status, i.total, i.amount_paid, i.payment_method, i.paid_at, i.created_at,
+                   COALESCE((SELECT SUM(p.amount) FROM invoice_payments p WHERE p.invoice_id = i.id), 0) AS recorded
+            FROM invoices i;
+        """) or []
+    else:
+        recorded = query_db("SELECT COALESCE(SUM(amount), 0) AS s FROM invoice_payments WHERE invoice_id = ?;",
+                            (invoice['id'],), one=True)
+        rows = [dict(invoice, recorded=(recorded or {}).get('s') or 0)]
+    for row in rows:
+        if str(row.get('status') or '') == 'Cancelled':
+            continue
+        missing = round(invoice_money_state(row)['amount_paid'] - float(row.get('recorded') or 0), 2)
+        if abs(missing) <= 0.004:
+            continue
+        day = str(row.get('paid_at') or row.get('created_at') or '')[:10] or datetime.date.today().isoformat()
+        record_payment(row['id'], missing, day, row.get('payment_method'),
+                       note='Recorded before payment history' if missing > 0 else 'Correction')
 
 
 def update_admin_invoice(invoice_id, data, *, actor=None):
@@ -127,8 +193,14 @@ def update_admin_invoice(invoice_id, data, *, actor=None):
     invoice = query_db("SELECT * FROM invoices WHERE id = ?;", (invoice_id,), one=True)
     if not invoice:
         return None, 'Invoice not found', None
+    # Money already on the invoice keeps its own day before anything new is added
+    sync_invoice_payments(invoice)
 
     data = data if isinstance(data, dict) else {}
+    # The day new money came in and how it was paid (the invoice's method when not given)
+    pay_day = payment_date_value(data.get('payment_date'))
+    if pay_day is None:
+        return None, 'Enter the date the money came in (today or earlier)', None
     status = invoice.get('status')
     if 'status' in data:
         status = invoice_status_value(data.get('status')) or str(data.get('status') or '').strip()
@@ -212,12 +284,24 @@ def update_admin_invoice(invoice_id, data, *, actor=None):
     elif status not in ('Cancelled', 'Overdue') and amount_paid > 0.004:
         status = 'Partial Paid'
 
+    pay_method = str(data.get('payment_received_method') or '').strip() or method
+    if pay_method and pay_method not in ORDER_PAYMENT_MODES and pay_method != 'Credit Card (Stripe)':
+        return None, 'Invalid payment method', None
+
     was_paid = str(invoice.get('status') or '') == 'Paid'
     paid_at = invoice.get('paid_at')
     if status == 'Paid' and not was_paid:
-        paid_at = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # Paid in full on the day the last money came in
+        now = datetime.datetime.now()
+        paid_at = now.strftime('%Y-%m-%d %H:%M:%S') if pay_day == now.date().isoformat() else f"{pay_day} 12:00:00"
     elif status != 'Paid':
         paid_at = None
+
+    # New money (or a correction when the amount went down) is one payment row on its own day
+    change = round(amount_paid - old_paid, 2)
+    if abs(change) > 0.004:
+        record_payment(invoice_id, change, pay_day, pay_method,
+                       note=None if change > 0 else 'Correction', actor=actor)
 
     execute_db(
         """

@@ -1,10 +1,12 @@
 """Revenue & Balance Sheet: what the company holds in each currency, month by month.
 
-GBP and PKR are kept apart (no conversion between balances). Money in is every invoice that has been
-paid (fully or in part), in the account it was paid into: invoices paid by "PKR(Bank Transfer)" go to
-PKR, everything else to GBP. Invoice totals are stored in pounds, so a PKR invoice is turned into
-rupees once, at the live GBP -> PKR rate, and that rupee amount is saved; the owner can correct it to
-what actually reached the bank. Money out is the company expenses the owner records (salary, rent …).
+GBP and PKR are kept apart (no conversion between balances). Money in is every payment on an invoice
+(part payments each on their own day, from invoice_payments), in the account it was paid into: payments
+by "PKR(Bank Transfer)" go to PKR, everything else to GBP. Invoice totals are stored in pounds, so the
+PKR money on an invoice is turned into rupees once, at the live GBP -> PKR rate, and that rupee amount is
+saved; the owner can correct it to what actually reached the bank. Money out is the company expenses the
+owner records (salary, rent …). The sale itself counts when the order is made; a later payment only
+moves money that the customer still owed into the bank.
 
 Each currency starts from a balance the owner enters once, for a starting month; after that every
 month opens with the previous month's closing balance. Money dated before the starting month is left
@@ -16,7 +18,7 @@ from __future__ import annotations
 import datetime
 
 from db import query_db, execute_db
-from services.invoice_service import invoice_money_state
+from services.invoice_service import sync_invoice_payments
 
 CURRENCIES = ('GBP', 'PKR')
 EXPENSE_CATEGORIES = ('Salary', 'Rent', 'Utilities', 'Software', 'Marketing', 'Tax', 'Other')
@@ -50,61 +52,86 @@ def _gbp_to_pkr_rate():
 
 
 def received_invoices():
-    """Every invoice with money received: currency, amount in that currency and the date it counts on.
-    PKR invoices get their rupee amount saved the first time they are seen (or again when the pounds
-    received change, unless the owner corrected it by hand)."""
+    """Every payment received on an invoice: currency, amount in that currency and the day it came in.
+    The PKR money on an invoice gets its rupee amount saved the first time it is seen (or again when the
+    pounds received in PKR change, unless the owner corrected it by hand); each PKR payment takes its share."""
+    sync_invoice_payments()
     rows = query_db("""
-        SELECT i.id, i.invoice_number, i.total, i.status, i.amount_paid, i.deposit_amount, i.payment_timing,
-               i.payment_method, i.paid_at, i.created_at, u.full_name AS client_name,
+        SELECT p.id AS payment_id, p.amount AS paid, p.paid_on, p.method, p.note,
+               i.id, i.invoice_number, i.status, i.payment_method, u.full_name AS client_name,
                o.order_number, o.service_name, o.owner_name,
                r.gbp_amount AS r_gbp, r.amount AS r_amount, r.rate AS r_rate, r.edited AS r_edited
-        FROM invoices i
+        FROM invoice_payments p
+        JOIN invoices i ON i.id = p.invoice_id
         LEFT JOIN users u ON u.id = i.user_id
         LEFT JOIN orders o ON o.id = i.order_id
         LEFT JOIN finance_invoice_receipts r ON r.invoice_id = i.id
-        WHERE i.status != 'Cancelled';
+        WHERE i.status != 'Cancelled'
+        ORDER BY p.paid_on, p.id;
     """) or []
+    rows = [dict(r) for r in rows]
+    for row in rows:
+        row['currency'] = invoice_currency({'payment_method': row.get('method') or row.get('payment_method')})
+
+    # Pounds paid in PKR on each invoice, and the rupees saved for them
+    pkr_gbp = {}
+    for row in rows:
+        if row['currency'] == 'PKR':
+            pkr_gbp[row['id']] = round(pkr_gbp.get(row['id'], 0) + float(row['paid'] or 0), 2)
+    rupees_for = {}
     rate = None
+    for row in rows:
+        if row['currency'] != 'PKR' or row['id'] in rupees_for:
+            continue
+        gbp = pkr_gbp[row['id']]
+        # Worked out again when new, when the pounds changed, or when the rate could not be fetched last time
+        stale = row.get('r_gbp') is None or (not row.get('r_edited') and (
+            abs(float(row['r_gbp']) - gbp) > 0.004 or row.get('r_amount') is None))
+        if stale:
+            saved_rate = row.get('r_rate')
+            if not saved_rate:
+                rate = rate or _gbp_to_pkr_rate()
+                saved_rate = rate
+            rupees = round(gbp * float(saved_rate), 2) if saved_rate else None
+            execute_db("""
+                INSERT INTO finance_invoice_receipts (invoice_id, currency, gbp_amount, amount, rate, edited, updated_at)
+                VALUES (?, 'PKR', ?, ?, ?, 0, datetime('now'))
+                ON CONFLICT(invoice_id) DO UPDATE SET gbp_amount = excluded.gbp_amount, amount = excluded.amount,
+                    rate = excluded.rate, updated_at = excluded.updated_at;
+            """, (row['id'], gbp, rupees, saved_rate))
+            rupees_for[row['id']] = (rupees, saved_rate, False)
+        else:
+            rupees_for[row['id']] = (row.get('r_amount'), row.get('r_rate'), bool(row.get('r_edited')))
+
     out = []
     for row in rows:
-        row = dict(row)
-        gbp = invoice_money_state(row)['amount_paid']
-        if gbp <= 0.004:
+        gbp = round(float(row['paid'] or 0), 2)
+        if abs(gbp) <= 0.004:
             continue
-        currency = invoice_currency(row)
         item = {
             'invoice_id': row['id'],
+            'payment_id': row['payment_id'],
             'invoice_number': row['invoice_number'],
             'client_name': row.get('owner_name') or row.get('client_name') or '',
             'order_number': row.get('order_number'),
             'service_name': row.get('service_name'),
             'status': row['status'],
-            # Partly paid invoices have no paid date; their money counts from when the invoice was made
-            'date': str(row.get('paid_at') or row.get('created_at') or '')[:10],
-            'currency': currency,
+            'date': str(row.get('paid_on') or '')[:10],
+            'method': row.get('method'),
+            'note': row.get('note'),
+            'currency': row['currency'],
             'gbp_amount': gbp,
             'amount': gbp,
             'rate': None,
             'edited': False,
         }
-        if currency == 'PKR':
-            # Worked out again when new, when the pounds changed, or when the rate could not be fetched last time
-            stale = row.get('r_gbp') is None or (not row.get('r_edited') and (
-                abs(float(row['r_gbp']) - gbp) > 0.004 or row.get('r_amount') is None))
-            if stale:
-                saved_rate = row.get('r_rate')
-                if not saved_rate:
-                    rate = rate or _gbp_to_pkr_rate()
-                    saved_rate = rate
-                rupees = round(gbp * float(saved_rate), 2) if saved_rate else None
-                execute_db("""
-                    INSERT INTO finance_invoice_receipts (invoice_id, currency, gbp_amount, amount, rate, edited, updated_at)
-                    VALUES (?, 'PKR', ?, ?, ?, 0, datetime('now'))
-                    ON CONFLICT(invoice_id) DO UPDATE SET gbp_amount = excluded.gbp_amount, amount = excluded.amount,
-                        rate = excluded.rate, updated_at = excluded.updated_at;
-                """, (row['id'], gbp, rupees, saved_rate))
-                row.update(r_amount=rupees, r_rate=saved_rate, r_edited=0)
-            item.update(amount=row.get('r_amount'), rate=row.get('r_rate'), edited=bool(row.get('r_edited')))
+        if row['currency'] == 'PKR':
+            rupees, saved_rate, edited = rupees_for[row['id']]
+            total_gbp = pkr_gbp[row['id']]
+            share = (rupees * gbp / total_gbp) if (rupees is not None and abs(total_gbp) > 0.004) else None
+            # The owner corrects the rupees for the whole invoice (all its PKR payments together)
+            item.update(amount=round(share, 2) if share is not None else None, rate=saved_rate, edited=edited,
+                        invoice_rupees=rupees, invoice_pkr_gbp=total_gbp)
         out.append(item)
     return out
 
@@ -174,7 +201,7 @@ def balance_sheet(month=None):
         'totals': {cur: current.get(cur) for cur in CURRENCIES},
         'starts': {cur: starts.get(cur) for cur in CURRENCIES},
         'income': sorted([i for i in income if month_key(i['date']) == month],
-                         key=lambda i: (i['date'], i['invoice_id']), reverse=True),
+                         key=lambda i: (i['date'], i['payment_id']), reverse=True),
         'expenses': [e for e in expenses if month_key(e['spent_on']) == month],
         'months': [m for m in months if m['month'] <= max(month, today)][::-1][:24],
         'rupees_missing': sum(1 for i in income if i['amount'] is None),
