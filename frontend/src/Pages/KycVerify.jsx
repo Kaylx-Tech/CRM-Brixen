@@ -12,7 +12,6 @@ import {
   IconLoader2,
   IconRefresh,
   IconShieldCheck,
-  IconUpload,
 } from "@tabler/icons-react"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
@@ -112,55 +111,56 @@ function Field({ id, label, error, hint, children }) {
   )
 }
 
-/** A photo (or PDF) box: pick or take a picture; shows a preview once uploaded. */
-function UploadBox({ label, done, preview, busy, accept, onFile }) {
-  const inputRef = useRef(null)
+const CAN_USE_CAMERA = typeof navigator !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia)
+
+/**
+ * A document photo, taken with the live camera only (no upload from the gallery or files): shows the photo
+ * once taken, with Retake; "Open camera" shows the back camera with a card-shaped guide.
+ */
+function DocumentCamera({ label, done, preview, busy, onCapture }) {
+  const [open, setOpen] = useState(false)
+  if (open) {
+    return (
+      <LiveCamera
+        facing="environment"
+        busy={busy}
+        takeLabel={`Take photo: ${label.toLowerCase()}`}
+        onCancel={() => setOpen(false)}
+        onCapture={(blob) => onCapture(blob).then((ok) => ok && setOpen(false))}
+      />
+    )
+  }
   return (
-    <button
-      type="button"
-      onClick={() => inputRef.current?.click()}
-      disabled={busy}
+    <div
       className={cn(
-        "relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border-2 border-dashed text-sm transition",
-        done ? "border-emerald-500/60 bg-emerald-500/5" : "border-border hover:border-primary hover:bg-primary/5",
+        "relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl border-2 border-dashed text-sm",
+        done ? "border-emerald-500/60 bg-emerald-500/5" : "border-border",
       )}
     >
       {preview ? (
-        <img src={preview} alt="" className="absolute inset-0 h-full w-full object-cover" />
-      ) : busy ? (
-        <IconLoader2 className="size-7 animate-spin text-muted-foreground" />
+        <img src={preview} alt={label} className="absolute inset-0 h-full w-full object-cover" />
       ) : done ? (
         <IconCircleCheck className="size-8 text-emerald-600" />
       ) : (
         <IconCamera className="size-8 text-muted-foreground" />
       )}
-      <span
-        className={cn(
-          "relative z-10 rounded-full px-3 py-1 font-medium",
-          preview ? "bg-background/90 shadow-sm" : done ? "text-emerald-700 dark:text-emerald-300" : "",
-        )}
-      >
-        {busy ? "Uploading…" : done ? `${label} added · change` : `Add ${label.toLowerCase()}`}
+      <span className={cn("relative z-10 rounded-full px-3 py-1 font-medium", preview && "bg-background/90 shadow-sm")}>
+        {done ? `${label} added` : label}
       </span>
-      <input
-        ref={inputRef}
-        type="file"
-        accept={accept}
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          e.target.value = ""
-          if (file) onFile(file)
-        }}
-      />
-    </button>
+      <Button type="button" size="sm" variant={done ? "outline" : "default"} className="relative z-10" onClick={() => setOpen(true)}>
+        {done ? <IconRefresh className="size-4" /> : <IconCamera className="size-4" />}
+        {done ? "Retake" : "Open camera"}
+      </Button>
+    </div>
   )
 }
 
-const CAN_USE_CAMERA = typeof navigator !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia)
-
-/** The live selfie: the front camera, a round guide, and a button to take the photo. */
-function SelfieCamera({ onCapture, busy }) {
+/**
+ * The live camera: the front one for the selfie (round guide, mirrored like a mirror) or the back one for
+ * documents (card guide). The photo is taken from the live picture, so nothing can be picked from the phone.
+ */
+function LiveCamera({ facing = "user", onCapture, onCancel, busy, takeLabel = "Take selfie" }) {
+  const selfie = facing === "user"
   const videoRef = useRef(null)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState(
@@ -171,8 +171,9 @@ function SelfieCamera({ onCapture, busy }) {
     if (!CAN_USE_CAMERA) return undefined
     let live = true
     let stream = null
+    const size = selfie ? { width: { ideal: 1280 }, height: { ideal: 960 } } : { width: { ideal: 1920 }, height: { ideal: 1440 } }
     navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 960 } }, audio: false })
+      .getUserMedia({ video: { facingMode: { ideal: facing }, ...size }, audio: false })
       .then((s) => {
         stream = s
         if (!live) return s.getTracks().forEach((t) => t.stop())
@@ -184,14 +185,14 @@ function SelfieCamera({ onCapture, busy }) {
         setError(
           err?.name === "NotAllowedError"
             ? "Allow the camera for this page (in the address bar or your browser settings), then try again."
-            : "No camera was found. Open the link on your phone to take the selfie.",
+            : "No camera was found. Open the link on your phone to take the photo.",
         ),
       )
     return () => {
       live = false
       stream?.getTracks().forEach((t) => t.stop())
     }
-  }, [])
+  }, [facing, selfie])
 
   const take = () => {
     const video = videoRef.current
@@ -205,27 +206,60 @@ function SelfieCamera({ onCapture, busy }) {
 
   if (error) {
     return (
-      <div className="flex gap-2 rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm text-amber-800 dark:text-amber-300">
-        <IconAlertTriangle className="size-5 shrink-0" />
-        {error}
+      <div className="space-y-3">
+        <div className="flex gap-2 rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm text-amber-800 dark:text-amber-300">
+          <IconAlertTriangle className="size-5 shrink-0" />
+          {error}
+        </div>
+        {onCancel && (
+          <Button type="button" variant="outline" className="w-full" onClick={onCancel}>
+            Close
+          </Button>
+        )}
       </div>
     )
   }
   return (
-    <div className="space-y-4">
-      <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-3xl bg-black">
-        <video ref={videoRef} autoPlay playsInline muted className="h-full w-full -scale-x-100 object-cover" />
-        <div className="pointer-events-none absolute inset-[12%] rounded-[50%] border-4 border-white/70" />
+    <div className="space-y-3">
+      <div
+        className={cn(
+          "relative mx-auto w-full overflow-hidden rounded-3xl bg-black",
+          selfie ? "aspect-[3/4] max-w-sm" : "aspect-[4/3]",
+        )}
+      >
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className={cn("h-full w-full object-cover", selfie && "-scale-x-100")}
+        />
+        <div
+          className={cn(
+            "pointer-events-none absolute border-4 border-white/70",
+            selfie ? "inset-[12%] rounded-[50%]" : "inset-x-[8%] inset-y-[14%] rounded-xl",
+          )}
+        />
         {!ready && (
           <div className="absolute inset-0 flex items-center justify-center text-sm text-white/80">
             <IconLoader2 className="mr-2 size-5 animate-spin" /> Opening the camera…
           </div>
         )}
       </div>
-      <Button className="h-11 w-full" onClick={take} disabled={!ready || busy}>
-        {busy ? <IconLoader2 className="size-4 animate-spin" /> : <IconCamera className="size-4" />}
-        {busy ? "Uploading…" : "Take selfie"}
-      </Button>
+      {!selfie && (
+        <p className="text-center text-xs text-muted-foreground">Fit the whole document inside the frame, then take the photo.</p>
+      )}
+      <div className="flex gap-2">
+        {onCancel && (
+          <Button type="button" variant="outline" className="h-11" onClick={onCancel} disabled={busy}>
+            Cancel
+          </Button>
+        )}
+        <Button type="button" className="h-11 flex-1" onClick={take} disabled={!ready || busy}>
+          {busy ? <IconLoader2 className="size-4 animate-spin" /> : <IconCamera className="size-4" />}
+          {busy ? "Uploading…" : takeLabel}
+        </Button>
+      </div>
     </div>
   )
 }
@@ -304,6 +338,13 @@ export default function KycVerify() {
     },
     [base, query],
   )
+
+  // A photo from the live camera: uploaded straight away, and the step's message for it is cleared
+  const capture = (kind, blob) =>
+    upload(kind, new File([blob], `${kind}.jpg`, { type: "image/jpeg" })).then((ok) => {
+      if (ok) setErrors((e) => ({ ...e, [kind]: "" }))
+      return ok
+    })
 
   // What each step needs before Continue
   const missing = () => {
@@ -491,13 +532,12 @@ export default function KycVerify() {
             <div className={cn("mt-5 grid gap-3", idType.sides.length > 1 && "sm:grid-cols-2")}>
               {idType.sides.map((side) => (
                 <div key={side}>
-                  <UploadBox
+                  <DocumentCamera
                     label={idType.sides.length > 1 ? SIDE_LABEL[side] : "Photo page"}
                     done={uploaded.has(side)}
                     preview={previews[side]}
                     busy={uploading === side}
-                    accept="image/*"
-                    onFile={(file) => upload(side, file).then((ok) => ok && setErrors((e) => ({ ...e, [side]: "" })))}
+                    onCapture={(blob) => capture(side, blob)}
                   />
                   {err(side) && <p className="mt-1 text-xs text-destructive">{err(side)}</p>}
                 </div>
@@ -549,15 +589,10 @@ export default function KycVerify() {
                 </Button>
               </div>
             ) : (
-              <SelfieCamera
+              <LiveCamera
+                facing="user"
                 busy={uploading === "selfie"}
-                onCapture={(blob) =>
-                  upload("selfie", new File([blob], "selfie.jpg", { type: "image/jpeg" })).then((ok) => {
-                    if (!ok) return
-                    setRetake(false)
-                    setErrors((e) => ({ ...e, selfie: "" }))
-                  })
-                }
+                onCapture={(blob) => capture("selfie", blob).then((ok) => ok && setRetake(false))}
               />
             )}
             {err("selfie") && <p className="mt-2 text-xs text-destructive">{err("selfie")}</p>}
@@ -597,7 +632,8 @@ export default function KycVerify() {
           <>
             <h1 className="text-xl font-semibold">Proof of address</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Upload one document dated within the last 3 months, showing your name and the address you entered.
+              Take a photo of one document dated within the last 3 months, showing your name and the address you
+              entered.
             </p>
             <div className="mt-5 grid gap-2">
               {info.poa_types.map((t) => (
@@ -623,17 +659,15 @@ export default function KycVerify() {
             </div>
             {err("poa_type") && <p className="mt-1 text-xs text-destructive">{err("poa_type")}</p>}
             <div className="mt-4">
-              <UploadBox
-                label="Document"
+              <DocumentCamera
+                label="Proof of address"
                 done={uploaded.has("poa")}
                 preview={previews.poa}
                 busy={uploading === "poa"}
-                accept="image/*,application/pdf"
-                onFile={(file) => upload("poa", file).then((ok) => ok && setErrors((e) => ({ ...e, poa: "" })))}
+                onCapture={(blob) => capture("poa", blob)}
               />
               <p className="mt-1.5 text-xs text-muted-foreground">
-                <IconUpload className="mr-1 inline size-3.5" />A photo or PDF, up to 10 MB. Screenshots and edited files
-                are not accepted.
+                Photograph the original paper or open it on another screen. The whole page must be readable.
               </p>
               {err("poa") && <p className="mt-1 text-xs text-destructive">{err("poa")}</p>}
             </div>
