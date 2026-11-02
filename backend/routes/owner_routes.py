@@ -37,6 +37,14 @@
   GET  /integrations/r2  · POST /integrations/r2/test · POST /integrations/r2/move  → R2 check and moving
        documents that are only on the server into R2
 
+KYC desk (kyc.finstap.com): the outside KYC team signs in here too (role 'kyc', login with panel: 'kyc')
+and may only use /me, /logout, /account/password and /desk; owners may use /desk as well.
+  GET  /desk/checks?period=YYYY-MM&workspace=   → every ID check that month (no prices)
+  GET  /desk/checks/<slug>/<id>                 → one check with Didit's result and photos
+  POST /desk/checks/<slug>/<id>/status {status: Approved|Declined|In Review, note}
+  POST /desk/checks/<slug>/<id>/resubmit {reason?} → new Didit link emailed to the client
+  GET/POST /kyc-users {email, full_name}  · POST /kyc-users/<id>/status {status: Active|Disabled}  (owners only)
+
 Every route except login needs "Authorization: Bearer owner.<token>". Nothing here deletes a workspace
 or its data; Brixen's adopted database (plan "legacy") cannot be changed from here.
 """
@@ -53,10 +61,11 @@ from services import platform_services as svc
 from services import platform_billing as billing
 from services import platform_content as content
 from services import platform_integrations as integrations
+from services import kyc_desk
 from config import API_PUBLIC_URL, TENANT_BASE_DOMAIN
 from services.owner_auth import (
-    OwnerAuthError, admin_for_token, audit, change_password, link_email, logout, request_password_link, resend,
-    set_password_with_link, start_login, verify,
+    OwnerAuthError, add_kyc_user, admin_for_token, audit, change_password, kyc_users, link_email, logout,
+    request_password_link, resend, set_kyc_user_status, set_password_with_link, start_login, verify,
 )
 
 PREFIX = '/api/platform/owner'
@@ -86,6 +95,46 @@ def _portal_base(environ):
     if host in ('localhost', '127.0.0.1') or (TENANT_BASE_DOMAIN and host == f'admin.{TENANT_BASE_DOMAIN}'):
         return origin
     return f"https://admin.{TENANT_BASE_DOMAIN}" if TENANT_BASE_DOMAIN else origin
+
+
+def _kyc_base(environ):
+    """The KYC panel's address for links in KYC team emails (a local test page gets itself)."""
+    origin = (environ.get('HTTP_ORIGIN') or '').strip().rstrip('/')
+    host = re.sub(r'^https?://', '', origin).split(':')[0].lower()
+    if host in ('localhost', '127.0.0.1') or (TENANT_BASE_DOMAIN and host == f'kyc.{TENANT_BASE_DOMAIN}'):
+        return origin
+    return f"https://kyc.{TENANT_BASE_DOMAIN}" if TENANT_BASE_DOMAIN else origin
+
+
+def _desk(environ, start_response, sub, method, admin, body, query):
+    """The KYC desk's routes (KYC team and owners)."""
+    try:
+        if sub == '/desk/checks' and method == 'GET':
+            return success_response(start_response, data=kyc_desk.checks(_q(query, 'period'),
+                                                                          _q(query, 'workspace') or None))
+        match = re.match(r'^/desk/checks/([a-z0-9-]+)/(\d+)(?:/(status|resubmit))?$', sub)
+        if not match:
+            return error_response(start_response, "Not found", status_code=404)
+        slug, check_id, act = match.group(1), int(match.group(2)), match.group(3)
+        if not act and method == 'GET':
+            return success_response(start_response, data=kyc_desk.detail(slug, check_id))
+        if act == 'status' and method == 'POST':
+            row = kyc_desk.set_status(slug, check_id, body.get('status'), body.get('note'), admin)
+            audit(admin, f"KYC_{row['status'].upper().replace(' ', '_')}", slug,
+                  f"{row['full_name']} ({row.get('order_number') or 'no order'})"
+                  f"{': ' + row['review_note'] if row.get('review_note') else ''}")
+            return success_response(start_response, data=row, message=f"Saved as {row['status']}.")
+        if act == 'resubmit' and method == 'POST':
+            row, emailed = svc.resubmit_check(slug, check_id, body.get('reason'))
+            audit(admin, 'KYC_RESUBMIT', slug, f"{row['full_name']} ({row.get('order_number') or 'no order'}): "
+                                               f"new link{' emailed' if emailed else ', not emailed'}"
+                                               f"{'; ' + body.get('reason') if body.get('reason') else ''}")
+            return success_response(start_response, data=kyc_desk._desk_row(row), message=(
+                "New link emailed to the client." if emailed
+                else "New link made, but the email was not sent. Copy the link and send it yourself."))
+    except svc.ServiceError as exc:
+        return error_response(start_response, str(exc), status_code=400)
+    return error_response(start_response, "Not found", status_code=404)
 
 
 def _api_base(environ):
@@ -260,7 +309,8 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
     # ── sign-in (no session yet) ──
     if sub == '/login' and method == 'POST':
         try:
-            challenge, hint = start_login(body.get('email'), body.get('password'), _ip(environ))
+            challenge, hint = start_login(body.get('email'), body.get('password'), _ip(environ),
+                                          panel='kyc' if body.get('panel') == 'kyc' else 'owner')
         except OwnerAuthError as exc:
             return error_response(start_response, str(exc), status_code=429 if exc.wait else 400)
         return success_response(start_response, data={'challenge': challenge, 'email_hint': hint,
@@ -274,7 +324,7 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
     # ── set or reset the password with an emailed one-time link ──
     if sub == '/password-link' and method == 'POST':
         try:
-            request_password_link(body.get('email'), _portal_base(environ), _ip(environ))
+            request_password_link(body.get('email'), _portal_base(environ), _ip(environ), _kyc_base(environ))
         except OwnerAuthError as exc:
             return error_response(start_response, str(exc), status_code=429 if exc.wait else 400)
         return success_response(start_response, message="If this email belongs to a Finstap owner, a link is on "
@@ -318,6 +368,31 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
         audit(admin, 'SIGNED_OUT')
         return success_response(start_response, message="Signed out.")
 
+    # ── KYC desk (kyc.finstap.com); the KYC team can use nothing else ──
+    if sub.startswith('/desk/'):
+        return _desk(environ, start_response, sub, method, admin, body, query)
+    if admin.get('role') != 'owner':
+        return error_response(start_response, "This is for the Finstap owner only.", status_code=403)
+
+    if sub == '/kyc-users' and method == 'GET':
+        return success_response(start_response, data={'users': kyc_users()})
+    if sub == '/kyc-users' and method == 'POST':
+        try:
+            user, emailed = add_kyc_user(admin, body.get('email'), body.get('full_name'), _kyc_base(environ))
+        except OwnerAuthError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        return success_response(start_response, data={'user': user}, status_code=201, message=(
+            f"Added. {user['email']} got a link to set a password." if emailed
+            else "Added, but the email was not sent. They can use Forgot password on the KYC panel."))
+    kyc_user = re.match(r'^/kyc-users/(\d+)/status$', sub)
+    if kyc_user and method == 'POST':
+        try:
+            user = set_kyc_user_status(admin, int(kyc_user.group(1)), body.get('status'))
+        except OwnerAuthError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        return success_response(start_response, data={'user': user},
+                                message="Turned on." if user['status'] == 'Active' else "Turned off and signed out.")
+
     if sub == '/overview' and method == 'GET':
         return success_response(start_response, data=_overview())
 
@@ -345,7 +420,7 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
 
     if sub == '/admins' and method == 'GET':
         rows = _platform_query("SELECT id, email, full_name, status, last_login_at, created_at FROM platform_admins "
-                               "ORDER BY id;")
+                               "WHERE COALESCE(role, 'owner') = 'owner' ORDER BY id;")
         return success_response(start_response, data={'admins': rows})
 
     # ── integrations: Finstap's API keys for every workspace (services/platform_integrations.py) ──

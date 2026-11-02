@@ -39,6 +39,7 @@ RESERVED_SLUGS = frozenset({
     'www', 'api', 'app', 'admin', 'portal', 'platform', 'finstap', 'mail', 'static',
     'assets', 'login', 'signup', 'support', 'help', 'billing', 'status', 'docs', 'blog', 'owner',
     'errors',  # errors.finstap.com is GlitchTip (error tracking)
+    'kyc',  # kyc.finstap.com is the KYC team's panel (routes/owner_routes.py, /desk)
 })
 
 PLATFORM_SCHEMA = """
@@ -408,6 +409,10 @@ def ensure_platform():
             for column, kind in PAYMENT_COLUMNS:
                 if column not in have:
                     conn.execute(f"ALTER TABLE subscription_payments ADD COLUMN {column} {kind};")
+            # 'owner' = admin.finstap.com; 'kyc' = the outside KYC team, who only see kyc.finstap.com
+            have = {row['name'] for row in conn.execute("PRAGMA table_info(platform_admins);").fetchall()}
+            if 'role' not in have:
+                conn.execute("ALTER TABLE platform_admins ADD COLUMN role TEXT NOT NULL DEFAULT 'owner';")
             have = {row['name'] for row in conn.execute("PRAGMA table_info(ro_requests);").fetchall()}
             for column, kind in RO_COLUMNS:
                 if column not in have:

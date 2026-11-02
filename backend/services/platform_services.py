@@ -106,11 +106,13 @@ def _period(value):
 
 
 def _ensure_review_note():
-    """The reason the Finstap team gives when it rejects a check (column added on first use)."""
+    """The reason the Finstap team gives when it rejects a check, and who on the KYC desk decided and when
+    (columns added on first use)."""
     from db import query_db, execute_db
     columns = {c['name'] for c in (query_db("PRAGMA table_info(id_verifications);") or [])}
-    if columns and 'review_note' not in columns:
-        execute_db("ALTER TABLE id_verifications ADD COLUMN review_note TEXT;")
+    for column in ('review_note', 'reviewed_by', 'reviewed_at'):
+        if columns and column not in columns:
+            execute_db(f"ALTER TABLE id_verifications ADD COLUMN {column} TEXT;")
 
 
 def _didit_reason(result):
@@ -158,7 +160,7 @@ def _workspace_checks(tenant, start, end, check_id=None):
             _ensure_review_note()
             rows = query_db(f"""
                 SELECT v.id, v.order_id, v.full_name, v.email, v.person_role, v.status, v.ch_personal_code,
-                       v.result_json, v.review_note, v.session_url, v.link_sent_at, v.created_at, v.updated_at,
+                       v.result_json, v.review_note, v.reviewed_by, v.reviewed_at, v.session_url, v.link_sent_at, v.created_at, v.updated_at,
                        o.order_number, o.service_name, o.total, o.status AS order_status, o.created_at AS order_date,
                        u.full_name AS client_name, u.email AS client_email, u.address AS client_address,
                        COALESCE(NULLIF(o.end_client_phone, ''), NULLIF(o.checkout_phone, ''), u.phone) AS phone,
@@ -298,7 +300,8 @@ def resubmit_check(slug, check_id, reason=None):
         fresh, err = start_session(int(check_id))
         if err:
             raise ServiceError(err)
-        execute_db("UPDATE id_verifications SET review_note = NULL WHERE id = ?;", (int(check_id),))
+        execute_db("UPDATE id_verifications SET review_note = NULL, reviewed_by = NULL, reviewed_at = NULL "
+                   "WHERE id = ?;", (int(check_id),))
         email = fresh.get('email') or row.get('client_email')
         if email and fresh.get('session_url'):
             subject, text, html = compose_client_email(

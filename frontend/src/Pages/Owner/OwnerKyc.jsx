@@ -26,29 +26,12 @@ import {
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { money, ownerApi, shortDate } from "@/lib/owner"
 import { Button, FilterTabs, LoadError, PageTitle, Panel, SELECT, Stat } from "./ownerUi"
+import { AMBER, GREEN, GREY, PILL, RED, REJECTED, SKY, kycLabel } from "../Kyc/kycStatus"
+import KycTeam from "./KycTeam"
 import { useServiceSettings } from "./useServiceSettings"
 
 function thisMonth() {
   return new Date().toISOString().slice(0, 7)
-}
-
-const PILL = "inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold"
-const GREEN = "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-const RED = "bg-destructive/10 text-destructive"
-const AMBER = "bg-amber-500/15 text-amber-800 dark:text-amber-300"
-const SKY = "bg-sky-500/10 text-sky-700 dark:text-sky-300"
-const GREY = "bg-muted text-muted-foreground"
-
-const REJECTED = ["Declined", "Abandoned", "Expired", "Kyc Expired"]
-
-// Didit's status in the words the team uses: KYC Approved, Under Review, Rejected …
-function kycLabel(status) {
-  if (status === "Approved") return ["KYC Approved", GREEN]
-  if (status === "Declined") return ["Rejected", RED]
-  if (["Abandoned", "Expired", "Kyc Expired"].includes(status)) return [`Rejected (${status.toLowerCase()})`, RED]
-  if (["In Review", "Resubmitted"].includes(status)) return ["Under Review", AMBER]
-  if (status === "In Progress") return ["In progress", SKY]
-  return ["Waiting for client", GREY]
 }
 
 function paymentTone(status) {
@@ -138,6 +121,7 @@ function KycCell({ check, onAction }) {
     <div className="flex max-w-56 flex-col items-start gap-1">
       <span className={cn(PILL, tone)}>{label}</span>
       {check.reason && rejected && <span className="line-clamp-2 text-xs text-destructive">{check.reason}</span>}
+      {check.reviewed_by && <span className="text-xs text-muted-foreground">by {check.reviewed_by} (KYC desk)</span>}
       {"reason" in check && (
         <div className="flex flex-wrap gap-1">
           {rejected ? (
@@ -263,6 +247,8 @@ export default function OwnerKyc() {
           <p className="text-sm text-muted-foreground">Loading…</p>
         )}
       </Panel>
+
+      <KycTeam />
 
       {data && (
         <>

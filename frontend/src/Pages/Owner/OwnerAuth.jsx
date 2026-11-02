@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { getApiBase } from "@/lib/api"
-import { ownerApi } from "@/lib/owner"
+import { kycApi, ownerApi } from "@/lib/owner"
 import finstapLogo from "@/assets/finstap-logo.svg"
 import finstapLogoLight from "@/assets/finstap-logo-light.svg"
 import { useFormErrors } from "@/lib/validation"
@@ -25,11 +25,34 @@ const OWNER_PASSWORD_SCHEMA = {
   repeat: { label: "Repeat password", required: true, match: "password", matchMessage: "The two passwords are not the same." },
 }
 
-/** The owner portal's own sign-in pages: one plain card in the middle of the screen. */
-function OwnerCard({ title, subtitle, children, footer }) {
+// The same sign-in pages serve the owner portal (/owner) and the KYC team's panel (/kyc)
+const PANELS = {
+  owner: {
+    base: "/owner",
+    api: ownerApi,
+    badge: "Owner portal",
+    tab: "Finstap owner",
+    signIn: "Use your owner email and password.",
+    emailLabel: "Owner email",
+    note: "For the Finstap team only. Companies sign in at their own address.",
+  },
+  kyc: {
+    base: "/kyc",
+    api: kycApi,
+    badge: "KYC panel",
+    tab: "Finstap KYC",
+    signIn: "Use the email and password of your KYC panel account.",
+    emailLabel: "Email",
+    note: "For the KYC team only. Ask the Finstap owner for an account.",
+  },
+}
+
+/** The panel's own sign-in pages: one plain card in the middle of the screen. */
+function OwnerCard({ panel = "owner", title, subtitle, children, footer }) {
+  const p = PANELS[panel]
   useEffect(() => {
-    document.title = `${title} · Finstap owner`
-  }, [title])
+    document.title = `${title} · ${p.tab}`
+  }, [title, p.tab])
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 px-4 py-10">
       <div className="w-full max-w-sm">
@@ -37,7 +60,7 @@ function OwnerCard({ title, subtitle, children, footer }) {
           <img src={finstapLogo} alt="Finstap" className="w-auto dark:hidden h-11" />
           <img src={finstapLogoLight} alt="Finstap" className="hidden h-9 w-auto dark:block" />
           <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-            <IconLock className="size-3.5" /> Owner portal
+            <IconLock className="size-3.5" /> {p.badge}
           </span>
         </div>
         <div className="rounded-2xl border bg-card p-6 shadow-sm">
@@ -47,7 +70,7 @@ function OwnerCard({ title, subtitle, children, footer }) {
         </div>
         {footer && <div className="mt-4 text-center text-sm text-muted-foreground">{footer}</div>}
         <p className="mt-8 text-center text-xs text-muted-foreground">
-          For the Finstap team only. Companies sign in at their own address.
+          {p.note}
         </p>
       </div>
     </div>
@@ -63,8 +86,9 @@ function ErrorBox({ error }) {
   ) : null
 }
 
-/** Email + password, then the 6-digit code emailed to the owner. */
-export function OwnerLogin({ onSignedIn }) {
+/** Email + password, then the 6-digit code emailed to the owner (or KYC team member). */
+export function OwnerLogin({ onSignedIn, panel = "owner" }) {
+  const p = PANELS[panel]
   const [params] = useSearchParams()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -78,7 +102,7 @@ export function OwnerLogin({ onSignedIn }) {
     if (!check({ email, password })) return
     setBusy(true)
     setError("")
-    const res = await ownerApi("/login", { method: "POST", body: { email, password } })
+    const res = await p.api("/login", { method: "POST", body: { email, password, panel } })
     setBusy(false)
     if (res.ok) setCode(res.data)
     else setError(res.error)
@@ -87,6 +111,7 @@ export function OwnerLogin({ onSignedIn }) {
   if (code) {
     return (
       <OwnerCard
+        panel={panel}
         title="Check your email"
         subtitle={`We sent a 6-digit code to ${code.email_hint}.`}
       >
@@ -109,10 +134,7 @@ export function OwnerLogin({ onSignedIn }) {
   }
 
   return (
-    <OwnerCard
-      title="Sign in"
-      subtitle="Use your owner email and password."
-    >
+    <OwnerCard panel={panel} title="Sign in" subtitle={p.signIn}>
       <form onSubmit={submit} noValidate>
         <FieldGroup>
           <ErrorBox error={error} />
@@ -140,7 +162,7 @@ export function OwnerLogin({ onSignedIn }) {
             {/* Same as the workspace sign-in: the reset link sits next to the label */}
             <div className="flex items-center">
               <FieldLabel htmlFor="owner-password">Password</FieldLabel>
-              <Link to="/owner/forgot" className="ml-auto text-sm underline-offset-4 hover:underline">
+              <Link to={`${p.base}/forgot`} className="ml-auto text-sm underline-offset-4 hover:underline">
                 Forgot your password?
               </Link>
             </div>
@@ -164,7 +186,8 @@ export function OwnerLogin({ onSignedIn }) {
 }
 
 /** Ask for a one-time link to set (first time) or reset the password. */
-export function OwnerForgot() {
+export function OwnerForgot({ panel = "owner" }) {
+  const p = PANELS[panel]
   const [email, setEmail] = useState("")
   const [error, setError] = useState("")
   const [sent, setSent] = useState("")
@@ -177,7 +200,7 @@ export function OwnerForgot() {
     if (!forgotErrors.check({ email })) return
     setBusy(true)
     setError("")
-    const res = await ownerApi("/password-link", { method: "POST", body: { email } })
+    const res = await p.api("/password-link", { method: "POST", body: { email } })
     setBusy(false)
     if (res.ok) setSent(res.message)
     else setError(res.error)
@@ -185,10 +208,11 @@ export function OwnerForgot() {
 
   return (
     <OwnerCard
+      panel={panel}
       title="Set your password"
       subtitle="First time here, or forgot your password? We'll email you a link."
       footer={
-        <Link to="/owner/login" className="font-medium text-primary hover:underline">
+        <Link to={`${p.base}/login`} className="font-medium text-primary hover:underline">
           Back to sign in
         </Link>
       }
@@ -203,7 +227,7 @@ export function OwnerForgot() {
           <FieldGroup>
             <ErrorBox error={error} />
             <Field>
-              <FieldLabel htmlFor="owner-forgot-email">Owner email</FieldLabel>
+              <FieldLabel htmlFor="owner-forgot-email">{p.emailLabel}</FieldLabel>
               <Input
                 id="owner-forgot-email"
                 {...invalidProps(forgotErrors.errors, 'email', 'owner-forgot-')}
@@ -227,7 +251,8 @@ export function OwnerForgot() {
 }
 
 /** The page the emailed link opens: choose a new password. */
-export function OwnerSetPassword() {
+export function OwnerSetPassword({ panel = "owner" }) {
+  const p = PANELS[panel]
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const token = params.get("token") || ""
@@ -240,31 +265,32 @@ export function OwnerSetPassword() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    ownerApi(`/password-link?token=${encodeURIComponent(token)}`).then((res) =>
+    p.api(`/password-link?token=${encodeURIComponent(token)}`).then((res) =>
       res.ok ? setEmail(res.data.email) : setError(res.error),
     )
-  }, [token])
+  }, [token, p])
 
   const submit = async (e) => {
     e.preventDefault()
     setError("")
     if (!pwErrors.check({ password, repeat })) return
     setBusy(true)
-    const res = await ownerApi("/password", {
+    const res = await p.api("/password", {
       method: "POST",
       body: { token, password, full_name: name },
     })
     setBusy(false)
-    if (res.ok) navigate("/owner/login?ready=1", { replace: true })
+    if (res.ok) navigate(`${p.base}/login?ready=1`, { replace: true })
     else setError(res.error)
   }
 
   return (
     <OwnerCard
+      panel={panel}
       title="Choose a password"
       subtitle={email ? `For ${email}` : undefined}
       footer={
-        <Link to="/owner/login" className="font-medium text-primary hover:underline">
+        <Link to={`${p.base}/login`} className="font-medium text-primary hover:underline">
           Back to sign in
         </Link>
       }
@@ -273,7 +299,7 @@ export function OwnerSetPassword() {
         error ? (
           <FieldGroup>
             <ErrorBox error={error} />
-            <Link to="/owner/forgot" className="text-sm font-medium text-primary hover:underline">
+            <Link to={`${p.base}/forgot`} className="text-sm font-medium text-primary hover:underline">
               Ask for a new link
             </Link>
           </FieldGroup>

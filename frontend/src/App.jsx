@@ -10,8 +10,9 @@ import PrivacyPolicy from './Pages/Legal/PrivacyPolicy'
 import Terms from './Pages/Legal/Terms'
 import Security from './Pages/Legal/Security'
 import OwnerPortal from './Pages/Owner/OwnerPortal'
+import KycPanel from './Pages/Kyc/KycPanel'
 import BlogList, { BlogPost, Unsubscribe } from './Pages/Blog/Blog'
-import { onOwnerHost, ownerPortalAllowed } from './lib/owner'
+import { kycPanelAllowed, onKycHost, onOwnerHost, ownerPortalAllowed } from './lib/owner'
 import { IS_FINSTAP, onSharedHost, subdomainWorkspace } from './lib/workspace'
 import { loadBranding } from './lib/branding'
 import ResetPassword from './Pages/ResetPassword'
@@ -55,6 +56,8 @@ import Billing from './Pages/Billing/Billing'
 function HomeRedirect() {
   // admin.finstap.com is the owner portal only
   if (onOwnerHost()) return <Navigate to="/owner" replace />
+  // kyc.finstap.com is the KYC team's panel only
+  if (onKycHost()) return <Navigate to="/kyc" replace />
   if (IS_FINSTAP && (onSharedHost() || (!subdomainWorkspace() && !localStorage.getItem('token')))) {
     return <FinstapLanding />
   }
@@ -136,6 +139,9 @@ const App = () => {
             {/* Finstap owner portal: admin.finstap.com (or /owner when subdomains are off, for local tests) */}
             {ownerPortalAllowed() && <Route path="/owner/*" element={<OwnerPortal />} />}
 
+            {/* Finstap KYC panel for the outside KYC team: kyc.finstap.com (or /kyc for local tests) */}
+            {kycPanelAllowed() && <Route path="/kyc/*" element={<KycPanel />} />}
+
             {/* Finstap: companies create their own workspace; the Brixen build has no signup */}
             <Route
               path="/signup"
@@ -200,7 +206,7 @@ const App = () => {
             <Route path="/toast-test" element={<ToastPlayground />} />
 
             {/* Catch-all fallback */}
-            <Route path="*" element={<Navigate to={onOwnerHost() ? "/owner" : "/login"} replace />} />
+            <Route path="*" element={<Navigate to={onOwnerHost() ? "/owner" : onKycHost() ? "/kyc" : "/login"} replace />} />
           </Routes>
         </BrowserRouter>
           </MotionRoot>

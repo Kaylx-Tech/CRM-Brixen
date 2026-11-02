@@ -1,28 +1,35 @@
 /**
- * Finstap owner portal (admin.finstap.com): its own sign-in, kept apart from any company workspace.
- * The owner's session token is stored under its own key and sent without X-Tenant.
+ * Finstap owner portal (admin.finstap.com) and KYC panel (kyc.finstap.com): their own sign-ins, kept apart
+ * from any company workspace. Each panel's session token is stored under its own key and sent without X-Tenant.
  */
 import { getApiBase } from "@/lib/api"
 import { IS_FINSTAP, TENANT_DOMAIN } from "@/lib/workspace"
 
 const KEY = "owner_token"
+// The KYC panel (kyc.finstap.com) signs in through the same API but keeps its own token
+const KYC_KEY = "kyc_token"
 
-export function getOwnerToken() {
+function readToken(key) {
   try {
-    return localStorage.getItem(KEY) || ""
+    return localStorage.getItem(key) || ""
   } catch {
     return ""
   }
 }
 
-export function setOwnerToken(token) {
+function writeToken(key, token) {
   try {
-    if (token) localStorage.setItem(KEY, token)
-    else localStorage.removeItem(KEY)
+    if (token) localStorage.setItem(key, token)
+    else localStorage.removeItem(key)
   } catch {
-    // Private mode: the owner signs in again next time
+    // Private mode: sign in again next time
   }
 }
+
+export const getOwnerToken = () => readToken(KEY)
+export const setOwnerToken = (token) => writeToken(KEY, token)
+export const getKycToken = () => readToken(KYC_KEY)
+export const setKycToken = (token) => writeToken(KYC_KEY, token)
 
 /** This page is the owner portal's own address (admin.finstap.com). */
 export function onOwnerHost() {
@@ -34,35 +41,52 @@ export function ownerPortalAllowed() {
   return IS_FINSTAP && (onOwnerHost() || !TENANT_DOMAIN)
 }
 
-/** Call the owner API. Returns { ok, status, data, error }; a 401 signs the owner out. */
-export async function ownerApi(path, { method = "GET", body } = {}) {
-  const token = getOwnerToken()
-  let res
-  try {
-    res = await fetch(`${getApiBase()}/platform/owner${path}`, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    })
-  } catch {
-    return { ok: false, status: 0, data: null, error: "Cannot reach the server. Check your connection." }
-  }
-  const json = await res.json().catch(() => ({}))
-  if (res.status === 401 && token) {
-    setOwnerToken("")
-    window.dispatchEvent(new Event("owner-signed-out"))
-  }
-  return {
-    ok: res.ok && json.success !== false,
-    status: res.status,
-    data: json.data,
-    message: json.message,
-    error: json.error || json.message || (res.ok ? "" : "Something went wrong."),
+/** This page is the KYC panel's own address (kyc.finstap.com). */
+export function onKycHost() {
+  return IS_FINSTAP && Boolean(TENANT_DOMAIN) && window.location.hostname.toLowerCase() === `kyc.${TENANT_DOMAIN}`
+}
+
+/** The KYC panel opens on its own address, or at /kyc when subdomains are off (local tests). */
+export function kycPanelAllowed() {
+  return IS_FINSTAP && (onKycHost() || !TENANT_DOMAIN)
+}
+
+/** An API caller for one panel: returns { ok, status, data, error }; a 401 signs that panel out. */
+function panelApi(getToken, setToken, signedOutEvent) {
+  return async (path, { method = "GET", body } = {}) => {
+    const token = getToken()
+    let res
+    try {
+      res = await fetch(`${getApiBase()}/platform/owner${path}`, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      })
+    } catch {
+      return { ok: false, status: 0, data: null, error: "Cannot reach the server. Check your connection." }
+    }
+    const json = await res.json().catch(() => ({}))
+    if (res.status === 401 && token) {
+      setToken("")
+      window.dispatchEvent(new Event(signedOutEvent))
+    }
+    return {
+      ok: res.ok && json.success !== false,
+      status: res.status,
+      data: json.data,
+      message: json.message,
+      error: json.error || json.message || (res.ok ? "" : "Something went wrong."),
+    }
   }
 }
+
+/** Call the owner API with the owner's token. */
+export const ownerApi = panelApi(getOwnerToken, setOwnerToken, "owner-signed-out")
+/** Call the owner API with the KYC panel's token (only /me, /logout and /desk answer it). */
+export const kycApi = panelApi(getKycToken, setKycToken, "kyc-signed-out")
 
 export const money = (value) =>
   new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 2 }).format(

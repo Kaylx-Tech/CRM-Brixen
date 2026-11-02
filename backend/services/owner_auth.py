@@ -8,6 +8,8 @@
   * a session lasts 12 hours; only hashes of codes and session tokens are stored
   * wrong passwords are slowed down per email and per network
   * everything an owner changes is written to platform_audit
+  * role 'kyc': the outside KYC team. The owner adds them in the owner portal (KYC page); they get a
+    set-password link to kyc.finstap.com, sign in the same way, and the API only lets them use /desk
 """
 import hashlib
 import hmac
@@ -25,6 +27,11 @@ RESEND_SECONDS = 60
 MAX_SENDS = 5
 SESSION_HOURS = 12
 TOKEN_PREFIX = 'owner.'
+# What each kind of account is called in its emails and where its set-password page is
+PANELS = {
+    'owner': ('Finstap owner portal', '/owner/set-password'),
+    'kyc': ('Finstap KYC panel', '/kyc/set-password'),
+}
 
 LINK_MINUTES = 30
 # Who may set up an owner account by email (the Finstap owner; more can be added in Coolify)
@@ -87,14 +94,19 @@ def save_admin(email, full_name, password):
     """, (email, (full_name or email).strip(), hash_password(password)))
 
 
-def _send_code(email, code):
+def _panel_name(role):
+    return PANELS.get(role or 'owner', PANELS['owner'])[0]
+
+
+def _send_code(email, code, role='owner'):
     from services.email_service import send_email
-    subject = f"{code} is your Finstap owner sign-in code"
-    text = (f"Your Finstap owner portal sign-in code is {code}.\n\nIt works for {CODE_MINUTES} minutes. "
+    panel = _panel_name(role)
+    subject = f"{code} is your {panel} sign-in code"
+    text = (f"Your {panel} sign-in code is {code}.\n\nIt works for {CODE_MINUTES} minutes. "
             "If you did not just sign in, change your password straight away.")
     html = (f'<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:520px;margin:0 auto;'
             f'padding:32px 16px;color:#111827;"><p style="font-size:20px;font-weight:700;margin:0 0 16px;">'
-            f'Finstap owner portal</p><p style="margin:0 0 20px;color:#4b5563;">Your sign-in code:</p>'
+            f'{panel}</p><p style="margin:0 0 20px;color:#4b5563;">Your sign-in code:</p>'
             f'<p style="font-size:40px;letter-spacing:8px;font-weight:600;background:#f1f4f8;border-radius:14px;'
             f'padding:24px;text-align:center;margin:0 0 20px;">{code}</p><p style="color:#6b7280;font-size:14px;">'
             f'It works for {CODE_MINUTES} minutes. If you did not just sign in, change your password straight '
@@ -111,8 +123,9 @@ def _send_code(email, code):
     return sent
 
 
-def start_login(email, password, ip=''):
-    """Check the password and email a code. Returns (challenge, email_hint)."""
+def start_login(email, password, ip='', panel='owner'):
+    """Check the password and email a code. Returns (challenge, email_hint). `panel` is the page signed in
+    from: KYC team accounts only open the KYC panel (owners may open both)."""
     email = str(email or '').strip().lower()
     keys = [f"e:{email}", f"i:{ip}"]
     wait = _blocked(keys)
@@ -123,13 +136,15 @@ def start_login(email, password, ip=''):
     if not verify_password(password or '', admin['password_hash'] if admin else None):
         _fail(keys)
         raise OwnerAuthError("Email or password is not right.")
+    if (admin.get('role') or 'owner') == 'kyc' and panel != 'kyc':
+        raise OwnerAuthError("This account is for the KYC panel. Sign in at kyc.finstap.com.")
     challenge = secrets.token_urlsafe(24)
     code = f"{secrets.randbelow(1000000):06d}"
     _platform_execute("""
         INSERT INTO platform_login_codes (challenge, admin_id, code_hash, expires_at)
         VALUES (?, ?, ?, datetime('now', ?));
     """, (challenge, admin['id'], _code_hash(challenge, code), f'+{CODE_MINUTES} minutes'))
-    if not _send_code(email, code):
+    if not _send_code(email, code, admin.get('role')):
         raise OwnerAuthError("We could not email your sign-in code. Check the server's email settings.")
     name, _, domain = email.partition('@')
     return challenge, f"{name[:1]}•••@{domain}"
@@ -137,7 +152,7 @@ def start_login(email, password, ip=''):
 
 def resend(challenge):
     row = _platform_query("""
-        SELECT c.*, a.email, CAST((julianday('now') - julianday(c.sent_at)) * 86400 AS INTEGER) AS age
+        SELECT c.*, a.email, a.role, CAST((julianday('now') - julianday(c.sent_at)) * 86400 AS INTEGER) AS age
         FROM platform_login_codes c JOIN platform_admins a ON a.id = c.admin_id
         WHERE c.challenge = ? AND c.used_at IS NULL LIMIT 1;
     """, (str(challenge or ''),), one=True)
@@ -153,7 +168,7 @@ def resend(challenge):
         UPDATE platform_login_codes SET code_hash = ?, tries = 0, sends = sends + 1, sent_at = datetime('now'),
                expires_at = datetime('now', ?) WHERE challenge = ?;
     """, (_code_hash(challenge, code), f'+{CODE_MINUTES} minutes', challenge))
-    if not _send_code(row['email'], code):
+    if not _send_code(row['email'], code, row.get('role')):
         raise OwnerAuthError("We could not email your sign-in code. Please try again.")
 
 
@@ -203,7 +218,8 @@ def admin_for_token(token):
     if not token.startswith(TOKEN_PREFIX):
         return None
     return _platform_query("""
-        SELECT a.id, a.email, a.full_name, a.last_login_at FROM platform_sessions s
+        SELECT a.id, a.email, a.full_name, a.last_login_at, COALESCE(a.role, 'owner') AS role
+        FROM platform_sessions s
         JOIN platform_admins a ON a.id = s.admin_id
         WHERE s.token_hash = ? AND s.revoked_at IS NULL AND datetime(s.expires_at) > datetime('now')
           AND a.status = 'Active' LIMIT 1;
@@ -279,14 +295,15 @@ def confirm_action_code(admin, challenge, code, action, target):
         conn.close()
 
 
-def _send_link(email, url):
+def _send_link(email, url, role='owner'):
     from services.email_service import send_email
-    subject = "Set your Finstap owner portal password"
-    text = (f"Open this link to set your Finstap owner portal password:\n\n{url}\n\nIt works once, for "
+    panel = _panel_name(role)
+    subject = f"Set your {panel} password"
+    text = (f"Open this link to set your {panel} password:\n\n{url}\n\nIt works once, for "
             f"{LINK_MINUTES} minutes. If you did not ask for it, ignore this email.")
     html = (f'<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:520px;margin:0 auto;'
             f'padding:32px 16px;color:#111827;"><p style="font-size:20px;font-weight:700;margin:0 0 16px;">'
-            f'Finstap owner portal</p><p style="margin:0 0 24px;color:#4b5563;">Use the button to set your password. '
+            f'{panel}</p><p style="margin:0 0 24px;color:#4b5563;">Use the button to set your password. '
             f'It works once, for {LINK_MINUTES} minutes.</p><p style="margin:0 0 24px;"><a href="{url}" '
             f'style="display:inline-block;background:#5f5cff;color:#ffffff;text-decoration:none;font-weight:600;'
             f'padding:12px 22px;border-radius:999px;">Set password</a></p><p style="color:#6b7280;font-size:14px;">'
@@ -302,23 +319,32 @@ def _send_link(email, url):
     return sent
 
 
-def request_password_link(email, base_url, ip=''):
-    """Email a one-time 'set your password' link to an owner (or an allowed owner email without an
-    account yet). Says nothing about whether the email is known."""
-    email = str(email or '').strip().lower()
-    keys = [f"l:{email}", f"i:{ip}"]
-    if _blocked(keys):
-        raise OwnerAuthError("Too many requests. Please wait a few minutes.", wait=60)
-    _fail(keys)  # every request counts toward the limit
-    known = _platform_query("SELECT 1 FROM platform_admins WHERE email = ? AND status = 'Active';", (email,), one=True)
-    if not known and email not in OWNER_EMAILS:
-        return
+def _make_link(email, bases, role, ip=''):
+    """Store a one-time link and email it. `bases` = {role: that panel's address}."""
     token = secrets.token_urlsafe(32)
     _platform_execute("""
         INSERT INTO platform_password_links (token_hash, email, expires_at, ip)
         VALUES (?, ?, datetime('now', ?), ?);
     """, (_hash(token), email, f'+{LINK_MINUTES} minutes', (ip or '')[:64]))
-    if not _send_link(email, f"{base_url.rstrip('/')}/owner/set-password?token={token}"):
+    base = (bases.get(role) or bases.get('owner') or '').rstrip('/')
+    return _send_link(email, f"{base}{PANELS[role][1]}?token={token}", role)
+
+
+def request_password_link(email, base_url, ip='', kyc_base_url=''):
+    """Email a one-time 'set your password' link to an owner or KYC team member (or an allowed owner
+    email without an account yet). Says nothing about whether the email is known. A KYC team member's
+    link opens the KYC panel (kyc_base_url)."""
+    email = str(email or '').strip().lower()
+    keys = [f"l:{email}", f"i:{ip}"]
+    if _blocked(keys):
+        raise OwnerAuthError("Too many requests. Please wait a few minutes.", wait=60)
+    _fail(keys)  # every request counts toward the limit
+    known = _platform_query("SELECT role FROM platform_admins WHERE email = ? AND status = 'Active';", (email,),
+                            one=True)
+    if not known and email not in OWNER_EMAILS:
+        return
+    role = (known or {}).get('role') or 'owner'
+    if not _make_link(email, {'owner': base_url, 'kyc': kyc_base_url}, role, ip):
         raise OwnerAuthError("We could not send the email. Check the server's email settings.")
 
 
@@ -342,6 +368,9 @@ def set_password_with_link(token, password, full_name=''):
     if str(password).strip().lower() == email:
         raise OwnerAuthError("The password must not be your email.")
     existing = _platform_query("SELECT * FROM platform_admins WHERE email = ? LIMIT 1;", (email,), one=True)
+    if existing and existing.get('status') != 'Active':
+        # A link sent before the account was turned off must not turn it back on
+        raise OwnerAuthError("This account is turned off. Ask the Finstap owner.")
     save_admin(email, (full_name or '').strip() or (existing or {}).get('full_name') or email.split('@')[0], password)
     _platform_execute("UPDATE platform_password_links SET used_at = datetime('now') WHERE token_hash = ?;",
                       (_hash(token),))
@@ -380,3 +409,53 @@ def audit(admin, action, tenant_slug=None, detail=None):
     _platform_execute("""
         INSERT INTO platform_audit (admin_id, admin_email, action, tenant_slug, detail) VALUES (?, ?, ?, ?, ?);
     """, ((admin or {}).get('id'), (admin or {}).get('email'), action, tenant_slug, detail))
+
+
+# ── the KYC team (kyc.finstap.com), managed by the owner ──────────────────────
+
+def kyc_users():
+    return _platform_query("""
+        SELECT id, email, full_name, status, last_login_at, created_at FROM platform_admins
+        WHERE role = 'kyc' ORDER BY status, full_name COLLATE NOCASE;
+    """)
+
+
+def add_kyc_user(owner, email, full_name, kyc_base_url):
+    """Add a KYC team member and email them a link to choose their password (on the KYC panel).
+    Returns (user, emailed)."""
+    email = str(email or '').strip().lower()
+    name = str(full_name or '').strip()[:120]
+    if '@' not in email or '.' not in email.split('@')[-1]:
+        raise OwnerAuthError("Write a valid email address.")
+    ensure_platform()
+    existing = _platform_query("SELECT * FROM platform_admins WHERE email = ? LIMIT 1;", (email,), one=True)
+    if existing and (existing.get('role') or 'owner') != 'kyc':
+        raise OwnerAuthError("This email is an owner account already.")
+    if existing:
+        _platform_execute("UPDATE platform_admins SET status = 'Active', full_name = ? WHERE id = ?;",
+                          (name or existing['full_name'], existing['id']))
+    else:
+        # No password yet: a random one nobody knows, until they set their own with the emailed link
+        _platform_execute("""
+            INSERT INTO platform_admins (email, full_name, password_hash, role) VALUES (?, ?, ?, 'kyc');
+        """, (email, name or email.split('@')[0], hash_password(secrets.token_urlsafe(32))))
+    emailed = _make_link(email, {'kyc': kyc_base_url}, 'kyc')
+    user = _platform_query("SELECT id, email, full_name, status FROM platform_admins WHERE email = ?;", (email,),
+                           one=True)
+    audit(owner, 'KYC_USER_ADDED', detail=f"{email}{'' if emailed else ' (email not sent)'}")
+    return user, emailed
+
+
+def set_kyc_user_status(owner, user_id, status):
+    """Turn a KYC team member off (signed out everywhere at once) or back on."""
+    status = 'Active' if str(status or '').strip().title() == 'Active' else 'Disabled'
+    user = _platform_query("SELECT * FROM platform_admins WHERE id = ? AND role = 'kyc' LIMIT 1;", (int(user_id),),
+                           one=True)
+    if not user:
+        raise OwnerAuthError("KYC user not found.")
+    _platform_execute("UPDATE platform_admins SET status = ? WHERE id = ?;", (status, user['id']))
+    if status != 'Active':
+        _platform_execute("UPDATE platform_sessions SET revoked_at = datetime('now') "
+                          "WHERE admin_id = ? AND revoked_at IS NULL;", (user['id'],))
+    audit(owner, 'KYC_USER_ENABLED' if status == 'Active' else 'KYC_USER_DISABLED', detail=user['email'])
+    return {**{k: user[k] for k in ('id', 'email', 'full_name')}, 'status': status}
