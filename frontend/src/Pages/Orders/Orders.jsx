@@ -17,12 +17,12 @@ import {
 } from "@tabler/icons-react"
 import { formatGBP } from "@/lib/money"
 import { canCancelOrder, cancelOrder, cancelOrderMessage } from "@/lib/orders"
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { OverflowTooltip } from "@/components/OverflowTooltip"
 import { toast } from "sonner"
-import { toastUndoableDelete, toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
+import { toastUndoableDelete } from "@/lib/toastActions"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 import CreateOrderWizard from "./CreateOrderWizard"
 import QuickCrmOrder from "./QuickCrmOrder"
@@ -32,12 +32,6 @@ import { isAdminRole, canViewRevenue, getRole } from "@/lib/permissions"
 import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 const columnHelper = createColumnHelper()
-
-const PAYMENT_MODES = [
-  { value: 'PKR(Bank Transfer)', label: 'PKR' },
-  { value: 'GBP(Bank Transfer)', label: 'GBP' },
-  { value: 'Website Charge', label: 'Website' },
-]
 
 const STATUS_OPTIONS = ['Pending', 'In Progress', 'Completed', 'Cancelled']
 
@@ -196,7 +190,6 @@ export default function Orders() {
   const [datePreset, setDatePreset] = useState('all')
   const [addedByFilter, setAddedByFilter] = useState('all')
   const [b2bClientId, setB2bClientId] = useState(() => new URLSearchParams(window.location.search).get('b2b') || 'all')
-  const [savingId, setSavingId] = useState(null)
   const [cancelTarget, setCancelTarget] = useState(null)
   // "Cancel order" (order and its invoice in one step), separate from the admin's Delete
   const [cancelOrderTarget, setCancelOrderTarget] = useState(null)
@@ -279,26 +272,6 @@ export default function Orders() {
     [facets.customers]
   )
 
-  const updateOrder = async (orderId, payload) => {
-    setSavingId(orderId)
-    const toastId = toastProcessing('Updating order…')
-    try {
-      const res = await apiRequest(`/orders/${orderId}`, {
-        method: 'PUT',
-        body: JSON.stringify(payload),
-        label: 'Update order',
-        silent: true,
-      })
-      if (res.ok) {
-        toastDone(toastId, 'Order updated')
-        fetchOrders(pagination.page || 1)
-      } else {
-        toastFail(toastId, res.reason || 'Failed to update order')
-      }
-    } finally {
-      setSavingId(null)
-    }
-  }
 
   const handleDelete = (order) => {
     setCancelTarget(null)
@@ -454,33 +427,6 @@ export default function Orders() {
           </span>
         )
       },
-    }),
-    columnHelper.display({
-      id: 'payment',
-      header: 'Payment',
-      cell: ({ row }) => {
-        const o = row.original
-        const current = o.payment_mode || ''
-        return (
-          <Select
-            value={current || 'none'}
-            onValueChange={(val) => updateOrder(o.id, { payment_mode: val === 'none' ? null : val })}
-            disabled={savingId === o.id}
-          >
-            <SelectTrigger className="h-7 w-[88px] text-sm">
-              <SelectValue placeholder="Select" />
-            </SelectTrigger>
-            <SelectContent className="overflow-hidden p-0">
-              <SelectGroup className="p-1">
-                <SelectItem value="none">Select</SelectItem>
-                {PAYMENT_MODES.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        )
-      },
     })] : []),
     columnHelper.display({
       id: 'status',
@@ -541,7 +487,7 @@ export default function Orders() {
         )
       },
     }),
-  ], [savingId, handleOpenOrder, showFinance, showAddedBy])
+  ], [handleOpenOrder, showFinance, showAddedBy])
 
   // Phones: one card per order (tap to open) instead of the wide table
   const renderOrderCard = useCallback((o) => {
