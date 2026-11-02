@@ -6,6 +6,7 @@ import FinstapSignup from './Pages/FinstapSignup'
 import FinstapWelcome from './Pages/FinstapWelcome'
 import FinstapLanding from './Pages/FinstapLanding'
 import SharedInvoice from './Pages/SharedInvoice'
+import KycVerify from './Pages/KycVerify'
 import PrivacyPolicy from './Pages/Legal/PrivacyPolicy'
 import Terms from './Pages/Legal/Terms'
 import Security from './Pages/Legal/Security'
@@ -125,6 +126,8 @@ const App = () => {
 
             {/* Finstap: an invoice from the private link in an invoice email (no sign-in) */}
             {IS_FINSTAP && <Route path="/invoice/:token" element={<SharedInvoice />} />}
+            {/* Finstap's own identity check: the private link in the "Verify your identity" email */}
+            {IS_FINSTAP && <Route path="/verify/:token" element={<KycVerify />} />}
 
             {/* Finstap: legal pages, open to everyone (signed in or not) */}
             {IS_FINSTAP && <Route path="/privacy" element={<PrivacyPolicy />} />}

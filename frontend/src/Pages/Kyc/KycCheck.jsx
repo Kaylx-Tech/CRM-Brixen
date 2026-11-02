@@ -15,7 +15,8 @@ import {
 import { cn } from "cn"
 import { Textarea } from "@/components/ui/textarea"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
-import { kycApi, shortDate } from "@/lib/owner"
+import { getApiBase } from "@/lib/api"
+import { getKycToken, kycApi, shortDate } from "@/lib/owner"
 import { Button, Empty, LoadError, Panel } from "../Owner/ownerUi"
 import { GREEN, GREY, PILL, RED, REJECTED, kycLabel } from "./kycStatus"
 
@@ -48,13 +49,95 @@ function Facts({ rows }) {
   )
 }
 
-/** Didit's photos and files: ID front/back, selfie, proof of address … */
+/** One file the person sent, loaded with the panel's sign-in (the files are private). */
+function FormFile({ file, check, getToken }) {
+  const [url, setUrl] = useState("")
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let objectUrl = ""
+    let live = true
+    fetch(`${getApiBase()}/platform/owner/desk/checks/${check.workspace}/${check.id}/files/${file.id}`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+      .then((res) => (res.ok ? res.blob() : Promise.reject(new Error(String(res.status)))))
+      .then((blob) => {
+        objectUrl = URL.createObjectURL(blob)
+        if (live) setUrl(objectUrl)
+      })
+      .catch(() => live && setFailed(true))
+    return () => {
+      live = false
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [file.id, check.workspace, check.id, getToken])
+
+  return (
+    <figure className="overflow-hidden rounded-xl border bg-muted/30">
+      {!url ? (
+        <div className="flex aspect-[4/3] items-center justify-center text-sm text-muted-foreground">
+          {failed ? "Could not load this file" : "Loading…"}
+        </div>
+      ) : file.kind === "pdf" ? (
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="flex aspect-[4/3] flex-col items-center justify-center gap-2 text-sm font-medium text-primary"
+        >
+          <IconFileText className="size-10" /> Open the PDF
+        </a>
+      ) : (
+        <a href={url} target="_blank" rel="noreferrer" title="Open full size">
+          <img src={url} alt={`${file.section}: ${file.label}`} className="aspect-[4/3] w-full bg-white object-contain" />
+        </a>
+      )}
+      <figcaption className="flex items-center justify-between gap-2 border-t px-3 py-2 text-xs">
+        <span>
+          <span className="font-semibold">{file.section}</span> · {file.label}
+        </span>
+        {url && (
+          <a href={url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary" aria-label="Open">
+            <IconExternalLink className="size-4" />
+          </a>
+        )}
+      </figcaption>
+    </figure>
+  )
+}
+
+/** What the person uploaded on the form: the latest time first, earlier tries folded away. */
+function FormFiles({ check, getToken }) {
+  const [latest, ...earlier] = check.submissions
+  const grid = (files) => (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {files.map((f) => (
+        <FormFile key={f.id} file={f} check={check} getToken={getToken} />
+      ))}
+    </div>
+  )
+  return (
+    <>
+      {grid(latest.files)}
+      {earlier.map((s) => (
+        <details key={s.round} className="mt-4 rounded-xl border px-4 py-3">
+          <summary className="cursor-pointer text-sm font-medium">
+            Earlier try ({s.files.length} file{s.files.length === 1 ? "" : "s"}, {shortDate(s.files[0]?.created_at)})
+          </summary>
+          <div className="mt-3">{grid(s.files)}</div>
+        </details>
+      ))}
+    </>
+  )
+}
+
+/** Didit's photos and files on older checks: ID front/back, selfie, proof of address … */
 function Media({ check }) {
   const media = check.media || []
   if (!media.length) {
     return (
       <Empty icon={IconPhotoOff} title="No documents to show">
-        {check.media_error || "Didit has no photos for this check yet. The client may not have finished it."}
+        {check.media_error || "The client has not sent their documents yet."}
       </Empty>
     )
   }
@@ -98,7 +181,7 @@ function Media({ check }) {
 }
 
 /** Approve, mark under review, or reject with the reason. */
-function Decision({ check, onSaved }) {
+function Decision({ check, onSaved, api }) {
   const [status, setStatus] = useState(["Approved", "In Review", "Declined"].includes(check.status) ? check.status : "")
   const [note, setNote] = useState(check.review_note || "")
   const [busy, setBusy] = useState(false)
@@ -107,7 +190,7 @@ function Decision({ check, onSaved }) {
   const save = async () => {
     setBusy(true)
     const id = toastProcessing("Saving…")
-    const res = await kycApi(`/desk/checks/${check.workspace}/${check.id}/status`, {
+    const res = await api(`/desk/checks/${check.workspace}/${check.id}/status`, {
       method: "POST",
       body: { status, note },
     })
@@ -121,7 +204,10 @@ function Decision({ check, onSaved }) {
   }
 
   return (
-    <Panel title="Your decision" description="Saved straight into the workspace: its team and the Finstap owner see it.">
+    <Panel
+      title="Your decision"
+      description="Saved straight into the workspace. The client is emailed when you approve or reject; a rejected client gets a new link."
+    >
       <div className="grid grid-cols-3 gap-2">
         {DECISIONS.map(([value, label, Icon]) => (
           <button
@@ -168,15 +254,15 @@ function Decision({ check, onSaved }) {
   )
 }
 
-/** A new Didit link for the client, with what to fix. */
-function Resubmit({ check, onSaved }) {
+/** A new form link for the client, with what to fix. */
+function Resubmit({ check, onSaved, api }) {
   const [reason, setReason] = useState("")
   const [busy, setBusy] = useState(false)
 
   const send = async () => {
     setBusy(true)
     const id = toastProcessing("Making a new link…")
-    const res = await kycApi(`/desk/checks/${check.workspace}/${check.id}/resubmit`, {
+    const res = await api(`/desk/checks/${check.workspace}/${check.id}/resubmit`, {
       method: "POST",
       body: { reason },
     })
@@ -191,7 +277,10 @@ function Resubmit({ check, onSaved }) {
   }
 
   return (
-    <Panel title="Ask the client again" description="Makes a new Didit link and emails it to the client. Didit counts a new session.">
+    <Panel
+      title="Ask the client again"
+      description="Makes a new form link and emails it to the client. The old link stops working; what they sent before stays here."
+    >
       <Textarea
         rows={2}
         value={reason}
@@ -221,22 +310,25 @@ function Resubmit({ check, onSaved }) {
   )
 }
 
-/** One ID check on the KYC desk: Didit's result and photos, the order, and the decision. */
-export default function KycCheck() {
+/**
+ * One ID check: the documents and answers the client sent, the order, and the decision. The KYC panel
+ * uses it with its own sign-in; the owner portal (/owner/kyc/<workspace>/<id>) passes ownerApi.
+ */
+export default function KycCheck({ api = kycApi, getToken = getKycToken, backTo = "/kyc" }) {
   const { slug, id } = useParams()
   const [check, setCheck] = useState(null)
   const [error, setError] = useState("")
 
   const load = useCallback(() => {
-    kycApi(`/desk/checks/${slug}/${id}`).then((res) => (res.ok ? setCheck(res.data) : setError(res.error)))
-  }, [slug, id])
+    api(`/desk/checks/${slug}/${id}`).then((res) => (res.ok ? setCheck(res.data) : setError(res.error)))
+  }, [api, slug, id])
 
   useEffect(() => {
     load()
   }, [load])
 
   const back = (
-    <Link to="/kyc" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+    <Link to={backTo} className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
       <IconArrowLeft className="size-4" /> All checks
     </Link>
   )
@@ -253,6 +345,7 @@ export default function KycCheck() {
   const r = check.result || {}
   const poa = r.poa || {}
   const aml = r.aml || {}
+  const fromForm = r.source === "form" || (check.submissions || []).length > 0
   const [label, tone] = kycLabel(check.status)
 
   return (
@@ -283,11 +376,40 @@ export default function KycCheck() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          <Panel title="Documents" description="The photos and files Didit took during the check.">
-            <Media check={check} />
-          </Panel>
+          {fromForm ? (
+            <>
+              <Panel title="Documents" description="The photos and files the client sent on the form.">
+                {(check.submissions || []).length ? (
+                  <FormFiles check={check} getToken={getToken} />
+                ) : (
+                  <Empty icon={IconPhotoOff} title="No documents yet">
+                    The client has not uploaded anything on their new link yet.
+                  </Empty>
+                )}
+              </Panel>
+              <Panel
+                title="What the client entered"
+                description={check.submitted_at ? `Sent on ${shortDate(check.submitted_at)}.` : "Not sent yet."}
+              >
+                <Facts
+                  rows={[
+                    ["Full name (as on the document)", r.full_name],
+                    ["Date of birth", r.date_of_birth],
+                    ["Document", r.document_type],
+                    ["Document number", r.document_number],
+                    ["Address", r.address],
+                    ["Proof of address", poa.document],
+                  ]}
+                />
+              </Panel>
+            </>
+          ) : (
+            <Panel title="Documents" description="The photos and files Didit took during the check.">
+              <Media check={check} />
+            </Panel>
+          )}
 
-          <Panel title="What Didit read">
+          {!fromForm && <Panel title="What Didit read">
             <div className="mb-4 flex flex-wrap gap-2">
               {[
                 ["ID document", r.id_status],
@@ -316,9 +438,9 @@ export default function KycCheck() {
                 ["Didit session", r.session_number],
               ]}
             />
-          </Panel>
+          </Panel>}
 
-          {Object.keys(poa).length > 0 && (
+          {!fromForm && Object.keys(poa).length > 0 && (
             <Panel title="Proof of address">
               <Facts
                 rows={[
@@ -358,8 +480,8 @@ export default function KycCheck() {
         </div>
 
         <div className="space-y-4">
-          <Decision key={`${check.status}-${check.reviewed_at}`} check={check} onSaved={load} />
-          <Resubmit check={check} onSaved={load} />
+          <Decision key={`${check.status}-${check.reviewed_at}`} check={check} onSaved={load} api={api} />
+          <Resubmit check={check} onSaved={load} api={api} />
           <Panel title="Order and client">
             <Facts
               rows={[

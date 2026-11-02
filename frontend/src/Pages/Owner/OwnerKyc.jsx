@@ -92,8 +92,8 @@ function ActionDialog({ action, onClose, onDone }) {
           />
           {!reject && (
             <p className="text-xs text-muted-foreground">
-              A new Didit link is made and emailed to {check.email || check.client_email || "the client"}. Didit counts a new
-              session.
+              A new form link is made and emailed to {check.email || check.client_email || "the client"}. The old link
+              stops working.
             </p>
           )}
         </div>
@@ -184,7 +184,7 @@ function PriceForm({ settings, save, saving, onSaved }) {
   )
 }
 
-/** KYC verification: every ID check a workspace ran on Finstap's Didit account, and what to charge. */
+/** KYC verification: every ID check a workspace ran (Finstap's own KYC form), and what to charge. */
 export default function OwnerKyc() {
   const { settings, save, saving } = useServiceSettings()
   const [period, setPeriod] = useState(thisMonth())
@@ -230,7 +230,7 @@ export default function OwnerKyc() {
     <>
       <PageTitle
         title="KYC verification"
-        description="ID checks your workspaces run on Finstap's Didit account. Each started check is charged to the workspace."
+        description="ID checks your workspaces run with Finstap's KYC form. Each started check is charged to the workspace. Open one to see the documents."
       >
         <Input type="month" value={period} onChange={(e) => setPeriod(e.target.value || thisMonth())} className="w-44" />
       </PageTitle>
@@ -379,7 +379,9 @@ export default function OwnerKyc() {
                     {checks.map((c) => (
                       <tr key={`${c.workspace}-${c.id}`} className="border-b align-top last:border-0">
                         <td className="px-3 py-3">
-                          <div className="font-semibold uppercase">{c.full_name}</div>
+                          <Link to={`/owner/kyc/${c.workspace}/${c.id}`} className="font-semibold uppercase hover:text-primary">
+                            {c.full_name}
+                          </Link>
                           <div className="text-xs text-muted-foreground">
                             <Link to={`/owner/workspaces/${c.workspace}`} className="hover:text-primary">
                               {c.workspace_name}

@@ -25,6 +25,7 @@ import {
 import { ModeToggle } from "@/components/ThemeTogge"
 import { PageTransition } from "@/lib/motion"
 import { getOwnerToken, ownerApi, setOwnerToken } from "@/lib/owner"
+import KycCheck from "../Kyc/KycCheck"
 import finstapLogo from "@/assets/finstap-logo.svg"
 import finstapLogoLight from "@/assets/finstap-logo-light.svg"
 import { OwnerForgot, OwnerLogin, OwnerSetPassword } from "./OwnerAuth"
@@ -264,6 +265,10 @@ export default function OwnerPortal() {
         <Route path="workspaces" element={<OwnerWorkspaces />} />
         <Route path="workspaces/:slug" element={<OwnerWorkspace />} />
         <Route path="kyc" element={<OwnerKyc />} />
+        <Route
+          path="kyc/:slug/:id"
+          element={<KycCheck api={ownerApi} getToken={getOwnerToken} backTo="/owner/kyc" />}
+        />
         <Route path="registered-office" element={<OwnerRegisteredOffice />} />
         <Route path="plans" element={<OwnerPlans />} />
         <Route path="activity" element={<OwnerActivity />} />

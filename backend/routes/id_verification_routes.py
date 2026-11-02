@@ -1,15 +1,19 @@
-"""ID Verification (Smart Operations): verify the identity of each person on a KYC order through Didit.
+"""ID Verification (Smart Operations): verify the identity of each person on a KYC order.
 
-The team adds the people to verify (directors, PSCs …) to an order, starts a Didit session for each,
-copies the link or emails it, and Didit posts the result back to /api/webhooks/didit. After the ACSP has
-told Companies House about the verification, the person's Companies House personal code is saved here.
+Finstap runs its own check (services/kyc_form.py): the team adds the people to verify (directors, PSCs …)
+to an order, each gets a private link to a step-by-step form (document photos, details, live selfie,
+address, proof of address), and the KYC desk reviews what they send. After the ACSP has told Companies
+House about the verification, the person's Companies House personal code is saved here.
 
-POST /api/admin/id-verification/orders/<order_id>/people  {full_name, email, person_role}  (+ starts Didit)
+POST /api/admin/id-verification/orders/<order_id>/people  {full_name, email, person_role}  (+ makes the link)
 PUT  /api/admin/id-verification/<id>            any of {full_name, email, person_role, ch_personal_code}
-POST /api/admin/id-verification/<id>/session    start the Didit session (again, if it could not start)
+POST /api/admin/id-verification/<id>/session    make the link (again, if it could not be made)
 POST /api/admin/id-verification/<id>/email      email the verification link to the person
-POST /api/admin/id-verification/<id>/refresh    fetch the latest result from Didit
-POST /api/webhooks/didit                        Didit status updates (signed, no login)
+POST /api/admin/id-verification/<id>/refresh    the latest status
+GET  /api/kyc-form/<code>                       the person's form (no login, the private code)
+POST /api/kyc-form/<code>/file                  one photo or file {kind, file}
+POST /api/kyc-form/<code>/submit                the answers; the check goes to the KYC desk
+POST /api/webhooks/didit                        Didit status updates (older checks; signed, no login)
 """
 import json
 import re
@@ -102,10 +106,10 @@ def _clean_person(body, partial=False):
 
 
 def start_session(verification_id):
-    """Start (or pick up) the person's Didit session. Returns (row, error)."""
+    """Make the person's private form link (a new one replaces the last). Returns (row, error)."""
+    from services import kyc_form
     row = _row(verification_id)
-    order = _order(row['order_id'])
-    if not row.get('didit_session_id'):
+    if not row.get('session_url'):
         # Finstap: a new check needs an ID check credit (unpaid checks per plan, services/autoallot.py)
         try:
             from tenancy import current_tenant
@@ -115,16 +119,10 @@ def start_session(verification_id):
             pass
         except AutoAllotError as exc:
             return dict(row), str(exc)
-    session, err = didit_service.create_session(
-        vendor_data=vendor_data_for(verification_id), full_name=row['full_name'], email=row.get('email') or '',
-        order_number=(order or {}).get('order_number') or '')
-    if err:
-        return dict(row), err
-    execute_db("""
-        UPDATE id_verifications SET didit_session_id = ?, session_url = ?, status = ?, updated_at = datetime('now')
-        WHERE id = ?;
-    """, (session['session_id'], session['url'], session.get('status') or 'Not Started', verification_id))
-    return _row(verification_id), None
+    if row['status'] not in kyc_form.OPEN_STATUSES:
+        return dict(row), "This person has already sent their documents."
+    status = 'Declined' if row['status'] == 'Declined' else 'Not Started'
+    return dict(kyc_form.new_link(verification_id, status=status)), None
 
 
 def apply_result(verification_id, status, decision=None):
@@ -147,13 +145,15 @@ def apply_result(verification_id, status, decision=None):
             pass
         except Exception as exc:
             print(f"[AutoAllot] check {verification_id}: {exc}")
-    if status != row['status'] and status in didit_service.FINAL_STATUSES + ('In Review',) and row.get('created_by'):
+    if status != row['status'] and status in didit_service.FINAL_STATUSES + ('In Review', 'Submitted') \
+            and row.get('created_by'):
         try:
             from services.notification_service import create_notification
             order = _order(row['order_id']) or {}
+            words = 'sent their documents for review' if status == 'Submitted' else status
             create_notification(
                 row['created_by'], f"ID verification: {status}",
-                f"{row['full_name']} ({order.get('order_number') or 'order'}): {status}.",
+                f"{row['full_name']} ({order.get('order_number') or 'order'}): {words}.",
                 ntype='success' if status == 'Approved' else 'warning',
                 link='/admin/smart-operations')
         except Exception:
@@ -174,11 +174,12 @@ def _email_link(row, user):
         greeting=row['full_name'],
         message=("To complete your order we need to verify your identity, as Companies House requires for "
                  "directors and people with significant control. It takes about five minutes: follow the secure "
-                 "link below on your phone or computer."),
-        points=['Have your passport or driving licence ready: you will photograph it and take a short selfie.',
-                'Have a proof of address from the last 3 months ready (utility bill, bank statement or council '
-                'tax bill), as a photo or PDF, to upload.',
-                'The check is run by our verification partner Didit; your details are handled securely.'],
+                 "link below, best on your phone."),
+        points=['Have your ID card, driving licence or passport ready: you will photograph it and take a live '
+                'selfie.',
+                'Have a proof of address from the last 3 months ready (bank statement, utility bill or a '
+                'government letter), as a photo or PDF, to upload.',
+                'Your details are sent securely and only seen by the team checking them.'],
         details=[('Order', order.get('order_number'))],
         cta_label='Verify my identity', cta_url=row['session_url'], category='ORDER')
     ok = send_email(row['email'], subject, html, text, category='ORDER', user_id=order.get('user_id'),
@@ -194,7 +195,7 @@ def _client_step(status):
     """What the customer sees: never the AML or document details, only what they need to do."""
     if status == 'Approved':
         return 'verified'
-    if status in ('In Review', 'Resubmitted'):
+    if status in ('In Review', 'Resubmitted', 'Submitted'):
         return 'checking'
     if status in ('Declined',):
         return 'not_verified'
@@ -239,7 +240,7 @@ def is_kyc_order(order_id):
 def _auto_start(order_id, triggered_by):
     """Add the customer as the first person to verify, start Didit and email them the link."""
     try:
-        if not didit_service.is_configured() or not is_kyc_order(order_id):
+        if not is_kyc_order(order_id):
             return
         if query_db("SELECT 1 FROM id_verifications WHERE order_id = ? LIMIT 1;", (order_id,), one=True):
             return
@@ -274,8 +275,8 @@ def _auto_start(order_id, triggered_by):
 
 
 def auto_start_for_order(order_id, triggered_by=None):
-    """A new KYC order starts its identity verification by itself, in the background (Didit can take a few
-    seconds), so placing the order is never slowed down or blocked by it."""
+    """A new KYC order starts its identity verification by itself, in the background (sending the email
+    takes a moment), so placing the order is never slowed down or blocked by it."""
     if not order_id:
         return
     try:
@@ -338,9 +339,42 @@ def handle_didit_webhook(environ, start_response, body):
         return _handle_webhook(environ, start_response, body)
 
 
+def _handle_form(start_response, path, method, body):
+    """The person's own form (no login): the private code in the link opens their check only."""
+    from services import kyc_form
+    match = re.match(r'^/api/kyc-form/([^/]+)(/file|/submit)?$', path)
+    if not match:
+        return error_response(start_response, "Not found", status_code=404)
+    row, problem = kyc_form.verification_for_token(match.group(1))
+    if problem == 'expired':
+        return error_response(start_response, "This link has expired. Please ask for a new one.", status_code=410)
+    if not row:
+        return error_response(start_response, "This link is not valid. Check you opened the latest email.",
+                              status_code=404)
+    action = match.group(2) or ''
+    if action == '' and method == 'GET':
+        return success_response(start_response, data=kyc_form.public_view(row))
+    if action == '/file' and method == 'POST':
+        body = body if isinstance(body, dict) else {}
+        err = kyc_form.save_file(row, str(body.get('kind') or ''), (body.get('_files') or {}).get('file'))
+        if err:
+            return error_response(start_response, err, status_code=400)
+        return success_response(start_response, data=kyc_form.public_view(_row(row['id'])), message="Uploaded.")
+    if action == '/submit' and method == 'POST':
+        message, errors = kyc_form.submit(row, body)
+        if errors:
+            return validation_error(start_response, errors)
+        if message:
+            return error_response(start_response, message, status_code=400)
+        return success_response(start_response, message="Thank you. Your details have been sent.")
+    return error_response(start_response, "Not found", status_code=404)
+
+
 def handle_id_verification_routes(environ, start_response, path, method, user, body, query):
     if path == '/api/webhooks/didit' and method == 'POST':
         return _handle_webhook(environ, start_response, body)
+    if path.startswith('/api/kyc-form/'):
+        return _handle_form(start_response, path, method, body)
     if path == '/api/client/id-verification' and method == 'GET':
         if not user:
             return error_response(start_response, "Authentication required", status_code=401)
@@ -360,7 +394,7 @@ def handle_id_verification_routes(environ, start_response, path, method, user, b
             return error_response(start_response, "Order not found", status_code=404)
         return success_response(start_response, data={
             'is_kyc': is_kyc_order(order['id']),
-            'didit_configured': didit_service.is_configured(),
+            'didit_configured': True,  # Finstap's own form needs no keys
             'people': people_for_orders([order['id']]).get(order['id'], []),
         })
 
@@ -376,10 +410,9 @@ def handle_id_verification_routes(environ, start_response, path, method, user, b
             INSERT INTO id_verifications (order_id, full_name, email, person_role, created_by, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'));
         """, (order['id'], fields['full_name'], fields['email'] or None, fields['person_role'] or None, user.get('id')))
-        row, session_err = start_session(verification_id) if didit_service.is_configured() else (_row(verification_id), None)
-        message = f"Person added, but {session_err[0].lower()}{session_err[1:]}" if session_err else (
-            "Verification started." if didit_service.is_configured()
-            else "Person added. Add the Didit keys in Settings > Integrations to start the verification.")
+        row, session_err = start_session(verification_id)
+        message = f"Person added, but {session_err[0].lower()}{session_err[1:]}" if session_err else \
+            "Verification link made."
         return success_response(start_response, data=serialize(row), message=message, status_code=201)
 
     match = re.match(r'^/api/admin/id-verification/(\d+)(/[a-z]+)?$', path)
@@ -408,7 +441,7 @@ def handle_id_verification_routes(environ, start_response, path, method, user, b
         row, err = start_session(verification_id)
         if err:
             return error_response(start_response, err, status_code=400)
-        return success_response(start_response, data=serialize(row), message="Verification started.")
+        return success_response(start_response, data=serialize(row), message="New verification link made.")
 
     if action == '/email' and method == 'POST':
         err = _email_link(dict(row), user)
@@ -419,7 +452,8 @@ def handle_id_verification_routes(environ, start_response, path, method, user, b
 
     if action == '/refresh' and method == 'POST':
         if not row.get('didit_session_id'):
-            return error_response(start_response, "Start the verification first.", status_code=400)
+            # Finstap's own form: the status is already here
+            return success_response(start_response, data=serialize(row), message="Up to date.")
         decision, err = didit_service.get_decision(row['didit_session_id'])
         if err:
             return error_response(start_response, err, status_code=400)

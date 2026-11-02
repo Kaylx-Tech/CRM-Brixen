@@ -152,7 +152,8 @@ def _workspace_checks(tenant, start, end, check_id=None):
     """The ID checks one workspace started in the period (empty for workspaces without the table), with the
     client, the order and its invoice for the owner's KYC table."""
     from db import query_db
-    where = "v.id = ?" if check_id else """v.didit_session_id IS NOT NULL AND v.didit_session_id != ''
+    # A check counts once its link exists (Finstap's own form, or a Didit session on older checks)
+    where = "v.id = ?" if check_id else """v.session_url IS NOT NULL AND v.session_url != ''
                   AND datetime(v.created_at) BETWEEN datetime(?) AND datetime(?)"""
     args = (check_id,) if check_id else (start, end)
     with use_tenant(tenant):
@@ -287,19 +288,19 @@ def reject_check(slug, check_id, reason):
 
 
 def resubmit_check(slug, check_id, reason=None):
-    """Start a new Didit session for the person and email them the link, with what to fix.
-    Returns (row, emailed). The earlier reason stays in the owner activity log."""
+    """Make a new form link for the person (the old one stops working; what they sent before stays on
+    record) and email it, with what to fix. Returns (row, emailed). The earlier reason stays in the owner
+    activity log."""
     from db import execute_db
-    from routes.id_verification_routes import start_session
+    from services import kyc_form
     from services.client_mail import compose_client_email
     from services.email_service import send_email, last_failure_reason
     tenant, row = _check(slug, check_id)
     reason = str(reason or row.get('reason') or '').strip()[:300]
     emailed = False
     with use_tenant(tenant):
-        fresh, err = start_session(int(check_id))
-        if err:
-            raise ServiceError(err)
+        fresh = dict(kyc_form.new_link(int(check_id), status='Declined' if row.get('status') == 'Declined'
+                                       else 'Not Started'))
         execute_db("UPDATE id_verifications SET review_note = NULL, reviewed_by = NULL, reviewed_at = NULL "
                    "WHERE id = ?;", (int(check_id),))
         email = fresh.get('email') or row.get('client_email')
@@ -311,7 +312,8 @@ def resubmit_check(slug, check_id, reason=None):
                 message=("We could not accept your last identity check. Please follow the secure link below and "
                          "do it again: it takes about five minutes."),
                 points=[f"What to fix: {reason}" if reason else '',
-                        'Have your passport or driving licence ready: you will photograph it and take a short selfie.',
+                        'Have your ID card, driving licence or passport ready: you will photograph it and take a '
+                        'live selfie.',
                         'Upload an original proof of address from the last 3 months (utility bill, bank statement or '
                         'council tax bill). Edited or screenshot documents are not accepted.'],
                 details=[('Order', row.get('order_number'))],

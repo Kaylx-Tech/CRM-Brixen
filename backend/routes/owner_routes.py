@@ -40,9 +40,10 @@
 KYC desk (kyc.finstap.com): the outside KYC team signs in here too (role 'kyc', login with panel: 'kyc')
 and may only use /me, /logout, /account/password and /desk; owners may use /desk as well.
   GET  /desk/checks?period=YYYY-MM&workspace=   → every ID check that month (no prices)
-  GET  /desk/checks/<slug>/<id>                 → one check with Didit's result and photos
-  POST /desk/checks/<slug>/<id>/status {status: Approved|Declined|In Review, note}
-  POST /desk/checks/<slug>/<id>/resubmit {reason?} → new Didit link emailed to the client
+  GET  /desk/checks/<slug>/<id>                 → one check with the person's answers and files
+  GET  /desk/checks/<slug>/<id>/files/<file_id> → one photo or PDF the person sent
+  POST /desk/checks/<slug>/<id>/status {status: Approved|Declined|In Review, note}  (the person is emailed)
+  POST /desk/checks/<slug>/<id>/resubmit {reason?} → new form link emailed to the client
   GET/POST /kyc-users {email, full_name}  · POST /kyc-users/<id>/status {status: Active|Disabled}  (owners only)
 
 Every route except login needs "Authorization: Bearer owner.<token>". Nothing here deletes a workspace
@@ -112,6 +113,15 @@ def _desk(environ, start_response, sub, method, admin, body, query):
         if sub == '/desk/checks' and method == 'GET':
             return success_response(start_response, data=kyc_desk.checks(_q(query, 'period'),
                                                                           _q(query, 'workspace') or None))
+        match = re.match(r'^/desk/checks/([a-z0-9-]+)/(\d+)/files/(\d+)$', sub)
+        if match and method == 'GET':
+            data, mime = kyc_desk.file(match.group(1), int(match.group(2)), int(match.group(3)))
+            if data is None:
+                return error_response(start_response, "File not found", status_code=404)
+            start_response('200 OK', [('Content-Type', mime or 'application/octet-stream'),
+                                      ('Content-Length', str(len(data))), ('Cache-Control', 'private, no-store'),
+                                      ('X-Content-Type-Options', 'nosniff')])
+            return [data]
         match = re.match(r'^/desk/checks/([a-z0-9-]+)/(\d+)(?:/(status|resubmit))?$', sub)
         if not match:
             return error_response(start_response, "Not found", status_code=404)

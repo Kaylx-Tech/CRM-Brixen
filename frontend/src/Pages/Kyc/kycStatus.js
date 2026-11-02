@@ -1,4 +1,5 @@
-// How a Didit / KYC desk status reads to the team, shared by the owner portal and the KYC panel
+// How a KYC status reads to the team, shared by the owner portal and the KYC panel
+// (Submitted: the client sent the form; older checks may carry Didit's statuses)
 
 export const PILL = "inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold"
 export const GREEN = "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
@@ -14,6 +15,7 @@ export function kycLabel(status) {
   if (status === "Approved") return ["KYC Approved", GREEN]
   if (status === "Declined") return ["Rejected", RED]
   if (["Abandoned", "Expired", "Kyc Expired"].includes(status)) return [`Rejected (${status.toLowerCase()})`, RED]
+  if (status === "Submitted") return ["Sent, to review", SKY]
   if (["In Review", "Resubmitted"].includes(status)) return ["Under Review", AMBER]
   if (status === "In Progress") return ["In progress", SKY]
   return ["Waiting for client", GREY]

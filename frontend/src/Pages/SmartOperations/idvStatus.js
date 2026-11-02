@@ -6,7 +6,7 @@ export function checkTone(status) {
   const s = String(status || 'Not Started')
   if (s === 'Approved') return 'badge-green'
   if (['Declined', 'Abandoned', 'Expired', 'Kyc Expired'].includes(s)) return 'bg-destructive/15 text-destructive'
-  if (['In Review', 'Resubmitted', 'Awaiting User'].includes(s)) return 'badge-amber'
+  if (['In Review', 'Resubmitted', 'Awaiting User', 'Submitted'].includes(s)) return 'badge-amber'
   if (s === 'In Progress') return 'badge-sky'
   return 'bg-muted text-muted-foreground'
 }

@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { apiRequest } from '@/lib/api'
 import { amlLabel, amlTone, checkTone, shortDate } from './idvStatus'
 
-// ID verification on the order view: shown for KYC orders only, with each person's Didit status
+// ID verification on the order view: shown for KYC orders only, with each person's verification status
 export default function OrderIdVerification({ orderId }) {
   const [data, setData] = useState(null)
   const [busyId, setBusyId] = useState(null)
@@ -95,7 +95,7 @@ export default function OrderIdVerification({ orderId }) {
                     <IconMail className="size-3.5" />
                     Email
                   </Button>
-                  <Button variant="ghost" size="xs" className="h-7 w-7 p-0 text-muted-foreground" title="Get the latest result from Didit" disabled={busyId === p.id} onClick={() => run(p, 'refresh')}>
+                  <Button variant="ghost" size="xs" className="h-7 w-7 p-0 text-muted-foreground" title="Get the latest status" disabled={busyId === p.id} onClick={() => run(p, 'refresh')}>
                     {busyId === p.id ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconRefresh className="size-3.5" />}
                   </Button>
                 </div>

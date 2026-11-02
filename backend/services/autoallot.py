@@ -96,7 +96,7 @@ def kyc_credits(tenant):
         "SELECT period FROM kyc_billing WHERE tenant_slug = ? AND status = 'paid';", (tenant['slug'],))}
     rows = query_db("""
         SELECT strftime('%Y-%m', created_at) AS period, COUNT(*) AS c FROM id_verifications
-        WHERE didit_session_id IS NOT NULL AND didit_session_id != '' AND date(created_at) >= date(?)
+        WHERE session_url IS NOT NULL AND session_url != '' AND date(created_at) >= date(?)
         GROUP BY period;
     """, (_since('kyc_credits_since'),)) or []
     used = sum(int(r['c'] or 0) for r in rows if r['period'] not in paid)
@@ -245,16 +245,13 @@ def _verification_for(order, user):
     """The order's identity check: an approved one is reused, a running one is picked up, else a new one starts."""
     from db import execute_db, query_db
     from routes.id_verification_routes import start_session, _email_link
-    from services import didit_service
     row = query_db("""
         SELECT * FROM id_verifications WHERE order_id = ? AND status NOT IN ('Declined', 'Abandoned', 'Expired', 'Kyc Expired')
         ORDER BY CASE WHEN status = 'Approved' THEN 0 ELSE 1 END, id DESC LIMIT 1;
     """, (order['id'],), one=True)
     if row and (row['status'] == 'Approved' or row.get('session_url')):
         return dict(row), None
-    if not didit_service.is_configured():
-        raise AutoAllotError("Identity checks (Didit) are not set up yet. Please contact Finstap.")
-    name = (order.get('owner_name') or order.get('full_name') or '').strip()
+    name =(order.get('owner_name') or order.get('full_name') or '').strip()
     email = (order.get('owner_form_email') or order.get('email') or '').strip()
     if not name:
         raise AutoAllotError("The order has no customer name to verify")

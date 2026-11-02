@@ -164,7 +164,12 @@ function acspPack(person) {
       poa.status && `proof of address ${poa.status.toLowerCase()}`,
       r.aml && `AML screening ${amlLabel(r.aml).toLowerCase()}`,
     ].filter(Boolean).join(', ')],
-    ['Verified with', `Didit${r.session_number ? ` session ${r.session_number}` : ''}${r.verified_at ? ` on ${shortDate(r.verified_at)}` : ''}`],
+    ['Proof of address', r.source === 'form' ? poa.document : ''],
+    ['Verified with', r.source === 'form'
+      ? 'Finstap KYC form, reviewed by the KYC team'
+      : r.session_number || r.verified_at
+        ? `Didit${r.session_number ? ` session ${r.session_number}` : ''}${r.verified_at ? ` on ${shortDate(r.verified_at)}` : ''}`
+        : ''],
   ].filter(([, v]) => v)
 }
 
@@ -208,7 +213,7 @@ function PersonRow({ person, busy, onAction, onOpen }) {
               <IconMail className="size-3.5" />
               Email
             </Button>
-            <Button variant="ghost" size="xs" className="h-7 w-7 p-0 text-muted-foreground" title="Get the latest result from Didit" disabled={busy} onClick={() => onAction(person, 'refresh')}>
+            <Button variant="ghost" size="xs" className="h-7 w-7 p-0 text-muted-foreground" title="Get the latest status" disabled={busy} onClick={() => onAction(person, 'refresh')}>
               {busy ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconRefresh className="size-3.5" />}
             </Button>
           </>
@@ -223,7 +228,7 @@ function PersonRow({ person, busy, onAction, onOpen }) {
   )
 }
 
-// ID Verification: every order with a KYC product and the people on it, verified through Didit
+// ID Verification: every order with a KYC product and the people on it, verified with Finstap's KYC form
 export default function IdVerification() {
   const [orders, setOrders] = useState([])
   const [configured, setConfigured] = useState(true)
@@ -468,7 +473,7 @@ export default function IdVerification() {
           <DialogHeader>
             <DialogTitle>Add person to verify</DialogTitle>
             <DialogDescription>
-              {adding?.order_number}: {configured ? 'a Didit verification link is created straight away.' : 'Didit is not connected yet.'}
+              {adding?.order_number}: a verification link is made straight away. Email it, or copy it and send it yourself.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -587,7 +592,7 @@ export default function IdVerification() {
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>
                 {viewing?.session_url
-                  ? 'The result appears here as soon as Didit has checked the ID. Send the link if the person has not opened it yet.'
+                  ? 'The person fills the form on their link, then the KYC team checks it and the result appears here. Send the link if they have not opened it yet.'
                   : 'The verification has not started yet.'}
               </p>
               {viewing?.result?.id_status && (
