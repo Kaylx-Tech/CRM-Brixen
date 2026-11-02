@@ -43,6 +43,19 @@ export function ThemeProvider({
     root.classList.add(theme)
   }, [theme, lightOnly])
 
+  // "System" keeps following the device when it switches between light and dark
+  useEffect(() => {
+    if (theme !== "system" || lightOnly > 0) return
+    const media = window.matchMedia("(prefers-color-scheme: dark)")
+    const follow = () => {
+      const root = window.document.documentElement
+      root.classList.remove("light", "dark")
+      root.classList.add(media.matches ? "dark" : "light")
+    }
+    media.addEventListener("change", follow)
+    return () => media.removeEventListener("change", follow)
+  }, [theme, lightOnly])
+
   const value = {
     theme,
     setTheme: (newTheme) => {

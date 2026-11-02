@@ -12,10 +12,58 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
-import { IconArrowBackUp, IconChevronDown, IconLogout, IconUserCircle } from "@tabler/icons-react"
+import {
+  IconArrowBackUp,
+  IconChevronDown,
+  IconDeviceDesktop,
+  IconLogout,
+  IconMoon,
+  IconSun,
+  IconUser,
+} from "@tabler/icons-react"
 import { toast } from "sonner"
 import { apiRequest } from "@/lib/api"
 import { getCurrentUser, getRole, homePath, isAdminRole } from "@/lib/permissions"
+import { useTheme } from "@/hooks/theme-provider"
+
+// Menu rows: roomy, with quiet outline icons (the account menu's Apple-like look)
+const ROW = "gap-3 px-2.5 py-2 text-sm [&_svg]:size-[1.125rem]! [&_svg]:text-muted-foreground"
+
+const APPEARANCE = [
+  { value: "light", label: "Light", Icon: IconSun },
+  { value: "dark", label: "Dark", Icon: IconMoon },
+  { value: "system", label: "Same as this device", Icon: IconDeviceDesktop },
+]
+
+/** Light / Dark / System as one segmented switch; the chosen one is raised with a ring. */
+function AppearanceSwitch() {
+  const { theme, setTheme } = useTheme()
+  return (
+    <div role="radiogroup" aria-label="Appearance" className="flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
+      {APPEARANCE.map(({ value, label, Icon }) => {
+        const active = (theme || "system") === value
+        return (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            aria-label={label}
+            title={label}
+            onClick={() => setTheme(value)}
+            className={`grid size-7 cursor-pointer place-items-center rounded-md transition-[background-color,color,box-shadow] duration-200 ${
+              active
+                ? "bg-background text-foreground shadow-sm ring-1 ring-primary/60"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Icon className="size-4" />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 function initials(name) {
   const parts = String(name || "").trim().split(/\s+/).filter(Boolean)
@@ -117,7 +165,24 @@ export default function TeamSwitcher() {
         <IconChevronDown className="hidden size-4 text-muted-foreground sm:block" />
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-72">
+      <DropdownMenuContent align="end" className="w-72 rounded-2xl p-1.5">
+        {/* Who is signed in */}
+        <div className="flex items-center gap-3 px-2.5 py-2.5">
+          <Avatar className="size-10">
+            <AvatarImage src={user.avatar_url || ""} alt={name} />
+            <AvatarFallback className={impersonated ? "bg-amber-500 text-white" : "bg-primary/15 font-semibold text-primary"}>
+              {initials(name)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{name}</p>
+            {user.email && user.email !== name ? (
+              <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+            ) : null}
+          </div>
+        </div>
+        <DropdownMenuSeparator />
+
         {impersonated ? (
           <>
             <DropdownMenuGroup>
@@ -161,13 +226,27 @@ export default function TeamSwitcher() {
         ) : null}
 
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={() => navigate(isClient ? "/portal/profile" : "/admin/settings?tab=profile")}>
-            <IconUserCircle />
-            Profile &amp; Password
+          <DropdownMenuItem className={ROW} onClick={() => navigate(isClient ? "/portal/profile" : "/admin/settings?tab=profile")}>
+            <IconUser />
+            Profile &amp; password
           </DropdownMenuItem>
-          <DropdownMenuItem variant="destructive" onClick={signOut}>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+
+        {/* Appearance stays in the menu while it is changed (not a menu item, so it does not close it) */}
+        <div className="flex items-center justify-between gap-3 px-2.5 py-1.5 text-sm">
+          <span className="flex items-center gap-3">
+            <IconSun className="size-[1.125rem] text-muted-foreground" />
+            Appearance
+          </span>
+          <AppearanceSwitch />
+        </div>
+        <DropdownMenuSeparator />
+
+        <DropdownMenuGroup>
+          <DropdownMenuItem className={ROW} onClick={signOut}>
             <IconLogout />
-            Sign out
+            Log out
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
