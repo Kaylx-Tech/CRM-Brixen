@@ -167,6 +167,31 @@ def _sniff(data):
     return None, None
 
 
+def _save_to_r2(check_id, name, data, mime):
+    """Store the file in the workspace's R2 folder (<workspace>/kyc/...); "r2:<key>", or None when R2 is
+    not set up or refused it twice (the reason goes to the server log and GlitchTip)."""
+    from services import r2_storage
+    if not r2_storage.is_configured():
+        print(f"[KYC form] R2 is not set up ({', '.join(r2_storage.missing_settings())}): check {check_id} "
+              "kept on the server")
+        return None
+    key = f"{r2_storage.workspace_prefix()}/kyc/{name}"
+    res = r2_storage.upload(key, data, mime)
+    if not res.get('success'):
+        r2_storage.reset_client()  # a stale connection or changed keys: try once more with a fresh client
+        res = r2_storage.upload(key, data, mime)
+    if res.get('success'):
+        return res['ref']
+    reason = res.get('error') or 'unknown error'
+    print(f"[KYC form] R2 upload failed for check {check_id}: {reason}")
+    try:
+        import sentry_sdk
+        sentry_sdk.capture_message(f"KYC form: R2 upload failed: {reason}", level='error')
+    except Exception:
+        pass
+    return None
+
+
 def save_file(row, kind, upload):
     """Store one photo or file for the person's current round; a new one replaces the last of that kind.
     Returns an error message or None."""
@@ -185,14 +210,9 @@ def save_file(row, kind, upload):
 
     form_round = row.get('form_round') or 1
     name = f"idv-{row['id']}-r{form_round}-{kind}-{uuid.uuid4().hex[:10]}.{ext}"
-    from services import r2_storage
-    if r2_storage.is_configured():
-        res = r2_storage.upload(f"{r2_storage.workspace_prefix()}/kyc/{name}", data, mime)
-        if not res.get('success'):
-            print(f"[KYC form] upload failed for check {row['id']}: {res.get('error')}")
-            return "The file could not be saved. Please try again."
-        ref = res['ref']
-    else:
+    ref = _save_to_r2(row['id'], name, data, mime)
+    if not ref:
+        # R2 is not set up or refused the file: keep it on the server so the person is never stuck
         from config import STORAGE_DIR
         sub = os.path.join('workspaces', _slug() or 'crm', 'kyc')
         os.makedirs(os.path.join(STORAGE_DIR, sub), exist_ok=True)
