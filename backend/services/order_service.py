@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import calendar
 import datetime
+import json
 from db import query_db
 from services.invoice_service import attach_order_profit_fields
 
@@ -203,7 +204,7 @@ def build_admin_order_list(user, query):
                o.price, o.vat, o.total, o.cost_price, o.status, o.progress_percent, o.payment_mode,
                o.created_at, o.updated_at, o.expected_date,
                o.notes,  -- internal notes, shown when hovering the status in the Orders list
-               o.owner_name, o.owner_form_email,
+               o.owner_name, o.owner_form_email, o.order_form_values_json,
                u.full_name as client_name, u.email as client_email, u.email as portal_account_email,
                u.is_b2b, u.client_type,
                c.name as company_name, c.company_number,
@@ -224,9 +225,22 @@ def build_admin_order_list(user, query):
                 ORDER BY inv.id DESC LIMIT 1) as payment_status
     """ + from_sql + where_sql + " ORDER BY o.created_at DESC LIMIT ? OFFSET ?;", params + [limit, offset]) or []
 
+    # Company not registered yet: the desired name from the order form stands in, marked as not registered;
+    # the form answers themselves are not sent
+    from services.order_companies import proposed_company_name
     listed = []
     for row in rows:
         item = attach_order_profit_fields(dict(row))
+        raw = item.pop('order_form_values_json', None)
+        number = str(item.get('company_number') or '').upper()
+        pending_number = number.startswith(('REG-', 'PENDING'))
+        item['company_registered'] = bool(item.get('company_name')) and not pending_number
+        if not item.get('company_name'):
+            try:
+                values = json.loads(raw or '{}')
+            except (TypeError, ValueError):
+                values = {}
+            item['company_name'] = proposed_company_name(values) or None
         if not item.get('owner_name'):
             item['owner_name'] = item.get('client_name')
         if not item.get('owner_form_email'):
