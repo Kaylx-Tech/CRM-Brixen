@@ -210,6 +210,7 @@ def handle_invoice_routes(environ, start_response, path, method, user, body, que
             'total': {'label': 'Total', 'required': True, 'type': 'amount'},
             'deposit_amount': {'label': 'Deposit', 'type': 'amount'},
             'amount_paid': {'label': 'Received so far', 'type': 'amount'},
+            'payment_date': {'label': 'Date received', 'type': 'date'},
         }
         errors = validate(b, {k: r for k, r in rules.items() if k in b})
         if not errors and 'total' in b:

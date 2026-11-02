@@ -58,11 +58,28 @@ const INVOICE_SCHEMA = {
     when: (v) => v.payment_timing === 'Deposit',
     validate: (v, all) => (num(v) > num(all.total) ? 'Deposit cannot be more than the total.' : ''),
   },
-  amount_paid: {
-    label: 'Received so far',
+  // A new payment: how much came in now (no more than what is still owed) and on which day
+  received_now: {
+    label: 'Received now',
     type: 'amount',
-    validate: (v, all) => (num(v) > num(all.total) ? 'Received cannot be more than the total.' : ''),
+    validate: (v, all) => (num(v) > num(all.total) - num(all.paid_so_far) + 0.004
+      ? 'This is more than what is still owed.' : ''),
   },
+  payment_date: {
+    label: 'Date received',
+    type: 'date',
+    validate: (v) => (v && v > todayIso() ? 'The date cannot be in the future.' : ''),
+  },
+}
+
+function todayIso() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function paymentDay(value) {
+  const d = new Date(`${String(value || '').slice(0, 10)}T12:00:00`)
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 // Invoice row buttons: Apple-style frosted glass that lifts a little on hover and presses in on click
@@ -251,6 +268,8 @@ export default function Payments() {
   // Edit invoice
   const [editInvoice, setEditInvoice] = useState(null)
   const [editForm, setEditForm] = useState({})
+  // Payments already received on the invoice being edited (each with its day and method)
+  const [editPayments, setEditPayments] = useState(null)
   const [isSavingInvoice, setIsSavingInvoice] = useState(false)
 
   // Revenue
@@ -599,7 +618,14 @@ export default function Payments() {
       due_date: String(inv.due_date || '').slice(0, 10),
       total: plainAmount(money.total),
       deposit_amount: plainAmount(parseMoney(inv.deposit_amount || money.total * 0.5)),
-      amount_paid: plainAmount(money.paid),
+      paid_so_far: money.paid,
+      received_now: '',
+      payment_date: todayIso(),
+      payment_received_method: inv.payment_method || 'Credit Card (Stripe)',
+    })
+    setEditPayments(null)
+    apiRequest(`/invoices/${inv.id}`, { silent: true, label: 'Invoice payments' }).then((res) => {
+      if (res.ok) setEditPayments(res.data?.data?.payments || [])
     })
   }
 
@@ -615,7 +641,12 @@ export default function Payments() {
         payment_method: editForm.payment_method,
         due_date: editForm.due_date,
         total: editForm.total,
-        amount_paid: editForm.amount_paid,
+        // A new payment adds to what was received; Paid with nothing typed takes the rest on that day
+        payment_date: editForm.payment_date,
+        payment_received_method: editForm.payment_received_method,
+      }
+      if (num(editForm.received_now) > 0) {
+        payload.amount_paid = plainAmount(num(editForm.paid_so_far) + num(editForm.received_now))
       }
       if (editForm.payment_timing === 'Deposit') {
         payload.deposit_amount = editForm.deposit_amount
@@ -1117,18 +1148,89 @@ export default function Payments() {
                   </div>
                 )}
 
-                <div className="grid gap-1.5">
-                  <Label htmlFor="invoice-amount_paid">Received so far</Label>
-                  <Input id="invoice-amount_paid"
-                    {...invalidProps(invoiceErrors.errors, 'amount_paid', 'invoice-')}
-                    className="w-full"
-                    value={editForm.amount_paid || ''}
-                    onChange={(e) => setEditForm((p) => ({ ...p, amount_paid: e.target.value }))}
-                    inputMode="decimal"
-                  />
-                  <FieldMessage id="invoice-amount_paid-error" message={invoiceErrors.errors.amount_paid} />
-                </div>
               </div>
+
+              {/* Payments: every amount received with its day and method; the balance sheet counts each on its day */}
+              {(() => {
+                const paidSoFar = num(editForm.paid_so_far)
+                const owed = Math.max(0, Math.round((num(editForm.total) - paidSoFar) * 100) / 100)
+                const canAdd = owed > 0.004 && editForm.status !== 'Cancelled'
+                return (
+                  <div className="grid gap-2.5 rounded-xl border bg-muted/30 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold">Payments</span>
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        Received {formatGBP(paidSoFar)} · Still owed{' '}
+                        <span className={owed > 0.004 ? 'font-medium text-amber-600 dark:text-amber-400' : ''}>{formatGBP(owed)}</span>
+                      </span>
+                    </div>
+                    {editPayments === null ? (
+                      <p className="text-xs text-muted-foreground">Loading payments…</p>
+                    ) : editPayments.length ? (
+                      <ul className="divide-y rounded-lg border bg-card text-sm">
+                        {editPayments.map((p) => (
+                          <li key={p.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                            <div className="min-w-0">
+                              <p className="font-medium">{paymentDay(p.paid_on)}</p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {[p.method, p.note].filter(Boolean).join(' · ') || '—'}
+                              </p>
+                            </div>
+                            <span className={`shrink-0 font-semibold tabular-nums ${p.amount < 0 ? 'text-destructive' : ''}`}>
+                              {formatGBP(p.amount)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No money received yet.</p>
+                    )}
+                    {canAdd && (
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="grid gap-1.5">
+                          <Label htmlFor="invoice-received_now">Received now (£)</Label>
+                          <Input id="invoice-received_now"
+                            {...invalidProps(invoiceErrors.errors, 'received_now', 'invoice-')}
+                            placeholder={plainAmount(owed)}
+                            value={editForm.received_now || ''}
+                            onChange={(e) => setEditForm((p) => ({ ...p, received_now: e.target.value }))}
+                            inputMode="decimal"
+                          />
+                          <FieldMessage id="invoice-received_now-error" message={invoiceErrors.errors.received_now} />
+                        </div>
+                        <div className="grid gap-1.5">
+                          <Label htmlFor="invoice-payment_date">Date received</Label>
+                          <Input id="invoice-payment_date"
+                            {...invalidProps(invoiceErrors.errors, 'payment_date', 'invoice-')}
+                            type="date"
+                            max={todayIso()}
+                            value={editForm.payment_date || ''}
+                            onChange={(e) => setEditForm((p) => ({ ...p, payment_date: e.target.value }))}
+                          />
+                          <FieldMessage id="invoice-payment_date-error" message={invoiceErrors.errors.payment_date} />
+                        </div>
+                        <div className="grid gap-1.5">
+                          <Label>Paid by</Label>
+                          <Select
+                            value={editForm.payment_received_method}
+                            onValueChange={(v) => setEditForm((p) => ({ ...p, payment_received_method: v }))}
+                          >
+                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {PAYMENT_METHODS.map((m) => (
+                                <SelectItem key={m} value={m}>{m}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground sm:col-span-3 -mt-1">
+                          Choosing Paid with nothing typed records the rest ({formatGBP(owed)}) on this date.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
 
               <p className="text-[11px] text-muted-foreground m-0">
                 GBP uses Tide 32546658 / 04-06-05. PKR uses the UBL IBAN. Save invoice only updates the record.
