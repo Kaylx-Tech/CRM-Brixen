@@ -12,6 +12,7 @@ import {
   IconLoader2,
   IconRefresh,
   IconShieldCheck,
+  IconUpload,
 } from "@tabler/icons-react"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
@@ -114,11 +115,12 @@ function Field({ id, label, error, hint, children }) {
 const CAN_USE_CAMERA = typeof navigator !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia)
 
 /**
- * A document photo, taken with the live camera only (no upload from the gallery or files): shows the photo
- * once taken, with Retake; "Open camera" shows the back camera with a card-shaped guide.
+ * A document photo: "Open camera" shows the back camera with a card-shaped guide, or "Upload" picks a photo
+ * (or a PDF where `accept` allows it) from the phone. Shows the photo once added, with Retake / Change.
  */
-function DocumentCamera({ label, done, preview, busy, onCapture }) {
+function DocumentCamera({ label, done, preview, busy, onCapture, onFile, accept = "image/*" }) {
   const [open, setOpen] = useState(false)
+  const inputRef = useRef(null)
   if (open) {
     return (
       <LiveCamera
@@ -147,10 +149,41 @@ function DocumentCamera({ label, done, preview, busy, onCapture }) {
       <span className={cn("relative z-10 rounded-full px-3 py-1 font-medium", preview && "bg-background/90 shadow-sm")}>
         {done ? `${label} added` : label}
       </span>
-      <Button type="button" size="sm" variant={done ? "outline" : "default"} className="relative z-10" onClick={() => setOpen(true)}>
-        {done ? <IconRefresh className="size-4" /> : <IconCamera className="size-4" />}
-        {done ? "Retake" : "Open camera"}
-      </Button>
+      <div className="relative z-10 flex flex-wrap justify-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={done ? "outline" : "default"}
+          className={cn(done && "bg-background shadow-sm")}
+          disabled={busy}
+          onClick={() => setOpen(true)}
+        >
+          {done ? <IconRefresh className="size-4" /> : <IconCamera className="size-4" />}
+          {done ? "Retake" : "Open camera"}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="bg-background shadow-sm"
+          disabled={busy}
+          onClick={() => inputRef.current?.click()}
+        >
+          {busy ? <IconLoader2 className="size-4 animate-spin" /> : <IconUpload className="size-4" />}
+          {busy ? "Uploading…" : done ? "Change" : "Upload"}
+        </Button>
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          e.target.value = ""
+          if (file) onFile(file)
+        }}
+      />
     </div>
   )
 }
@@ -339,12 +372,14 @@ export default function KycVerify() {
     [base, query],
   )
 
-  // A photo from the live camera: uploaded straight away, and the step's message for it is cleared
-  const capture = (kind, blob) =>
-    upload(kind, new File([blob], `${kind}.jpg`, { type: "image/jpeg" })).then((ok) => {
+  // A photo from the live camera or a file picked on the phone: uploaded straight away, and the step's
+  // message for it is cleared
+  const attach = (kind, file) =>
+    upload(kind, file).then((ok) => {
       if (ok) setErrors((e) => ({ ...e, [kind]: "" }))
       return ok
     })
+  const capture = (kind, blob) => attach(kind, new File([blob], `${kind}.jpg`, { type: "image/jpeg" }))
 
   // What each step needs before Continue
   const missing = () => {
@@ -538,6 +573,7 @@ export default function KycVerify() {
                     preview={previews[side]}
                     busy={uploading === side}
                     onCapture={(blob) => capture(side, blob)}
+                    onFile={(file) => attach(side, file)}
                   />
                   {err(side) && <p className="mt-1 text-xs text-destructive">{err(side)}</p>}
                 </div>
@@ -632,8 +668,7 @@ export default function KycVerify() {
           <>
             <h1 className="text-xl font-semibold">Proof of address</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Take a photo of one document dated within the last 3 months, showing your name and the address you
-              entered.
+              One document dated within the last 3 months, showing your name and the address you entered.
             </p>
             <div className="mt-5 grid gap-2">
               {info.poa_types.map((t) => (
@@ -665,9 +700,12 @@ export default function KycVerify() {
                 preview={previews.poa}
                 busy={uploading === "poa"}
                 onCapture={(blob) => capture("poa", blob)}
+                onFile={(file) => attach("poa", file)}
+                accept="image/*,application/pdf"
               />
               <p className="mt-1.5 text-xs text-muted-foreground">
-                Photograph the original paper or open it on another screen. The whole page must be readable.
+                Take a photo, or upload a photo or PDF (up to 10 MB). The whole page must be readable; screenshots and
+                edited files are not accepted.
               </p>
               {err("poa") && <p className="mt-1 text-xs text-destructive">{err("poa")}</p>}
             </div>
