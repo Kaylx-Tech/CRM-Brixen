@@ -292,7 +292,7 @@ export const DataTable = ({
                   const hasSelection = table.getFilteredSelectedRowModel().rows.length > 0;
 
                   return (
-                    <TableHead key={header.id}>
+                    <TableHead key={header.id} className={header.column.columnDef.meta?.headClassName}>
                       {header.isPlaceholder ? null : (
                         <div
                           className={cn(
@@ -377,7 +377,8 @@ export const DataTable = ({
                   className="min-h-[52px] h-auto"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    // meta.cellClassName / meta.headClassName on a column: e.g. right-aligned amounts
+                    <TableCell key={cell.id} className={cell.column.columnDef.meta?.cellClassName}>
                       <table.FlexRender cell={cell} />
                     </TableCell>
                   ))}

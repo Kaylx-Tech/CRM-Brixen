@@ -90,13 +90,26 @@ function statusTone(order, pct) {
   return 'badge-amber'
 }
 
-function productTone(name) {
+// Products are calm neutral chips; only a small dot carries the colour of the kind of product
+function productDot(name) {
   const n = String(name || '').toLowerCase()
-  if (/tide|bank|taptap|tap tap|physical bank|revolut|wise|monzo/.test(n)) return 'badge-green'
-  if (/kyc|identity/.test(n)) return 'badge-green'
-  if (/registered office|address/.test(n)) return 'badge-purple'
-  if (/confirmation|ad01|form/.test(n)) return 'badge-sky'
-  return 'badge-sky'
+  if (/tide|bank|taptap|tap tap|revolut|wise|monzo|anna|money/.test(n)) return 'bg-emerald-500'
+  if (/kyc|identity/.test(n)) return 'bg-sky-500'
+  if (/registered office|address|mail forwarding/.test(n)) return 'bg-violet-500'
+  if (/formation|incorporation|certificate|name change/.test(n)) return 'bg-indigo-500'
+  if (/confirmation|accounts|tax|vat|paye|ad01|dissolution|strike/.test(n)) return 'bg-amber-500'
+  return 'bg-zinc-400'
+}
+
+const PRODUCT_CHIP =
+  'inline-flex h-6 items-center gap-1.5 rounded-md border border-border/70 bg-muted/40 px-2 text-xs font-medium text-foreground/85 whitespace-nowrap'
+
+// Order statuses as a soft pill with a dot, the same height as the product chips
+const STATUS_PILL = 'inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium tabular-nums whitespace-nowrap border-0'
+
+// Column headings: small and quiet, so the rows carry the weight
+function head(label) {
+  return <span className="text-xs font-medium tracking-wide text-muted-foreground">{label}</span>
 }
 
 function TruncatedTooltip({ text, className }) {
@@ -146,23 +159,30 @@ function shortenProductName(name) {
 function ProductPills({ summary }) {
   const parts = String(summary || '').split(',').map((p) => p.trim()).filter(Boolean)
   if (!parts.length) return <span className="text-muted-foreground text-sm">—</span>
+  // Two chips at most; the rest are one "+N" chip that lists them on hover
+  const shown = parts.slice(0, 2)
+  const rest = parts.slice(2)
   return (
-    <div className="flex flex-wrap gap-1 max-w-[220px]">
-      {parts.map((name, idx) => {
-        const shortName = shortenProductName(name)
-        const pill = (
-          <Badge key={`${name}-${idx}`} className={`${productTone(name)} text-[10px] font-medium`}>
-            <span className="w-1 h-1 rounded-full bg-current mr-1 opacity-60" />
-            {shortName}
-          </Badge>
-        )
-        return (
-          <Tooltip key={`${name}-${idx}`}>
-            <TooltipTrigger className="inline-flex">{pill}</TooltipTrigger>
-            <TooltipContent className="max-w-xs break-words">{name}</TooltipContent>
-          </Tooltip>
-        )
-      })}
+    <div className="flex flex-wrap items-center gap-1.5 max-w-[240px]">
+      {shown.map((name, idx) => (
+        <Tooltip key={`${name}-${idx}`}>
+          <TooltipTrigger className="inline-flex">
+            <span className={PRODUCT_CHIP}>
+              <span className={`size-1.5 shrink-0 rounded-full ${productDot(name)}`} />
+              {shortenProductName(name)}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs break-words">{name}</TooltipContent>
+        </Tooltip>
+      ))}
+      {rest.length ? (
+        <Tooltip>
+          <TooltipTrigger className="inline-flex">
+            <span className={`${PRODUCT_CHIP} text-muted-foreground`}>+{rest.length}</span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs whitespace-pre-line break-words">{rest.join('\n')}</TooltipContent>
+        </Tooltip>
+      ) : null}
     </div>
   )
 }
@@ -333,20 +353,23 @@ export default function Orders() {
       enableHiding: false,
     }),
     columnHelper.accessor('order_number', {
-      header: 'Order #',
+      header: () => head('Order #'),
+      meta: { label: 'Order #' },
       cell: ({ row }) => (
-        <Badge
-          className="badge-sky rounded-full font-mono cursor-pointer hover:opacity-80 transition-opacity"
+        <button
+          type="button"
+          className="cursor-pointer whitespace-nowrap font-mono text-[0.8125rem] font-medium text-sky-700 transition-colors hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300"
           onClick={() => handleOpenOrder(row.original.id)}
         >
           {formatOrderNumberDisplay(row.original.order_number)}
-        </Badge>
+        </button>
       ),
     }),
     columnHelper.accessor('created_at', {
-      header: 'Date',
+      header: () => head('Date'),
+      meta: { label: 'Date' },
       cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">
+        <span className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">
           {row.original.created_at
             ? new Date(row.original.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' })
             : '—'}
@@ -355,7 +378,8 @@ export default function Orders() {
     }),
     columnHelper.display({
       id: 'owner',
-      header: 'Owner',
+      header: () => head('Owner'),
+      meta: { label: 'Owner' },
       cell: ({ row }) => {
         const o = row.original
         const name = o.owner_name || o.client_name || '—'
@@ -366,7 +390,7 @@ export default function Orders() {
             onClick={() => handleOpenOrder(o.id)}
           >
             {/* Owner in bold; a smaller email so the whole address fits */}
-            <TruncatedTooltip text={name} className="block max-w-full truncate text-left font-semibold text-sm cursor-pointer" />
+            <TruncatedTooltip text={name} className="block max-w-full truncate text-left font-medium text-sm cursor-pointer" />
             <TruncatedTooltip text={email} className="block max-w-full truncate text-left text-xs text-muted-foreground cursor-pointer" />
           </div>
         )
@@ -375,14 +399,15 @@ export default function Orders() {
     // Which team member added the order (admins and managers; team members only see their own orders)
     ...(showAddedBy ? [columnHelper.display({
       id: 'added_by',
-      header: 'Added by',
+      header: () => head('Added by'),
+      meta: { label: 'Added by' },
       cell: ({ row }) => {
         const o = row.original
         if (o.created_by_name) {
           return (
             <TruncatedTooltip
               text={o.created_by_name}
-              className="block max-w-[120px] truncate text-left text-sm cursor-default"
+              className="block max-w-[120px] truncate text-left text-sm text-foreground/80 cursor-default"
             />
           )
         }
@@ -396,19 +421,23 @@ export default function Orders() {
       },
     })] : []),
     columnHelper.accessor('company_name', {
-      header: 'Company',
+      header: () => head('Company'),
+      meta: { label: 'Company' },
       cell: ({ row }) => {
         const name = row.getValue('company_name') || '—'
         // Not registered yet: the desired name from the order form, marked as such
         const desired = row.original.company_name && !row.original.company_registered
         return (
-          <div className="min-w-0">
+          <div className="flex min-w-0 flex-col">
             <TruncatedTooltip
               text={name}
-              className={`block max-w-[140px] truncate text-left text-sm cursor-default${desired ? ' italic' : ''}`}
+              className={`block max-w-[190px] truncate text-left text-sm cursor-default${desired ? ' italic text-foreground/80' : ''}`}
             />
             {desired ? (
-              <Badge className="badge-amber mt-0.5 rounded-full text-[10px]">Desired name</Badge>
+              <span className="mt-0.5 inline-flex items-center gap-1 text-[0.6875rem] font-medium text-amber-600 dark:text-amber-400">
+                <span className="size-1 rounded-full bg-current" />
+                Desired name
+              </span>
             ) : null}
           </div>
         )
@@ -416,7 +445,8 @@ export default function Orders() {
     }),
     columnHelper.display({
       id: 'product',
-      header: 'Product',
+      header: () => head('Product'),
+      meta: { label: 'Product' },
       cell: ({ row }) => (
         <ProductPills summary={row.original.products_summary || row.original.service_name} />
       ),
@@ -424,7 +454,8 @@ export default function Orders() {
     // Price and payment are finance details: admins only (old portal hid them from managers and staff)
     ...(showFinance ? [columnHelper.display({
       id: 'price',
-      header: 'Price',
+      header: () => head('Price'),
+      meta: { label: 'Price', headClassName: 'text-right', cellClassName: 'text-right' },
       cell: ({ row }) => {
         const o = row.original
         const totalNum = Number(o.total || 0)
@@ -437,13 +468,15 @@ export default function Orders() {
     })] : []),
     columnHelper.display({
       id: 'status',
-      header: 'Status',
+      header: () => head('Status'),
+      meta: { label: 'Status', headClassName: 'pl-6', cellClassName: 'pl-6' },
       cell: ({ row }) => {
         const o = row.original
         const pct = progressPercent(o)
         const notes = String(o.notes || '').trim()
         const badge = (
-          <Badge className={`${statusTone(o, pct)} tabular-nums cursor-pointer whitespace-nowrap`} onClick={() => handleOpenOrder(o.id)}>
+          <Badge className={`${statusTone(o, pct)} ${STATUS_PILL} cursor-pointer`} onClick={() => handleOpenOrder(o.id)}>
+            <span className="size-1.5 shrink-0 rounded-full bg-current" />
             {o.status || 'Pending'}
             {o.status !== 'Completed' && o.status !== 'Cancelled' && o.status !== 'Refunded' ? ` · ${pct}%` : ''}
             {/* A note icon when the order has internal notes: hover to read them */}
@@ -462,7 +495,8 @@ export default function Orders() {
     }),
     columnHelper.display({
       id: 'actions',
-      header: 'Action',
+      header: () => <span className="sr-only">Action</span>,
+      meta: { label: 'Action', headClassName: 'w-12', cellClassName: 'text-right' },
       cell: ({ row }) => {
         const o = row.original
         return (
@@ -510,7 +544,8 @@ export default function Orders() {
       >
         <div className="flex items-center justify-between gap-2">
           <Badge className="badge-sky rounded-full font-mono">{formatOrderNumberDisplay(o.order_number)}</Badge>
-          <Badge className={`${statusTone(o, pct)} tabular-nums whitespace-nowrap`}>
+          <Badge className={`${statusTone(o, pct)} ${STATUS_PILL}`}>
+            <span className="size-1.5 shrink-0 rounded-full bg-current" />
             {o.status || 'Pending'}{open ? ` · ${pct}%` : ''}
           </Badge>
         </div>
