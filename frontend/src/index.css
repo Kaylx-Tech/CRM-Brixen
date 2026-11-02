@@ -307,26 +307,37 @@ html.is-non-apple,
   animation: fs-badge-pop 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   animation-delay: calc(var(--i, 0) * 28ms + 0.2s);
 }
-/* "Soon" at the end of a menu row: fades in with the row, and its accent dot sends out a soft ring */
+/* "Soon" raised above the end of a menu title: pops in with the row; an accent gradient pill with a
+   light top edge and a soft glow, and a shine that crosses it every few seconds */
 @keyframes fs-tag-in {
-  from { opacity: 0; transform: translateX(4px); }
+  from { opacity: 0; transform: translateY(3px) scale(0.85); }
   to { opacity: 1; transform: none; }
 }
-@keyframes fs-tag-ping {
-  0% { transform: scale(1); opacity: 0.7; }
-  80%, 100% { transform: scale(2.8); opacity: 0; }
+@keyframes fs-tag-shine {
+  0%, 75% { transform: translateX(-130%) skewX(-20deg); }
+  100% { transform: translateX(260%) skewX(-20deg); }
 }
 .fs-menu-tag {
-  animation: fs-tag-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  background: linear-gradient(135deg,
+    color-mix(in oklab, var(--sidebar-primary) 78%, white),
+    var(--sidebar-primary) 55%,
+    color-mix(in oklab, var(--sidebar-primary) 75%, black));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 0 0 1px color-mix(in oklab, var(--sidebar-primary) 60%, transparent),
+    0 2px 8px -2px color-mix(in oklab, var(--sidebar-primary) 70%, transparent);
+  animation: fs-tag-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   animation-delay: calc(var(--i, 0) * 28ms + 0.25s);
 }
-.fs-menu-tag-dot::after {
+.fs-menu-tag::after {
   content: "";
   position: absolute;
-  inset: 0;
-  border-radius: 9999px;
-  background: var(--sidebar-primary);
-  animation: fs-tag-ping 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+  inset: 0 auto 0 0;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: translateX(-130%) skewX(-20deg);
+  pointer-events: none;
+  animation: fs-tag-shine 4.5s ease-in-out 1.5s infinite;
 }
 /* Partner Perks (Smart Operations): the gift gives a small wiggle and a shine crosses the banner now and then */
 @keyframes fs-gift-wiggle {
@@ -357,7 +368,7 @@ html.is-non-apple,
   .fs-menu-btn[data-active],
   .fs-menu-badge,
   .fs-menu-tag,
-  .fs-menu-tag-dot::after,
+  .fs-menu-tag::after,
   .fs-perks-gift,
   .fs-perks-banner::after {
     animation: none;

@@ -26,11 +26,10 @@ const FINSTAP = {
     "[&_svg]:size-[18px]! [&_svg]:text-sidebar-foreground/55 [&_svg]:transition-[transform,color] [&_svg]:duration-200 hover:[&_svg]:translate-x-0.5 hover:[&_svg]:text-sidebar-foreground data-active:[&_svg]:text-sidebar-primary",
   badge:
     "fs-menu-badge top-2! right-2 h-5 min-w-5 rounded-full bg-sidebar-primary px-1.5 text-[10.5px] font-semibold text-sidebar-primary-foreground! shadow-sm",
-  // A quiet word at the end of the row (`tag` in finstap-nav.js, e.g. "Soon"): a softly glowing accent dot
-  // and small muted letters, so the page reads as "on its way" without shouting
+  // A tiny word raised just above the end of the title (`tag` in finstap-nav.js, e.g. "Soon"), like a
+  // superscript: an accent gradient pill with a fine light edge and a shine that passes now and then
   tag:
-    "fs-menu-tag ml-auto flex shrink-0 items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-sidebar-foreground/45 group-data-[collapsible=icon]:hidden",
-  tagDot: "fs-menu-tag-dot relative size-1.5 rounded-full bg-sidebar-primary",
+    "fs-menu-tag relative -ml-2 shrink-0 self-start -translate-y-1.5 overflow-hidden rounded-full px-1.5 py-px text-[8px] leading-[11px] font-semibold uppercase tracking-[0.12em] text-sidebar-primary-foreground group-data-[collapsible=icon]:hidden",
 }
 
 export function NavMain({
@@ -86,7 +85,6 @@ export function NavMain({
                       <span>{item.title}</span>
                       {finstap && item.tag ? (
                         <span className={FINSTAP.tag} style={motion.style}>
-                          <span className={FINSTAP.tagDot} />
                           {item.tag}
                         </span>
                       ) : null}
