@@ -139,6 +139,14 @@ def last_failure_reason():
     return f'the email server said: {text[:140]}'
 
 
+def _fallback_mailbox(mailbox):
+    """A workspace that has not set up its own mailbox (Settings › Email) sends every email from Finstap's
+    no-reply, in the company's name with replies going to its support email, so no email is held back."""
+    if mailbox is None and _in_workspace() and not workspace_mailbox_ready():
+        return 'platform'
+    return mailbox
+
+
 def send_email(recipient, subject, html_content, text_content=None, *, category=None, user_id=None,
                order_id=None, company_id=None, triggered_by=None, log=True, store_body=True, logo=None,
                sender_name=None, images=None, attachments=None, mailbox=None):
@@ -156,10 +164,7 @@ def send_email(recipient, subject, html_content, text_content=None, *, category=
     """
     meta = {'category': category, 'user_id': user_id, 'order_id': order_id, 'company_id': company_id,
             'triggered_by': triggered_by}
-    # Sign-in codes and password resets of a workspace that has not set up its own mailbox yet come from
-    # Finstap's no-reply, so nobody is locked out; every other email waits for the workspace's mailbox
-    if mailbox is None and category == 'SECURITY' and _in_workspace() and not workspace_mailbox_ready():
-        mailbox = 'platform'
+    mailbox = _fallback_mailbox(mailbox)
     # Master switch (Settings > Email: "Send emails"): when off, nothing goes out except password resets,
     # and the email is logged as suppressed so it can be sent later from the Email log
     if category != 'SECURITY' and not emails_enabled():
@@ -184,7 +189,8 @@ def resend_logged_email(log_id, actor_id=None):
         return False, 'not_found', 'Email not found in the log'
     if not row.get('body_html') and not row.get('body_text'):
         return False, 'not_resendable', 'This email (e.g. a password reset) was not stored, so it cannot be resent'
-    ok, status, error = _deliver(row['recipient'], row['subject'], row.get('body_html'), row.get('body_text'))
+    ok, status, error = _deliver(row['recipient'], row['subject'], row.get('body_html'), row.get('body_text'),
+                                 mailbox=_fallback_mailbox(None))
     execute_db("""
         UPDATE email_outbox
         SET status = ?, attempts = COALESCE(attempts, 0) + 1, last_error = ?,
@@ -263,6 +269,15 @@ def _deliver(recipient, subject, html_content, text_content, logo=None, sender_n
     # Sent in the company's own name (its Settings > company name)
     msg = _build_message(subject, formataddr((sender_name or brand_name(), from_email)), recipient, html_content,
                          text_content, logo=logo, images=images, attachments=attachments)
+    # Sent from Finstap's no-reply for a workspace: replies go to the company's own support email
+    if mailbox == 'platform' and _in_workspace():
+        try:
+            from services.settings_service import get_setting
+            reply_to = str(get_setting('support_email', '') or '').strip()
+            if '@' in reply_to and '\n' not in reply_to and '\r' not in reply_to:
+                msg['Reply-To'] = reply_to
+        except Exception:
+            pass
 
     try:
         if smtp_port == 465:
