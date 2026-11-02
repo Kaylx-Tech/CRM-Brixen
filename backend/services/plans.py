@@ -29,7 +29,9 @@ FEATURES = {
     'companies_house': 'Companies House lookup and sync',
     'branding': 'Your logo, colours and address',
     'login_codes': 'Email login codes and team roles',
-    'director_id': 'Director ID verification tracking',
+    # Every plan may switch on the paid KYC service in Billing (services/kyc_billing.py)
+    'kyc': 'KYC identity checks (optional, paid per check)',
+    'director_id':'Director ID verification tracking',
     'accounts': 'Company accounts and Companies House filing',
     'registered_office': 'Registered office and mail forwarding services',
     'smart_operations': 'Smart Operations (GOV forms) and compliance alerts',
@@ -56,7 +58,7 @@ LIMITS = {
     'ai_month': 'AI assistant questions a month',
 }
 
-_BASE = ['client_portal', 'invoices', 'companies_house', 'branding', 'login_codes']
+_BASE = ['client_portal', 'invoices', 'companies_house', 'branding', 'login_codes', 'kyc']
 _PRO = _BASE + ['director_id', 'accounts', 'registered_office', 'smart_operations', 'website', 'own_email',
                 'price_privacy']
 _BUSINESS = _PRO + ['performance', 'audit_logs', 'email_log', 'bulk_import', 'priority_support']
@@ -251,7 +253,8 @@ LOCK_MESSAGES = {
 
 # Areas of the CRM that belong to a feature (path prefix → feature; the first match wins, None = every plan).
 # Incoming website webhooks are left out on purpose: a workspace never loses its customers' orders because of
-# its plan. ID Verification is open on every plan (its checks are limited by credits, services/autoallot.py).
+# its plan. ID Verification is open on every plan once the workspace turns on the paid KYC service
+# (services/kyc_billing.py); its checks are limited by credits (services/autoallot.py).
 FEATURE_PATHS = (
     ('/api/admin/smart-links/id-verification', None),
     ('/api/admin/activity-logs', 'audit_logs'),
@@ -265,14 +268,34 @@ FEATURE_PATHS = (
     ('/api/admin/smart-links', 'smart_operations'),
     ('/api/admin/settings/test-wordpress', 'website'),
     ('/api/admin/settings/wordpress-webhooks', 'website'),
+    ('/api/admin/settings/test-smtp', 'own_email'),
+    ('/api/admin/registered-office', 'registered_office'),
 )
 
-_DOCUMENT_UPLOADS = ('/api/documents', '/api/documents/upload', '/api/admin/documents', '/api/admin/documents/upload')
+_DOCUMENT_UPLOADS = ('/api/documents', '/api/documents/upload', '/api/admin/documents', '/api/admin/documents/upload',
+                     '/api/admin/documents/intake/process')
 
 
 def _upload_size(body):
-    files = (body or {}).get('_files') or {}
-    return sum(len(f.get('bytes') or b'') for f in files.values() if isinstance(f, dict))
+    """Bytes being uploaded: multipart files, or base64 files in a JSON body (Smart Intake)."""
+    body = body or {}
+    files = body.get('_files') or {}
+    size = sum(len(f.get('bytes') or b'') for f in files.values() if isinstance(f, dict))
+    for item in body.get('files') or []:
+        if isinstance(item, dict):
+            size += len(str(item.get('file_content_base64') or '')) * 3 // 4
+    return size
+
+
+def _sets_own_email(body):
+    """The settings being saved change the workspace's own email sender (SMTP server or login). The Settings
+    page sends every field back, so only a new server or user name counts, not the port or a saved value."""
+    from services.settings_service import get_setting
+    for key in ('smtp_host', 'smtp_user'):
+        value = str((body or {}).get(key) or '').strip()
+        if value and value != str(get_setting(key) or '').strip():
+            return True
+    return False
 
 
 def guard(tenant, path, method, user, body):
@@ -294,9 +317,16 @@ def guard(tenant, path, method, user, body):
                 check_feature(tenant, feature)
             break
 
+    body = body if isinstance(body, dict) else {}
+    if method in ('POST', 'PUT', 'PATCH'):
+        # Features that are a setting rather than a page: the own email sender and Operations staff
+        if path == '/api/admin/settings' and _sets_own_email(body):
+            check_feature(tenant, 'own_email')
+        if path.startswith('/api/admin/staff') and str(body.get('staff_type') or '').lower() == 'operations':
+            check_feature(tenant, 'price_privacy')
+
     if method != 'POST':
         return
-    body = body if isinstance(body, dict) else {}
     if path in ('/api/admin/customers', '/api/clients'):
         check_limit(tenant, 'customers')
     elif path == '/api/admin/staff':

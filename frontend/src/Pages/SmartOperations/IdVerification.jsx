@@ -379,8 +379,10 @@ export default function IdVerification() {
           <IconAlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
           {IS_FINSTAP ? (
             <p>
-              ID verification is not switched on for your workspace yet. Finstap sets it up for you: contact Finstap
-              support. Until then people can be added but no verification starts.
+              The KYC service is off for your workspace. It is a paid Finstap service (charged per check): an admin
+              can turn it on in{' '}
+              <Link to="/admin/billing" className="font-medium text-primary hover:underline">Billing</Link>. Until then
+              people can be added but no verification starts.
             </p>
           ) : (
             <p>

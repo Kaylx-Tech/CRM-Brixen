@@ -56,6 +56,118 @@ function Section({ title, description, action, children, className }) {
   )
 }
 
+const KYC_MONTH_STATUS = {
+  running: ['This month so far', 'bg-sky-500/10 text-sky-700 dark:text-sky-300'],
+  not_billed: ['To be invoiced', 'bg-muted text-muted-foreground'],
+  invoiced: ['Due', 'bg-amber-500/15 text-amber-800 dark:text-amber-300'],
+  paid: ['Paid', 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'],
+}
+
+function monthName(period) {
+  const d = new Date(`${period}-01T00:00:00`)
+  return Number.isNaN(d.getTime()) ? period : d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+}
+
+/** The paid KYC service: switch it on (after seeing the price), and how many checks it ran and cost, by month. */
+function KycService({ kyc, busy, onSwitch }) {
+  const [confirming, setConfirming] = useState(false)
+  const price = kyc.price ? `${gbp(kyc.price, 2)} a check` : 'price set by Finstap'
+  return (
+    <Section
+      title="KYC service"
+      description={`Identity checks for your clients: they upload their ID, a live selfie and a proof of address on a secure link, and Finstap's KYC team checks them. ${kyc.price ? `${gbp(kyc.price, 2)} (excl. VAT) for each check started.` : ''}`}
+      action={
+        kyc.enabled ? (
+          <span className={cn(PILL, 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300')}>
+            <IconCheck className="size-3.5" /> On{kyc.enabled_at ? ` since ${date(kyc.enabled_at)}` : ''}
+          </span>
+        ) : (
+          <span className={cn(PILL, 'bg-muted text-muted-foreground')}>Off</span>
+        )
+      }
+    >
+      {!kyc.enabled ? (
+        confirming ? (
+          <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+            <p>
+              Turn on the KYC service? Each identity check you start is charged at <strong>{price}</strong>, invoiced
+              monthly. You can turn it off at any time.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button disabled={!!busy} onClick={() => onSwitch(true)}>
+                {busy === 'kyc' ? <IconLoader2 className="size-4 animate-spin" /> : <IconCheck className="size-4" />}
+                Yes, turn it on
+              </Button>
+              <Button variant="outline" disabled={!!busy} onClick={() => setConfirming(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button onClick={() => setConfirming(true)}>Turn on KYC service</Button>
+        )
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border p-3">
+              <div className="text-xs text-muted-foreground">Checks this month</div>
+              <div className="mt-1 text-xl font-semibold tabular-nums">{kyc.this_month.checks}</div>
+            </div>
+            <div className="rounded-lg border p-3">
+              <div className="text-xs text-muted-foreground">This month so far</div>
+              <div className="mt-1 text-xl font-semibold tabular-nums">{gbp(kyc.this_month.amount, 2)}</div>
+            </div>
+            <div className="col-span-2 rounded-lg border p-3 sm:col-span-1">
+              <div className="text-xs text-muted-foreground">Price per check</div>
+              <div className="mt-1 text-xl font-semibold tabular-nums">{kyc.price ? gbp(kyc.price, 2) : '—'}</div>
+            </div>
+          </div>
+          {kyc.months.length > 0 && (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[420px] text-left text-sm">
+                <thead className="border-b text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="py-2 pr-3 font-semibold">Month</th>
+                    <th className="px-3 py-2 font-semibold">Checks</th>
+                    <th className="px-3 py-2 text-right font-semibold">Amount</th>
+                    <th className="py-2 pl-3 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {kyc.months.map((m) => {
+                    const [label, tone] = KYC_MONTH_STATUS[m.status] || ['—', 'bg-muted text-muted-foreground']
+                    return (
+                      <tr key={m.period} className="border-b last:border-0">
+                        <td className="py-2 pr-3">{monthName(m.period)}</td>
+                        <td className="px-3 py-2 tabular-nums">{m.checks}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{gbp(m.amount, 2)}</td>
+                        <td className="py-2 pl-3">
+                          <span className={cn(PILL, tone)}>{label}</span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>
+              {kyc.credits?.limit != null
+                ? `${kyc.credits.available} of ${kyc.credits.limit} unpaid checks left before you need to pay. `
+                : ''}
+              Due months appear under Services below.
+            </span>
+            <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => onSwitch(false)}>
+              Turn off
+            </Button>
+          </div>
+        </>
+      )}
+    </Section>
+  )
+}
+
 /** Billing (Finstap): the workspace's plan, card payments through Stripe, services and receipts. */
 export default function Billing() {
   const [data, setData] = useState(null)
@@ -225,6 +337,8 @@ export default function Billing() {
           Card details are entered on Stripe's secure page; Finstap never sees them.
         </p>
       </Section>
+
+      {data.kyc && <KycService kyc={data.kyc} busy={busy} onSwitch={(on) => go('kyc', '/admin/billing/kyc', { enabled: on })} />}
 
       <Section
         title="Services"

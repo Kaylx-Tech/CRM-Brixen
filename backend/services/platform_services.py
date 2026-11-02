@@ -196,6 +196,18 @@ def _bucket(status):
     return 'pending'
 
 
+def _all_time_checks(tenant):
+    """Every ID check the workspace ever started (its link was made)."""
+    from db import query_db
+    with use_tenant(tenant):
+        try:
+            row = query_db("SELECT COUNT(*) AS c FROM id_verifications WHERE session_url IS NOT NULL "
+                           "AND session_url != '';", one=True)
+        except Exception:
+            return 0
+    return int((row or {}).get('c') or 0)
+
+
 def kyc_report(period=None, slug=None):
     """KYC checks per workspace for one month, with what to charge and whether it was billed."""
     period, start, end = _period(period)
@@ -208,7 +220,9 @@ def kyc_report(period=None, slug=None):
         if slug and tenant['slug'] != slug:
             continue
         rows = _workspace_checks(tenant, start, end)
-        if not rows and tenant['slug'] not in billing:
+        kyc_on = bool(tenant.get('kyc_enabled_at'))
+        # Workspaces with the paid KYC service on are listed even in a month without checks
+        if not rows and tenant['slug'] not in billing and not kyc_on:
             continue
         counts = {'approved': 0, 'declined': 0, 'pending': 0}
         for r in rows:
@@ -218,6 +232,8 @@ def kyc_report(period=None, slug=None):
         workspaces.append({
             'slug': tenant['slug'], 'name': tenant['name'], 'owner_email': tenant.get('owner_email'),
             'checks': len(rows), **counts,
+            'all_time': _all_time_checks(tenant),
+            'kyc_enabled': kyc_on, 'kyc_enabled_at': tenant.get('kyc_enabled_at'),
             'amount': round(len(rows) * price, 2),
             'billing_status': bill.get('status') or '',
             'billed_amount': bill.get('amount'),

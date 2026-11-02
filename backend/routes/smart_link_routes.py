@@ -119,15 +119,16 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
         })
 
     if path == '/api/admin/smart-links/id-verification' and method == 'GET':
-        from services.didit_service import is_configured
+        from routes.id_verification_routes import kyc_off_reason
         try:
             from tenancy import current_tenant
             from services.autoallot import kyc_credits
             credits = kyc_credits(current_tenant())
         except ImportError:
             credits = None
+        # 'didit_configured' keeps its old name for the page: false = the paid KYC service is off
         return success_response(start_response, data={'orders': _kyc_orders(user),
-                                                      'didit_configured': is_configured(), 'credits': credits})
+                                                      'didit_configured': not kyc_off_reason(), 'credits': credits})
 
     if role not in MANAGE_ROLES:
         return error_response(start_response, "Only admins and managers can change Smart Operations links.",

@@ -21,6 +21,7 @@
   GET/POST /services/settings            → KYC price per check, registered office price a year, office addresses
   GET  /kyc?period=YYYY-MM               → KYC checks per workspace that month and what to charge
   POST /kyc/billing {slug, period, status: invoiced|paid|''}
+  POST /kyc/service {slug, enabled} → switch a workspace's paid KYC service on or off
   POST /kyc/<slug>/<id>/reject {reason} | resubmit {reason?} → new Didit link emailed to the client
   GET  /registered-office?status=        → every workspace's registered office requests
   POST /registered-office/<id>/confirm {address_index, start_date, months, price} | reject {reason}
@@ -489,6 +490,15 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
             svc.set_kyc_billing(body.get('slug'), body.get('period'), body.get('status'))
             audit(admin, 'KYC_BILLING', body.get('slug'), f"{body.get('period')}: {body.get('status') or 'not billed'}")
             return success_response(start_response, message="Billing updated.")
+        if sub == '/kyc/service' and method == 'POST':
+            from services import kyc_billing
+            on = bool(body.get('enabled'))
+            try:
+                kyc_billing.set_enabled(body.get('slug'), on, f"Finstap ({admin.get('email')})")
+            except kyc_billing.KycServiceError as exc:
+                return error_response(start_response, str(exc), status_code=400)
+            audit(admin, 'KYC_SERVICE_ON' if on else 'KYC_SERVICE_OFF', body.get('slug'), '')
+            return success_response(start_response, message=f"KYC service turned {'on' if on else 'off'}.")
         kyc = re.match(r'^/kyc/([a-z0-9-]+)/(\d+)/(reject|resubmit)$', sub)
         if kyc and method == 'POST':
             slug, check_id, act = kyc.group(1), int(kyc.group(2)), kyc.group(3)

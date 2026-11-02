@@ -6,12 +6,14 @@ GET  /api/admin/billing            → plan, dates, what is due for services, pa
 POST /api/admin/billing/subscribe  {plan, cycle} → {url} of Stripe Checkout, or the plan changed at once
 POST /api/admin/billing/portal     → {url} of Stripe's Customer Portal (card, invoices, cancel)
 POST /api/admin/billing/services   → {url} of Stripe Checkout for registered office / KYC charges
+POST /api/admin/billing/kyc        {enabled} → switch the paid KYC service on or off (services/kyc_billing.py)
 """
 import re
 
 from config import TENANT_BASE_DOMAIN
 from tenancy import current_tenant, get_tenant, workspace_url
 from utils.response import success_response, error_response
+from services import kyc_billing
 from services import plans
 from services import stripe_billing as stripe
 
@@ -65,8 +67,20 @@ def handle_billing_routes(environ, start_response, path, method, user, body, que
             'payments': stripe.payments_for(tenant['slug']),
             'price_override': tenant.get('price_override'),
             'message': plans.LOCK_MESSAGES.get(data.get('locked')),
+            'kyc': kyc_billing.summary(tenant),
         })
         return success_response(start_response, data=data)
+
+    # The paid KYC service: the admin switches it on (after seeing the price) or off
+    if path == '/api/admin/billing/kyc' and method == 'POST':
+        on = bool((body or {}).get('enabled')) if isinstance(body, dict) else False
+        try:
+            kyc_billing.set_enabled(tenant['slug'], on, user.get('email') or user.get('full_name'))
+        except kyc_billing.KycServiceError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        return success_response(start_response, data=kyc_billing.summary(get_tenant(tenant['slug'])), message=(
+            "KYC service turned on. You can now verify identities in Smart Operations › ID Verification."
+            if on else "KYC service turned off. Checks already sent carry on."))
 
     if method != 'POST':
         return error_response(start_response, "Not found", status_code=404)

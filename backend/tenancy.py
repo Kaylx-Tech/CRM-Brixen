@@ -329,6 +329,8 @@ TENANT_COLUMNS = (
     ('cancel_at', "TIMESTAMP"),                # the subscription ends then (cancelled in Stripe, still paid)
     ('deleted_at', "TIMESTAMP"),               # deleted by the owner: hidden, nobody signs in, database kept
     ('deleted_by', "TEXT"),
+    ('kyc_enabled_at', "TIMESTAMP"),           # the paid KYC service is on (services/kyc_billing.py)
+    ('kyc_enabled_by', "TEXT"),
 )
 
 HANDOFF_SECONDS = 120

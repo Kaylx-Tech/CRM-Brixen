@@ -244,14 +244,17 @@ def _order(order_number):
 def _verification_for(order, user):
     """The order's identity check: an approved one is reused, a running one is picked up, else a new one starts."""
     from db import execute_db, query_db
-    from routes.id_verification_routes import start_session, _email_link
+    from routes.id_verification_routes import start_session, _email_link, kyc_off_reason
     row = query_db("""
         SELECT * FROM id_verifications WHERE order_id = ? AND status NOT IN ('Declined', 'Abandoned', 'Expired', 'Kyc Expired')
         ORDER BY CASE WHEN status = 'Approved' THEN 0 ELSE 1 END, id DESC LIMIT 1;
     """, (order['id'],), one=True)
     if row and (row['status'] == 'Approved' or row.get('session_url')):
         return dict(row), None
-    name =(order.get('owner_name') or order.get('full_name') or '').strip()
+    off = kyc_off_reason()
+    if off:
+        raise AutoAllotError(off)
+    name = (order.get('owner_name') or order.get('full_name') or '').strip()
     email = (order.get('owner_form_email') or order.get('email') or '').strip()
     if not name:
         raise AutoAllotError("The order has no customer name to verify")

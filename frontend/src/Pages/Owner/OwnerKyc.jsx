@@ -213,6 +213,17 @@ export default function OwnerKyc() {
     }
   }
 
+  // The paid KYC service: workspaces turn it on in their Billing; the owner can switch it here too
+  const setService = async (slug, enabled) => {
+    const res = await ownerApi("/kyc/service", { method: "POST", body: { slug, enabled } })
+    if (res.ok) {
+      toastDone(undefined, res.message)
+      load()
+    } else {
+      toastFail(undefined, res.error)
+    }
+  }
+
   const checks = useMemo(() => {
     const q = search.trim().toLowerCase()
     return (data?.checks || []).filter((c) => {
@@ -266,14 +277,20 @@ export default function OwnerKyc() {
             />
           </div>
 
-          <Panel title="By workspace" description="Mark each month as invoiced, then paid." className="mt-4">
+          <Panel
+            title="By workspace"
+            description="Workspaces using the paid KYC service, and their checks this month. Mark a month invoiced (it shows as due in their Billing), then paid."
+            className="mt-4"
+          >
             {data.workspaces.length ? (
               <div className="overflow-x-auto">
                 <Table className="w-full md:min-w-[720px] text-left text-sm">
                   <thead className="border-b text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
                       <th className="py-2.5 pr-4 font-semibold">Workspace</th>
+                      <th className="px-3 py-2.5 font-semibold">KYC service</th>
                       <th className="px-3 py-2.5 font-semibold">Checks</th>
+                      <th className="px-3 py-2.5 font-semibold">All time</th>
                       <th className="px-3 py-2.5 font-semibold">Approved</th>
                       <th className="px-3 py-2.5 font-semibold">Declined</th>
                       <th className="px-3 py-2.5 font-semibold">In progress</th>
@@ -290,7 +307,19 @@ export default function OwnerKyc() {
                           </Link>
                           <div className="text-xs text-muted-foreground">{w.owner_email}</div>
                         </td>
+                        <td className="px-3 py-2.5">
+                          <select
+                            className={cn(SELECT, "w-24")}
+                            value={w.kyc_enabled ? "on" : "off"}
+                            onChange={(e) => setService(w.slug, e.target.value === "on")}
+                            aria-label={`KYC service for ${w.name}`}
+                          >
+                            <option value="on">On</option>
+                            <option value="off">Off</option>
+                          </select>
+                        </td>
                         <td className="px-3 py-2.5 tabular-nums font-medium">{w.checks}</td>
+                        <td className="px-3 py-2.5 tabular-nums text-muted-foreground">{w.all_time ?? "—"}</td>
                         <td className="px-3 py-2.5 tabular-nums">{w.approved}</td>
                         <td className="px-3 py-2.5 tabular-nums">{w.declined}</td>
                         <td className="px-3 py-2.5 tabular-nums">{w.pending}</td>

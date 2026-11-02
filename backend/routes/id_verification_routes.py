@@ -105,11 +105,24 @@ def _clean_person(body, partial=False):
     return out, None
 
 
+def kyc_off_reason():
+    """Why this workspace may not start ID checks (the paid KYC service is off), or None."""
+    try:
+        from tenancy import current_tenant
+        from services import kyc_billing
+    except ImportError:
+        return None
+    return None if kyc_billing.enabled(current_tenant()) else kyc_billing.off_message()
+
+
 def start_session(verification_id):
     """Make the person's private form link (a new one replaces the last). Returns (row, error)."""
     from services import kyc_form
     row = _row(verification_id)
     if not row.get('session_url'):
+        off = kyc_off_reason()
+        if off:
+            return dict(row), off
         # Finstap: a new check needs an ID check credit (unpaid checks per plan, services/autoallot.py)
         try:
             from tenancy import current_tenant
@@ -240,7 +253,7 @@ def is_kyc_order(order_id):
 def _auto_start(order_id, triggered_by):
     """Add the customer as the first person to verify, start Didit and email them the link."""
     try:
-        if not is_kyc_order(order_id):
+        if not is_kyc_order(order_id) or kyc_off_reason():
             return
         if query_db("SELECT 1 FROM id_verifications WHERE order_id = ? LIMIT 1;", (order_id,), one=True):
             return
@@ -394,7 +407,7 @@ def handle_id_verification_routes(environ, start_response, path, method, user, b
             return error_response(start_response, "Order not found", status_code=404)
         return success_response(start_response, data={
             'is_kyc': is_kyc_order(order['id']),
-            'didit_configured': True,  # Finstap's own form needs no keys
+            'didit_configured': not kyc_off_reason(),  # the paid KYC service is on
             'people': people_for_orders([order['id']]).get(order['id'], []),
         })
 
