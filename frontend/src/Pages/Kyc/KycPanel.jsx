@@ -11,7 +11,7 @@ import { OwnerForgot, OwnerLogin, OwnerSetPassword } from "../Owner/OwnerAuth"
 import KycDesk from "./KycDesk"
 import KycCheck from "./KycCheck"
 
-function KycShell({ user, onSignOut, children }) {
+function KycShell({ onSignOut, children }) {
   return (
     <div className="min-h-screen bg-muted/30">
       <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur-xl">
@@ -25,7 +25,6 @@ function KycShell({ user, onSignOut, children }) {
           </NavLink>
           <div className="flex shrink-0 items-center gap-2">
             <ModeToggle />
-            <span className="hidden text-sm text-muted-foreground md:inline">{user?.full_name || user?.email}</span>
             <Button variant="outline" size="lg" onClick={onSignOut} aria-label="Sign out">
               <IconLogout className="size-4" />
               <span className="hidden sm:inline">Sign out</span>
@@ -100,7 +99,7 @@ export default function KycPanel() {
   }
 
   return (
-    <KycShell user={user} onSignOut={signOut}>
+    <KycShell onSignOut={signOut}>
       <Routes>
         <Route index element={<KycDesk />} />
         <Route path="checks/:slug/:id" element={<KycCheck />} />
