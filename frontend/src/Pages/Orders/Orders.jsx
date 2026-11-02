@@ -405,10 +405,10 @@ export default function Orders() {
           <div className="min-w-0">
             <TruncatedTooltip
               text={name}
-              className="block max-w-[140px] truncate text-left text-sm cursor-default"
+              className={`block max-w-[140px] truncate text-left text-sm cursor-default${desired ? ' italic' : ''}`}
             />
             {desired ? (
-              <Badge className="badge-amber mt-0.5 rounded-full text-[10px]">Not registered yet</Badge>
+              <Badge className="badge-amber mt-0.5 rounded-full text-[10px]">Desired name</Badge>
             ) : null}
           </div>
         )
@@ -519,8 +519,8 @@ export default function Orders() {
           <p className="truncate text-xs text-muted-foreground">{o.owner_form_email || o.client_email || '—'}</p>
           {o.company_name ? (
             <p className="mt-1 truncate text-sm">
-              {o.company_name}
-              {!o.company_registered ? <span className="text-xs text-muted-foreground"> (not registered yet)</span> : null}
+              {o.company_registered ? o.company_name : <span className="italic">{o.company_name}</span>}
+              {!o.company_registered ? <Badge className="badge-amber ml-1.5 rounded-full text-[10px]">Desired name</Badge> : null}
             </p>
           ) : null}
           {/* Phones cannot hover: the internal notes show here, two lines at most */}
