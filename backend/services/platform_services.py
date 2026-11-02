@@ -152,19 +152,24 @@ def _workspace_checks(tenant, start, end, check_id=None):
     """The ID checks one workspace started in the period (empty for workspaces without the table), with the
     client, the order and its invoice for the owner's KYC table."""
     from db import query_db
-    # A check counts once its link exists (Finstap's own form, or a Didit session on older checks)
-    where = "v.id = ?" if check_id else """v.session_url IS NOT NULL AND v.session_url != ''
+    from services.kyc_billing import counted_sql
+    from services.kyc_form import ensure as ensure_form
+    # A check counts once its link exists (Finstap's own form, or a Didit session on older checks); one started
+    # on the workspace's own KYC link counts once it is sent (services/kyc_billing.py)
+    where = "v.id = ?" if check_id else f"""{counted_sql('v.')}
                   AND datetime(v.created_at) BETWEEN datetime(?) AND datetime(?)"""
     args = (check_id,) if check_id else (start, end)
     with use_tenant(tenant):
         try:
             _ensure_review_note()
+            ensure_form()
             rows = query_db(f"""
                 SELECT v.id, v.order_id, v.full_name, v.email, v.person_role, v.status, v.ch_personal_code,
                        v.result_json, v.review_note, v.reviewed_by, v.reviewed_at, v.session_url, v.link_sent_at, v.created_at, v.updated_at,
+                       v.source,
                        o.order_number, o.service_name, o.total, o.status AS order_status, o.created_at AS order_date,
                        u.full_name AS client_name, u.email AS client_email, u.address AS client_address,
-                       COALESCE(NULLIF(o.end_client_phone, ''), NULLIF(o.checkout_phone, ''), u.phone) AS phone,
+                       COALESCE(NULLIF(o.end_client_phone, ''), NULLIF(o.checkout_phone, ''), u.phone, v.phone) AS phone,
                        (SELECT i.status FROM invoices i WHERE i.order_id = o.id ORDER BY i.id DESC LIMIT 1)
                            AS invoice_status
                 FROM id_verifications v
@@ -199,10 +204,10 @@ def _bucket(status):
 def _all_time_checks(tenant):
     """Every ID check the workspace ever started (its link was made)."""
     from db import query_db
+    from services.kyc_billing import COUNTED_SQL
     with use_tenant(tenant):
         try:
-            row = query_db("SELECT COUNT(*) AS c FROM id_verifications WHERE session_url IS NOT NULL "
-                           "AND session_url != '';", one=True)
+            row = query_db(f"SELECT COUNT(*) AS c FROM id_verifications WHERE {COUNTED_SQL};", one=True)
         except Exception:
             return 0
     return int((row or {}).get('c') or 0)

@@ -331,6 +331,7 @@ TENANT_COLUMNS = (
     ('deleted_by', "TEXT"),
     ('kyc_enabled_at', "TIMESTAMP"),           # the paid KYC service is on (services/kyc_billing.py)
     ('kyc_enabled_by', "TEXT"),
+    ('kyc_link_code', "TEXT"),                 # the workspace's own KYC link: acme.finstap.com/verify/start/<code>
 )
 
 HANDOFF_SECONDS = 120

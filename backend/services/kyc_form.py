@@ -16,6 +16,8 @@ import json
 import os
 import re
 import secrets
+import threading
+import time
 import uuid
 from datetime import date
 
@@ -45,8 +47,9 @@ OPEN_STATUSES = ('Not Started', 'In Progress', 'Declined', 'Expired')
 def ensure():
     """Columns and the files table, added on first use (older workspace databases)."""
     columns = {c['name'] for c in (query_db("PRAGMA table_info(id_verifications);") or [])}
+    # source 'link': started by a visitor on the workspace's own KYC link (no order); phone: theirs
     for column, kind in (('form_token_hash', 'TEXT'), ('form_expires_at', 'TEXT'), ('submitted_at', 'TEXT'),
-                         ('form_round', 'INTEGER NOT NULL DEFAULT 0')):
+                         ('form_round', 'INTEGER NOT NULL DEFAULT 0'), ('source', 'TEXT'), ('phone', 'TEXT')):
         if columns and column not in columns:
             execute_db(f"ALTER TABLE id_verifications ADD COLUMN {column} {kind};")
     execute_db("""
@@ -105,6 +108,96 @@ def new_link(verification_id, status='Not Started'):
         WHERE id = ?;
     """, (_hash(token), f'+{LINK_DAYS} days', form_url(token), status, int(verification_id)))
     return query_db("SELECT * FROM id_verifications WHERE id = ?;", (int(verification_id),), one=True)
+
+
+_link_starts = {}
+_link_lock = threading.Lock()
+LINK_STARTS_PER_HOUR = 10
+
+
+def _too_many_starts(ip):
+    """A few checks an hour from one address on the workspace link (it is public)."""
+    now = time.time()
+    with _link_lock:
+        recent = [t for t in _link_starts.get(ip, []) if now - t < 3600]
+        if len(recent) >= LINK_STARTS_PER_HOUR:
+            _link_starts[ip] = recent
+            return True
+        _link_starts[ip] = recent + [now]
+    return False
+
+
+def link_unavailable(tenant):
+    """Why the workspace's KYC link cannot start a check now (service off, no credit), or None. The visitor
+    sees a short message; the workspace sees the full reason in Billing."""
+    from services import kyc_billing
+    if not kyc_billing.enabled(tenant):
+        return "This verification link is not active."
+    try:
+        from services.autoallot import AutoAllotError, check_kyc_credit
+        check_kyc_credit(get_fresh_tenant(tenant))
+    except ImportError:
+        pass
+    except AutoAllotError:
+        return "This verification link cannot take new checks right now."
+    return None
+
+
+def get_fresh_tenant(tenant):
+    from tenancy import get_tenant
+    return get_tenant(tenant['slug']) or tenant
+
+
+def start_from_link(tenant, body, ip=''):
+    """A visitor on the workspace's KYC link gives their name and email; their check starts (no order).
+    Returns (token, None) or (None, message) or (None, {field: message})."""
+    body = body if isinstance(body, dict) else {}
+    errors = {}
+    full_name = _text(body, 'full_name')
+    email = _text(body, 'email', 200).lower()
+    phone = _text(body, 'phone', 40)
+    if not full_name:
+        errors['full_name'] = "Enter your full name."
+    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+        errors['email'] = "Enter a valid email address, like name@example.com."
+    if errors:
+        return None, errors
+    off = link_unavailable(tenant)
+    if off:
+        return None, f"{off} Please contact {tenant.get('name') or 'the company that sent it'}."
+    if _too_many_starts(ip or 'unknown'):
+        return None, "Too many checks were started from this connection. Please try again in an hour."
+    ensure()
+    # The same person coming back before sending it continues their own check (with a new link)
+    row = query_db("""
+        SELECT id FROM id_verifications WHERE source = 'link' AND LOWER(email) = ? AND submitted_at IS NULL
+          AND status IN ('Not Started', 'In Progress') AND datetime(created_at) > datetime('now', ?)
+        ORDER BY id DESC LIMIT 1;
+    """, (email, f'-{LINK_DAYS} days'), one=True)
+    if row:
+        check_id = row['id']
+        execute_db("UPDATE id_verifications SET full_name = ?, phone = COALESCE(?, phone) WHERE id = ?;",
+                   (full_name, phone or None, check_id))
+    else:
+        check_id = execute_db("""
+            INSERT INTO id_verifications (order_id, full_name, email, phone, source, created_at, updated_at)
+            VALUES (NULL, ?, ?, ?, 'link', datetime('now'), datetime('now'));
+        """, (full_name, email, phone or None))
+    fresh = new_link(check_id, status='In Progress' if row else 'Not Started')
+    return str(fresh['session_url']).rsplit('/verify/', 1)[-1], None
+
+
+def _tell_admins(row):
+    """A check from the KYC link has nobody who started it: the workspace's admins hear it was sent."""
+    try:
+        from services.notification_service import create_notification
+        admins = query_db("SELECT id FROM users WHERE role IN ('SUPER_ADMIN', 'ADMIN') AND status != 'Suspended';") or []
+        for admin in admins:
+            create_notification(admin['id'], "ID verification: Submitted",
+                                f"{row['full_name']} sent their documents through your KYC link.",
+                                ntype='success', link='/admin/smart-operations')
+    except Exception as exc:
+        print(f"[KYC form] notification for check {row['id']}: {exc}")
 
 
 def verification_for_token(token):
@@ -320,6 +413,8 @@ def submit(row, body):
     """, (json.dumps(result), row['id']))
     from routes.id_verification_routes import apply_result
     apply_result(row['id'], 'Submitted')
+    if row.get('source') == 'link':
+        _tell_admins(row)
     return None, None
 
 

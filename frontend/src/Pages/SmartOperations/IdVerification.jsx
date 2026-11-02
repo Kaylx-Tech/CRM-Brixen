@@ -233,6 +233,8 @@ export default function IdVerification() {
   const [orders, setOrders] = useState([])
   const [configured, setConfigured] = useState(true)
   const [credits, setCredits] = useState(null)
+  const [linkChecks, setLinkChecks] = useState([]) // started on the workspace's own KYC link (no order)
+  const [kycLink, setKycLink] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [busyId, setBusyId] = useState(null)
@@ -253,6 +255,8 @@ export default function IdVerification() {
       setOrders(res.data?.data?.orders || [])
       setConfigured(res.data?.data?.didit_configured !== false)
       setCredits(res.data?.data?.credits || null)
+      setLinkChecks(res.data?.data?.link_checks || [])
+      setKycLink(res.data?.data?.kyc_link || null)
     } finally {
       setIsLoading(false)
     }
@@ -374,6 +378,21 @@ export default function IdVerification() {
 
   return (
     <div className="flex flex-col gap-4">
+      {kycLink && (
+        <Card className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">Your KYC link</p>
+            <p className="text-xs text-muted-foreground">
+              Send it to any client: they verify their identity without an order. Their checks appear below.
+            </p>
+            <p className="mt-1 truncate font-mono text-xs" title={kycLink}>{kycLink}</p>
+          </div>
+          <Button variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={() => copyText(kycLink, 'KYC link')}>
+            <IconCopy className="size-3.5" /> Copy link
+          </Button>
+        </Card>
+      )}
+
       {!configured && (
         <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
           <IconAlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
@@ -467,6 +486,20 @@ export default function IdVerification() {
             </Card>
           ))}
         </div>
+      )}
+
+      {linkChecks.length > 0 && (
+        <Card className="space-y-2 p-4">
+          <div>
+            <h3 className="text-sm font-semibold">From your KYC link</h3>
+            <p className="text-xs text-muted-foreground">Clients who started a check on your KYC link, newest first.</p>
+          </div>
+          <div className="space-y-1.5">
+            {linkChecks.map((p) => (
+              <PersonRow key={p.id} person={p} busy={busyId === p.id} onAction={runAction} onOpen={openResult} />
+            ))}
+          </div>
+        </Card>
       )}
 
       {/* Add a person (director, PSC …) to verify */}

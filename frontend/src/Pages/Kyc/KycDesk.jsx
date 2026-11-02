@@ -143,7 +143,7 @@ export default function KycDesk() {
                           </td>
                           <td className="px-3 py-3">
                             <div>{c.workspace_name}</div>
-                            <div className="font-mono text-xs text-muted-foreground">{c.order_number || "No order"}</div>
+                            <div className="font-mono text-xs text-muted-foreground">{c.order_number || (c.source === "link" ? "Workspace KYC link" : "No order")}</div>
                           </td>
                           <td className="px-3 py-3">{c.service_name || "—"}</td>
                           <td className="px-3 py-3 whitespace-nowrap text-muted-foreground">{shortDate(c.created_at)}</td>

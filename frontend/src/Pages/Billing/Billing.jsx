@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import {
   IconAlertTriangle,
   IconCheck,
+  IconCopy,
   IconCreditCard,
   IconExternalLink,
   IconLoader2,
@@ -69,7 +70,7 @@ function monthName(period) {
 }
 
 /** The paid KYC service: switch it on (after seeing the price), and how many checks it ran and cost, by month. */
-function KycService({ kyc, busy, onSwitch }) {
+function KycService({ kyc, busy, onSwitch, onNewLink }) {
   const [confirming, setConfirming] = useState(false)
   const price = kyc.price ? `${gbp(kyc.price, 2)} a check` : 'price set by Finstap'
   return (
@@ -108,6 +109,32 @@ function KycService({ kyc, busy, onSwitch }) {
         )
       ) : (
         <>
+          {kyc.link && (
+            <div className="mb-4 rounded-lg border bg-muted/30 p-3">
+              <div className="text-sm font-medium">Your KYC link</div>
+              <p className="text-xs text-muted-foreground">
+                Send it to any client to verify their identity, no order needed. Each check they send is counted here.
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <code className="min-w-0 flex-1 truncate rounded bg-background px-2 py-1 text-xs" title={kyc.link}>{kyc.link}</code>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    navigator.clipboard.writeText(kyc.link).then(
+                      () => toast.success('KYC link copied'),
+                      () => toast.error('Could not copy'),
+                    )
+                  }
+                >
+                  <IconCopy className="size-4" /> Copy
+                </Button>
+                <Button size="sm" variant="ghost" disabled={!!busy} onClick={onNewLink} title="The old link stops working">
+                  New link
+                </Button>
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="rounded-lg border p-3">
               <div className="text-xs text-muted-foreground">Checks this month</div>
@@ -338,7 +365,14 @@ export default function Billing() {
         </p>
       </Section>
 
-      {data.kyc && <KycService kyc={data.kyc} busy={busy} onSwitch={(on) => go('kyc', '/admin/billing/kyc', { enabled: on })} />}
+      {data.kyc && (
+        <KycService
+          kyc={data.kyc}
+          busy={busy}
+          onSwitch={(on) => go('kyc', '/admin/billing/kyc', { enabled: on })}
+          onNewLink={() => go('kyc', '/admin/billing/kyc/new-link')}
+        />
+      )}
 
       <Section
         title="Services"

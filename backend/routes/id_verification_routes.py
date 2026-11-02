@@ -13,6 +13,7 @@ POST /api/admin/id-verification/<id>/refresh    the latest status
 GET  /api/kyc-form/<code>                       the person's form (no login, the private code)
 POST /api/kyc-form/<code>/file                  one photo or file {kind, file}
 POST /api/kyc-form/<code>/submit                the answers; the check goes to the KYC desk
+GET/POST /api/kyc-link/<workspace>.<code>       the workspace's own KYC link: any client starts a check (no order)
 POST /api/webhooks/didit                        Didit status updates (older checks; signed, no login)
 """
 import json
@@ -383,9 +384,37 @@ def _handle_form(start_response, path, method, body):
     return error_response(start_response, "Not found", status_code=404)
 
 
+def _handle_workspace_link(environ, start_response, path, method, body):
+    """The workspace's own KYC link (no login, no order): the visitor gives their name and email, then
+    fills the same form. GET says whether the link works; POST starts their check → {token}."""
+    from services import kyc_billing, kyc_form
+    from tenancy import use_tenant
+    match = re.match(r'^/api/kyc-link/([^/]+)$', path)
+    tenant = kyc_billing.tenant_for_link(match.group(1)) if match else None
+    if not tenant:
+        return error_response(start_response, "This verification link is not valid.", status_code=404)
+    with use_tenant(tenant):
+        if method == 'GET':
+            off = kyc_form.link_unavailable(tenant)
+            return success_response(start_response, data={'workspace': tenant.get('name'), 'available': not off,
+                                                          'message': off})
+        if method == 'POST':
+            ip = (environ.get('HTTP_CF_CONNECTING_IP') or environ.get('HTTP_X_REAL_IP')
+                  or (environ.get('HTTP_X_FORWARDED_FOR') or '').split(',')[0] or environ.get('REMOTE_ADDR') or '')
+            token, problem = kyc_form.start_from_link(tenant, body, ip.strip())
+            if isinstance(problem, dict):
+                return validation_error(start_response, problem)
+            if problem:
+                return error_response(start_response, problem, status_code=400)
+            return success_response(start_response, data={'token': token})
+    return error_response(start_response, "Not found", status_code=404)
+
+
 def handle_id_verification_routes(environ, start_response, path, method, user, body, query):
     if path == '/api/webhooks/didit' and method == 'POST':
         return _handle_webhook(environ, start_response, body)
+    if path.startswith('/api/kyc-link/'):
+        return _handle_workspace_link(environ, start_response, path, method, body)
     if path.startswith('/api/kyc-form/'):
         return _handle_form(start_response, path, method, body)
     if path == '/api/client/id-verification' and method == 'GET':

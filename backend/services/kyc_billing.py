@@ -9,10 +9,54 @@
   * The workspace's Billing shows this month so far and the months before, with their status.
 """
 import datetime
+import secrets
 
-from tenancy import _platform_execute, _platform_query, get_tenant
+from tenancy import _platform_execute, _platform_query, get_tenant, workspace_url
 
 MONTHS_SHOWN = 12
+
+# Which checks are charged: every check whose link was made, except one a visitor started on the workspace's
+# own KYC link and never sent (anyone can open that link, so only finished ones count)
+def counted_sql(alias=''):
+    """The WHERE part for charged checks; `alias` is the table alias ('v.') when the query joins."""
+    a = alias
+    return (f"{a}session_url IS NOT NULL AND {a}session_url != '' "
+            f"AND (COALESCE({a}source, '') != 'link' OR {a}submitted_at IS NOT NULL)")
+
+
+COUNTED_SQL = counted_sql()
+
+
+def link_url(tenant):
+    """The workspace's own KYC link (made on first use), to send to any client: no order needed."""
+    fresh = get_tenant(tenant['slug']) or tenant
+    code = fresh.get('kyc_link_code')
+    if not code:
+        code = secrets.token_urlsafe(9)
+        _platform_execute("UPDATE tenants SET kyc_link_code = COALESCE(kyc_link_code, ?) WHERE slug = ?;",
+                          (code, tenant['slug']))
+        code = (get_tenant(tenant['slug']) or {}).get('kyc_link_code') or code
+    path = f"/verify/start/{tenant['slug']}.{code}"
+    url = workspace_url(tenant['slug'], path)
+    if url:
+        return url
+    import os
+    from config import FRONTEND_URL
+    return f"{(os.environ.get('KYC_FORM_BASE_URL') or FRONTEND_URL).rstrip('/')}{path}"
+
+
+def new_link_code(slug):
+    """A new code for the workspace's KYC link; the old link stops working (e.g. it was shared too widely)."""
+    _platform_execute("UPDATE tenants SET kyc_link_code = ? WHERE slug = ?;", (secrets.token_urlsafe(9), slug))
+
+
+def tenant_for_link(code):
+    """The workspace whose KYC link this is ('acme.<code>'), or None."""
+    slug, _, secret = str(code or '').partition('.')
+    tenant = get_tenant(slug) if slug and secret else None
+    if not tenant or tenant.get('status') != 'Active' or not tenant.get('kyc_link_code'):
+        return None
+    return tenant if secrets.compare_digest(str(tenant['kyc_link_code']), secret) else None
 
 
 class KycServiceError(ValueError):
@@ -59,10 +103,12 @@ def set_enabled(slug, on, by):
 def _month_counts():
     """{'YYYY-MM': checks} for the active workspace (checks whose link was made)."""
     from db import query_db
+    from services.kyc_form import ensure
     try:
-        rows = query_db("""
+        ensure()
+        rows = query_db(f"""
             SELECT strftime('%Y-%m', created_at) AS period, COUNT(*) AS c FROM id_verifications
-            WHERE session_url IS NOT NULL AND session_url != '' GROUP BY period;
+            WHERE {COUNTED_SQL} GROUP BY period;
         """) or []
     except Exception:
         return {}
@@ -86,9 +132,11 @@ def summary(tenant):
         status = bill.get('status') or ('running' if period == this_month else 'not_billed' if checks else '')
         months.append({'period': period, 'checks': checks, 'amount': round(amount, 2), 'status': status})
     fresh = get_tenant(tenant['slug']) or tenant
+    on = enabled(fresh)
     return {
-        'enabled': enabled(fresh),
+        'enabled': on,
         'enabled_at': fresh.get('kyc_enabled_at'),
+        'link': link_url(fresh) if on else None,
         'price': each,
         'credits': kyc_credits(fresh),
         'this_month': next(m for m in months if m['period'] == this_month),

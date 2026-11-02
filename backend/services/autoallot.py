@@ -94,9 +94,12 @@ def kyc_credits(tenant):
     limit = _limit(tenant, 'id_checks', PLAN_CREDITS)
     paid = {r['period'] for r in _platform_query(
         "SELECT period FROM kyc_billing WHERE tenant_slug = ? AND status = 'paid';", (tenant['slug'],))}
-    rows = query_db("""
+    from services.kyc_billing import COUNTED_SQL
+    from services.kyc_form import ensure
+    ensure()
+    rows = query_db(f"""
         SELECT strftime('%Y-%m', created_at) AS period, COUNT(*) AS c FROM id_verifications
-        WHERE session_url IS NOT NULL AND session_url != '' AND date(created_at) >= date(?)
+        WHERE {COUNTED_SQL} AND date(created_at) >= date(?)
         GROUP BY period;
     """, (_since('kyc_credits_since'),)) or []
     used = sum(int(r['c'] or 0) for r in rows if r['period'] not in paid)

@@ -252,6 +252,32 @@ def init_db():
     ensure_schema()
 
 
+def migrate_id_verifications_order_optional(conn):
+    """A check started from the workspace's own KYC link (services/kyc_form.py) has no order: copy the
+    table into one where order_id may be empty. Every row and column is kept (SQLite cannot drop NOT NULL)."""
+    row = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='id_verifications'").fetchone()
+    create_sql = (row[0] or '') if row else ''
+    if 'order_id INTEGER NOT NULL' not in create_sql:
+        return
+    cols = ', '.join(info[1] for info in conn.execute("PRAGMA table_info(id_verifications)").fetchall())
+    new_sql = create_sql.replace('order_id INTEGER NOT NULL', 'order_id INTEGER', 1)
+    new_sql = new_sql.replace('CREATE TABLE id_verifications', 'CREATE TABLE id_verifications_mig', 1)
+    new_sql = new_sql.replace('CREATE TABLE "id_verifications"', 'CREATE TABLE id_verifications_mig', 1)
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = OFF")
+    try:
+        conn.execute("DROP TABLE IF EXISTS id_verifications_mig")  # a copy left by an interrupted run
+        conn.execute(new_sql)
+        conn.execute(f"INSERT INTO id_verifications_mig ({cols}) SELECT {cols} FROM id_verifications")
+        conn.execute("DROP TABLE id_verifications")
+        conn.execute("ALTER TABLE id_verifications_mig RENAME TO id_verifications")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_id_verifications_order ON id_verifications(order_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_id_verifications_session ON id_verifications(didit_session_id)")
+        conn.commit()
+    finally:
+        conn.execute("PRAGMA foreign_keys = ON")
+
+
 def migrate_invoice_partial_paid_status(conn):
     """Allow Partial Paid on existing invoice tables that still use the old CHECK."""
     row = conn.execute(
@@ -742,7 +768,7 @@ def ensure_schema():
         -- the Companies House personal code is saved after the ACSP reports the verification
         CREATE TABLE IF NOT EXISTS id_verifications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            order_id INTEGER NOT NULL,
+            order_id INTEGER,
             full_name TEXT NOT NULL,
             email TEXT,
             person_role TEXT,
@@ -818,6 +844,7 @@ def ensure_schema():
             conn.execute(f"ALTER TABLE email_outbox ADD COLUMN {col} {ddl}")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_email_outbox_created ON email_outbox(created_at)")
     conn.commit()
+    migrate_id_verifications_order_optional(conn)
     conn.close()
     ensure_rbac()
 

@@ -126,9 +126,22 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
             credits = kyc_credits(current_tenant())
         except ImportError:
             credits = None
+        # Checks started on the workspace's own KYC link (no order), and that link while the service is on
+        link_checks, kyc_link = [], None
+        try:
+            from services import kyc_billing, kyc_form
+            from routes.id_verification_routes import serialize
+            kyc_form.ensure()
+            link_checks = [serialize(r) for r in query_db(
+                "SELECT * FROM id_verifications WHERE source = 'link' ORDER BY id DESC LIMIT 500;") or []]
+            if not kyc_off_reason():
+                kyc_link = kyc_billing.link_url(current_tenant())
+        except ImportError:
+            pass
         # 'didit_configured' keeps its old name for the page: false = the paid KYC service is off
         return success_response(start_response, data={'orders': _kyc_orders(user),
-                                                      'didit_configured': not kyc_off_reason(), 'credits': credits})
+                                                      'didit_configured': not kyc_off_reason(), 'credits': credits,
+                                                      'link_checks': link_checks, 'kyc_link': kyc_link})
 
     if role not in MANAGE_ROLES:
         return error_response(start_response, "Only admins and managers can change Smart Operations links.",

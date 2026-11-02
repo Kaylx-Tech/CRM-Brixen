@@ -7,6 +7,7 @@ POST /api/admin/billing/subscribe  {plan, cycle} → {url} of Stripe Checkout, o
 POST /api/admin/billing/portal     → {url} of Stripe's Customer Portal (card, invoices, cancel)
 POST /api/admin/billing/services   → {url} of Stripe Checkout for registered office / KYC charges
 POST /api/admin/billing/kyc        {enabled} → switch the paid KYC service on or off (services/kyc_billing.py)
+POST /api/admin/billing/kyc/new-link → a new address for the workspace's KYC link
 """
 import re
 
@@ -70,6 +71,12 @@ def handle_billing_routes(environ, start_response, path, method, user, body, que
             'kyc': kyc_billing.summary(tenant),
         })
         return success_response(start_response, data=data)
+
+    # A new address for the workspace's KYC link (the old one stops working)
+    if path == '/api/admin/billing/kyc/new-link' and method == 'POST':
+        kyc_billing.new_link_code(tenant['slug'])
+        return success_response(start_response, data=kyc_billing.summary(get_tenant(tenant['slug'])),
+                                message="New KYC link made. The old link no longer works.")
 
     # The paid KYC service: the admin switches it on (after seeing the price) or off
     if path == '/api/admin/billing/kyc' and method == 'POST':
