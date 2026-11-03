@@ -68,13 +68,9 @@ class KycServiceError(ValueError):
 
 
 def enabled(tenant):
-    """The workspace may start ID checks."""
-    if not tenant:
-        return False
-    if (tenant.get('plan') or '') == 'legacy':
-        return True
-    fresh = get_tenant(tenant['slug']) or tenant  # the switch may have changed since the request began
-    return bool(fresh.get('kyc_enabled_at'))
+    """The workspace may start ID checks: always (every workspace has the KYC service from the start, there is
+    no switch any more; each check is still charged and limited by credits)."""
+    return bool(tenant)
 
 
 def price():

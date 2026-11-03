@@ -19,11 +19,13 @@ export function FinstapLogo({ className, light = false, mark = false, company = 
 
   if (own) {
     const onChip = light && !mark && !brand.logoDark
+    // On the white chip the image still takes the caller's height and width (h-…, max-w-…)
+    const sizeClass = String(className || "").split(/\s+/).filter((c) => /^(h-|max-w-)/.test(c)).join(" ")
     const img = (
       <img
         src={own}
         alt="Company logo"
-        className={cn("w-auto max-w-[180px] object-contain", mark ? "h-10" : "h-9", !onChip && className)}
+        className={cn("w-auto max-w-[180px] object-contain", mark ? "h-10" : "h-9", onChip ? sizeClass : className)}
       />
     )
     // The chip keeps the caller's spacing and visibility classes; the image keeps the height

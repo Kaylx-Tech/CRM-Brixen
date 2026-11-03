@@ -72,44 +72,19 @@ function monthName(period) {
 }
 
 /** The paid KYC service: switch it on (after seeing the price), and how many checks it ran and cost, by month. */
-function KycService({ kyc, busy, onSwitch, onNewLink }) {
-  const [confirming, setConfirming] = useState(false)
+function KycService({ kyc, busy, onNewLink }) {
   const price = kyc.price ? `${gbp(kyc.price, 2)} a check` : 'price set by Finstap'
   return (
     <Section
       title="KYC service"
       description={`Identity checks for your clients: they upload their ID, a live selfie and a proof of address on a secure link, and Finstap's KYC team checks them. ${kyc.price ? `${gbp(kyc.price, 2)} (excl. VAT) for each check started.` : ''}`}
       action={
-        kyc.enabled ? (
-          <span className={cn(PILL, 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300')}>
-            <IconCheck className="size-3.5" /> On{kyc.enabled_at ? ` since ${date(kyc.enabled_at)}` : ''}
-          </span>
-        ) : (
-          <span className={cn(PILL, 'bg-muted text-muted-foreground')}>Off</span>
-        )
+        <span className={cn(PILL, 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300')}>
+          <IconCheck className="size-3.5" /> Included · {price}
+        </span>
       }
     >
-      {!kyc.enabled ? (
-        confirming ? (
-          <div className="rounded-lg border bg-muted/30 p-4 text-sm">
-            <p>
-              Turn on the KYC service? Each identity check you start is charged at <strong>{price}</strong>, invoiced
-              monthly. You can turn it off at any time.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button disabled={!!busy} onClick={() => onSwitch(true)}>
-                {busy === 'kyc' ? <IconLoader2 className="size-4 animate-spin" /> : <IconCheck className="size-4" />}
-                Yes, turn it on
-              </Button>
-              <Button variant="outline" disabled={!!busy} onClick={() => setConfirming(false)}>
-                Cancel
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <Button onClick={() => setConfirming(true)}>Turn on KYC service</Button>
-        )
-      ) : (
+      {
         <>
           {kyc.link && (
             <div className="mb-4 rounded-lg border bg-muted/30 p-3">
@@ -187,12 +162,9 @@ function KycService({ kyc, busy, onSwitch, onNewLink }) {
                 : ''}
               Due months appear under Services below.
             </span>
-            <Button variant="ghost" size="sm" disabled={!!busy} onClick={() => onSwitch(false)}>
-              Turn off
-            </Button>
           </div>
         </>
-      )}
+      }
     </Section>
   )
 }
@@ -394,7 +366,6 @@ export default function Billing() {
         <KycService
           kyc={data.kyc}
           busy={busy}
-          onSwitch={(on) => go('kyc', '/admin/billing/kyc', { enabled: on })}
           onNewLink={() => go('kyc', '/admin/billing/kyc/new-link')}
         />
       )}

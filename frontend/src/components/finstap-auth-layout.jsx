@@ -42,8 +42,8 @@ export function FinstapAuthLayout({ title, subtitle, children, footer }) {
           <div className="mb-8 flex flex-col items-center gap-2 text-center">
             {/* Dark text logo on light pages, white text logo in dark mode; a company's own address
                 (acme.finstap.com) shows that company's logo once it has uploaded one */}
-            <FinstapLogo company={companyPage} className="mb-6 h-9 dark:hidden" />
-            <FinstapLogo company={companyPage} light className="mb-6 hidden h-9 dark:block" />
+            <FinstapLogo company={companyPage} className="mb-6 h-16 max-w-[260px] dark:hidden" />
+            <FinstapLogo company={companyPage} light className="mb-6 hidden h-16 max-w-[260px] dark:block" />
             <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
             {subtitle && <p className="text-balance text-sm text-muted-foreground">{subtitle}</p>}
           </div>

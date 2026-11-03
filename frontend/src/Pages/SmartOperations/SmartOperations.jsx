@@ -315,7 +315,7 @@ export default function SmartOperations() {
           {tab === 'id-verification' && (
             <p className="mt-0.5 text-sm text-muted-foreground">
               Every order with a KYC product, for verifying the client's identity.
-              {IS_FINSTAP && ' Each ID check runs on Finstap and is billed to your workspace monthly.'}
+              {IS_FINSTAP && ' Each ID check is checked by the Finstap KYC team and paid from your balance (Billing).'}
             </p>
           )}
           {tab === 'registered-office' && (

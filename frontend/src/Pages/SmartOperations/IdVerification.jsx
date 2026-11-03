@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import {
   IconAlertTriangle,
+  IconBrandWhatsapp,
   IconCheck,
   IconCopy,
   IconExternalLink,
@@ -378,18 +379,59 @@ export default function IdVerification() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* The first thing on the page: how to get a client verified (send this link) */}
       {kycLink && (
-        <Card className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold">Your KYC link</p>
-            <p className="text-xs text-muted-foreground">
-              Send it to any client: they verify their identity without an order. Their checks appear below.
-            </p>
-            <p className="mt-1 truncate font-mono text-xs" title={kycLink}>{kycLink}</p>
+        <Card className="overflow-hidden border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                <IconUserCheck className="size-6" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold">Verify a client's identity (KYC)</h2>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Send this link to any client. They upload their ID, take a selfie and add a proof of address;
+                  the KYC team checks it and you see the result below. KYC orders send it by themselves.
+                </p>
+              </div>
+            </div>
           </div>
-          <Button variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={() => copyText(kycLink, 'KYC link')}>
-            <IconCopy className="size-3.5" /> Copy link
-          </Button>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="min-w-0 flex-1 truncate rounded-lg border bg-background px-3 py-2 font-mono text-sm" title={kycLink}>
+              {kycLink}
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <Button className="gap-1.5" onClick={() => copyText(kycLink, 'KYC link')}>
+                <IconCopy className="size-4" /> Copy link
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-1.5"
+                nativeButton={false}
+                render={
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(`Please verify your identity here: ${kycLink}`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  />
+                }
+              >
+                <IconBrandWhatsapp className="size-4" /> WhatsApp
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-1.5"
+                nativeButton={false}
+                render={
+                  <a
+                    href={`mailto:?subject=${encodeURIComponent('Please verify your identity')}&body=${encodeURIComponent(`Please verify your identity here: ${kycLink}`)}`}
+                  />
+                }
+              >
+                <IconMail className="size-4" /> Email
+              </Button>
+            </div>
+          </div>
         </Card>
       )}
 
