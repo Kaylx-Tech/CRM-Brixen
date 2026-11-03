@@ -94,15 +94,15 @@ def compose_client_email(*, subject, headline, greeting, message, points=None, d
     details = [(k, v) for k, v in (details or []) if str(v or '').strip()]
 
     points_html = ''.join(
-        f'<p style="margin:6px 0 0;font-size:14px;line-height:1.5;color:#111827;">{html_escape(p)}</p>'
+        f'<p style="margin:6px 0 0;font-size:15px;line-height:1.5;color:#1d1d1f;">{html_escape(p)}</p>'
         for p in points)
     details_html = eng.email_details_box_html('', details)
     # A glossy button in the company's colour (the same button in every email)
     cta_html = eng.email_buttons_html([(cta_url, cta_label)]) if cta_label and cta_url else ''
 
     body_inner = (
-        f'<p style="margin:0 0 12px;font-size:15px;line-height:1.55;color:#111827;">Hello {html_escape(greeting)},</p>'
-        f'<p style="margin:0;font-size:15px;line-height:1.55;color:#374151;">'
+        f'<p style="margin:0 0 12px;font-size:15px;line-height:1.55;color:#1d1d1f;">Hello {html_escape(greeting)},</p>'
+        f'<p style="margin:0;font-size:15px;line-height:1.55;color:#424245;">'
         f'{html_escape(message).replace(chr(10), "<br>")}</p>'
         f'{points_html}{details_html}{cta_html}'
     )

@@ -250,17 +250,16 @@ def text_to_html(body):
 
 
 def _issue_email(subject, body, unsubscribe_url):
-    return f"""<!doctype html><html><body style="margin:0;background:#f4f4f5;">
+    return f"""<!doctype html><html><body style="margin:0;background:#f5f5f7;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;
-font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#18181b;">
-<tr><td style="height:4px;background:#5f5cff;border-radius:16px 16px 0 0;font-size:0;">&nbsp;</td></tr>
+font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#1d1d1f;">
 <tr><td style="padding:32px 36px 8px;font-size:18px;font-weight:700;">Finstap</td></tr>
 <tr><td style="padding:8px 36px 0;font-size:24px;font-weight:700;">{html.escape(subject)}</td></tr>
-<tr><td style="padding:16px 36px 24px;font-size:15px;color:#3f3f46;">{text_to_html(body)}</td></tr>
-<tr><td style="padding:20px 36px 28px;border-top:1px solid #ececef;font-size:12px;color:#a1a1aa;line-height:1.6;">
+<tr><td style="padding:16px 36px 24px;font-size:15px;color:#424245;">{text_to_html(body)}</td></tr>
+<tr><td style="padding:20px 36px 28px;border-top:1px solid #e8e8ed;font-size:12px;color:#86868b;line-height:1.6;">
 You get this because you subscribed to the Finstap newsletter.
-<a href="{html.escape(unsubscribe_url)}" style="color:#71717a;">Unsubscribe</a></td></tr>
+<a href="{html.escape(unsubscribe_url)}" style="color:#6e6e73;">Unsubscribe</a></td></tr>
 </table></td></tr></table></body></html>"""
 
 

@@ -317,7 +317,7 @@ def bold_keywords_html(text, keywords=None):
     for start, end in ranges:
         out.append(html_escape(raw[cursor:start]))
         out.append(
-            f'<strong style="font-weight:600;color:#111827;">{html_escape(raw[start:end])}</strong>'
+            f'<strong style="font-weight:600;color:#1d1d1f;">{html_escape(raw[start:end])}</strong>'
         )
         cursor = end
     out.append(html_escape(raw[cursor:]))
@@ -330,7 +330,7 @@ def email_high_alert_badge_html(label='Priority notice', title=''):
     if str(title or '').strip():
         title_html = (
             f'<p style="margin:4px 0 0;font-family:{EMAIL_FONT_STACK};font-size:17px;line-height:1.3;'
-            f'font-weight:600;letter-spacing:-0.01em;color:#111827;text-align:left;">'
+            f'font-weight:600;letter-spacing:-0.01em;color:#1d1d1f;text-align:left;">'
             f'{html_escape(str(title).strip())}</p>'
         )
     return (
@@ -365,7 +365,7 @@ def email_compliance_parts_html(blocks):
         heading = f"⚠️ {title}" if not title.startswith('⚠️') else title
         chunk = [
             f'<h3 style="margin:{top} 0 12px;font-family:{EMAIL_FONT_STACK};font-size:17px;line-height:1.4;'
-            f'font-weight:600;letter-spacing:-0.01em;color:#111827;text-align:left;">'
+            f'font-weight:600;letter-spacing:-0.01em;color:#1d1d1f;text-align:left;">'
             f'{html_escape(heading)}</h3>'
         ]
         
@@ -373,7 +373,7 @@ def email_compliance_parts_html(blocks):
         if issue_lines[0]:
             chunk.append(
                 f'<p style="margin:0 0 12px;font-family:{EMAIL_FONT_STACK};font-size:15px;line-height:1.6;'
-                f'color:#374151;text-align:left;">{html_escape(issue_lines[0])}'
+                f'color:#424245;text-align:left;">{html_escape(issue_lines[0])}'
                 f'{" " + html_escape(issue_lines[1]) if issue_lines[1] else ""}</p>'
             )
             
@@ -381,7 +381,7 @@ def email_compliance_parts_html(blocks):
         if cons_lines[0]:
             chunk.append(
                 f'<p style="margin:0 0 12px;font-family:{EMAIL_FONT_STACK};font-size:15px;line-height:1.6;'
-                f'color:#374151;text-align:left;">{html_escape(cons_lines[0])}'
+                f'color:#424245;text-align:left;">{html_escape(cons_lines[0])}'
                 f'{" " + html_escape(cons_lines[1]) if cons_lines[1] else ""}</p>'
             )
             
@@ -389,7 +389,7 @@ def email_compliance_parts_html(blocks):
         if resolve_lines[0]:
             chunk.append(
                 f'<p style="margin:0 0 12px;font-family:{EMAIL_FONT_STACK};font-size:15px;line-height:1.6;'
-                f'color:#374151;text-align:left;">{html_escape(resolve_lines[0])}'
+                f'color:#424245;text-align:left;">{html_escape(resolve_lines[0])}'
                 f'{" " + html_escape(resolve_lines[1]) if resolve_lines[1] else ""}</p>'
             )
             
@@ -412,7 +412,7 @@ def email_premium_header_html(wordmark_url=None, eyebrow='Client Compliance Upda
           <tr>
             <td bgcolor="#ffffff" style="padding:24px 24px 16px;background:#ffffff;">
               {logo_cell}
-              <p style="margin:0;font-family:{EMAIL_FONT_STACK};font-size:13px;line-height:1.4;letter-spacing:0.05em;text-transform:uppercase;font-weight:600;color:#6b7280;">
+              <p style="margin:0;font-family:{EMAIL_FONT_STACK};font-size:13px;line-height:1.4;letter-spacing:0.05em;text-transform:uppercase;font-weight:600;color:#6e6e73;">
                 {html_escape(eyebrow)}
               </p>
             </td>
@@ -457,19 +457,8 @@ def email_graphic_footer_html(brand, wordmark_url=None, disclaimer=''):
 
 
 def email_slim_brand_bar_html(gold='#c5a572'):
-    """Thin brand accent only — not a signature block."""
-    gold = html_escape(gold or '#c5a572')
-    accent = brand_accent()
-    if accent != BRIXEN_NAVY:
-        # A company's own colour: one bar in its accent (Brixen keeps navy + gold)
-        return (f'<tr><td bgcolor="{accent}" style="height:4px;line-height:4px;font-size:0;'
-                f'background-color:{accent};">&nbsp;</td></tr>')
-    return (
-        f'<tr><td bgcolor="#003971" style="height:4px;line-height:4px;font-size:0;'
-        f'background-color:#003971;">&nbsp;</td></tr>'
-        f'<tr><td bgcolor="{gold}" style="height:2px;line-height:2px;font-size:0;'
-        f'background-color:{gold};">&nbsp;</td></tr>'
-    )
+    """Apple-style emails end on the white card: no coloured bars (gold is kept for callers)."""
+    return ''
 
 
 def email_cta_stack_html(buttons, apple_button_fn):
@@ -494,12 +483,12 @@ def email_company_details_html(company_name, company_number=None):
     rows = []
     if name:
         rows.append(
-            f'<p style="margin:0;font-family:{EMAIL_FONT_STACK};font-size:15px;line-height:1.6;color:#374151;">'
-            f'Company: <strong style="font-weight:600;color:#111827;">{html_escape(name)}</strong></p>'
+            f'<p style="margin:0;font-family:{EMAIL_FONT_STACK};font-size:15px;line-height:1.6;color:#424245;">'
+            f'Company: <strong style="font-weight:600;color:#1d1d1f;">{html_escape(name)}</strong></p>'
         )
     if number:
         rows.append(
-            f'<p style="margin:0;font-family:{EMAIL_FONT_STACK};font-size:15px;line-height:1.6;color:#374151;">'
+            f'<p style="margin:0;font-family:{EMAIL_FONT_STACK};font-size:15px;line-height:1.6;color:#424245;">'
             f'Company number: {html_escape(number)}</p>'
         )
     inner = ''.join(rows)
@@ -553,8 +542,7 @@ BRIXEN_NAVY = '#003971'
 # Hover lift for the glossy buttons, in mail apps that read <style> (Apple Mail, iOS Mail…)
 GLASS_BUTTON_CSS = (
     '.glass-btn{transition:transform .18s ease,box-shadow .18s ease,filter .18s ease;}'
-    '.glass-btn:hover{transform:translateY(-1px);filter:brightness(1.06);'
-    'box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 6px 14px rgba(17,24,39,.18)!important;}'
+    '.glass-btn:hover{filter:brightness(1.08);}'
     '.glass-btn:active{transform:translateY(0) scale(.98);}'
 )
 
@@ -580,7 +568,7 @@ def _rgb(hex_colour):
 def text_on(hex_colour):
     """White text on the colour, or near-black on a very light one."""
     r, g, b = _rgb(hex_colour)
-    return '#111827' if (0.299 * r + 0.587 * g + 0.114 * b) > 186 else '#ffffff'
+    return '#1d1d1f' if (0.299 * r + 0.587 * g + 0.114 * b) > 186 else '#ffffff'
 
 
 def shade(hex_colour, amount):
@@ -600,17 +588,15 @@ def company_logo_image():
 
 
 def email_button_html(url, label, colour=None):
-    """A glossy pill button (Apple-style: soft top highlight, fine edge, coloured shadow) in the company's
-    colour; mail apps that support it lift it on hover (GLASS_BUTTON_CSS)."""
+    """A solid pill button in the company's colour, Apple-style; mail apps that support it brighten it on
+    hover (GLASS_BUTTON_CSS)."""
     fill = colour if re.match(r'^#[0-9a-fA-F]{6}$', str(colour or '')) else brand_accent()
     r, g, b = _rgb(fill)
     return (
         f'<a href="{html_escape(str(url), quote=True)}" class="glass-btn" style="display:inline-block;'
-        f'margin:0 8px 8px 0;padding:9px 18px;border-radius:999px;background-color:{fill};'
-        f'background-image:linear-gradient(180deg,{shade(fill, 0.16)} 0%,{fill} 55%,{shade(fill, -0.06)} 100%);'
-        f'border:1px solid {shade(fill, -0.18)};color:{text_on(fill)};font-family:{EMAIL_FONT_STACK};'
-        f'font-size:13px;font-weight:600;letter-spacing:-0.01em;line-height:1;text-decoration:none;'
-        f'box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 2px 6px rgba({r},{g},{b},.22);">'
+        f'margin:0 8px 8px 0;padding:12px 22px;border-radius:999px;background-color:{fill};'
+        f'border:0;color:{text_on(fill)};font-family:{EMAIL_FONT_STACK};'
+        f'font-size:15px;font-weight:600;letter-spacing:-0.01em;line-height:1;text-decoration:none;">'
         f'{html_escape(str(label))}</a>'
     )
 
@@ -627,13 +613,13 @@ def email_details_box_html(title, rows):
     if not rows and not title:
         return ''
     body = ''.join(
-        f'<tr><td style="padding:6px 0;color:#6b7280;font-size:13px;vertical-align:top;">{html_escape(str(k))}</td>'
-        f'<td style="padding:6px 0 6px 16px;color:#111827;font-size:13px;font-weight:600;text-align:right;">'
+        f'<tr><td style="padding:6px 0;color:#6e6e73;font-size:14px;vertical-align:top;">{html_escape(str(k))}</td>'
+        f'<td style="padding:6px 0 6px 16px;color:#1d1d1f;font-size:14px;font-weight:500;text-align:right;">'
         f'{html_escape(str(v))}</td></tr>' for k, v in rows)
-    heading = (f'<p style="margin:0 0 4px;font-size:12px;font-weight:700;letter-spacing:0.04em;'
-               f'text-transform:uppercase;color:{brand_accent()};">{html_escape(title)}</p>') if title else ''
+    heading = (f'<p style="margin:0 0 4px;font-size:13px;font-weight:600;letter-spacing:-0.01em;'
+               f'color:#6e6e73;">{html_escape(title)}</p>') if title else ''
     return (
-        '<div style="margin:16px 0 0;padding:14px 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">'
+        '<div style="margin:20px 0 0;padding:16px 18px;background:#f5f5f7;border-radius:12px;">'
         f'{heading}<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" '
         f'style="width:100%;border-collapse:collapse;margin:{8 if title else 0}px 0 0;">{body}</table></div>'
     )
@@ -678,11 +664,11 @@ def email_brand_header_html(brand, headline, logo_src=None, logo_height=36):
                f'style="display:block;height:{logo_height}px;width:auto;max-width:220px;border:0;outline:none;'
                'text-decoration:none;">')
     else:
-        top = (f'<p style="margin:0;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;'
+        top = (f'<p style="margin:0;font-size:17px;letter-spacing:-0.01em;'
                f'color:{brand_accent()};font-weight:700;">{html_escape(name)}</p>')
     return (
-        f'<tr><td style="padding:24px 24px 8px;background:#ffffff;">{top}'
-        f'<h1 style="margin:{16 if src else 8}px 0 0;font-size:22px;line-height:1.3;color:#111827;">'
+        f'<tr><td style="padding:36px 36px 12px;background:#ffffff;">{top}'
+        f'<h1 style="margin:{16 if src else 8}px 0 0;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-0.02em;color:#1d1d1f;">'
         f'{html_escape(headline)}</h1></td></tr>'
     )
 
@@ -696,7 +682,7 @@ def build_transactional_shell_html(
     signature_html,
     disclaimer_html='',
     footer_html='',
-    ivory='#f9fafb',
+    ivory='#f5f5f7',
 ):
     closing = footer_html or email_slim_brand_bar_html()
     if 'glass-btn{' not in (head_html or '') and '</head>' in (head_html or ''):
@@ -704,19 +690,19 @@ def build_transactional_shell_html(
     return f"""<!DOCTYPE html>
 <html lang="en">
 {head_html}
-<body style="margin:0;padding:0;background:{ivory};font-family:{EMAIL_FONT_STACK};color:#111827;-webkit-font-smoothing:antialiased;width:100%;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="{ivory}" style="background:{ivory};padding:32px 0;width:100%;">
+<body style="margin:0;padding:0;background:{ivory};font-family:{EMAIL_FONT_STACK};color:#1d1d1f;-webkit-font-smoothing:antialiased;width:100%;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="{ivory}" style="background:{ivory};padding:40px 0;width:100%;">
     <tr>
       <td align="center" style="padding:0 20px;">
-        <table role="presentation" class="email-shell" width="600" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:600px;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+        <table role="presentation" class="email-shell" width="600" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:600px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.05);">
           {hero_html}
           <tr>
-            <td align="left" class="email-pad" style="padding:0 24px 16px;background:#ffffff;word-break:break-word;text-align:left;">
+            <td align="left" class="email-pad" style="padding:0 36px 20px;background:#ffffff;word-break:break-word;text-align:left;font-size:16px;line-height:1.55;color:#1d1d1f;">
               {body_inner_html}
             </td>
           </tr>
           <tr>
-            <td align="left" class="email-pad" style="padding:16px 24px 24px;background:#ffffff;word-break:break-word;text-align:left;">
+            <td align="left" class="email-pad" style="padding:12px 36px 36px;background:#ffffff;word-break:break-word;text-align:left;">
               {signature_html}
               {disclaimer_html}
             </td>
@@ -736,11 +722,11 @@ def email_signature_html(brand, *, align='left'):
     bname = c.get("brand_name") or c.get("display_name") or _company_name()
     cname = c.get("company_name") or c.get("legal_name") or _company_name()
     return (
-        f'<div style="margin:24px 0 0;font-family:{EMAIL_FONT_STACK};font-size:15px;line-height:1.5;color:#374151;text-align:{align};">'
+        f'<div style="margin:24px 0 0;font-family:{EMAIL_FONT_STACK};font-size:15px;line-height:1.5;color:#1d1d1f;text-align:{align};">'
         f'<p style="margin:0 0 8px;font-weight:400;">Kind regards,</p>'
-        f'<p style="margin:0;font-weight:600;color:#111827;">The {html_escape(bname)} Team</p>'
+        f'<p style="margin:0;font-weight:600;color:#1d1d1f;">The {html_escape(bname)} Team</p>'
         f'<p style="margin:0;">{html_escape(cname)}</p>'
-        f'<p style="margin:8px 0 0;font-size:14px;">'
+        f'<p style="margin:8px 0 0;font-size:13px;color:#6e6e73;">'
         f'<a href="mailto:{html_escape(c["email"])}" style="color:{brand_accent()};text-decoration:none;">{html_escape(c["email"])}</a><br>'
         f'{html_escape(c["phone"])}<br>'
         f'<a href="{html_escape(c["website"])}" style="color:{brand_accent()};text-decoration:none;">{html_escape(c["website"])}</a>'
@@ -753,7 +739,7 @@ def email_disclaimer_html(note):
     if not note:
         return ''
     return (
-        f'<div style="margin:24px 0 0;padding:16px 0 0;border-top:1px solid #e5e7eb;">'
-        f'<p style="margin:0;font-family:{EMAIL_FONT_STACK};font-size:12px;line-height:1.5;color:#6b7280;text-align:left;">'
+        f'<div style="margin:24px 0 0;padding:16px 0 0;border-top:1px solid #e8e8ed;">'
+        f'<p style="margin:0;font-family:{EMAIL_FONT_STACK};font-size:12px;line-height:1.5;color:#86868b;text-align:left;">'
         f'{html_escape(note)}</p></div>'
     )

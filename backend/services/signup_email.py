@@ -55,20 +55,20 @@ def code_email_html(logo_src, code):
         top = (f'<img src="{logo_src}" alt="Finstap" height="48" style="display:block;height:48px;'
                'width:auto;max-width:240px;border:0;outline:none;text-decoration:none;">')
     else:
-        top = '<p style="margin:0;font-size:22px;font-weight:700;color:#111827;">Finstap</p>'
+        top = '<p style="margin:0;font-size:22px;font-weight:700;color:#1d1d1f;">Finstap</p>'
     return f"""<!doctype html>
 <html><body style="margin:0;padding:0;background:#ffffff;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;">
   <tr><td align="center" style="padding:40px 16px;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;{font}color:#111827;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;{font}color:#1d1d1f;">
       <tr><td style="padding:0 0 40px;">{top}</td></tr>
       <tr><td style="padding:0 0 20px;font-size:30px;line-height:1.25;font-weight:700;">Confirm your email to create your Finstap workspace.</td></tr>
-      <tr><td style="padding:0 0 24px;font-size:16px;line-height:1.5;color:#4b5563;">Enter this code on the signup page:</td></tr>
-      <tr><td align="center" style="background:#f1f4f8;border-radius:16px;padding:32px 16px;font-size:44px;line-height:1;font-weight:500;letter-spacing:6px;color:#111827;">{code}</td></tr>
-      <tr><td style="padding:16px 0 32px;font-size:14px;line-height:1.5;color:#6b7280;">The code works for {CODE_MINUTES} minutes. Never share it with anyone.</td></tr>
-      <tr><td style="border:1px solid #e5e7eb;border-radius:16px;padding:24px;">
-        <p style="margin:0 0 12px;font-size:20px;font-weight:700;color:#111827;">Why did I get this email?</p>
-        <p style="margin:0;font-size:15px;line-height:1.6;color:#4b5563;">Someone started a Finstap signup with this email address. If this wasn't you, ignore this email: nothing is created without the code.</p>
+      <tr><td style="padding:0 0 24px;font-size:16px;line-height:1.5;color:#424245;">Enter this code on the signup page:</td></tr>
+      <tr><td align="center" style="background:#f5f5f7;border-radius:16px;padding:32px 16px;font-size:44px;line-height:1;font-weight:500;letter-spacing:6px;color:#1d1d1f;">{code}</td></tr>
+      <tr><td style="padding:16px 0 32px;font-size:14px;line-height:1.5;color:#6e6e73;">The code works for {CODE_MINUTES} minutes. Never share it with anyone.</td></tr>
+      <tr><td style="border:1px solid #e8e8ed;border-radius:16px;padding:24px;">
+        <p style="margin:0 0 12px;font-size:20px;font-weight:700;color:#1d1d1f;">Why did I get this email?</p>
+        <p style="margin:0;font-size:15px;line-height:1.6;color:#424245;">Someone started a Finstap signup with this email address. If this wasn't you, ignore this email: nothing is created without the code.</p>
       </td></tr>
     </table>
   </td></tr>
