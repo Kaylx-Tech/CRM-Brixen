@@ -32,7 +32,7 @@ import { isAdminRole } from "@/lib/permissions"
 import { IS_FINSTAP } from "@/lib/workspace"
 
 const itemClass =
-  "text-[#e8e8ed] hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white cursor-pointer rounded-lg px-2.5 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
+  "text-slate-200 hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white cursor-pointer rounded-lg px-2.5 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
 
 export function NavUser({
   user: defaultUser,

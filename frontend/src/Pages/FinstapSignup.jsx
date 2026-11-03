@@ -63,7 +63,7 @@ function SignupSteps({ step }) {
               className={cn(
                 "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
                 active || done
-                  ? "bg-[#1A69F8] text-white"
+                  ? "bg-linear-to-r from-[#297bff] to-[#834aff] text-white"
                   : "border bg-muted text-muted-foreground",
               )}
             >
@@ -79,7 +79,7 @@ function SignupSteps({ step }) {
             </span>
             {n < STEPS.length && (
               <span
-                className={cn("h-px flex-1", done ? "bg-[#1A69F8]" : "bg-border")}
+                className={cn("h-px flex-1", done ? "bg-[#6559ff]" : "bg-border")}
                 aria-hidden
               />
             )}
@@ -283,7 +283,7 @@ export default function FinstapSignup() {
           Already have an account?{" "}
           <Link
             to="/login"
-            className="font-semibold text-[#1A69F8] underline-offset-4 hover:underline dark:text-[#8b8aff]"
+            className="font-semibold text-[#5f5cff] underline-offset-4 hover:underline dark:text-[#8b8aff]"
           >
             Login
           </Link>
@@ -446,7 +446,7 @@ export default function FinstapSignup() {
                     setError("")
                     setStep(2)
                   }}
-                  className="shrink-0 font-medium text-[#1A69F8] underline-offset-4 hover:underline dark:text-[#8b8aff]"
+                  className="shrink-0 font-medium text-[#5f5cff] underline-offset-4 hover:underline dark:text-[#8b8aff]"
                   disabled={isLoading}
                 >
                   Change
@@ -476,7 +476,7 @@ export default function FinstapSignup() {
                   <button
                     type="button"
                     onClick={changeEmail}
-                    className="shrink-0 font-medium text-[#1A69F8] underline-offset-4 hover:underline dark:text-[#8b8aff]"
+                    className="shrink-0 font-medium text-[#5f5cff] underline-offset-4 hover:underline dark:text-[#8b8aff]"
                     disabled={isLoading}
                   >
                     Change

@@ -14,7 +14,6 @@ import {
 import { toast } from 'sonner'
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
-import DeleteConfirmation from '@/components/DeleteConfirmation'
 import { apiRequest } from '@/lib/api'
 import finstapLogo from '@/assets/finstap-logo.svg'
 import finstapLogoLight from '@/assets/finstap-logo-light.svg'
@@ -202,8 +201,6 @@ export default function Billing() {
   const [error, setError] = useState('')
   const [cycle, setCycle] = useState('monthly')
   const [busy, setBusy] = useState('')
-  // A paid plan being switched: an alert asks first (Stripe charges or credits the difference)
-  const [switching, setSwitching] = useState(null)
   const [params, setParams] = useSearchParams()
 
   const load = useCallback(() => {
@@ -260,19 +257,6 @@ export default function Billing() {
 
   return (
     <div className="space-y-4">
-      <DeleteConfirmation
-        isOpen={!!switching}
-        onClose={() => setSwitching(null)}
-        onConfirm={() => {
-          const key = switching.key
-          setSwitching(null)
-          go(key, '/admin/billing/subscribe', { plan: key, cycle })
-        }}
-        tone="default"
-        title={switching ? `Move to ${switching.name} (${cycle})?` : ''}
-        description="Stripe charges or credits the difference for the rest of this period."
-        confirmText="Switch plan"
-      />
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Billing</h2>
         <p className="mt-1 text-sm text-muted-foreground">Your Finstap plan, card payments, services and receipts.</p>
@@ -364,8 +348,8 @@ export default function Billing() {
                     variant={here ? 'outline' : 'default'}
                     disabled={here || !!busy || !data.stripe_ready}
                     onClick={() => {
-                      if (onPaidPlan) setSwitching({ key, name: p.name })
-                      else go(key, '/admin/billing/subscribe', { plan: key, cycle })
+                      if (onPaidPlan && !window.confirm(`Move to ${p.name} (${cycle})? Stripe charges or credits the difference for the rest of this period.`)) return
+                      go(key, '/admin/billing/subscribe', { plan: key, cycle })
                     }}
                   >
                     {busy === key && <IconLoader2 className="size-4 animate-spin" />}

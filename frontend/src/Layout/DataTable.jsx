@@ -253,10 +253,11 @@ export const DataTable = ({
                 return (
                   <DropdownMenuCheckboxItem
                     key={column.id}
+                    className="capitalize"
                     checked={column.getIsVisible()}
                     onCheckedChange={(value) => column.toggleVisibility(!!value)}
                   >
-                    {columnLabel(column)}
+                    {column.id}
                   </DropdownMenuCheckboxItem>
                 );
               })}
@@ -387,12 +388,10 @@ export const DataTable = ({
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-40 text-center text-muted-foreground"
+                  className="h-32 text-center text-muted-foreground"
                 >
-                  {/* Apple-style empty state: a quiet icon, a short title and one line of help */}
-                  <IconMoodEmpty className="mx-auto mb-3 size-9 stroke-[1.5] text-muted-foreground/60" />
-                  <p className="text-[0.9375rem] font-semibold text-foreground">No results</p>
-                  <p className="mt-1 text-sm">Try another search or clear the filters.</p>
+                  <IconMoodEmpty className="mx-auto mb-3 size-10" />
+                  No records found! Clear all filters and try again.
                 </TableCell>
               </TableRow>
             )}

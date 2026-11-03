@@ -5,7 +5,7 @@ import finstapMark from "@/assets/finstap-mark.svg"
 import { useBranding } from "@/lib/branding"
 
 // Brand gradient from the logo: blue → violet
-export const FINSTAP_GRADIENT = "bg-[#1A69F8]"
+export const FINSTAP_GRADIENT = "bg-linear-to-br from-[#297bff] via-[#5f5cff] to-[#834aff]"
 
 /**
  * Finstap logo: full wordmark (dark text, or white with `light`), or the symbol alone with `mark`.

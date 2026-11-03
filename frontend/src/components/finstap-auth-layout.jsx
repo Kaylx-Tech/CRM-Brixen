@@ -65,4 +65,4 @@ export function FinstapAuthLayout({ title, subtitle, children, footer }) {
 
 /** The brand gradient for the main button on Finstap sign-in pages. */
 export const FINSTAP_CTA =
-  "border-0 bg-[#1A69F8] text-white hover:bg-[#1A69F8]/90"
+  "border-0 bg-linear-to-r from-[#297bff] to-[#834aff] text-white hover:opacity-90"

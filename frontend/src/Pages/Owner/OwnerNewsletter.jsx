@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { ownerApi, shortDate } from "@/lib/owner"
 import { Button, Empty, LoadError, PageTitle, Panel, Stat } from "./ownerUi"
-import DeleteConfirmation from "@/components/DeleteConfirmation"
 
 const EMPTY = { id: null, subject: "", body: "" }
 
@@ -30,8 +29,6 @@ export default function OwnerNewsletter() {
   const [error, setError] = useState("")
   const [draft, setDraft] = useState(EMPTY)
   const [busy, setBusy] = useState(false)
-  // "Send to everyone?" alert before a newsletter goes out
-  const [confirmSend, setConfirmSend] = useState(false)
 
   const load = useCallback(() => {
     ownerApi("/content/newsletter").then((res) => (res.ok ? setData(res.data) : setError(res.error)))
@@ -71,10 +68,8 @@ export default function OwnerNewsletter() {
     return res.ok
   }
 
-  const sendAll = () => setConfirmSend(true)
-
-  const sendNow = async () => {
-    setConfirmSend(false)
+  const sendAll = async () => {
+    if (!window.confirm(`Send "${draft.subject}" to ${data.subscribed} subscriber(s)? This cannot be undone.`)) return
     if (!(await saveDraft())) return
     const res = await run(`/content/newsletter/issues/${draft.id}/send`, null, "Starting to send…")
     if (res.ok) {
@@ -205,15 +200,6 @@ export default function OwnerNewsletter() {
           </Empty>
         )}
       </Panel>
-      <DeleteConfirmation
-        isOpen={confirmSend}
-        onClose={() => setConfirmSend(false)}
-        onConfirm={sendNow}
-        tone="default"
-        title={`Send to ${data.subscribed} subscriber${data.subscribed === 1 ? "" : "s"}?`}
-        description={`"${draft.subject}" goes out to everyone now. This can't be undone.`}
-        confirmText="Send"
-      />
     </>
   )
 }

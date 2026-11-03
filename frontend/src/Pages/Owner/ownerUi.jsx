@@ -9,7 +9,7 @@ export function Button({ size = "lg", ...props }) {
 
 const PLAN_TONE = {
   trial: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  starter: "bg-[#86868b]/10 text-[#424245] dark:text-[#d2d2d7]",
+  starter: "bg-slate-500/10 text-slate-700 dark:text-slate-300",
   pro: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
   business: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
   enterprise: "bg-amber-500/15 text-amber-800 dark:text-amber-300",

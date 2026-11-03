@@ -117,7 +117,7 @@ export function LoginForm({ className, ...props }) {
   return (
     // Full screen split: brand panel fills the left half, the form sits in the right half
     <div className={cn("grid min-h-screen w-full bg-background md:grid-cols-2", className)} {...props}>
-      <div className="relative hidden md:flex flex-col justify-center p-12 lg:p-16 bg-[#1d1d1f] text-white">
+      <div className="relative hidden md:flex flex-col justify-center p-12 lg:p-16 bg-linear-to-br from-slate-900 via-blue-900 to-blue-950 text-white">
         <div className="max-w-[480px] space-y-4">
           <img src={whiteLogo} alt="Brixen Logo" className="w-auto mb-6 h-16" />
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-[1.2]">
