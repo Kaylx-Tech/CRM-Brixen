@@ -408,7 +408,7 @@ export default function OwnerKyc() {
                     {checks.map((c) => (
                       <tr key={`${c.workspace}-${c.id}`} className="border-b align-top last:border-0">
                         <td className="px-3 py-3">
-                          <Link to={`/owner/kyc/${c.workspace}/${c.id}`} className="font-semibold uppercase hover:text-primary">
+                          <Link to={`/owner/kyc/${c.workspace}/${c.id}`} className="font-semibold hover:text-primary">
                             {c.full_name}
                           </Link>
                           <div className="text-xs text-muted-foreground">

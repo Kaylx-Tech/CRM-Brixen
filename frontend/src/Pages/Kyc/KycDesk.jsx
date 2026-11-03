@@ -118,7 +118,7 @@ export default function KycDesk() {
             {checks.length ? (
               <div className="overflow-x-auto">
                 <Table className="w-full md:min-w-[900px] text-left text-sm">
-                  <thead className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+                  <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
                     <tr>
                       <th className="px-3 py-2.5 font-semibold">Person</th>
                       <th className="px-3 py-2.5 font-semibold">Workspace · order</th>
@@ -136,7 +136,7 @@ export default function KycDesk() {
                       return (
                         <tr key={`${c.workspace}-${c.id}`} className="border-b align-top last:border-0 hover:bg-muted/30">
                           <td className="px-3 py-3">
-                            <Link to={to} className="font-semibold uppercase hover:text-primary">
+                            <Link to={to} className="font-semibold hover:text-primary">
                               {c.full_name}
                             </Link>
                             <div className="text-xs text-muted-foreground">{c.email || c.client_email || "—"}</div>

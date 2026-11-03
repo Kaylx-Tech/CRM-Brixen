@@ -243,7 +243,7 @@ const Customers = () => {
             onClick={() => setViewCustomer(customer)}
           >
             {customer.name}
-            {customer.isNew && <Badge className="badge-sky ml-2 text-[10px] h-4 px-1.5">New</Badge>}
+            {customer.isNew && <Badge className="badge-sky ml-2 text-[11px] h-4 px-1.5">New</Badge>}
           </button>
         )
       },

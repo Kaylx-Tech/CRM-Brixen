@@ -74,7 +74,7 @@ function Panel({ icon: Icon, step, title, description, aside, children }) {
             <Icon className="size-4" />
           </span>
           <div>
-            <p className="m-0 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Step {step}</p>
+            <p className="m-0 text-[11px] font-medium text-muted-foreground">Step {step}</p>
             <h3 className="m-0 text-sm font-semibold">{title}</h3>
             {description ? <p className="m-0 mt-0.5 text-sm text-muted-foreground">{description}</p> : null}
           </div>
@@ -276,7 +276,7 @@ function LivePreview({ form, shown }) {
           {['Overview', 'Customers', 'Orders', 'Invoices', 'Documents'].map((item, i) => (
             <div
               key={item}
-              className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[10px] text-white transition-colors duration-300"
+              className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[11px] text-white transition-colors duration-300"
               style={i === 0 ? { background: menu.lightActive } : { color: 'rgba(255,255,255,0.65)' }}
             >
               <span className="size-1.5 rounded-full" style={{ background: i === 0 ? shown : 'rgba(255,255,255,0.35)' }} />
@@ -288,7 +288,7 @@ function LivePreview({ form, shown }) {
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold">Dashboard</span>
             <span
-              className="flex size-5 items-center justify-center rounded-full text-[8px] font-bold transition-colors duration-300"
+              className="flex size-5 items-center justify-center rounded-full text-[11px] font-bold transition-colors duration-300"
               style={{ background: shown, color: fg }}
             >
               {name.slice(0, 2).toUpperCase()}
@@ -297,7 +297,7 @@ function LivePreview({ form, shown }) {
           <div className="grid grid-cols-2 gap-2">
             {['Sales', 'Orders'].map((label, i) => (
               <div key={label} className="rounded-md border bg-card p-2">
-                <p className="m-0 text-[9px] text-muted-foreground">{label}</p>
+                <p className="m-0 text-[11px] text-muted-foreground">{label}</p>
                 <p className="m-0 text-xs font-semibold">{i ? '128' : '£4,820'}</p>
                 <div className="mt-1.5 h-1 rounded-full bg-muted">
                   <div className="h-1 rounded-full transition-colors duration-300" style={{ width: i ? '45%' : '70%', background: shown }} />
@@ -309,11 +309,11 @@ function LivePreview({ form, shown }) {
             <div className="mb-1.5 h-1.5 w-2/3 rounded bg-muted" />
             <div className="mb-2.5 h-1.5 w-1/2 rounded bg-muted" />
             <div className="flex items-center gap-1.5">
-              <span className="rounded px-2 py-1 text-[9px] font-medium transition-colors duration-300" style={{ background: shown, color: fg }}>
+              <span className="rounded px-2 py-1 text-[11px] font-medium transition-colors duration-300" style={{ background: shown, color: fg }}>
                 New order
               </span>
-              <span className="rounded border px-2 py-1 text-[9px]">Export</span>
-              <span className="ml-auto text-[9px] font-medium transition-colors duration-300" style={{ color: shown }}>
+              <span className="rounded border px-2 py-1 text-[11px]">Export</span>
+              <span className="ml-auto text-[11px] font-medium transition-colors duration-300" style={{ color: shown }}>
                 View all →
               </span>
             </div>
@@ -462,7 +462,7 @@ export default function BrandingTab({ form, setField, disabled }) {
                 <IconColorPicker className="absolute bottom-1 right-1 size-3.5" style={{ color: textOn(shown) }} />
               </label>
               <div className="grid gap-1">
-                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                <span className="text-[11px] font-medium text-muted-foreground">
                   {accent ? (form.accent_auto ? 'From your logo' : 'Your colour') : 'Finstap default'}
                 </span>
                 <Input
@@ -478,7 +478,7 @@ export default function BrandingTab({ form, setField, disabled }) {
                     }
                   }}
                   disabled={disabled}
-                  className="h-8 w-32 font-mono uppercase"
+                  className="h-8 w-32 font-mono "
                 />
               </div>
               <div className="ml-auto flex items-center gap-3 rounded-lg border bg-card px-3 py-2">

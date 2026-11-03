@@ -215,7 +215,7 @@ export default function WalletButton() {
 
           {data.transfers?.length > 0 && (
             <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Bank transfers</p>
+              <p className="text-xs font-medium text-muted-foreground">Bank transfers</p>
               <ul className="max-h-28 space-y-1 overflow-y-auto text-sm">
                 {data.transfers.map((t) => (
                   <li key={t.id} className="flex justify-between gap-3">
@@ -234,7 +234,7 @@ export default function WalletButton() {
 
           {data.entries?.length > 0 && (
             <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Recent</p>
+              <p className="text-xs font-medium text-muted-foreground">Recent</p>
               <ul className="max-h-36 space-y-1 overflow-y-auto text-sm">
                 {data.entries.map((e) => (
                   <li key={e.id} className="flex justify-between gap-3">

@@ -85,7 +85,7 @@ function paymentDay(value) {
 // Invoice row buttons: Apple-style frosted glass that lifts a little on hover and presses in on click
 const GLASS_BUTTON =
   "h-8 gap-1.5 rounded-full px-3.5 text-[13px] font-medium border border-black/[0.08] " +
-  "bg-gradient-to-b from-white/90 to-slate-50/70 backdrop-blur-md " +
+  "bg-gradient-to-b from-white/90 to-[#fbfbfd]/70 backdrop-blur-md " +
   "shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_3px_rgba(15,23,42,0.10)] transition-all duration-200 ease-out " +
   "hover:-translate-y-px hover:border-black/[0.12] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_20px_-6px_rgba(15,23,42,0.22)] " +
   "active:translate-y-0 active:scale-[0.97] dark:border-white/15 dark:from-white/15 dark:to-white/5"
@@ -1054,7 +1054,7 @@ export default function Payments() {
           {editInvoice && (
             <div className="grid gap-3 py-1">
               <div>
-                <div className="text-sm font-extrabold">{editInvoice.invoice_number}</div>
+                <div className="text-sm font-bold">{editInvoice.invoice_number}</div>
                 <div className="text-sm text-muted-foreground mt-0.5">
                   {[editInvoice.owner_name || editInvoice.client_name, editInvoice.owner_form_email || editInvoice.client_email, editInvoice.order_number]
                     .filter(Boolean)

@@ -209,7 +209,7 @@ export default function Notifications() {
         {unreadCount > 0 && (
           <Badge
             variant="default"
-            className="absolute -top-0.5 -right-0.5 font-semibold text-[9px] min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-[#ff3b30] text-white border-2 border-background"
+            className="absolute -top-0.5 -right-0.5 font-semibold text-[11px] min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-[#ff3b30] text-white border-2 border-background"
           >
             {unreadCount > 99 ? "99+" : unreadCount}
           </Badge>
@@ -225,7 +225,7 @@ export default function Notifications() {
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
             {unreadCount > 0 && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-medium">
+              <Badge variant="secondary" className="text-[11px] px-1.5 py-0 h-4 font-medium">
                 {unreadCount} new
               </Badge>
             )}

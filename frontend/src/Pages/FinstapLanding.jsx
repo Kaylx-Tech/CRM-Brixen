@@ -284,7 +284,7 @@ function HeroVisual() {
             />
           ))}
         </div>
-        <div className="mt-2 flex justify-between text-[10px] text-[#a1a1a6]">
+        <div className="mt-2 flex justify-between text-[11px] text-[#a1a1a6]">
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
             <span key={d} className="flex-1 text-center">
               {d}
@@ -326,7 +326,7 @@ function HeroVisual() {
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-2xl font-bold text-[#1d1d1f]">68%</span>
-            <span className="text-[10px] text-[#86868b]">Returning clients</span>
+            <span className="text-[11px] text-[#86868b]">Returning clients</span>
           </div>
         </div>
       </motion.div>

@@ -20,10 +20,10 @@ export function SignupForm({
     <div className={cn("flex flex-col gap-6 w-full max-w-sm md:max-w-3xl", className)} {...props}>
       <Card className="overflow-hidden p-0">
         <CardContent className="grid p-0 md:grid-cols-2">
-           <div className="relative hidden md:flex flex-col justify-center p-10 bg-linear-to-br from-slate-900 via-blue-900 to-blue-950 text-white">
+           <div className="relative hidden md:flex flex-col justify-center p-10 bg-[#1d1d1f] text-white">
             <div className="max-w-[420px] space-y-4">
               <img src={whiteLogo} alt="Brixen Logo" className="h-10 w-auto mb-6" />
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-[1.2]">
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight leading-[1.2]">
                 Grow your practice with<br />the Brixen portal
               </h1>
               <p className="text-md text-blue-100/80">

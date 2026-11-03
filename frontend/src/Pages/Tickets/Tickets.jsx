@@ -66,9 +66,9 @@ function TicketListItem({ ticket, active, onOpen }) {
         {ticket.client_name || ticket.client_email || 'Customer'} · {ticket.ticket_number}
       </p>
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-        <Badge className={`${STATUS_CLASS[ticket.status] || ''} text-[10px]`}>{ticket.status}</Badge>
+        <Badge className={`${STATUS_CLASS[ticket.status] || ''} text-[11px]`}>{ticket.status}</Badge>
         {ticket.priority && ticket.priority !== 'Medium' ? (
-          <Badge className={`${PRIORITY_CLASS[ticket.priority] || ''} text-[10px]`}>{ticket.priority}</Badge>
+          <Badge className={`${PRIORITY_CLASS[ticket.priority] || ''} text-[11px]`}>{ticket.priority}</Badge>
         ) : null}
         <span className="ml-auto text-[11px] text-muted-foreground">
           {formatWhen(ticket.last_message_at || ticket.created_at)}
