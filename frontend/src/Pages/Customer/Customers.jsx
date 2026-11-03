@@ -421,7 +421,7 @@ const Customers = () => {
     <div className="flex flex-col gap-6 w-full">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Customers & New Signups</h2>
+          <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">Customers & New Signups</h2>
         </div>
         <Button onClick={() => setIsModalOpen(true)}>
           <IconUserPlus className="mr-2 h-4 w-4" />

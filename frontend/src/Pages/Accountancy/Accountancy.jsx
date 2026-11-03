@@ -821,7 +821,7 @@ const Accountancy = () => {
       {/* ── Page Header ────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Accountancy</h2>
+          <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">Accountancy</h2>
         </div>
         <div className="flex items-center gap-3">
           <Button

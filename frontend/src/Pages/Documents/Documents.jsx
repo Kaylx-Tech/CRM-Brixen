@@ -503,7 +503,7 @@ export default function Documents() {
     <div className="flex flex-col gap-4 w-full pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Documents Lifecycle</h2>
+          <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">Documents Lifecycle</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={() => setRelinkOpen(true)}>

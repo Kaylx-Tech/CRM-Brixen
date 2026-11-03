@@ -310,7 +310,7 @@ const Companies = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Registered Companies</h2>
+          <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">Registered Companies</h2>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Button variant="outline" onClick={() => setIsWebfilingModalOpen(true)}>

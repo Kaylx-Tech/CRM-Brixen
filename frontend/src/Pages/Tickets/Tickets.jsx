@@ -283,7 +283,7 @@ export default function Tickets() {
     <div className="flex w-full flex-col gap-4 pb-6">
       <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Support Tickets</h2>
+          <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">Support Tickets</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {activeCount} active
             {waiting ? <span className="text-primary"> · {waiting} waiting for a reply</span> : null}

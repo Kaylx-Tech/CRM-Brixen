@@ -475,7 +475,7 @@ const Services = () => {
     <div className="flex flex-col gap-6 w-full pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Services Catalog</h2>
+          <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">Services Catalog</h2>
         </div>
 
         {canManageCatalog && (
