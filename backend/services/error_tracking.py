@@ -53,3 +53,42 @@ def capture_api_error(exc, path, method, user=None, workspace=None):
             sentry_sdk.capture_exception(exc)
     except Exception as track_exc:
         print(f"[ErrorTracking] Could not report error: {track_exc}")
+
+
+# The same problem is sent once per REPORT_EVERY seconds (a broken mailbox would otherwise send one per email)
+REPORT_EVERY = 600
+_reported = {}
+
+
+def report_problem(area, message, level='warning', **context):
+    """A service failed but the person carried on (a fallback took over), or a problem worth a look: always in
+    the server log, and in GlitchTip with the area (email, storage, kyc …), the workspace and `context`, so it can
+    be found and fixed quickly. Never raises."""
+    import time
+    try:
+        workspace = ''
+        try:
+            from tenancy import current_tenant
+            workspace = (current_tenant() or {}).get('slug') or ''
+        except Exception:
+            pass
+        text = f"{area}: {str(message)[:300]}"
+        print(f"[Problem] {text}" + (f" ({workspace})" if workspace else '') +
+              (f" {context}" if context else ''))
+        if not _enabled:
+            return
+        key = (area, str(message)[:120], workspace)
+        now = time.time()
+        if now - _reported.get(key, 0) < REPORT_EVERY:
+            return
+        _reported[key] = now
+        import sentry_sdk
+        with sentry_sdk.new_scope() as scope:
+            scope.set_tag('area', area)
+            if workspace:
+                scope.set_tag('workspace', workspace)
+            for name, value in context.items():
+                scope.set_extra(name, str(value)[:500])
+            sentry_sdk.capture_message(text, level=level)
+    except Exception as track_exc:
+        print(f"[ErrorTracking] Could not report a problem: {track_exc}")

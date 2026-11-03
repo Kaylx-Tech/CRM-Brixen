@@ -3,6 +3,7 @@
  */
 import { toast } from "@/components/ui/toast"
 import { workspaceHeaders } from "@/lib/workspace"
+import { reportApiFailure } from "@/lib/errorTracking"
 
 export function getApiBase() {
   return String(import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "")
@@ -19,13 +20,10 @@ export function authHeaders(extra = {}) {
   }
 }
 
-function networkReason(err, apiBase) {
+function networkReason(err) {
   const msg = String(err?.message || err || "")
   if (/Failed to fetch|NetworkError|Load failed|fetch/i.test(msg)) {
-    return (
-      `Cannot reach API at ${apiBase}. ` +
-      `Check if backend is running and CORS allows requests.`
-    )
+    return "Could not reach the server. Check your internet connection and try again."
   }
   return msg || "Unknown network error"
 }
@@ -53,13 +51,11 @@ function httpReason(res, data, apiBase, rawText) {
     )
   }
   if (res.status === 502 || res.status === 503 || res.status === 504) {
-    return (
-      serverMsg ||
-      `Server/Gateway unavailable (${res.status}). Server might be restarting.`
-    )
+    return serverMsg || "The server is restarting for a moment. Please try again in a few seconds."
   }
   if (res.status >= 500) {
-    return serverMsg || `Internal Server Error (${res.status}).`
+    return (serverMsg && serverMsg !== "Internal Server Error" ? serverMsg : "") ||
+      "Something went wrong on our side. It has been reported; please try again."
   }
   if (typeof rawText === "string" && rawText.includes("<!doctype html")) {
     return (
@@ -149,13 +145,14 @@ export async function apiRequest(path, options = {}) {
       headers,
     })
   } catch (err) {
+    reportApiFailure({ url, method: fetchOpts.method || "GET", status: 0, error: String(err?.message || err) })
     const info = {
       ok: false,
       status: 0,
       data: null,
       url,
       title: `${label} failed to load`,
-      reason: networkReason(err, base),
+      reason: networkReason(err),
     }
     if (!silent) toastApiError(info)
     return info
@@ -177,6 +174,10 @@ export async function apiRequest(path, options = {}) {
     if (res.status === 402) {
       window.dispatchEvent(new Event("finstap-billing-changed"))
       return { ok: false, status: 402, data, url, reason: data?.error || "Payment needed" }
+    }
+    // Server-side failures are reported with the page and the call (the backend reports its own side too)
+    if (res.status >= 500) {
+      reportApiFailure({ url, method: fetchOpts.method || "GET", status: res.status, error: data?.error || rawText.slice(0, 200) })
     }
     const info = {
       ok: false,

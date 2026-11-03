@@ -90,6 +90,12 @@ def save_client_file(client_id, customer_name, filename, file_bytes, order_id=No
         drive_error = drive_res.get('message') or drive_res.get('error') or 'Google Drive upload failed.'
         print(f"[Storage] Drive upload failed ({drive_error}); saving {clean_name} locally")
         try:
+            from services.error_tracking import report_problem
+            report_problem('storage', f"cloud upload failed, file kept on the server ({str(drive_error)[:160]})",
+                           file=clean_name, order_id=order_id)
+        except ImportError:
+            pass
+        try:
             local_rel = _save_local_copy(client_id, order_id, clean_name, file_bytes)
         except OSError as exc:
             return {

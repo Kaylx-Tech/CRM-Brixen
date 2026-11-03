@@ -43,7 +43,20 @@ def _in_workspace():
         return False
 
 
+def _server_mailbox():
+    """The server's own SMTP_* mailbox (Coolify env), the last fallback for every email."""
+    env = lambda name: (os.environ.get(name) or '').strip()  # noqa: E731
+    try:
+        port = int(env('SMTP_PORT') or 587)
+    except ValueError:
+        port = 587
+    return env('SMTP_HOST') or 'smtp.hostinger.com', port, env('SMTP_USER'), env('SMTP_PASS'), \
+        env('SMTP_FROM') or env('SMTP_USER')
+
+
 def _smtp_config(mailbox=None):
+    if mailbox == 'server':
+        return _server_mailbox()
     if mailbox == 'kyc':
         own = _platform_mailbox('KYC')
         if own:
@@ -158,6 +171,55 @@ def _fallback_mailbox(mailbox):
     return mailbox
 
 
+def _mailbox_chain(mailbox):
+    """The mailboxes to try in turn, so one broken mailbox never holds an email back:
+    kyc@ → no-reply → server; a workspace's own → no-reply → server; no-reply → server."""
+    if mailbox == 'kyc':
+        return ['kyc', 'platform', 'server']
+    if mailbox == 'platform':
+        return ['platform', 'server']
+    if mailbox is None and _in_workspace():
+        return [None, 'platform', 'server']
+    return [mailbox]
+
+
+def _deliver_with_fallbacks(recipient, subject, html_content, text_content, mailbox=None, **kwargs):
+    """Try each mailbox of the chain until one sends it; each failure goes to GlitchTip (once in a while)."""
+    tried, first_error = set(), None
+    ok, status, error = False, 'not_configured', 'SMTP is not configured'
+    for box in _mailbox_chain(mailbox):
+        host, _port, user, password, _from = _smtp_config(box)
+        if not user or not password or (host, user) in tried:
+            continue  # not set up, or the same mailbox as one already tried
+        tried.add((host, user))
+        ok, status, error = _deliver(recipient, subject, html_content, text_content, mailbox=box, **kwargs)
+        if ok or status == 'invalid_recipient':
+            break
+        first_error = first_error or error
+        try:
+            from services.error_tracking import report_problem
+            report_problem('email', f"{box or 'workspace'} mailbox could not send ({_reason(status, error)})",
+                           mailbox=box or 'workspace', smtp_user=user, smtp_host=host, error=error)
+        except ImportError:
+            pass
+    if ok and first_error:
+        print(f"[Email Service] sent to {recipient} from a fallback mailbox after: {str(first_error)[:120]}")
+    if not tried and mailbox != 'server':
+        # Nothing set up at all: the plain path, which logs it as not configured
+        return _deliver(recipient, subject, html_content, text_content, mailbox=mailbox, **kwargs)
+    return ok, status, error
+
+
+def _reason(status, error):
+    """The readable reason for one failed send (the same words last_failure_reason uses)."""
+    saved = dict(_last_failure)
+    _last_failure['status'], _last_failure['error'] = status, error
+    try:
+        return last_failure_reason()
+    finally:
+        _last_failure.update(saved)
+
+
 def send_email(recipient, subject, html_content, text_content=None, *, category=None, user_id=None,
                order_id=None, company_id=None, triggered_by=None, log=True, store_body=True, logo=None,
                sender_name=None, images=None, attachments=None, mailbox=None):
@@ -181,16 +243,9 @@ def send_email(recipient, subject, html_content, text_content=None, *, category=
     if category != 'SECURITY' and not emails_enabled():
         ok, status, error = False, 'suppressed', 'Emails are turned off in Settings > Email'
     else:
-        ok, status, error = _deliver(recipient, subject, html_content, text_content, logo=logo,
-                                     sender_name=sender_name, images=images, attachments=attachments,
-                                     mailbox=mailbox)
-        # kyc@finstap.com refused it (wrong password in Integrations, mailbox full …): the no-reply sends it,
-        # so a KYC team sign-in or a client's KYC email is never held up by that mailbox
-        if not ok and mailbox == 'kyc' and status not in ('invalid_recipient',):
-            print(f"[Email Service] KYC mailbox failed ({str(error)[:120]}), sending from the no-reply instead")
-            ok, status, error = _deliver(recipient, subject, html_content, text_content, logo=logo,
-                                         sender_name=sender_name, images=images, attachments=attachments,
-                                         mailbox='platform')
+        ok, status, error = _deliver_with_fallbacks(recipient, subject, html_content, text_content, logo=logo,
+                                                    sender_name=sender_name, images=images, attachments=attachments,
+                                                    mailbox=mailbox)
     _last_failure['status'], _last_failure['error'] = ('', '') if ok else (status, error)
     if log:
         _log_email((recipient or '').strip(), subject,
@@ -207,8 +262,8 @@ def resend_logged_email(log_id, actor_id=None):
         return False, 'not_found', 'Email not found in the log'
     if not row.get('body_html') and not row.get('body_text'):
         return False, 'not_resendable', 'This email (e.g. a password reset) was not stored, so it cannot be resent'
-    ok, status, error = _deliver(row['recipient'], row['subject'], row.get('body_html'), row.get('body_text'),
-                                 mailbox=_fallback_mailbox(None))
+    ok, status, error = _deliver_with_fallbacks(row['recipient'], row['subject'], row.get('body_html'),
+                                                row.get('body_text'), mailbox=_fallback_mailbox(None))
     execute_db("""
         UPDATE email_outbox
         SET status = ?, attempts = COALESCE(attempts, 0) + 1, last_error = ?,
@@ -288,7 +343,7 @@ def _deliver(recipient, subject, html_content, text_content, logo=None, sender_n
     msg = _build_message(subject, formataddr((sender_name or brand_name(), from_email)), recipient, html_content,
                          text_content, logo=logo, images=images, attachments=attachments)
     # Sent from Finstap's no-reply for a workspace: replies go to the company's own support email
-    if mailbox in ('platform', 'kyc') and _in_workspace():
+    if mailbox in ('platform', 'kyc', 'server') and _in_workspace():
         try:
             from services.settings_service import get_setting
             reply_to = str(get_setting('support_email', '') or '').strip()

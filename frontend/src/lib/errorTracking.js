@@ -17,6 +17,37 @@ function storedUser() {
   }
 }
 
+function storedWorkspace() {
+  try {
+    return localStorage.getItem("workspace") || window.location.hostname.split(".")[0] || ""
+  } catch {
+    return ""
+  }
+}
+
+const reportedAt = new Map()
+
+/**
+ * A call to the server failed (no answer, or a 5xx): report it with the page and the call so it can be
+ * diagnosed, at most once a minute for the same call. The person sees a calm message (lib/api.js).
+ */
+export function reportApiFailure({ url, method, status, error }) {
+  if (!errorTrackingEnabled) return
+  const path = String(url || "").replace(/^https?:\/\/[^/]+/, "").split("?")[0]
+  const key = `${method} ${path} ${status}`
+  const now = Date.now()
+  if (now - (reportedAt.get(key) || 0) < 60000) return
+  reportedAt.set(key, now)
+  Sentry.withScope((scope) => {
+    scope.setTag("area", status ? "api" : "network")
+    scope.setTag("api_status", String(status))
+    scope.setExtra("call", `${method} ${path}`)
+    scope.setExtra("page", window.location.pathname)
+    scope.setExtra("error", String(error || "").slice(0, 300))
+    Sentry.captureMessage(status ? `API ${status}: ${method} ${path}` : `Network: ${method} ${path}`, "error")
+  })
+}
+
 export function initErrorTracking() {
   if (!errorTrackingEnabled) return
   Sentry.init({
@@ -29,6 +60,9 @@ export function initErrorTracking() {
       const user = storedUser()
       event.user = user?.id ? { id: String(user.id) } : undefined
       if (user?.role) event.tags = { ...event.tags, role: user.role }
+      // Which company's workspace (acme.finstap.com) the error happened in
+      const workspace = storedWorkspace()
+      if (workspace) event.tags = { ...event.tags, workspace }
       return event
     },
   })

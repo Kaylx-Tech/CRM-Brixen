@@ -289,12 +289,11 @@ def _save_to_r2(check_id, name, data, mime):
     if res.get('success'):
         return res['ref']
     reason = res.get('error') or 'unknown error'
-    print(f"[KYC form] R2 upload failed for check {check_id}: {reason}")
     try:
-        import sentry_sdk
-        sentry_sdk.capture_message(f"KYC form: R2 upload failed: {reason}", level='error')
-    except Exception:
-        pass
+        from services.error_tracking import report_problem
+        report_problem('storage', f"KYC file kept on the server: R2 refused it ({reason})", check_id=check_id)
+    except ImportError:
+        print(f"[KYC form] R2 upload failed for check {check_id}: {reason}")
     return None
 
 
