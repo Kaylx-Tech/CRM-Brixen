@@ -1052,7 +1052,7 @@ export default function Payments() {
 
       {/* Edit invoice — same fields as legacy modal-edit-invoice */}
       <Dialog open={!!editInvoice} onOpenChange={(open) => !open && setEditInvoice(null)}>
-        <DialogContent className="sm:max-w-[520px]">
+        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-[620px]">
           <DialogHeader>
             <DialogTitle>Edit invoice</DialogTitle>
             <DialogDescription>
@@ -1061,7 +1061,7 @@ export default function Payments() {
           </DialogHeader>
 
           {editInvoice && (
-            <div className="grid gap-3 py-1">
+            <div className="grid gap-4 py-1 [&_.grid>*]:min-w-0">
               <div>
                 <div className="text-sm font-extrabold">{editInvoice.invoice_number}</div>
                 <div className="text-sm text-muted-foreground mt-0.5">
@@ -1071,7 +1071,7 @@ export default function Payments() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="grid gap-1.5">
                   <Label>Status</Label>
                   <Select
@@ -1165,7 +1165,7 @@ export default function Payments() {
                 const owed = Math.max(0, Math.round((num(editForm.total) - paidSoFar) * 100) / 100)
                 const canAdd = owed > 0.004 && editForm.status !== 'Cancelled'
                 return (
-                  <div className="grid gap-2.5 rounded-xl border bg-muted/30 p-3">
+                  <div className="grid gap-3 rounded-xl border bg-muted/30 p-4">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-semibold">Payments</span>
                       <span className="text-xs text-muted-foreground tabular-nums">
@@ -1195,7 +1195,7 @@ export default function Payments() {
                       <p className="text-xs text-muted-foreground">No money received yet.</p>
                     )}
                     {canAdd && (
-                      <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_1.3fr]">
                         <div className="grid gap-1.5">
                           <Label htmlFor="invoice-received_now">Received now (£)</Label>
                           <Input id="invoice-received_now"
@@ -1224,7 +1224,7 @@ export default function Payments() {
                             value={editForm.payment_received_method}
                             onValueChange={(v) => setEditForm((p) => ({ ...p, payment_received_method: v }))}
                           >
-                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="w-full min-w-0 [&>span]:truncate"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               {PAYMENT_METHODS.map((m) => (
                                 <SelectItem key={m} value={m}>{m}</SelectItem>
@@ -1232,7 +1232,7 @@ export default function Payments() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <p className="text-[11px] text-muted-foreground sm:col-span-3 -mt-1">
+                        <p className="text-xs text-muted-foreground sm:col-span-3 -mt-1">
                           Choosing Paid with nothing typed records the rest ({formatGBP(owed)}) on this date.
                         </p>
                       </div>
