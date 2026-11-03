@@ -30,9 +30,24 @@ def partners():
     """Workspaces that run KYC for another website."""
     return _platform_query("""
         SELECT slug, name, kyc_form_base_url, COALESCE(kyc_free, 0) AS kyc_free, kyc_enabled_at,
-               kyc_api_key_hash IS NOT NULL AS has_key
+               kyc_api_key_hash IS NOT NULL AS has_key, status, suspended_reason, deleted_at
         FROM tenants WHERE COALESCE(kyc_form_base_url, '') != '' ORDER BY name;
     """)
+
+
+def reactivate(slug):
+    """Turn a KYC partner workspace back on after it was suspended or deleted (its data was kept), so the
+    other site's KYC works again."""
+    tenant = get_tenant(slug)
+    if not tenant or not tenant.get('kyc_form_base_url'):
+        raise PartnerError("Workspace not found")
+    if tenant.get('status') not in ('Active', 'Suspended'):
+        raise PartnerError("This workspace was never set up, so it cannot be turned on")
+    _platform_execute("""
+        UPDATE tenants SET status = 'Active', suspended_reason = NULL, deleted_at = NULL, deleted_by = NULL,
+               updated_at = datetime('now') WHERE slug = ?;
+    """, (slug,))
+    return get_tenant(slug)
 
 
 def setup(slug, base_url, free):

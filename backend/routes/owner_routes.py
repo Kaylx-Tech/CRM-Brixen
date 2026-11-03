@@ -538,6 +538,16 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
         if sub == '/kyc/partners' and method == 'GET':
             from services import kyc_partner
             return success_response(start_response, data={'partners': kyc_partner.partners()})
+        if sub == '/kyc/partners/reactivate' and method == 'POST':
+            from services import kyc_partner
+            slug = str(body.get('slug') or '').strip().lower()
+            try:
+                kyc_partner.reactivate(slug)
+            except kyc_partner.PartnerError as exc:
+                return error_response(start_response, str(exc), status_code=400)
+            audit(admin, 'WORKSPACE_REACTIVATED', slug, 'KYC partner turned back on')
+            return success_response(start_response, data={'partners': kyc_partner.partners()},
+                                    message="Turned back on. The site's KYC works again.")
         if sub in ('/kyc/partners', '/kyc/partners/key') and method == 'POST':
             from services import kyc_partner
             slug = str(body.get('slug') or '').strip().lower()

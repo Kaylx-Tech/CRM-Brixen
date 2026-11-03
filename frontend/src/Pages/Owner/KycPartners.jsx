@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { ownerApi } from "@/lib/owner"
 import { Button, Panel, SELECT } from "./ownerUi"
-import { GREEN, GREY, PILL } from "../Kyc/kycStatus"
+import { GREEN, GREY, PILL, RED } from "../Kyc/kycStatus"
 
 /**
  * KYC for another website (first: Brixen's portal). One Finstap workspace holds that site's checks: its KYC
@@ -34,6 +34,17 @@ export default function KycPartners() {
     const id = toastProcessing("Saving…")
     const res = await ownerApi("/kyc/partners", { method: "POST", body: form })
     setBusy(false)
+    if (res.ok) {
+      toastDone(id, res.message)
+      setPartners(res.data.partners || [])
+    } else {
+      toastFail(id, res.error)
+    }
+  }
+
+  const reactivate = async (slug) => {
+    const id = toastProcessing("Turning on…")
+    const res = await ownerApi("/kyc/partners/reactivate", { method: "POST", body: { slug } })
     if (res.ok) {
       toastDone(id, res.message)
       setPartners(res.data.partners || [])
@@ -128,6 +139,16 @@ export default function KycPartners() {
                 <div className="truncate text-xs text-muted-foreground">{p.kyc_form_base_url}</div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                {p.status !== "Active" || p.deleted_at ? (
+                  <>
+                    <span className={cn(PILL, RED)} title={p.suspended_reason || ""}>
+                      {p.deleted_at ? "Deleted · KYC stopped" : "Suspended · KYC stopped"}
+                    </span>
+                    <Button onClick={() => reactivate(p.slug)}>Turn back on</Button>
+                  </>
+                ) : (
+                  <span className={cn(PILL, GREEN)}>Active</span>
+                )}
                 <span className={cn(PILL, p.kyc_free ? GREEN : GREY)}>{p.kyc_free ? "Free" : "Charged"}</span>
                 <span className={cn(PILL, p.has_key ? GREEN : GREY)}>{p.has_key ? "Key made" : "No key yet"}</span>
                 <Button
