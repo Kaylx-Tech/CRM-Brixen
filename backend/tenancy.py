@@ -25,6 +25,7 @@ from urllib.parse import urlsplit
 import db as db_mod
 from db import set_db_path, NO_TENANT_DB, hash_password
 from config import TENANT_BASE_DOMAIN, WORKSPACE_URL_TEMPLATE
+from utils.validation import email_problem
 
 DATA_DIR = os.environ.get('FINSTAP_DATA_DIR') or os.path.dirname(db_mod.DB_PATH)
 PLATFORM_DB_PATH = os.environ.get('PLATFORM_DB_PATH') or os.path.join(DATA_DIR, 'platform.db')
@@ -719,8 +720,8 @@ def create_tenant(company_name, slug, owner_name, owner_email, password):
         raise TenantError("Company name is required")
     if not owner_name:
         raise TenantError("Your name is required")
-    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', owner_email):
-        raise TenantError("A valid email is required")
+    if email_problem(owner_email):
+        raise TenantError(email_problem(owner_email))
     if len(password or '') < 8:
         raise TenantError("Password must be at least 8 characters")
     problem = check_slug(slug)

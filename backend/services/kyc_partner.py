@@ -15,6 +15,7 @@ import re
 import secrets
 
 from tenancy import _platform_execute, _platform_query, get_tenant
+from utils.validation import email_problem
 
 
 class PartnerError(ValueError):
@@ -80,8 +81,8 @@ def create_check(tenant, body):
     errors = {}
     if not name:
         errors['full_name'] = "The person's name is missing."
-    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
-        errors['email'] = "The person's email is missing or not valid."
+    if email_problem(email):
+        errors['email'] = email_problem(email)
     if errors:
         return None, errors
     if not kyc_billing.enabled(tenant):

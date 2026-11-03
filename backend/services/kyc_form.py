@@ -22,6 +22,7 @@ import uuid
 from datetime import date
 
 from db import execute_db, query_db
+from utils.validation import email_problem
 
 LINK_DAYS = 14
 MAX_BYTES = 10 * 1024 * 1024
@@ -169,8 +170,8 @@ def start_from_link(tenant, body, ip=''):
         errors['last_name'] = "Enter your last name."
     if not full_name and not errors:
         errors['full_name'] = "Enter your full name."
-    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
-        errors['email'] = "Enter a valid email address, like name@example.com."
+    if email_problem(email):
+        errors['email'] = email_problem(email)
     if errors:
         return None, errors
     off = link_unavailable(tenant)
@@ -398,8 +399,8 @@ def submit(row, body):
             if not fields[key]:
                 errors[key] = message
     email = _text(body, 'email', 200).lower()
-    if 'email' in body and not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
-        errors['email'] = "Enter a valid email address, like name@example.com."
+    if 'email' in body and email_problem(email):
+        errors['email'] = email_problem(email)
     for key, message in (('full_name', "Enter your full name as shown on your document."),
                          ('id_number', "Enter your document number."),
                          ('address_line1', "Enter your address."),

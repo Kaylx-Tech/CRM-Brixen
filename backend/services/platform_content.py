@@ -18,6 +18,7 @@ import time
 
 from services import indexnow
 from tenancy import _platform_execute, _platform_query, use_tenant
+from utils.validation import email_problem
 
 EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 SUBSCRIBE_LIMIT = 5
@@ -179,8 +180,8 @@ def save_post(data, admin, post_id=None):
 
 def subscribe(email, source='website', ip=''):
     email = str(email or '').strip().lower()
-    if not EMAIL_RE.match(email) or len(email) > 254:
-        raise ContentError("Enter a valid email address")
+    if email_problem(email) or len(email) > 254:
+        raise ContentError(email_problem(email) or "Enter a valid email address")
     now = time.time()
     with _lock:
         recent = [t for t in _subscribes.get(ip, []) if now - t < SUBSCRIBE_WINDOW]

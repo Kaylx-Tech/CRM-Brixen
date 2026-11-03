@@ -10,6 +10,7 @@ from services.permissions import check_permission, can_view_revenue
 from services.price_privacy import normalize_staff_type
 from services.b2b_service import client_is_b2b
 from services import wordpress_service
+from utils.validation import email_problem
 
 STAFF_MIN_PASSWORD_LEN = 10
 STAFF_EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
@@ -231,8 +232,8 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
             return _forbidden(start_response)
         cid = body.get('customer_id') or body.get('user_id') or body.get('id')
         raw_email = (body.get('notification_email') or '').strip().lower()
-        if raw_email and not STAFF_EMAIL_RE.match(raw_email):
-            return validation_error(start_response, {'notification_email': "Enter a valid notification email."})
+        if raw_email and email_problem(raw_email):
+            return validation_error(start_response, {'notification_email': email_problem(raw_email)})
         target = _client_target(cid) if cid else None
         if not target or target.get('role') != 'CLIENT':
             return error_response(start_response, "Customer not found", status_code=404)

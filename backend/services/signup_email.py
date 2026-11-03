@@ -17,6 +17,7 @@ import re
 import secrets
 
 from tenancy import _platform_conn, _platform_execute, _platform_query, ensure_platform, use_tenant
+from utils.validation import email_problem
 
 CODE_MINUTES = 10
 MAX_TRIES = 5
@@ -127,8 +128,8 @@ def _check_limits(email, ip):
 def start(email, ip=''):
     """Send a code to this email. Returns the challenge id the code is checked against."""
     email = normalize_email(email)
-    if not EMAIL_RE.match(email):
-        raise SignupEmailError("Enter a valid email address.")
+    if email_problem(email):
+        raise SignupEmailError(email_problem(email))
     ensure_platform()
     _check_limits(email, ip)
     challenge = secrets.token_urlsafe(24)
