@@ -182,7 +182,7 @@ def sign_in_details(environ):
     }
 
 
-def code_email_html(brand, code, *, icon_src='', accent='#111827', details=None, support_email=''):
+def code_email_html(brand, code, *, icon_src='', accent='#1d1d1f', details=None, support_email=''):
     """The login code email: small icon and name, where the sign-in came from, the code, and what to do
     if it was not you. Inter like the CRM (email apps without it fall back to their system font).
     Email apps cannot copy on a click (no scripts), so there is no copy button: one tap on the code
@@ -190,7 +190,7 @@ def code_email_html(brand, code, *, icon_src='', accent='#111827', details=None,
     from html import escape
     name = escape(brand)
     details = details or {}
-    accent = accent if re.match(r'^#[0-9a-fA-F]{6}$', str(accent or '')) else '#111827'
+    accent = accent if re.match(r'^#[0-9a-fA-F]{6}$', str(accent or '')) else '#1d1d1f'
     sans = "font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;"
     mono = "font-family:'SF Mono',SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;"
     icon = (f'<img src="{escape(icon_src)}" alt="" width="36" height="36" style="display:block;width:36px;'
@@ -199,48 +199,47 @@ def code_email_html(brand, code, *, icon_src='', accent='#111827', details=None,
             (('Device', 'device'), ('Location', 'location'), ('IP address', 'ip'), ('Time', 'time'))]
     rows = [(label, value) for label, value in rows if value]
     detail_rows = ''.join(
-        f'<tr><td style="padding:14px 0;{"border-top:1px solid #ececef;" if i else ""}font-size:11px;'
-        f'font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#71717a;">{label}</td>'
-        f'<td align="right" style="padding:14px 0;{"border-top:1px solid #ececef;" if i else ""}{mono}'
-        f'font-size:13px;color:#18181b;">{escape(str(value))}</td></tr>'
+        f'<tr><td style="padding:14px 0;{"border-top:1px solid #e8e8ed;" if i else ""}font-size:11px;'
+        f'font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#6e6e73;">{label}</td>'
+        f'<td align="right" style="padding:14px 0;{"border-top:1px solid #e8e8ed;" if i else ""}{mono}'
+        f'font-size:13px;color:#1d1d1f;">{escape(str(value))}</td></tr>'
         for i, (label, value) in enumerate(rows))
     detail_box = (f'<tr><td style="padding:0 0 32px;"><table role="presentation" width="100%" cellpadding="0" '
-                  f'cellspacing="0" style="background:#fafafa;border:1px solid #ececef;border-radius:12px;">'
+                  f'cellspacing="0" style="background:#fafafa;border:1px solid #e8e8ed;border-radius:12px;">'
                   f'<tr><td style="padding:6px 24px;"><table role="presentation" width="100%" cellpadding="0" '
                   f'cellspacing="0">{detail_rows}</table></td></tr></table></td></tr>') if rows else ''
     secure = (f' <a href="{escape(details["origin"])}/forgot-password" style="color:{accent};font-weight:600;'
               f'text-decoration:underline;">Secure your account&nbsp;&rarr;</a>') if details.get('origin') else ''
-    help_line = (f'<br>Need help? <a href="mailto:{escape(support_email)}" style="color:#71717a;">'
+    help_line = (f'<br>Need help? <a href="mailto:{escape(support_email)}" style="color:#6e6e73;">'
                  f'{escape(support_email)}</a>') if support_email else ''
     return f"""<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body style="margin:0;padding:0;background:#f4f4f5;">
+<body style="margin:0;padding:0;background:#f5f5f7;">
 <div style="display:none;max-height:0;overflow:hidden;">Someone is signing in to your {name} account. Your code works for {CODE_MINUTES} minutes.</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7;">
   <tr><td align="center" style="padding:40px 16px;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #e4e4e7;border-radius:16px;{sans}color:#18181b;">
-      <tr><td style="height:4px;line-height:4px;font-size:0;background:{accent};border-radius:16px 16px 0 0;">&nbsp;</td></tr>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:18px;box-shadow:0 1px 3px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.05);{sans}color:#1d1d1f;">
       <tr><td style="padding:40px 40px 0;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
           <tr><td style="padding:0 0 36px;">
             <table role="presentation" cellpadding="0" cellspacing="0"><tr>
               {f'<td style="padding:0 12px 0 0;vertical-align:middle;">{icon}</td>' if icon else ''}
-              <td style="vertical-align:middle;font-size:17px;font-weight:600;letter-spacing:-0.01em;color:#18181b;">{name}</td>
+              <td style="vertical-align:middle;font-size:17px;font-weight:600;letter-spacing:-0.01em;color:#1d1d1f;">{name}</td>
             </tr></table>
           </td></tr>
-          <tr><td style="padding:0 0 12px;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-0.02em;color:#18181b;">Verify your sign-in</td></tr>
-          <tr><td style="padding:0 0 28px;font-size:15px;line-height:1.6;color:#52525b;">We noticed a new sign-in to your {name} account. If this was you, enter the code below to continue.</td></tr>
+          <tr><td style="padding:0 0 12px;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-0.02em;color:#1d1d1f;">Verify your sign-in</td></tr>
+          <tr><td style="padding:0 0 28px;font-size:15px;line-height:1.6;color:#424245;">We noticed a new sign-in to your {name} account. If this was you, enter the code below to continue.</td></tr>
           {detail_box}
-          <tr><td align="center" style="padding:0 0 10px;font-size:13px;color:#71717a;">Your one-time code</td></tr>
+          <tr><td align="center" style="padding:0 0 10px;font-size:13px;color:#6e6e73;">Your one-time code</td></tr>
           <tr><td align="center" style="padding:0 0 10px;">
             <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-              <td style="{mono}font-size:40px;line-height:1.1;font-weight:600;letter-spacing:10px;color:#18181b;"><span style="-webkit-user-select:all;user-select:all;">{code[:3]}<span style="margin-left:14px;">{code[3:]}</span></span></td>
+              <td style="{mono}font-size:40px;line-height:1.1;font-weight:600;letter-spacing:10px;color:#1d1d1f;"><span style="-webkit-user-select:all;user-select:all;">{code[:3]}<span style="margin-left:14px;">{code[3:]}</span></span></td>
             </tr></table>
           </td></tr>
-          <tr><td align="center" style="padding:0 0 32px;font-size:13px;color:#71717a;">Tap and hold the code to copy it &middot; expires in {CODE_MINUTES} minutes</td></tr>
+          <tr><td align="center" style="padding:0 0 32px;font-size:13px;color:#6e6e73;">Tap and hold the code to copy it &middot; expires in {CODE_MINUTES} minutes</td></tr>
           <tr><td style="padding:0 0 40px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;">
               <tr><td style="padding:16px 20px;font-size:14px;line-height:1.6;color:#78350f;">&#9888;&#65039;&nbsp; If you didn't try to sign in, someone knows your password.{secure}</td></tr>
@@ -248,7 +247,7 @@ def code_email_html(brand, code, *, icon_src='', accent='#111827', details=None,
           </td></tr>
         </table>
       </td></tr>
-      <tr><td align="center" style="padding:24px 40px 28px;border-top:1px solid #ececef;font-size:12px;line-height:1.7;color:#a1a1aa;">
+      <tr><td align="center" style="padding:24px 40px 28px;border-top:1px solid #e8e8ed;font-size:12px;line-height:1.7;color:#86868b;">
         You're receiving this because of a sign-in to your {name} account.{help_line}
       </td></tr>
     </table>
