@@ -377,7 +377,7 @@ export default function Orders() {
       cell: ({ row }) => (
         <button
           type="button"
-          className="cursor-pointer whitespace-nowrap font-mono text-[0.8125rem] font-medium text-sky-700 transition-colors hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300"
+          className="inline-flex h-6 cursor-pointer items-center whitespace-nowrap rounded-md bg-sky-500/10 px-2 text-xs font-semibold tabular-nums tracking-wide text-sky-700 transition-colors hover:bg-sky-500/20 dark:text-sky-300"
           onClick={() => handleOpenOrder(row.original.id)}
         >
           {formatOrderNumberDisplay(row.original.order_number)}
@@ -565,7 +565,7 @@ export default function Orders() {
         className="w-full rounded-xl border bg-card p-3 text-left shadow-xs transition-colors active:bg-muted/50"
       >
         <div className="flex items-center justify-between gap-2">
-          <Badge className="badge-sky rounded-full font-mono">{formatOrderNumberDisplay(o.order_number)}</Badge>
+          <Badge className="badge-sky rounded-md font-semibold tabular-nums tracking-wide">{formatOrderNumberDisplay(o.order_number)}</Badge>
           <Badge className={`${statusTone(o, pct)} ${STATUS_PILL}`}>
             <span className="size-1.5 shrink-0 rounded-full bg-current" />
             {o.status || 'Pending'}{open ? ` · ${pct}%` : ''}
