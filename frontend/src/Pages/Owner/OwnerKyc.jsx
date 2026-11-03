@@ -169,6 +169,13 @@ function DeleteDataButton({ check, onDone }) {
   )
 }
 
+// 03/11/26 (DD/MM/YY) for the KYC orders table
+function ddmmyy(value) {
+  const d = new Date(String(value || "").replace(" ", "T"))
+  if (!value || Number.isNaN(d.getTime())) return "—"
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" })
+}
+
 // £15 instead of £15.00 (pence only when there are any), for the By workspace table
 const whole = (value) =>
   new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(
@@ -178,8 +185,7 @@ const whole = (value) =>
 // The KYC orders table's columns (client and KYC form always show); the owner picks the rest, kept per browser
 const KYC_COLUMNS = [
   ["contact", "Email and phone"],
-  ["product", "Product"],
-  ["price", "KYC charge"],
+  ["price", "Price"],
   ["date", "Date"],
   ["payment", "Payment"],
   ["order", "Order status"],
@@ -543,11 +549,10 @@ export default function OwnerKyc() {
                 <Table className="w-full text-left text-sm">
                   <thead className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
+                      {shows("date") && <th className="px-3 py-2.5 font-semibold">Date</th>}
                       <th className="px-3 py-2.5 font-semibold">Client</th>
                       {shows("contact") && <th className="px-3 py-2.5 font-semibold">Contact</th>}
-                      {shows("product") && <th className="px-3 py-2.5 font-semibold">Product</th>}
-                      {shows("price") && <th className="px-3 py-2.5 text-right font-semibold" title="What Finstap charges the workspace for this check">KYC charge</th>}
-                      {shows("date") && <th className="px-3 py-2.5 font-semibold">Date</th>}
+                      {shows("price") && <th className="px-3 py-2.5 text-right font-semibold" title="What Finstap charges the workspace for this check">Price</th>}
                       {shows("payment") && <th className="px-3 py-2.5 font-semibold">Payment</th>}
                       {shows("order") && <th className="px-3 py-2.5 font-semibold">Order</th>}
                       <th className="px-3 py-2.5 font-semibold">KYC</th>
@@ -556,6 +561,11 @@ export default function OwnerKyc() {
                   <tbody>
                     {checks.map((c) => (
                       <tr key={`${c.workspace}-${c.id}`} className="border-b align-top last:border-0 hover:bg-muted/30">
+                        {shows("date") && (
+                          <td className="px-3 py-3 whitespace-nowrap text-muted-foreground">
+                            {ddmmyy(c.order_date || c.created_at)}
+                          </td>
+                        )}
                         <td className="min-w-44 px-3 py-3">
                           <Link to={`/owner/kyc/${c.workspace}/${c.id}`} className="font-semibold hover:text-primary">
                             {c.full_name}
@@ -575,11 +585,6 @@ export default function OwnerKyc() {
                             {c.phone && <div className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">{c.phone}</div>}
                           </td>
                         )}
-                        {shows("product") && (
-                          <td className="px-3 py-3">
-                            <span className="line-clamp-2 max-w-36">{c.service_name || "—"}</span>
-                          </td>
-                        )}
                         {shows("price") && (
                           <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
                             {c.kyc_free ? (
@@ -594,11 +599,6 @@ export default function OwnerKyc() {
                             ) : (
                               <span className="text-muted-foreground" title="Not charged yet">—</span>
                             )}
-                          </td>
-                        )}
-                        {shows("date") && (
-                          <td className="px-3 py-3 whitespace-nowrap text-muted-foreground">
-                            {shortDate(c.order_date || c.created_at)}
                           </td>
                         )}
                         {shows("payment") && (
