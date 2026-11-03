@@ -156,7 +156,7 @@ function DeleteDataButton({ check, onDone }) {
         onConfirm={remove}
         isLoading={busy}
         title="Delete this person's KYC data?"
-        description="Their photos, files, answers and result are deleted for good. The check and its status stay in the list."
+        description="Their photos, files, answers and result are deleted for good. The check stays in the list and the client's current link keeps working."
       />
     </>
   )

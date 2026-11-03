@@ -435,7 +435,7 @@ def submit(row, body):
         'poa': {'document': POA_TYPES[poa_type], 'address': ', '.join(v for v in address.values() if v)},
     }
     execute_db("""
-        UPDATE id_verifications SET result_json = ?, submitted_at = datetime('now'), review_note = NULL,
+        UPDATE id_verifications SET result_json = ?, submitted_at = datetime('now'), review_note = NULL, data_deleted_at = NULL,
                full_name = ?, email = COALESCE(?, email), updated_at = datetime('now') WHERE id = ?;
     """, (json.dumps(result), fields['full_name'] or row['full_name'], email or None, row['id']))
     from routes.id_verification_routes import apply_result

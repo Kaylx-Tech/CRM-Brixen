@@ -279,15 +279,12 @@ def wipe(check_id):
 
 def delete_data(slug, check_id):
     """The owner deletes what the person sent. The check stays (marked deleted) so the month's KYC count and
-    the order stay right. Returns (row, how many files were deleted)."""
+    the order stay right; the client's current link keeps working. Returns (row, how many files were deleted)."""
     from db import execute_db
     tenant, row = svc._check(slug, check_id)
     with use_tenant(tenant):
         files = wipe(check_id)
-        execute_db("""
-            UPDATE id_verifications SET form_token_hash = NULL, session_url = NULL,
-                   data_deleted_at = datetime('now') WHERE id = ?;
-        """, (int(check_id),))
+        execute_db("UPDATE id_verifications SET data_deleted_at = datetime('now') WHERE id = ?;", (int(check_id),))
     return row, files
 
 
