@@ -15,6 +15,7 @@ POST /api/kyc-form/<code>/file                  one photo or file {kind, file}
 POST /api/kyc-form/<code>/submit                the answers; the check goes to the KYC desk
 GET/POST /api/kyc-link/<workspace>.<code>       the workspace's own KYC link: any client starts a check (no order)
 GET  /api/kyc-partner/checks                    another website's server (X-KYC-Key): its checks and link
+GET  /api/kyc-partner/checks/<id>[/files/<fid>] one check's details, or one of its documents (read only)
 POST /api/webhooks/didit                        Didit status updates (older checks; signed, no login)
 """
 import json
@@ -438,6 +439,27 @@ def handle_id_verification_routes(environ, start_response, path, method, user, b
             'link': kyc_billing.link_url(tenant) if on else None,
             'checks': kyc_partner.checks(),
         })
+    # …and one check's details and documents, to view them on the site (read only)
+    match = re.match(r'^/api/kyc-partner/checks/(\d+)(?:/files/(\d+))?$', path)
+    if match and method == 'GET':
+        from tenancy import current_tenant
+        from services import kyc_desk, kyc_partner
+        from services.platform_services import ServiceError
+        tenant = current_tenant()
+        if not kyc_partner.key_ok(tenant, environ.get('HTTP_X_KYC_KEY')):
+            return error_response(start_response, "Invalid KYC key", status_code=401)
+        try:
+            if match.group(2):
+                data, mime = kyc_desk.file(tenant['slug'], int(match.group(1)), int(match.group(2)))
+                if data is None:
+                    return error_response(start_response, "File not found", status_code=404)
+                start_response('200 OK', [('Content-Type', mime or 'application/octet-stream'),
+                                          ('Content-Length', str(len(data))), ('Cache-Control', 'private, no-store'),
+                                          ('X-Content-Type-Options', 'nosniff')])
+                return [data]
+            return success_response(start_response, data=kyc_desk.detail(tenant['slug'], int(match.group(1))))
+        except ServiceError as exc:
+            return error_response(start_response, str(exc), status_code=404)
     if path.startswith('/api/kyc-form/'):
         return _handle_form(start_response, path, method, body)
     if path == '/api/client/id-verification' and method == 'GET':
