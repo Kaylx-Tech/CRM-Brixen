@@ -10,6 +10,7 @@ GET /api/admin/kyc                          → {configured, link, workspace, ch
 GET /api/admin/kyc/<id>                     → one check: the client's answers, the order, the documents list
 GET /api/admin/kyc/<id>/files/<file_id>     → one document (photo or PDF)
 POST /api/admin/kyc/start {order_id}        → start a KYC order's check now (one that was missed) and email the link
+POST /api/admin/kyc/ignore {order_id, undo?} → leave a missed KYC order out of the list (no link)
 
 Env: FINSTAP_KYC_KEY (from admin.finstap.com → KYC → KYC for another website), FINSTAP_KYC_WORKSPACE
 (the Finstap workspace's name, default "brixen"), FINSTAP_API_URL (default https://api.finstap.com/api).
@@ -129,20 +130,53 @@ def _order_person(order_id):
     return order.get('order_number') or f"order {order_id}", name, email, order.get('checkout_phone') or order.get('phone') or ''
 
 
+def _ensure_ignored():
+    from db import execute_db
+    execute_db("""
+        CREATE TABLE IF NOT EXISTS kyc_ignored_orders (
+            order_id INTEGER PRIMARY KEY,
+            ignored_by TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+
+
 def _missing_orders(checks):
-    """KYC orders from the last 90 days with no check on Finstap yet (e.g. made while Finstap was off)."""
+    """Open KYC orders from the last 90 days with no check on Finstap yet (e.g. made while Finstap was off),
+    with what helps to decide: the order's status, whether the person is already verified (an approved
+    older check, or the company's Companies House personal code), and other orders of the same client.
+    Completed, cancelled and refunded orders and the ones the team ignored are left out."""
     from db import query_db
+    _ensure_ignored()
     have = {str(c.get('order_number') or '').strip() for c in checks}
     rows = query_db("""
-        SELECT o.id, o.order_number, o.created_at, COALESCE(NULLIF(o.owner_name, ''), u.full_name) AS client_name,
-               COALESCE(NULLIF(o.owner_form_email, ''), u.email) AS email
-        FROM orders o LEFT JOIN users u ON u.id = o.user_id
+        SELECT o.id, o.order_number, o.created_at, o.status,
+               COALESCE(NULLIF(o.owner_name, ''), u.full_name) AS client_name,
+               COALESCE(NULLIF(o.owner_form_email, ''), u.email) AS email,
+               COALESCE(u.is_b2b, 0) AS is_b2b, u.client_type,
+               NULLIF(TRIM(COALESCE(c.activation_code, '')), '') AS ch_code,
+               (SELECT 1 FROM id_verifications v WHERE v.order_id = o.id AND v.status = 'Approved' LIMIT 1)
+                   AS approved_before
+        FROM orders o LEFT JOIN users u ON u.id = o.user_id LEFT JOIN companies c ON c.id = o.company_id
         WHERE COALESCE(o.is_draft, 0) = 0 AND datetime(o.created_at) >= datetime('now', '-90 days')
+          AND o.status NOT IN ('Completed', 'Cancelled', 'Refunded')
+          AND o.id NOT IN (SELECT order_id FROM kyc_ignored_orders)
           AND (o.service_name LIKE '%kyc%' OR EXISTS (SELECT 1 FROM order_line_items li
                WHERE li.order_id = o.id AND li.product_name LIKE '%kyc%'))
         ORDER BY o.created_at DESC;
     """) or []
-    return [r for r in rows if str(r.get('order_number') or '').strip() not in have]
+    rows = [dict(r) for r in rows if str(r.get('order_number') or '').strip() not in have]
+    seen = {}
+    for r in rows:
+        key = str(r.get('email') or '').strip().lower()
+        r['verified'] = 'ch_code' if r.pop('ch_code', None) else ('approved' if r.pop('approved_before', None) else '')
+        r.pop('approved_before', None)
+        r['b2b'] = bool(r.pop('is_b2b')) or str(r.pop('client_type', '') or '').upper() == 'B2B'
+        # The newest order of a client is the one to send; older ones of the same email say so
+        r['newer_order'] = seen.get(key) if key else None
+        if key and key not in seen:
+            seen[key] = r['order_number']
+    return rows
 
 
 def handle_kyc_partner_routes(environ, start_response, path, method, user, body, query):
@@ -153,6 +187,16 @@ def handle_kyc_partner_routes(environ, start_response, path, method, user, body,
     if user.get('role') not in TEAM_ROLES:
         return error_response(start_response, "KYC is for the team only.", status_code=403)
     cfg = _settings()
+    if path == '/api/admin/kyc/ignore' and method == 'POST':
+        from db import execute_db
+        _ensure_ignored()
+        order_id = int((body or {}).get('order_id') or 0)
+        if (body or {}).get('undo'):
+            execute_db("DELETE FROM kyc_ignored_orders WHERE order_id = ?;", (order_id,))
+            return success_response(start_response, message="Back in the list.")
+        execute_db("INSERT OR IGNORE INTO kyc_ignored_orders (order_id, ignored_by) VALUES (?, ?);",
+                   (order_id, user.get('email')))
+        return success_response(start_response, message="Removed from the list. No KYC link is sent for it.")
     if path == '/api/admin/kyc/start' and method == 'POST':
         if not cfg['key']:
             return error_response(start_response, "KYC is not connected to Finstap yet.", status_code=400)

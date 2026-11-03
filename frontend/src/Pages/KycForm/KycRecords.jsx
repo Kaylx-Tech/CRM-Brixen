@@ -59,6 +59,16 @@ export default function KycRecords() {
   const [tab, setTab] = useState('all')
   const [starting, setStarting] = useState(0)
 
+  const ignoreOrder = async (order) => {
+    const res = await apiRequest('/admin/kyc/ignore', { method: 'POST', body: { order_id: order.id }, label: 'KYC', silent: true })
+    if (res.ok) {
+      toast.success(res.data?.message || 'Removed from the list')
+      load()
+    } else {
+      toast.error(res.reason || 'Could not remove it')
+    }
+  }
+
   // A KYC order that has no check yet (made while Finstap was off): start it and email the link now
   const startOrder = async (order) => {
     setStarting(order.id)
@@ -149,21 +159,40 @@ export default function KycRecords() {
         <Card className="gap-0 border-amber-500/30 p-4">
           <p className="text-sm font-semibold">KYC orders without a check ({data.missing_orders.length})</p>
           <p className="text-xs text-muted-foreground">
-            These orders have the KYC product but no check on Finstap yet. Send the link to start it.
+            Open orders with the KYC product but no check on Finstap yet (completed and cancelled orders are left
+            out). Send the link to start one, or Ignore it if the client is already verified.
           </p>
           <ul className="mt-3 divide-y text-sm">
             {data.missing_orders.map((o) => (
-              <li key={o.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+              <li key={o.id} className={`flex flex-wrap items-center justify-between gap-2 py-2 ${o.newer_order || o.verified ? 'opacity-70' : ''}`}>
                 <div className="flex min-w-0 items-center gap-3">
                   <span className={ORDER_CHIP}>{o.order_number}</span>
                   <div className="min-w-0">
-                    <div className="truncate font-medium">{o.client_name || '—'}</div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="truncate font-medium">{o.client_name || '—'}</span>
+                      <Badge className="bg-muted text-muted-foreground">{o.status}</Badge>
+                      {o.b2b && <Badge className="bg-violet-500/15 text-violet-700 dark:text-violet-300">B2B</Badge>}
+                      {o.verified === 'ch_code' && <Badge className="badge-green">Already verified · CH code</Badge>}
+                      {o.verified === 'approved' && <Badge className="badge-green">Already verified · earlier check</Badge>}
+                      {o.newer_order && <Badge className="badge-amber">Same client as {o.newer_order}</Badge>}
+                    </div>
                     <div className="truncate text-xs text-muted-foreground">{o.email || 'No email'} · {shortDate(o.created_at)}</div>
                   </div>
                 </div>
-                <Button size="sm" className="gap-1.5" disabled={starting === o.id} onClick={() => startOrder(o)}>
-                  <IconSend className="size-3.5" /> Send KYC link
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => ignoreOrder(o)}>
+                    Ignore
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={o.newer_order || o.verified ? 'outline' : 'default'}
+                    className="gap-1.5"
+                    disabled={starting === o.id}
+                    onClick={() => startOrder(o)}
+                  >
+                    <IconSend className="size-3.5" /> Send KYC link
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
