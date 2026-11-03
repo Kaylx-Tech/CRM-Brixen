@@ -90,19 +90,39 @@ function statusTone(order, pct) {
   return 'badge-amber'
 }
 
-// Products are calm neutral chips; only a small dot carries the colour of the kind of product
-function productDot(name) {
-  const n = String(name || '').toLowerCase()
-  if (/tide|bank|taptap|tap tap|revolut|wise|monzo|anna|money/.test(n)) return 'bg-emerald-500'
-  if (/kyc|identity/.test(n)) return 'bg-sky-500'
-  if (/registered office|address|mail forwarding/.test(n)) return 'bg-violet-500'
-  if (/formation|incorporation|certificate|name change/.test(n)) return 'bg-indigo-500'
-  if (/confirmation|accounts|tax|vat|paye|ad01|dissolution|strike/.test(n)) return 'bg-amber-500'
-  return 'bg-zinc-400'
+// Each product is a soft tinted chip in its own colour (no dot), the same everywhere it shows
+const TINT = {
+  blue: 'bg-blue-500/12 text-blue-700 dark:text-blue-300',
+  teal: 'bg-teal-500/12 text-teal-700 dark:text-teal-300',
+  lime: 'bg-lime-500/15 text-lime-800 dark:text-lime-300',
+  pink: 'bg-pink-500/12 text-pink-700 dark:text-pink-300',
+  orange: 'bg-orange-500/12 text-orange-700 dark:text-orange-300',
+  slate: 'bg-slate-500/12 text-slate-700 dark:text-slate-300',
+  emerald: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300',
+  cyan: 'bg-cyan-500/12 text-cyan-700 dark:text-cyan-300',
+  violet: 'bg-violet-500/12 text-violet-700 dark:text-violet-300',
+  indigo: 'bg-indigo-500/12 text-indigo-700 dark:text-indigo-300',
+  amber: 'bg-amber-500/15 text-amber-800 dark:text-amber-300',
+  grey: 'bg-muted text-muted-foreground',
 }
 
-const PRODUCT_CHIP =
-  'inline-flex h-6 items-center gap-1.5 rounded-md border border-border/70 bg-muted/40 px-2 text-xs font-medium text-foreground/85 whitespace-nowrap'
+function productTone(name) {
+  const n = String(name || '').toLowerCase()
+  if (/tide/.test(n)) return TINT.blue
+  if (/taptap|tap tap/.test(n)) return TINT.teal
+  if (/wise/.test(n)) return TINT.lime
+  if (/anna/.test(n)) return TINT.pink
+  if (/monzo/.test(n)) return TINT.orange
+  if (/revolut/.test(n)) return TINT.slate
+  if (/bank|money/.test(n)) return TINT.emerald
+  if (/kyc|identity/.test(n)) return TINT.cyan
+  if (/registered office|address|mail forwarding/.test(n)) return TINT.violet
+  if (/formation|incorporation|certificate|name change/.test(n)) return TINT.indigo
+  if (/confirmation|accounts|tax|vat|paye|ad01|dissolution|strike/.test(n)) return TINT.amber
+  return TINT.grey
+}
+
+const PRODUCT_CHIP = 'inline-flex h-6 items-center rounded-md px-2 text-xs font-semibold whitespace-nowrap'
 
 // Order statuses as a soft pill with a dot, the same height as the product chips
 const STATUS_PILL = 'inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium tabular-nums whitespace-nowrap border-0'
@@ -167,8 +187,7 @@ function ProductPills({ summary }) {
       {shown.map((name, idx) => (
         <Tooltip key={`${name}-${idx}`}>
           <TooltipTrigger className="inline-flex">
-            <span className={PRODUCT_CHIP}>
-              <span className={`size-1.5 shrink-0 rounded-full ${productDot(name)}`} />
+            <span className={`${PRODUCT_CHIP} ${productTone(name)}`}>
               {shortenProductName(name)}
             </span>
           </TooltipTrigger>
@@ -178,7 +197,7 @@ function ProductPills({ summary }) {
       {rest.length ? (
         <Tooltip>
           <TooltipTrigger className="inline-flex">
-            <span className={`${PRODUCT_CHIP} text-muted-foreground`}>+{rest.length}</span>
+            <span className={`${PRODUCT_CHIP} ${TINT.grey}`}>+{rest.length}</span>
           </TooltipTrigger>
           <TooltipContent className="max-w-xs whitespace-pre-line break-words">{rest.join('\n')}</TooltipContent>
         </Tooltip>
@@ -429,10 +448,13 @@ export default function Orders() {
         const desired = row.original.company_name && !row.original.company_registered
         return (
           <div className="flex min-w-0 flex-col">
-            <TruncatedTooltip
-              text={name}
-              className={`block max-w-[190px] truncate text-left text-sm cursor-default${desired ? ' italic text-foreground/80' : ''}`}
-            />
+            {/* Small and bold, up to two lines, so the whole name fits the column */}
+            <span
+              title={name}
+              className={`line-clamp-2 max-w-[220px] break-words text-left text-xs font-semibold leading-snug cursor-default${desired ? ' italic text-foreground/80' : ''}`}
+            >
+              {name}
+            </span>
             {desired ? (
               <span className="mt-0.5 inline-flex items-center gap-1 text-[0.6875rem] font-medium text-amber-600 dark:text-amber-400">
                 <span className="size-1 rounded-full bg-current" />
