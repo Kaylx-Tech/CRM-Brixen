@@ -205,7 +205,7 @@ export default function NotificationsPage() {
     <div className="flex flex-col gap-4 w-full pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">Notifications</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Notifications</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Alerts for orders, tasks, documents, and account activity
             {unreadCount > 0 ? ` · ${unreadCount} unread` : ''}
@@ -242,7 +242,7 @@ export default function NotificationsPage() {
             className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
             All
-            <span className="ml-1.5 rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0 text-[11px] font-semibold">
+            <span className="ml-1.5 rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0 text-[10px] font-semibold">
               {notifications.length}
             </span>
           </TabsTrigger>
@@ -251,7 +251,7 @@ export default function NotificationsPage() {
             className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
             Unread
-            <span className="ml-1.5 rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0 text-[11px] font-semibold">
+            <span className="ml-1.5 rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0 text-[10px] font-semibold">
               {unreadCount}
             </span>
           </TabsTrigger>
@@ -313,12 +313,12 @@ export default function NotificationsPage() {
                               {item.title || 'Notification'}
                             </span>
                             {item.type ? (
-                              <Badge className="bg-muted text-muted-foreground text-[11px]">
+                              <Badge className="bg-muted text-muted-foreground text-[10px]">
                                 {String(item.type).replace(/_/g, ' ')}
                               </Badge>
                             ) : null}
                             {unread ? (
-                              <Badge className="badge-sky text-[11px]">Unread</Badge>
+                              <Badge className="badge-sky text-[10px]">Unread</Badge>
                             ) : null}
                           </div>
                           <p className="text-sm text-muted-foreground mt-1 leading-relaxed">

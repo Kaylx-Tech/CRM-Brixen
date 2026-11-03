@@ -82,7 +82,7 @@ function ConfidencePill({ label, value }) {
   const n = Number(value)
   const shown = Number.isFinite(n) ? `${Math.round(n)}%` : '—'
   return (
-    <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold leading-none ${confidenceTone(n)}`}>
+    <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-none ${confidenceTone(n)}`}>
       {label} {shown}
     </span>
   )
@@ -404,7 +404,7 @@ export default function Documents() {
     col.accessor('lifecycle_status', {
       header: 'Lifecycle',
       cell: ({ row }) => (
-        <Badge className={`text-[11px] font-semibold whitespace-nowrap ${lifecycleBadgeClass(row.original.lifecycle_status, row.original.is_posted)}`}>
+        <Badge className={`text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap ${lifecycleBadgeClass(row.original.lifecycle_status, row.original.is_posted)}`}>
           {row.original.lifecycle_status || '—'}
         </Badge>
       ),
@@ -503,7 +503,7 @@ export default function Documents() {
     <div className="flex flex-col gap-4 w-full pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">Documents Lifecycle</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Documents Lifecycle</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={() => setRelinkOpen(true)}>
@@ -539,7 +539,7 @@ export default function Documents() {
               className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
               {tab.label}
-              <span className="ml-1.5 rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0 text-[11px] font-semibold">
+              <span className="ml-1.5 rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0 text-[10px] font-semibold">
                 {counts[tab.key] != null ? counts[tab.key] : 0}
               </span>
             </TabsTrigger>

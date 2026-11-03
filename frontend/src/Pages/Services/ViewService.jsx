@@ -48,7 +48,7 @@ function FormFieldsPreview({ fields, nested = false }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium">{f.label}</span>
                   {f.required ? (
-                    <Badge variant="outline" className="text-[11px] text-destructive border-destructive/30">
+                    <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30">
                       {f.type === 'checkbox' ? 'Must be ticked' : 'Required'}
                     </Badge>
                   ) : null}
@@ -204,7 +204,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                   {canViewPrices() ? (
                     <div className="p-4 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between">
                       <div className="flex items-center justify-between text-muted-foreground">
-                        <span className="text-sm font-semibold">Sell Price</span>
+                        <span className="text-sm font-semibold uppercase tracking-wider">Sell Price</span>
                         <IconCurrencyPound className="w-4 h-4 text-primary" />
                       </div>
                       <div className="mt-2">
@@ -218,7 +218,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                   <>
                   <div className="p-4 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between">
                     <div className="flex items-center justify-between text-muted-foreground">
-                      <span className="text-sm font-semibold">Cost Price</span>
+                      <span className="text-sm font-semibold uppercase tracking-wider">Cost Price</span>
                       <IconReceipt2 className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <div className="mt-2">
@@ -229,7 +229,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
 
                   <div className="p-4 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between">
                     <div className="flex items-center justify-between text-muted-foreground">
-                      <span className="text-sm font-semibold">Profit Margin</span>
+                      <span className="text-sm font-semibold uppercase tracking-wider">Profit Margin</span>
                       <IconTrendingUp className="w-4 h-4 text-emerald-500" />
                     </div>
                     <div className="mt-2">
@@ -247,20 +247,20 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
 
                 {/* Details Grid */}
                 <div className="border rounded-xl p-5 bg-card/40 space-y-4">
-                  <h4 className="text-sm font-bold text-muted-foreground">Service Information</h4>
+                  <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Service Information</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-sm">
                     <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-sm font-semibold">Service Name</span>
+                      <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Service Name</span>
                       <span className="font-semibold text-foreground">{service.name}</span>
                     </div>
 
                     <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-sm font-semibold">Category</span>
+                      <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Category</span>
                       <span className="font-medium">{category}</span>
                     </div>
 
                     <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-sm font-semibold">Current Status</span>
+                      <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Current Status</span>
                       <div>
                         <Badge variant={status === 'Active' ? 'outline' : 'secondary'} className={status === 'Active' ? 'text-emerald-600 border-emerald-300' : ''}>
                           {status}
@@ -270,14 +270,14 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
 
                     {service.vat_rate !== undefined && (
                       <div className="flex flex-col gap-1">
-                        <span className="text-muted-foreground text-sm font-semibold">VAT Rate</span>
+                        <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">VAT Rate</span>
                         <span className="font-medium">{service.vat_rate || '20% (Standard)'}</span>
                       </div>
                     )}
 
                     {service.estimated_delivery_time && (
                       <div className="flex flex-col gap-1">
-                        <span className="text-muted-foreground text-sm font-semibold">Delivery Turnaround</span>
+                        <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Delivery Turnaround</span>
                         <span className="font-medium">{service.estimated_delivery_time}</span>
                       </div>
                     )}
@@ -286,7 +286,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
 
                 {/* Description */}
                 <div className="border rounded-xl p-5 bg-card/40 space-y-2">
-                  <h4 className="text-sm font-bold text-muted-foreground">Description & Scope</h4>
+                  <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Description & Scope</h4>
                   <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
                     {description}
                   </p>

@@ -787,7 +787,7 @@ const Tasks = ({ view } = {}) => {
           {govForms ? (
             <p className="text-sm text-muted-foreground">Government forms the team is working on, who has each one and when it is due.</p>
           ) : (
-            <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">{view === 'team' ? 'Team' : 'Tasks & Team'}</h2>
+            <h2 className="text-2xl font-bold tracking-tight">{view === 'team' ? 'Team' : 'Tasks & Team'}</h2>
           )}
         </div>
         <div className="flex items-center gap-2">

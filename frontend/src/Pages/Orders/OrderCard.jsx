@@ -96,7 +96,7 @@ const OrderCard = ({ order, isSelected, onToggleSelect, onDelete }) => {
             </div>
             
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-[11px]">{payment}</Badge>
+              <Badge variant="outline" className="text-[10px]">{payment}</Badge>
               <Badge className={
                 statusColor === 'green' ? 'badge-green' :
                 statusColor === 'blue' ? 'badge-sky' : 'bg-muted text-muted-foreground'

@@ -539,7 +539,7 @@ export default function IdVerification() {
                 <div className="flex gap-2">
                   <Input
                     id="idv-ch-code"
-                    className="font-mono placeholder:font-sans placeholder:tracking-normal"
+                    className="font-mono tracking-wider placeholder:font-sans placeholder:tracking-normal"
                     placeholder="11 characters, from Companies House"
                     maxLength={13}
                     value={chCode}

@@ -167,7 +167,7 @@ export function StatCard({
         <CardTitle
           className={cn(
             // "!" so the card's own small-size title rule (group-data-[size=sm]:text-sm) cannot shrink the number
-            "font-semibold tabular-nums leading-tight tracking-tight",
+            "font-bold tabular-nums leading-tight tracking-tight",
             typeof value === "string" && /[£$€]/.test(value) && "privacy-currency-mask",
             compact
               ? "mt-1 text-2xl! @[250px]/card:text-3xl!"
@@ -186,7 +186,7 @@ export function StatCard({
                 variant="outline"
                 className={cn(
                   "gap-1 font-medium",
-                  compact && "px-1.5 py-0 text-[11px]",
+                  compact && "px-1.5 py-0 text-[10px]",
                   hero
                     ? "text-white border-white/30 bg-white/15"
                     : isDown

@@ -14,7 +14,7 @@ import {
 // raised pill with its icon in the accent, and count badges
 const GROUPED = {
   group: "px-3 py-1.5",
-  label: "h-7 px-3 text-[0.6875rem] font-semibold text-sidebar-foreground/45",
+  label: "h-7 px-3 text-[0.6875rem] font-medium uppercase tracking-wider text-sidebar-foreground/45",
   menu: "gap-0.5",
   // fs-menu-btn: the pill's settle-in animation (index.css); hover brightens the icon,
   // and a short accent bar grows at the left of the active page
@@ -33,7 +33,7 @@ const GROUPED = {
 const PORTAL = {
   group: "px-2 py-1",
   label:
-    "h-6 gap-2 px-3 text-[11px] font-bold tracking-[0.12em] text-[#8FB3DC] " +
+    "h-6 gap-2 px-3 text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#8FB3DC] " +
     "after:h-px after:flex-1 after:bg-gradient-to-r after:from-white/15 after:to-transparent after:content-['']",
   menu: "gap-0.5",
   button:

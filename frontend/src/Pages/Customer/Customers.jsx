@@ -308,7 +308,7 @@ const Customers = () => {
             >
               {customer.name}
               {customer.isNew && (
-                <Badge className="badge-sky ml-2 text-[11px] h-4 px-1.5">New</Badge>
+                <Badge className="badge-sky ml-2 text-[10px] h-4 px-1.5">New</Badge>
               )}
             </button>
           );
@@ -496,7 +496,7 @@ const Customers = () => {
     <div className="flex flex-col gap-6 w-full">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">Customers & Signups</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Customers & Signups</h2>
         </div>
         <Button onClick={() => setIsModalOpen(true)}>
           <IconUserPlus className="mr-2 h-4 w-4" />

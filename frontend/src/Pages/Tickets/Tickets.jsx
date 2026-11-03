@@ -66,9 +66,9 @@ function TicketListItem({ ticket, active, onOpen }) {
         {ticket.client_name || ticket.client_email || 'Customer'} · {ticket.ticket_number}
       </p>
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-        <Badge className={`${STATUS_CLASS[ticket.status] || ''} text-[11px]`}>{ticket.status}</Badge>
+        <Badge className={`${STATUS_CLASS[ticket.status] || ''} text-[10px]`}>{ticket.status}</Badge>
         {ticket.priority && ticket.priority !== 'Medium' ? (
-          <Badge className={`${PRIORITY_CLASS[ticket.priority] || ''} text-[11px]`}>{ticket.priority}</Badge>
+          <Badge className={`${PRIORITY_CLASS[ticket.priority] || ''} text-[10px]`}>{ticket.priority}</Badge>
         ) : null}
         <span className="ml-auto text-[11px] text-muted-foreground">
           {formatWhen(ticket.last_message_at || ticket.created_at)}
@@ -283,7 +283,7 @@ export default function Tickets() {
     <div className="flex w-full flex-col gap-4 pb-6">
       <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
         <div>
-          <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">Support Tickets</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Support Tickets</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {activeCount} active
             {waiting ? <span className="text-primary"> · {waiting} waiting for a reply</span> : null}

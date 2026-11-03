@@ -286,7 +286,7 @@ function CompanyCheckField({ id, value, onChange, placeholder }) {
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
                     <span className="truncate font-medium">{r.name}</span>
-                    {r.number === current.exactNumber ? <Badge className="badge-green text-[11px]">Exact match</Badge> : null}
+                    {r.number === current.exactNumber ? <Badge className="badge-green text-[10px]">Exact match</Badge> : null}
                   </span>
                   <span className="block truncate text-xs text-muted-foreground">
                     {r.number}{r.status ? ` · ${r.status}` : ""}{r.address ? ` · ${r.address}` : ""}
@@ -1248,7 +1248,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
       <DrawerContent className="max-w-4xl mx-auto h-[88vh] max-h-[92vh] p-0 overflow-clip gap-0 flex flex-col">
         <DrawerHeader className="px-6 pt-3 pb-4 border-b text-left space-y-3 shrink-0">
           <div>
-            <DrawerTitle className="text-xl font-bold tracking-tight">
+            <DrawerTitle className="text-xl font-extrabold tracking-tight">
               {portal ? "New Order" : "Create New Order"}
             </DrawerTitle>
             <DrawerDescription className="text-sm mt-1">
@@ -1327,7 +1327,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
                             }`}
                           >
                             <div className="flex items-start justify-between gap-2">
-                              <Badge className={b2b ? "badge-green text-[11px]" : isBusinessCustomer(c) ? "badge-amber text-[11px]" : "badge-sky text-[11px]"}>
+                              <Badge className={b2b ? "badge-green text-[10px]" : isBusinessCustomer(c) ? "badge-amber text-[10px]" : "badge-sky text-[10px]"}>
                                 {customerTypeLabel(c)}
                               </Badge>
                               <Checkbox checked={selected} className="pointer-events-none" />
@@ -1420,7 +1420,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
                             }`}
                           >
                             <div className="flex items-start justify-between gap-2">
-                              <Badge variant="outline" className="text-[11px]">
+                              <Badge variant="outline" className="text-[10px]">
                                 {p.category || "Service"}
                               </Badge>
                               <Checkbox checked={selected} className="pointer-events-none" />
@@ -1459,15 +1459,15 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
               <section className="space-y-4">
                 <div className="rounded-xl border bg-muted/20 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <Badge className="badge-sky text-[11px]">{selectedSummary.cat}</Badge>
-                    <h4 className="text-base font-bold mt-1">{selectedSummary.title}</h4>
+                    <Badge className="badge-sky text-[10px]">{selectedSummary.cat}</Badge>
+                    <h4 className="text-base font-extrabold mt-1">{selectedSummary.title}</h4>
                     <p className="text-sm text-muted-foreground mt-0.5">
                       Customer: {selectedCustomer?.full_name} ({selectedCustomer?.email})
                     </p>
                   </div>
                   <div className="text-right">
                     {showPrices ? (
-                      <div className="text-xl font-bold text-primary">
+                      <div className="text-xl font-extrabold text-primary">
                         {selectedCustomer && isB2BCustomer(selectedCustomer)
                           ? "Custom B2B Rate"
                           : formatGbp(selectedSummary.price)}
@@ -1559,10 +1559,10 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
                 <div className="rounded-2xl border bg-muted/20 p-5 space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b pb-4">
                     <div>
-                      <div className="text-[11px] font-bold text-primary">
+                      <div className="text-[11px] font-bold uppercase tracking-wide text-primary">
                         {selectedSummary.cat}
                       </div>
-                      <h3 className="text-xl font-bold mt-1">{selectedSummary.title}</h3>
+                      <h3 className="text-xl font-extrabold mt-1">{selectedSummary.title}</h3>
                       <p className="text-sm text-muted-foreground mt-0.5">
                         Customer: {selectedCustomer?.full_name} ({selectedCustomer?.email})
                       </p>
@@ -1570,7 +1570,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
                     {showPrices ? (
                       <div className="text-right">
                         <div className="text-[11px] font-semibold text-muted-foreground">AUTHORITATIVE TOTAL</div>
-                        <div className="text-2xl font-bold">
+                        <div className="text-2xl font-extrabold">
                           {selectedCustomer && isB2BCustomer(selectedCustomer)
                             ? "Custom B2B"
                             : formatGbp(selectedSummary.price)}
@@ -1613,7 +1613,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
                         ...fileFields.map((f) => [fieldTitle(f), fieldFiles[f.key]?.name || ""]),
                       ].map(([label, value]) => (
                         <div key={label} className="rounded-lg border bg-muted/20 px-3 py-2">
-                          <div className="text-[11px] text-muted-foreground font-semibold">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
                             {label}
                           </div>
                           <div className="font-medium mt-0.5 break-words whitespace-pre-line">{value || "—"}</div>
