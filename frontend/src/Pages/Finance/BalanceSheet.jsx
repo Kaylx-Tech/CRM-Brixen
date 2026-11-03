@@ -54,7 +54,10 @@ const incomeCol = createColumnHelper()
 const expenseCol = createColumnHelper()
 const monthCol = createColumnHelper()
 
-const CURRENCIES = ['GBP', 'PKR']
+// Each account the company holds money in (the server says which; these are the defaults)
+const CURRENCIES = ['GBP', 'PKR', 'USD']
+const ACCOUNT_NAME = { GBP: 'GBP account (£)', PKR: 'PKR account (Rs)', USD: 'USD account ($)' }
+const AMOUNT_WORD = { PKR: 'rupees', USD: 'dollars' }
 
 function buildMonthOptions(count = 24) {
   const options = []
@@ -172,7 +175,8 @@ export default function BalanceSheet({ embedded = false }) {
     if (!reset && !rupeeErrors.check(rupeeForm)) return
     setSavingRupees(true)
     const ok = await save(`/admin/finance/receipts/${rupeeForm.invoice.invoice_id}`, 'PUT',
-      reset ? { reset: true } : { amount: rupeeForm.amount }, 'Rupees received', rupeeErrors)
+      reset ? { reset: true, currency: rupeeForm.invoice.currency } : { amount: rupeeForm.amount, currency: rupeeForm.invoice.currency },
+      rupeeForm.invoice.currency === 'USD' ? 'Dollars received' : 'Rupees received', rupeeErrors)
     setSavingRupees(false)
     if (ok) setRupeeForm(null)
   }
@@ -240,12 +244,14 @@ export default function BalanceSheet({ embedded = false }) {
       header: 'Received',
       cell: ({ row }) => {
         const inv = row.original
-        if (inv.currency !== 'PKR') return <span className="font-semibold">{formatMoney(inv.amount, 'GBP')}</span>
+        if (inv.currency === 'GBP' || !AMOUNT_WORD[inv.currency]) {
+          return <span className="font-semibold">{formatMoney(inv.amount, 'GBP')}</span>
+        }
         return (
           <div className="flex items-center gap-1.5">
             <div className="flex flex-col">
               <span className="font-semibold">
-                {inv.amount == null ? 'Rupees needed' : formatMoney(inv.amount, 'PKR')}
+                {inv.amount == null ? `${inv.currency === 'USD' ? 'Dollars' : 'Rupees'} needed` : formatMoney(inv.amount, inv.currency)}
               </span>
               <span className="text-sm text-muted-foreground">
                 {formatMoney(inv.gbp_amount, 'GBP')}
@@ -255,10 +261,10 @@ export default function BalanceSheet({ embedded = false }) {
             <Button
               variant="ghost"
               size="icon-xs"
-              title="Correct the rupees received"
+              title={`Correct the ${AMOUNT_WORD[inv.currency]} received`}
               onClick={() => {
-                // Rupees are corrected for the whole invoice, not just this payment
-                const rupees = inv.invoice_rupees ?? inv.amount
+                // The amount is corrected for the whole invoice, not just this payment
+                const rupees = inv.invoice_amount ?? inv.invoice_rupees ?? inv.amount
                 setRupeeForm({ invoice: inv, amount: rupees == null ? '' : plainAmount(rupees) })
               }}
             >
@@ -339,7 +345,7 @@ export default function BalanceSheet({ embedded = false }) {
         <div>
           {!embedded && <h2 className="text-2xl font-bold tracking-tight">Revenue &amp; Balance Sheet</h2>}
           <p className="text-sm text-muted-foreground mt-0.5">
-            {monthName(month)} · GBP and PKR kept separate · each month opens with last month&apos;s closing balance
+            {monthName(month)} · GBP, PKR and USD kept separate · each month opens with last month&apos;s closing balance
           </p>
         </div>
         {/* Small, quiet controls; the sheet reloads after every change and when you come back, so no Refresh button */}
@@ -366,12 +372,12 @@ export default function BalanceSheet({ embedded = false }) {
         </div>
       </div>
 
-      {CURRENCIES.map((cur) => {
+      {(sheet?.currencies || CURRENCIES).map((cur) => {
         const start = sheet?.starts?.[cur]
         return (
           <div key={cur} className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-base font-semibold">{cur === 'GBP' ? 'GBP account (£)' : 'PKR account (Rs)'}</h3>
+              <h3 className="text-base font-semibold">{ACCOUNT_NAME[cur] || `${cur} account`}</h3>
               <Button variant="link" size="sm" className="h-auto p-0" onClick={() => openStart(cur)}>
                 {start
                   ? `Starting balance ${formatMoney(start.amount, cur)} from ${monthName(start.start_month)} · change`
@@ -382,6 +388,13 @@ export default function BalanceSheet({ embedded = false }) {
           </div>
         )
       })}
+
+      {sheet?.fx_missing?.USD > 0 && (
+        <p className="text-sm text-amber-700 dark:text-amber-400">
+          {sheet.fx_missing.USD} USD invoice{sheet.fx_missing.USD === 1 ? '' : 's'} could not be turned into dollars (no exchange rate right now).
+          Type in the dollars received with the pencil, or refresh later.
+        </p>
+      )}
 
       {sheet?.rupees_missing > 0 && (
         <p className="text-sm text-amber-700 dark:text-amber-400">
@@ -444,6 +457,7 @@ export default function BalanceSheet({ embedded = false }) {
                   <SelectContent>
                     <SelectItem value="GBP">GBP account (£)</SelectItem>
                     <SelectItem value="PKR">PKR account (Rs)</SelectItem>
+                    <SelectItem value="USD">USD account ($)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -504,18 +518,18 @@ export default function BalanceSheet({ embedded = false }) {
         </DialogContent>
       </Dialog>
 
-      {/* Rupees actually received for a PKR invoice */}
+      {/* Rupees (or dollars) actually received for an invoice paid into the PKR (or USD) account */}
       <Dialog open={!!rupeeForm} onOpenChange={(open) => !open && !savingRupees && setRupeeForm(null)}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>Rupees received</DialogTitle>
+            <DialogTitle>{rupeeForm?.invoice.currency === 'USD' ? 'Dollars received' : 'Rupees received'}</DialogTitle>
             <DialogDescription>
-              {rupeeForm && `${rupeeForm.invoice.invoice_number}: ${formatMoney(rupeeForm.invoice.invoice_pkr_gbp ?? rupeeForm.invoice.gbp_amount, 'GBP')} paid into the PKR account. Type what actually reached the bank.`}
+              {rupeeForm && `${rupeeForm.invoice.invoice_number}: ${formatMoney(rupeeForm.invoice.invoice_gbp ?? rupeeForm.invoice.invoice_pkr_gbp ?? rupeeForm.invoice.gbp_amount, 'GBP')} paid into the ${rupeeForm.invoice.currency} account. Type what actually reached the bank.`}
             </DialogDescription>
           </DialogHeader>
           {rupeeForm && (
             <div className="grid gap-1.5 py-1">
-              <Label htmlFor="rupee-amount">Amount (Rs) <RequiredMark /></Label>
+              <Label htmlFor="rupee-amount">Amount ({rupeeForm.invoice.currency === 'USD' ? '$' : 'Rs'}) <RequiredMark /></Label>
               <Input id="rupee-amount"
                 {...invalidProps(rupeeErrors.errors, 'amount', 'rupee-')} inputMode="decimal" placeholder="0" value={rupeeForm.amount}
                 onChange={(e) => setRupeeForm((p) => ({ ...p, amount: e.target.value }))} />

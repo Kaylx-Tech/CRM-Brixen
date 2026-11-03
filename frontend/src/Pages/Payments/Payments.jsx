@@ -107,6 +107,7 @@ const PAYMENT_METHODS = [
   'Website Charge',
   'PKR(Bank Transfer)',
   'GBP(Bank Transfer)',
+  'USD(Bank Transfer)',
   'Credit Card (Stripe)',
 ]
 
@@ -1242,7 +1243,7 @@ export default function Payments() {
               })()}
 
               <p className="text-[11px] text-muted-foreground m-0">
-                GBP uses Tide 32546658 / 04-06-05. PKR uses the UBL IBAN. Save invoice only updates the record.
+                Bank details on the invoice come from Settings › Invoices. Save invoice only updates the record.
                 Send invoice emails payment details. When paid in full, Send thank you emails a complete-payment notice.
               </p>
             </div>

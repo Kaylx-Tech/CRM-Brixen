@@ -5,8 +5,9 @@ GET    /api/admin/finance?month=YYYY-MM           the balance sheet for that mon
 POST   /api/admin/finance/expenses                {spent_on, category, description, amount, currency}
 PUT    /api/admin/finance/expenses/<id>           any of the same fields
 DELETE /api/admin/finance/expenses/<id>
-PUT    /api/admin/finance/opening/<GBP|PKR>       {amount, start_month}  the starting balance
-PUT    /api/admin/finance/receipts/<invoice_id>   {amount} rupees actually received, or {reset: true}
+PUT    /api/admin/finance/opening/<GBP|PKR|USD>   {amount, start_month}  the starting balance
+PUT    /api/admin/finance/receipts/<invoice_id>   {amount, currency} rupees / dollars actually received, or
+                                                  {reset: true, currency}
 """
 import datetime
 import re
@@ -53,7 +54,7 @@ def _clean_expense(body, partial=False):
     if 'currency' in body or not partial:
         out['currency'] = str(body.get('currency') or 'GBP').strip().upper()
         if out['currency'] not in CURRENCIES:
-            return None, {'currency': "Currency must be GBP or PKR."}
+            return None, {'currency': f"Currency must be {', '.join(CURRENCIES)}."}
     return out, None
 
 
@@ -110,7 +111,7 @@ def handle_finance_routes(environ, start_response, path, method, user, body, que
     if m and method == 'PUT':
         currency = m.group(1).upper()
         if currency not in CURRENCIES:
-            return error_response(start_response, "Currency must be GBP or PKR", status_code=400)
+            return error_response(start_response, f"Currency must be {', '.join(CURRENCIES)}", status_code=400)
         data = body if isinstance(body, dict) else {}
         amount = _money(data.get('amount'))
         start_month = month_key(data.get('start_month'))
@@ -132,6 +133,28 @@ def handle_finance_routes(environ, start_response, path, method, user, body, que
         return success_response(start_response, message="Starting balance saved")
 
     m = re.match(r'^/api/admin/finance/receipts/(\d+)$', path)
+    data = body if isinstance(body, dict) else {}
+    if m and method == 'PUT' and str(data.get('currency') or 'PKR').upper() == 'USD':
+        # Dollars actually received for an invoice paid into the USD account
+        from services.finance_ledger import _ensure_fx_table
+        _ensure_fx_table()
+        invoice_id = int(m.group(1))
+        row = query_db("SELECT * FROM finance_invoice_fx WHERE invoice_id = ? AND currency = 'USD';", (invoice_id,),
+                       one=True)
+        if not row:
+            return error_response(start_response, "Only invoices paid into the USD account have a dollar amount",
+                                  status_code=404)
+        if data.get('reset'):
+            execute_db("UPDATE finance_invoice_fx SET edited = 0, rate = NULL, gbp_amount = -1, "
+                       "updated_at = datetime('now') WHERE invoice_id = ? AND currency = 'USD';", (invoice_id,))
+            return success_response(start_response, message="Dollar amount reset")
+        amount = _money(data.get('amount'))
+        if amount is None or amount < 0:
+            return validation_error(start_response, {'amount': "Enter the dollars received, 0 or more."})
+        execute_db("UPDATE finance_invoice_fx SET amount = ?, edited = 1, updated_at = datetime('now') "
+                   "WHERE invoice_id = ? AND currency = 'USD';", (amount, invoice_id))
+        log_activity(uid, 'Finance dollars received corrected', 'invoice', invoice_id, f"USD {amount}")
+        return success_response(start_response, message="Dollar amount saved")
     if m and method == 'PUT':
         invoice_id = int(m.group(1))
         row = query_db("SELECT * FROM finance_invoice_receipts WHERE invoice_id = ?;", (invoice_id,), one=True)

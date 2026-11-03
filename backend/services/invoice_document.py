@@ -113,6 +113,28 @@ def client_is_in_pakistan(invoice):
                ('client_country', 'client_address', 'owner_address', 'owner_nationality'))
 
 
+def gbp_rate(currency):
+    """Live GBP -> `currency` rate (PKR, USD …), cached for an hour; None when no rate service answers."""
+    currency = str(currency or '').upper()
+    if currency == 'PKR':
+        return gbp_to_pkr_rate()
+    now = datetime.datetime.now().timestamp()
+    cached = _FX_CACHE.setdefault('others', {}).get(currency)
+    if cached and now - cached[1] < 3600:
+        return cached[0]
+    for url in ('https://open.er-api.com/v6/latest/GBP', f'https://api.exchangerate.host/latest?base=GBP&symbols={currency}'):
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'BrixenConsultantsCRM/1.0'})
+            with urllib.request.urlopen(req, timeout=4) as resp:
+                rate = float((json.loads(resp.read().decode('utf-8')).get('rates') or {}).get(currency) or 0)
+            if rate > 0:
+                _FX_CACHE['others'][currency] = (round(rate, 4), now)
+                return round(rate, 4)
+        except Exception:
+            continue
+    return cached[0] if cached else None
+
+
 def gbp_to_pkr_rate():
     now = datetime.datetime.now().timestamp()
     if _FX_CACHE['rate'] and now - _FX_CACHE['fetched_at'] < 3600:

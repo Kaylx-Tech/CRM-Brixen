@@ -78,6 +78,7 @@ const CREDENTIALS_SCHEMA = { access_email: { label: 'Service email', type: 'emai
 const PAYMENT_MODES = [
   { value: 'PKR(Bank Transfer)', label: 'PKR (Bank Transfer)' },
   { value: 'GBP(Bank Transfer)', label: 'GBP (Bank Transfer)' },
+  { value: 'USD(Bank Transfer)', label: 'USD (Bank Transfer)' },
   { value: 'Website Charge', label: 'Website Charge' },
 ]
 

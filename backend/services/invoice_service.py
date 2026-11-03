@@ -12,6 +12,7 @@ ORDER_PAYMENT_MODES = (
     'Website Charge',
     'PKR(Bank Transfer)',
     'GBP(Bank Transfer)',
+    'USD(Bank Transfer)',
     'Credit Card (Stripe)',
 )
 

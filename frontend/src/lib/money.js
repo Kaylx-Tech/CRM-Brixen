@@ -26,8 +26,9 @@ export function plainAmount(value) {
   return Number.isInteger(n) ? String(n) : n.toFixed(2)
 }
 
-/** The same, in the given currency: "£49" for GBP, "Rs 12,500" for PKR. */
+/** The same, in the given currency: "£49" for GBP, "Rs 12,500" for PKR, "$59" for USD. */
 export function formatMoney(value, currency = "GBP") {
-  if (currency !== "PKR") return formatGBP(value)
-  return formatGBP(value).replace("£", "Rs ")
+  if (currency === "PKR") return formatGBP(value).replace("£", "Rs ")
+  if (currency === "USD") return formatGBP(value).replace("£", "$")
+  return formatGBP(value)
 }

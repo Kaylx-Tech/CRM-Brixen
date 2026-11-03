@@ -20,12 +20,62 @@ import datetime
 from db import query_db, execute_db
 from services.invoice_service import sync_invoice_payments
 
-CURRENCIES = ('GBP', 'PKR')
+CURRENCIES = ('GBP', 'PKR', 'USD')
+# Money paid into these accounts is turned from the invoice's pounds into that currency
+FOREIGN = ('PKR', 'USD')
 EXPENSE_CATEGORIES = ('Salary', 'Rent', 'Utilities', 'Software', 'Marketing', 'Tax', 'Other')
 
 
 def invoice_currency(invoice):
-    return 'PKR' if str((invoice or {}).get('payment_method') or '').startswith('PKR') else 'GBP'
+    """The account a payment went into: "PKR(Bank Transfer)" → PKR, "USD(Bank Transfer)" → USD, else GBP."""
+    method = str((invoice or {}).get('payment_method') or '')
+    return next((cur for cur in FOREIGN if method.startswith(cur)), 'GBP')
+
+
+def _ensure_fx_table():
+    """Amounts in dollars (and later other currencies) for an invoice's payments into that account; PKR keeps
+    its own table (finance_invoice_receipts) as before."""
+    execute_db("""
+        CREATE TABLE IF NOT EXISTS finance_invoice_fx (
+            invoice_id INTEGER NOT NULL,
+            currency TEXT NOT NULL,
+            gbp_amount REAL NOT NULL,
+            amount REAL,
+            rate REAL,
+            edited INTEGER NOT NULL DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (invoice_id, currency)
+        );
+    """)
+
+
+def _saved_fx(currency):
+    """{invoice_id: saved row} for one foreign currency."""
+    if currency == 'PKR':
+        rows = query_db("SELECT invoice_id, gbp_amount, amount, rate, edited FROM finance_invoice_receipts;") or []
+    else:
+        _ensure_fx_table()
+        rows = query_db("SELECT invoice_id, gbp_amount, amount, rate, edited FROM finance_invoice_fx "
+                        "WHERE currency = ?;", (currency,)) or []
+    return {r['invoice_id']: dict(r) for r in rows}
+
+
+def _save_fx(currency, invoice_id, gbp, amount, rate):
+    if currency == 'PKR':
+        execute_db("""
+            INSERT INTO finance_invoice_receipts (invoice_id, currency, gbp_amount, amount, rate, edited, updated_at)
+            VALUES (?, 'PKR', ?, ?, ?, 0, datetime('now'))
+            ON CONFLICT(invoice_id) DO UPDATE SET gbp_amount = excluded.gbp_amount, amount = excluded.amount,
+                rate = excluded.rate, updated_at = excluded.updated_at;
+        """, (invoice_id, gbp, amount, rate))
+        return
+    _ensure_fx_table()
+    execute_db("""
+        INSERT INTO finance_invoice_fx (invoice_id, currency, gbp_amount, amount, rate, edited, updated_at)
+        VALUES (?, ?, ?, ?, ?, 0, datetime('now'))
+        ON CONFLICT(invoice_id, currency) DO UPDATE SET gbp_amount = excluded.gbp_amount, amount = excluded.amount,
+            rate = excluded.rate, updated_at = excluded.updated_at;
+    """, (invoice_id, currency, gbp, amount, rate))
 
 
 def month_key(value):
@@ -43,10 +93,10 @@ def _next_month(key):
     return f"{year + (month == 12)}-{1 if month == 12 else month + 1:02d}"
 
 
-def _gbp_to_pkr_rate():
+def _gbp_rate(currency):
     try:
-        from services.invoice_document import gbp_to_pkr_rate
-        return gbp_to_pkr_rate()
+        from services.invoice_document import gbp_rate
+        return gbp_rate(currency)
     except Exception:
         return None
 
@@ -73,35 +123,31 @@ def received_invoices():
     for row in rows:
         row['currency'] = invoice_currency({'payment_method': row.get('method') or row.get('payment_method')})
 
-    # Pounds paid in PKR on each invoice, and the rupees saved for them
-    pkr_gbp = {}
+    # Pounds paid into each foreign account on each invoice, and the amount saved for them in that currency
+    foreign_gbp = {}  # (invoice_id, currency) -> pounds
     for row in rows:
-        if row['currency'] == 'PKR':
-            pkr_gbp[row['id']] = round(pkr_gbp.get(row['id'], 0) + float(row['paid'] or 0), 2)
-    rupees_for = {}
-    rate = None
-    for row in rows:
-        if row['currency'] != 'PKR' or row['id'] in rupees_for:
-            continue
-        gbp = pkr_gbp[row['id']]
+        if row['currency'] in FOREIGN:
+            key = (row['id'], row['currency'])
+            foreign_gbp[key] = round(foreign_gbp.get(key, 0) + float(row['paid'] or 0), 2)
+    converted = {}  # (invoice_id, currency) -> (amount, rate, edited)
+    saved = {cur: _saved_fx(cur) for cur in FOREIGN if any(k[1] == cur for k in foreign_gbp)}
+    rates = {}
+    for (invoice_id, cur), gbp in foreign_gbp.items():
+        old = saved[cur].get(invoice_id) or {}
         # Worked out again when new, when the pounds changed, or when the rate could not be fetched last time
-        stale = row.get('r_gbp') is None or (not row.get('r_edited') and (
-            abs(float(row['r_gbp']) - gbp) > 0.004 or row.get('r_amount') is None))
+        stale = old.get('gbp_amount') is None or (not old.get('edited') and (
+            abs(float(old['gbp_amount']) - gbp) > 0.004 or old.get('amount') is None))
         if stale:
-            saved_rate = row.get('r_rate')
+            saved_rate = old.get('rate')
             if not saved_rate:
-                rate = rate or _gbp_to_pkr_rate()
-                saved_rate = rate
-            rupees = round(gbp * float(saved_rate), 2) if saved_rate else None
-            execute_db("""
-                INSERT INTO finance_invoice_receipts (invoice_id, currency, gbp_amount, amount, rate, edited, updated_at)
-                VALUES (?, 'PKR', ?, ?, ?, 0, datetime('now'))
-                ON CONFLICT(invoice_id) DO UPDATE SET gbp_amount = excluded.gbp_amount, amount = excluded.amount,
-                    rate = excluded.rate, updated_at = excluded.updated_at;
-            """, (row['id'], gbp, rupees, saved_rate))
-            rupees_for[row['id']] = (rupees, saved_rate, False)
+                if cur not in rates:
+                    rates[cur] = _gbp_rate(cur)
+                saved_rate = rates[cur]
+            amount = round(gbp * float(saved_rate), 2) if saved_rate else None
+            _save_fx(cur, invoice_id, gbp, amount, saved_rate)
+            converted[(invoice_id, cur)] = (amount, saved_rate, False)
         else:
-            rupees_for[row['id']] = (row.get('r_amount'), row.get('r_rate'), bool(row.get('r_edited')))
+            converted[(invoice_id, cur)] = (old.get('amount'), old.get('rate'), bool(old.get('edited')))
 
     out = []
     for row in rows:
@@ -125,13 +171,16 @@ def received_invoices():
             'rate': None,
             'edited': False,
         }
-        if row['currency'] == 'PKR':
-            rupees, saved_rate, edited = rupees_for[row['id']]
-            total_gbp = pkr_gbp[row['id']]
-            share = (rupees * gbp / total_gbp) if (rupees is not None and abs(total_gbp) > 0.004) else None
-            # The owner corrects the rupees for the whole invoice (all its PKR payments together)
+        if row['currency'] in FOREIGN:
+            key = (row['id'], row['currency'])
+            whole, saved_rate, edited = converted[key]
+            total_gbp = foreign_gbp[key]
+            share = (whole * gbp / total_gbp) if (whole is not None and abs(total_gbp) > 0.004) else None
+            # The owner corrects the amount for the whole invoice (all its payments into that account together)
             item.update(amount=round(share, 2) if share is not None else None, rate=saved_rate, edited=edited,
-                        invoice_rupees=rupees, invoice_pkr_gbp=total_gbp)
+                        invoice_amount=whole, invoice_gbp=total_gbp,
+                        # older names the page still reads for PKR
+                        invoice_rupees=whole, invoice_pkr_gbp=total_gbp)
         out.append(item)
     return out
 
@@ -204,6 +253,8 @@ def balance_sheet(month=None):
                          key=lambda i: (i['date'], i['payment_id']), reverse=True),
         'expenses': [e for e in expenses if month_key(e['spent_on']) == month],
         'months': [m for m in months if m['month'] <= max(month, today)][::-1][:24],
-        'rupees_missing': sum(1 for i in income if i['amount'] is None),
+        'rupees_missing': sum(1 for i in income if i['amount'] is None and i['currency'] == 'PKR'),
+        # Payments into a foreign account whose amount there could not be worked out yet (no live rate)
+        'fx_missing': {cur: sum(1 for i in income if i['amount'] is None and i['currency'] == cur) for cur in FOREIGN},
         'categories': list(EXPENSE_CATEGORIES),
     }
