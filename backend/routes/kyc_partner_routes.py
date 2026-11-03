@@ -45,9 +45,19 @@ def _get(cfg, path):
     except urllib.error.HTTPError as exc:
         if exc.code == 401:
             return None, None, "Finstap refused the KYC key. Make a new key in admin.finstap.com and set FINSTAP_KYC_KEY."
+        # Finstap's own reason (e.g. the workspace is suspended), so the team sees what to fix
+        try:
+            reason = str(json.loads(exc.read() or b'{}').get('error') or '')
+        except ValueError:
+            reason = ''
+        if 'suspended' in reason.lower():
+            return None, None, (f"Brixen's KYC workspace on Finstap (\"{cfg['workspace']}\") is suspended. "
+                                "Reactivate it in admin.finstap.com → Workspaces.")
+        if reason.lower() == 'workspace not found':
+            return None, None, (f"Finstap has no workspace called \"{cfg['workspace']}\". "
+                                "Check FINSTAP_KYC_WORKSPACE (the workspace's name).")
         if exc.code == 404:
-            return None, None, ("Not found on Finstap. If nothing loads at all, check FINSTAP_KYC_WORKSPACE "
-                                "(the workspace's name).")
+            return None, None, f"Not found on Finstap{': ' + reason if reason else ''}."
         return None, None, f"Finstap answered {exc.code}. Please try again in a moment."
     except Exception as exc:
         print(f"[KYC] Finstap could not be reached: {exc}")
