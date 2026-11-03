@@ -10,6 +10,7 @@ import {
   IconId,
   IconRefresh,
   IconSearch,
+  IconTrash,
   IconX,
 } from "@tabler/icons-react"
 import { cn } from "cn"
@@ -28,6 +29,7 @@ import { money, ownerApi, shortDate } from "@/lib/owner"
 import { Button, FilterTabs, LoadError, PageTitle, Panel, SELECT, Stat } from "./ownerUi"
 import { AMBER, GREEN, GREY, PILL, RED, REJECTED, SKY, kycLabel } from "../Kyc/kycStatus"
 import KycTeam from "./KycTeam"
+import { DeleteConfirmation } from "@/components/DeleteConfirmation"
 import KycPartners from "./KycPartners"
 import { useServiceSettings } from "./useServiceSettings"
 
@@ -115,7 +117,44 @@ function ActionDialog({ action, onClose, onDone }) {
   )
 }
 
-function KycCell({ check, onAction }) {
+/** Owner only: delete the photos, files, answers and result the person sent (the check stays in the list). */
+function DeleteDataButton({ check, onDone }) {
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  if (check.data_deleted_at) return <span className="text-xs text-muted-foreground">Data deleted {shortDate(check.data_deleted_at)}</span>
+
+  const remove = async () => {
+    setBusy(true)
+    const id = toastProcessing("Deleting…")
+    const res = await ownerApi(`/desk/checks/${check.workspace}/${check.id}/delete-data`, { method: "POST" })
+    setBusy(false)
+    setOpen(false)
+    if (res.ok) {
+      toastDone(id, res.message)
+      onDone()
+    } else {
+      toastFail(id, res.error)
+    }
+  }
+
+  return (
+    <>
+      <Button size="xs" variant="ghost" className="text-destructive" onClick={() => setOpen(true)}>
+        <IconTrash className="size-3.5" /> Delete data
+      </Button>
+      <DeleteConfirmation
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        onConfirm={remove}
+        isLoading={busy}
+        title="Delete this person's KYC data?"
+        description="Their photos, files, answers and result are deleted for good. The check and its status stay in the list."
+      />
+    </>
+  )
+}
+
+function KycCell({ check, onAction, onDeleted }) {
   const [label, tone] = kycLabel(check.status)
   const rejected = REJECTED.includes(check.status)
   return (
@@ -141,6 +180,7 @@ function KycCell({ check, onAction }) {
               <IconX className="size-3.5" /> Reject
             </Button>
           )}
+          <DeleteDataButton check={check} onDone={onDeleted} />
           {check.session_url && !rejected && check.status !== "Approved" && (
             <Button
               size="xs"
@@ -425,7 +465,7 @@ export default function OwnerKyc() {
                           )}
                         </td>
                         <td className="px-3 py-3">
-                          <KycCell check={c} onAction={(check, act) => setAction({ check, act })} />
+                          <KycCell check={c} onAction={(check, act) => setAction({ check, act })} onDeleted={load} />
                         </td>
                       </tr>
                     ))}

@@ -526,7 +526,7 @@ export default function KycCheck({ api = kycApi, getToken = getKycToken, backTo 
         <div className="space-y-4">
           <Decision key={`${check.status}-${check.reviewed_at}`} check={check} onSaved={load} api={api} />
           <Resubmit check={check} onSaved={load} api={api} />
-          {canDelete && <DeleteData check={check} api={api} onDone={load} />}
+          {(canDelete || check.can_delete) && <DeleteData check={check} api={api} onDone={load} />}
           <Panel title="Order and client">
             <Facts
               rows={[

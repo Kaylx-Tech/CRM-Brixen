@@ -170,7 +170,7 @@ def _form_files(check_id):
     return out
 
 
-def detail(slug, check_id, team=False):
+def detail(slug, check_id, team=False, can_delete=False):
     """One check: what the table shows, the person's answers and files (or Didit's, for older checks)."""
     from db import query_db
     from services import didit_service, kyc_form
@@ -198,6 +198,7 @@ def detail(slug, check_id, team=False):
         **shown({**row, 'workspace': tenant['slug'], 'workspace_name': tenant['name']}, team),
         'company_name': order.get('company_name'), 'company_number': order.get('company_number'),
         'submitted_at': extra.get('submitted_at'),
+        'can_delete': bool(can_delete),
         'result': result,
         'submissions': submissions,
         'media': media,

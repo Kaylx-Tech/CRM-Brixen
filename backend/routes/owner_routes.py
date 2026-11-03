@@ -139,7 +139,7 @@ def _desk(environ, start_response, sub, method, admin, body, query):
             return error_response(start_response, "Not found", status_code=404)
         slug, check_id, act = kyc_desk.resolve(match.group(1)), int(match.group(2)), match.group(3)
         if not act and method == 'GET':
-            return success_response(start_response, data=kyc_desk.detail(slug, check_id, team))
+            return success_response(start_response, data=kyc_desk.detail(slug, check_id, team, owner))
         if act == 'status' and method == 'POST':
             row = kyc_desk.set_status(slug, check_id, body.get('status'), body.get('note'), admin)
             audit(admin, f"KYC_{row['status'].upper().replace(' ', '_')}", slug,
