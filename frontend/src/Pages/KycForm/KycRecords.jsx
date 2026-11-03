@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { IconAlertTriangle, IconCopy, IconId, IconRefresh, IconSearch } from '@tabler/icons-react'
+import { IconAlertTriangle, IconCopy, IconEye, IconId, IconRefresh, IconSearch } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { apiRequest } from '@/lib/api'
+import KycCheckView from './KycCheckView'
 
 // How a check's status reads to the team (the KYC team at Finstap sets Approved / In Review / Declined)
 function statusLabel(status) {
@@ -41,6 +42,7 @@ export default function KycRecords() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [viewing, setViewing] = useState(null) // the check whose details and documents are open
 
   const load = useCallback(() => {
     apiRequest('/admin/kyc', { label: 'KYC', silent: true }).then((res) => {
@@ -145,7 +147,9 @@ export default function KycRecords() {
                     return (
                       <tr key={c.id} className="border-b align-top last:border-0">
                         <td className="py-2.5 pr-3">
-                          <div className="font-medium">{c.full_name}</div>
+                          <button type="button" className="text-left font-medium hover:text-primary" onClick={() => setViewing(c)}>
+                            {c.full_name}
+                          </button>
                           <div className="text-xs text-muted-foreground">{c.email || '—'}</div>
                         </td>
                         <td className="px-3 py-2.5 whitespace-nowrap">{c.phone || '—'}</td>
@@ -155,7 +159,10 @@ export default function KycRecords() {
                           <Badge className={`${tone} whitespace-nowrap`}>{label}</Badge>
                           {c.reason && <div className="mt-1 max-w-56 text-xs text-muted-foreground">{c.reason}</div>}
                         </td>
-                        <td className="py-2.5 pl-3 text-right">
+                        <td className="py-2.5 pl-3 text-right whitespace-nowrap">
+                          <Button variant="outline" size="xs" className="h-7 gap-1" onClick={() => setViewing(c)}>
+                            <IconEye className="size-3.5" /> View
+                          </Button>
                           {c.session_url && (
                             <Button variant="ghost" size="xs" className="h-7 gap-1 text-muted-foreground" onClick={() => copyText(c.session_url, "Client's link")}>
                               <IconCopy className="size-3.5" /> Their link
@@ -176,6 +183,8 @@ export default function KycRecords() {
           )}
         </Card>
       )}
+
+      <KycCheckView key={viewing?.id || 'none'} check={viewing} statusLabel={statusLabel} onClose={() => setViewing(null)} />
     </div>
   )
 }
