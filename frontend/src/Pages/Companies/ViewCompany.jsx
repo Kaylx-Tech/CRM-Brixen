@@ -434,15 +434,15 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
               <TabsContent value="overview" className="m-0 space-y-6 outline-none">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-sm font-semibold">Company Name</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Company Name</span>
                     <span className="font-semibold text-foreground">{name}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-sm font-semibold">Company Number</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Company Number</span>
                     <span className="font-semibold text-foreground">{number}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-sm font-semibold">Status</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Status</span>
                     <div>
                       <Badge className={status === 'Active' ? 'badge-green' : 'badge-amber'}>
                         {status}
@@ -450,25 +450,25 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-sm font-semibold">Country</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Country</span>
                     <span className="font-medium text-foreground">United Kingdom</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-sm font-semibold">Incorporation Date</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Incorporation Date</span>
                     <span className="font-medium text-foreground">{incDateFormatted}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-sm font-semibold">Director</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Director</span>
                     <span className="font-medium text-foreground">{director}</span>
                   </div>
                   {clientName !== '—' && (
                     <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-sm font-semibold">Client Owner</span>
+                      <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Client Owner</span>
                       <span className="font-medium text-foreground">{clientName}</span>
                     </div>
                   )}
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-sm font-semibold">Record Security</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Record Security</span>
                     <span className="font-medium text-foreground flex items-center gap-1.5">
                       {isGenuine ? (
                         <>
@@ -485,7 +485,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="company-contact-registered_email" className="font-semibold text-sm text-muted-foreground">
+                    <Label htmlFor="company-contact-registered_email" className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
                       Business / Contact Email
                     </Label>
                     <div className="flex items-center gap-3">
@@ -511,7 +511,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="company-contact-whatsapp_number" className="font-semibold text-sm text-muted-foreground">
+                    <Label htmlFor="company-contact-whatsapp_number" className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
                       Phone / WhatsApp Number
                     </Label>
                     <Input
@@ -539,16 +539,16 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
               <TabsContent value="registered-office" className="m-0 space-y-6 outline-none">
                 <div className="grid grid-cols-1 gap-y-4">
                   <div className="space-y-1">
-                    <span className="text-muted-foreground text-sm font-semibold">Registered Office Address</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Registered Office Address</span>
                     <p className="text-sm font-medium bg-muted/30 p-3 rounded-lg border">{address}</p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <span className="text-muted-foreground text-sm font-semibold">Jurisdiction</span>
+                      <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Jurisdiction</span>
                       <p className="text-sm font-medium text-foreground">England & Wales</p>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-muted-foreground text-sm font-semibold">Entity Type</span>
+                      <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Entity Type</span>
                       <p className="text-sm font-medium text-foreground">Private Limited Company (LTD)</p>
                     </div>
                   </div>
@@ -558,7 +558,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
               {/* Business Activity Tab */}
               <TabsContent value="business-activity" className="m-0 space-y-6 outline-none">
                 <div className="border rounded-xl p-4 space-y-2 bg-background shadow-xs">
-                  <div className="text-sm font-semibold text-muted-foreground">Principal Activity / SIC</div>
+                  <div className="text-sm uppercase tracking-wider font-semibold text-muted-foreground">Principal Activity / SIC</div>
                   <div className="font-medium text-sm text-foreground">
                     {sicCodes}
                   </div>

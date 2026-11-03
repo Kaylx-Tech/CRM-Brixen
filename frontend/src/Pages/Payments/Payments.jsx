@@ -950,7 +950,7 @@ export default function Payments() {
     <div className="flex flex-col gap-4 w-full pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">Finance</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Finance</h2>
           {activeTab !== 'balance' && <p className="text-sm text-muted-foreground mt-0.5">Showing {monthLabel}</p>}
         </div>
         {/* The Balance Sheet tab has its own month and refresh */}
@@ -1054,7 +1054,7 @@ export default function Payments() {
           {editInvoice && (
             <div className="grid gap-3 py-1">
               <div>
-                <div className="text-sm font-bold">{editInvoice.invoice_number}</div>
+                <div className="text-sm font-extrabold">{editInvoice.invoice_number}</div>
                 <div className="text-sm text-muted-foreground mt-0.5">
                   {[editInvoice.owner_name || editInvoice.client_name, editInvoice.owner_form_email || editInvoice.client_email, editInvoice.order_number]
                     .filter(Boolean)

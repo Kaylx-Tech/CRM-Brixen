@@ -285,7 +285,7 @@ export default function OwnerKyc() {
             {data.workspaces.length ? (
               <div className="overflow-x-auto">
                 <Table className="w-full md:min-w-[720px] text-left text-sm">
-                  <thead className="border-b text-xs font-medium text-muted-foreground">
+                  <thead className="border-b text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
                       <th className="py-2.5 pr-4 font-semibold">Workspace</th>
                       <th className="px-3 py-2.5 font-semibold">KYC service</th>
@@ -390,7 +390,7 @@ export default function OwnerKyc() {
             {checks.length ? (
               <div className="overflow-x-auto">
                 <Table className="w-full md:min-w-[1100px] text-left text-sm">
-                  <thead className="border-b bg-muted/40 text-xs font-medium text-muted-foreground">
+                  <thead className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
                       <th className="px-3 py-2.5 font-semibold">Client</th>
                       <th className="px-3 py-2.5 font-semibold">Email</th>
@@ -408,7 +408,7 @@ export default function OwnerKyc() {
                     {checks.map((c) => (
                       <tr key={`${c.workspace}-${c.id}`} className="border-b align-top last:border-0">
                         <td className="px-3 py-3">
-                          <Link to={`/owner/kyc/${c.workspace}/${c.id}`} className="font-semibold hover:text-primary">
+                          <Link to={`/owner/kyc/${c.workspace}/${c.id}`} className="font-semibold uppercase hover:text-primary">
                             {c.full_name}
                           </Link>
                           <div className="text-xs text-muted-foreground">

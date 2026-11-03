@@ -438,7 +438,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                             <IconBuilding className="h-4 w-4 text-muted-foreground shrink-0" />
                             <div className="truncate">
                               <p className="font-medium truncate">{r.name || r.company_number}</p>
-                              <p className="text-muted-foreground text-[11px]">{r.company_number} {r.message ? `• ${r.message}` : ''}</p>
+                              <p className="text-muted-foreground text-[10px]">{r.company_number} {r.message ? `• ${r.message}` : ''}</p>
                             </div>
                           </div>
                           <Badge className={

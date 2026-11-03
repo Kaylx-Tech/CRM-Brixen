@@ -67,7 +67,7 @@ export function PageHeader({ title, description, onRefresh, children }) {
   return (
     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
-        <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">{title}</h2>
+        <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
         {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">

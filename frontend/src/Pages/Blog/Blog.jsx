@@ -131,7 +131,7 @@ export default function BlogList() {
     <PublicShell>
       <div className="bg-[#f5f5f7]">
         <div className="mx-auto max-w-6xl px-4 pb-10 pt-14 sm:px-6">
-          <p className="text-base font-semibold text-[#1A69F8]">Blog</p>
+          <p className="text-sm font-semibold uppercase tracking-wider text-[#1A69F8]">Blog</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#1d1d1f] sm:text-4xl">News and guides from Finstap</h1>
           <p className="mt-3 max-w-2xl text-[#6e6e73]">For accountants and company formation agents in the UK.</p>
         </div>

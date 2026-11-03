@@ -322,7 +322,7 @@ const AddCompany = ({ isOpen, onClose }) => {
                 <Label htmlFor="ch-search" className="text-sm font-semibold">
                   Search Companies House
                 </Label>
-                <span className="text-[11px] text-muted-foreground">Type name or 8-digit number to auto-fill</span>
+                <span className="text-[10px] text-muted-foreground">Type name or 8-digit number to auto-fill</span>
               </div>
               <div className="relative">
                 <IconSearch className="absolute left-2.5 top-1.5 h-4 w-4 text-muted-foreground" />
@@ -360,7 +360,7 @@ const AddCompany = ({ isOpen, onClose }) => {
                               {item.company_number} • {item.address_snippet || 'UK'}
                             </p>
                           </div>
-                          <Badge className={item.status === 'Active' ? 'badge-green shrink-0 text-[11px]' : 'badge-amber shrink-0 text-[11px]'}>
+                          <Badge className={item.status === 'Active' ? 'badge-green shrink-0 text-[10px]' : 'badge-amber shrink-0 text-[10px]'}>
                             {item.status}
                           </Badge>
                         </div>
@@ -498,7 +498,7 @@ const AddCompany = ({ isOpen, onClose }) => {
 
                 <div className="space-y-1">
                   <Label htmlFor="add-comp-company_number" className="text-sm font-normal">
-                    Company Number <span className="text-muted-foreground text-[11px]">(Optional)</span>
+                    Company Number <span className="text-muted-foreground text-[10px]">(Optional)</span>
                   </Label>
                   <Input
                     id="add-comp-company_number"

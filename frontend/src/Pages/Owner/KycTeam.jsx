@@ -75,7 +75,7 @@ export default function KycTeam() {
       {users?.length ? (
         <div className="mt-4 overflow-x-auto">
           <Table className="w-full text-left text-sm">
-            <thead className="border-b text-xs font-medium text-muted-foreground">
+            <thead className="border-b text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="py-2.5 pr-4 font-semibold">Name</th>
                 <th className="px-3 py-2.5 font-semibold">Status</th>

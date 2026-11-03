@@ -140,7 +140,7 @@ function CustomizeDashboard({ hidden, onToggle, onReset }) {
         <IconLayoutDashboard className="w-4 h-4" />
         Customize
         {hiddenCount > 0 && (
-          <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-[11px]">
+          <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-[10px]">
             {hiddenCount} hidden
           </Badge>
         )}
@@ -657,7 +657,7 @@ const Dashboard = () => {
                     <p className="text-sm font-semibold truncate">{item.title}</p>
                     <p className="text-sm text-muted-foreground truncate">{item.subtitle}</p>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <Badge variant="secondary" className="text-[11px] px-1.5 py-0 h-4">
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
                         {item.meta_tag || item.kind}
                       </Badge>
                       <span className="text-[11px] text-muted-foreground">{item.meta_time}</span>

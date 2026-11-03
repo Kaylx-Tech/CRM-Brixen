@@ -372,7 +372,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
       <Drawer open={open} onOpenChange={(v) => { if (!v) handleAttemptClose() }}>
         <DrawerContent className="max-w-4xl mx-auto h-[90vh] max-h-[94vh] p-0 overflow-clip gap-0 flex flex-col">
           <DrawerHeader className="px-6 pt-3 pb-3 border-b text-left space-y-1 shrink-0">
-          <DrawerTitle className="text-xl font-bold tracking-tight">
+          <DrawerTitle className="text-xl font-extrabold tracking-tight">
             Create Manual Order &amp; Company Registration
           </DrawerTitle>
           <DrawerDescription className="text-sm">
@@ -719,8 +719,8 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                   </div>
                   {showPrices ? (
                     <div className="text-right sm:pt-6">
-                      <div className="text-[11px] font-semibold text-muted-foreground">Total Amount</div>
-                      <div className="text-xl font-bold mt-0.5">{formatGBP(total)}</div>
+                      <div className="text-[11px] font-semibold uppercase text-muted-foreground">Total Amount</div>
+                      <div className="text-xl font-extrabold mt-0.5">{formatGBP(total)}</div>
                     </div>
                   ) : null}
                 </div>

@@ -169,13 +169,13 @@ function ServiceFormAnswers({ answers, linked, uploads }) {
   if (!answers.length && !linked.length && !uploads.length) return null
   return (
     <div className="space-y-3">
-      <h4 className="text-sm font-semibold text-muted-foreground">Service Form</h4>
+      <h4 className="text-sm uppercase tracking-wider font-semibold text-muted-foreground">Service Form</h4>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
         {answers.map((f, idx) => {
           const wide = f.company || isWideField(f.label) || String(f.value || '').length > 60
           return (
             <div key={`${f.label}-${idx}`} className={`flex flex-col gap-1 ${wide ? 'md:col-span-2' : ''}`}>
-              <span className="text-muted-foreground text-sm font-semibold">{f.label}</span>
+              <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">{f.label}</span>
               {f.company ? (
                 <CompanyAnswer company={f.company} />
               ) : (
@@ -191,7 +191,7 @@ function ServiceFormAnswers({ answers, linked, uploads }) {
         })}
         {uploads.length ? (
           <div className="flex flex-col gap-1 md:col-span-2">
-            <span className="text-muted-foreground text-sm font-semibold">Form uploads</span>
+            <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Form uploads</span>
             <ul className="text-sm space-y-0.5">
               {uploads.map(([label, done]) => (
                 <li key={label} className="flex items-center gap-2">
@@ -205,7 +205,7 @@ function ServiceFormAnswers({ answers, linked, uploads }) {
         ) : null}
         {linked.length ? (
           <div className="flex flex-col gap-1 md:col-span-2">
-            <span className="text-muted-foreground text-sm font-semibold">Linked companies</span>
+            <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Linked companies</span>
             <ul className="text-sm space-y-0.5">
               {linked.map((c) => (
                 <li key={c.company_id} className="flex items-center gap-2">
@@ -941,7 +941,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                   key={`${field.label}-${idx}`}
                                   className={`flex flex-col gap-1 ${wide ? 'md:col-span-2' : ''}`}
                                 >
-                                  <span className="text-muted-foreground text-sm font-semibold">
+                                  <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">
                                     {field.label}
                                   </span>
                                   <span className="font-semibold text-foreground text-sm break-words whitespace-pre-line">
@@ -1104,7 +1104,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
 
                       {/* Status & Payment Settings */}
                       <div className="space-y-3">
-                        <h4 className="text-sm font-semibold text-muted-foreground">
+                        <h4 className="text-sm uppercase tracking-wider font-semibold text-muted-foreground">
                           Order Status & Payment
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1166,7 +1166,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                       {/* Internal Notes */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <Label className="text-sm font-semibold text-muted-foreground">
+                          <Label className="text-sm uppercase tracking-wider font-semibold text-muted-foreground">
                             Internal Order Notes
                           </Label>
                           {notes !== (order?.notes || '') && (
@@ -1245,7 +1245,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                       {!isEditingCreds ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
                           <div className="flex flex-col gap-1">
-                            <span className="text-muted-foreground text-sm font-semibold">
+                            <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">
                               Service Account Email
                             </span>
                             <div className="flex items-center gap-2">
@@ -1267,7 +1267,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                           </div>
 
                           <div className="flex flex-col gap-1">
-                            <span className="text-muted-foreground text-sm font-semibold">
+                            <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">
                               Email Password / Access Code
                             </span>
                             <div className="flex items-center gap-2">
@@ -1417,7 +1417,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               >
                                 <div>
                                   <span className="font-semibold">{svc.name}</span>
-                                  <span className="text-[11px] text-muted-foreground ml-2">({svc.category || svc.category_name})</span>
+                                  <span className="text-[10px] text-muted-foreground ml-2">({svc.category || svc.category_name})</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {showPrices ? <span className="font-bold">{formatGBP(svc.price)}</span> : null}
@@ -1555,7 +1555,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                   <span className="text-sm font-semibold text-foreground truncate">
                                     {doc.name || doc.file_name || 'Document'}
                                   </span>
-                                  <span className="text-[11px] text-muted-foreground">
+                                  <span className="text-[10px] text-muted-foreground">
                                     {doc.status || 'Approved'} · {doc.file_type || 'PDF Document'}
                                     {doc.file_size ? ` · ${doc.file_size}` : ''}
                                   </span>

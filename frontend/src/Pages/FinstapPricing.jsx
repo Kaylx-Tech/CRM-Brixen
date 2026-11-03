@@ -112,7 +112,7 @@ function PlanCard({ data, index, yearly }) {
       </ul>
 
       <div className="mt-6">
-        <p className={cn("text-sm font-semibold", custom ? "text-[#a1a1a6]" : "text-[#86868b]")}>
+        <p className={cn("text-xs font-semibold uppercase tracking-wider", custom ? "text-[#a1a1a6]" : "text-[#86868b]")}>
           {previous ? `Everything in ${previous}, plus` : "Includes"}
         </p>
         <ul className="mt-3 space-y-2.5 text-sm">
@@ -196,7 +196,7 @@ export default function FinstapPricing() {
     <section id="pricing" className="scroll-mt-20 bg-[#f5f5f7] py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-base font-semibold text-[#1A69F8]">Pricing</p>
+          <p className="text-sm font-semibold uppercase tracking-wider text-[#1A69F8]">Pricing</p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Simple plans that grow with you</h2>
           <p className="mt-4 text-[#6e6e73]">
             One price for your whole workspace. Every plan starts with a 14-day free trial, no card needed.

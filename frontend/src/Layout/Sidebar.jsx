@@ -143,7 +143,7 @@ export function AppSidebar({
         >
           <IconSearch className="h-3.5 w-3.5 shrink-0" />
           <span className="flex-1 text-left">{IS_FINSTAP ? "Search anything" : "Search"}</span>
-          <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-sans text-[11px] text-white/50">{searchKey}</kbd>
+          <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-sans text-[10px] text-white/50">{searchKey}</kbd>
         </button>
       </SidebarHeader>
       <SidebarContent>

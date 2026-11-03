@@ -284,7 +284,7 @@ function HeroVisual() {
             />
           ))}
         </div>
-        <div className="mt-2 flex justify-between text-[11px] text-[#a1a1a6]">
+        <div className="mt-2 flex justify-between text-[10px] text-[#a1a1a6]">
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
             <span key={d} className="flex-1 text-center">
               {d}
@@ -326,7 +326,7 @@ function HeroVisual() {
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-2xl font-bold text-[#1d1d1f]">68%</span>
-            <span className="text-[11px] text-[#86868b]">Returning clients</span>
+            <span className="text-[10px] text-[#86868b]">Returning clients</span>
           </div>
         </div>
       </motion.div>
@@ -449,7 +449,7 @@ export default function FinstapLanding() {
       <section id="features" className="scroll-mt-20 bg-[#fbfbfd]/70 py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <FadeUp className="mx-auto max-w-2xl text-center">
-            <p className="text-base font-semibold text-[#1A69F8]">
+            <p className="text-sm font-semibold uppercase tracking-wider text-[#1A69F8]">
               Features
             </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
@@ -484,7 +484,7 @@ export default function FinstapLanding() {
       <section id="services" className="scroll-mt-20 py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <FadeUp className="mx-auto max-w-2xl text-center">
-            <p className="text-base font-semibold text-[#1A69F8]">
+            <p className="text-sm font-semibold uppercase tracking-wider text-[#1A69F8]">
               Why choose us
             </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
@@ -534,7 +534,7 @@ export default function FinstapLanding() {
       <section id="how" className="scroll-mt-20 py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <FadeUp className="mx-auto max-w-2xl text-center">
-            <p className="text-base font-semibold text-[#1A69F8]">
+            <p className="text-sm font-semibold uppercase tracking-wider text-[#1A69F8]">
               How it works
             </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
@@ -572,7 +572,7 @@ export default function FinstapLanding() {
           <FadeUp>
             <div className="grid items-center gap-10 overflow-hidden rounded-3xl bg-[#f5f5f7] p-8 sm:p-12 lg:grid-cols-2">
               <div>
-                <p className="text-base font-semibold text-[#1A69F8]">
+                <p className="text-sm font-semibold uppercase tracking-wider text-[#1A69F8]">
                   Why Finstap
                 </p>
                 <h2 className="mt-3 text-3xl font-bold tracking-tight">
@@ -616,7 +616,7 @@ export default function FinstapLanding() {
       <section id="faq" className="scroll-mt-20 bg-[#fbfbfd]/70 py-20 sm:py-24">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
           <FadeUp className="text-center">
-            <p className="text-base font-semibold text-[#1A69F8]">FAQ</p>
+            <p className="text-sm font-semibold uppercase tracking-wider text-[#1A69F8]">FAQ</p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
               Questions, answered
             </h2>

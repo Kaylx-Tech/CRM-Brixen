@@ -337,7 +337,7 @@ export default function BalanceSheet({ embedded = false }) {
     <div className="flex flex-col gap-4 w-full pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          {!embedded && <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">Revenue &amp; Balance Sheet</h2>}
+          {!embedded && <h2 className="text-2xl font-bold tracking-tight">Revenue &amp; Balance Sheet</h2>}
           <p className="text-sm text-muted-foreground mt-0.5">
             {monthName(month)} · GBP and PKR kept separate · each month opens with last month&apos;s closing balance
           </p>

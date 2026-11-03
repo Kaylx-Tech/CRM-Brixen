@@ -353,7 +353,7 @@ export default function KycCheck({ api = kycApi, getToken = getKycToken, backTo 
       {back}
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-[26px] font-bold leading-tight tracking-tight">{check.full_name}</h1>
+          <h1 className="text-[26px] font-bold uppercase leading-tight tracking-tight">{check.full_name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {[check.person_role, check.workspace_name, check.order_number].filter(Boolean).join(" · ")}
           </p>

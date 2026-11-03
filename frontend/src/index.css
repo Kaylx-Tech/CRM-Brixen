@@ -600,18 +600,6 @@ html.privacy-mode [data-chart-privacy] {
     text-rendering: optimizeLegibility;
     font-feature-settings: "kern";
   }
-  /* SF tracking: larger text sits tighter, small print a touch looser */
-  h1 {
-    letter-spacing: var(--tracking-tighter);
-  }
-  h2,
-  h3 {
-    letter-spacing: var(--tracking-tight);
-  }
-  small,
-  .text-xs {
-    letter-spacing: 0.005em;
-  }
   /* Figures line up in tables, like SF's tabular digits */
   table td,
   table th {

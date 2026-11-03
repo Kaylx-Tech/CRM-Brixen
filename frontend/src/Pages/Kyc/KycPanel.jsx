@@ -19,7 +19,7 @@ function KycShell({ onSignOut, children }) {
           <NavLink to="/kyc" className="flex shrink-0 items-center gap-2">
             <img src={finstapLogo} alt="Finstap" className="h-7 w-auto dark:hidden" />
             <img src={finstapLogoLight} alt="Finstap" className="hidden h-7 w-auto dark:block" />
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
               KYC
             </span>
           </NavLink>

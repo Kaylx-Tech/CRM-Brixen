@@ -153,7 +153,7 @@ function KycService({ kyc, busy, onSwitch, onNewLink }) {
           {kyc.months.length > 0 && (
             <div className="mt-4 overflow-x-auto">
               <table className="w-full min-w-[420px] text-left text-sm">
-                <thead className="border-b text-xs text-muted-foreground">
+                <thead className="border-b text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="py-2 pr-3 font-semibold">Month</th>
                     <th className="px-3 py-2 font-semibold">Checks</th>
@@ -274,7 +274,7 @@ export default function Billing() {
         confirmText="Switch plan"
       />
       <div>
-        <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">Billing</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Billing</h2>
         <p className="mt-1 text-sm text-muted-foreground">Your Finstap plan, card payments, services and receipts.</p>
       </div>
 
@@ -421,7 +421,7 @@ export default function Billing() {
         {data.payments.length ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-left text-sm">
-              <thead className="border-b text-xs text-muted-foreground">
+              <thead className="border-b text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="py-2.5 pr-4 font-semibold">Date</th>
                   <th className="px-3 py-2.5 font-semibold">For</th>

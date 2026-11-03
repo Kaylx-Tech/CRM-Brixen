@@ -218,12 +218,12 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-sm">
                   {b2bId && (
                     <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-sm font-semibold">B2B Identifier</span>
+                      <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">B2B Identifier</span>
                       <span className="font-semibold text-primary">{b2bId}</span>
                     </div>
                   )}
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-sm font-semibold">Customer Type</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Customer Type</span>
                     {canEditType ? (
                       <Select value={type} onValueChange={(val) => val !== type && setPendingType(val)}>
                         <SelectTrigger className="w-44 text-sm">
@@ -248,31 +248,31 @@ const ViewCustomer = ({ customer, isOpen, onClose, onCustomerUpdated }) => {
                     )}
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-sm font-semibold">Login Email</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Login Email</span>
                     <span className="font-medium truncate">{email}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-sm font-semibold">Phone Number</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Phone Number</span>
                     <span className="font-medium">{phone}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-sm font-semibold">Country</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Country</span>
                     <span className="font-medium">{country}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-sm font-semibold">Registration Date</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Registration Date</span>
                     <span className="font-medium">{signedUp}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-sm font-semibold">Source</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Source</span>
                     <span className="font-medium">{customer.source || "CRM"}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-sm font-semibold">Access</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Access</span>
                     <span className="font-medium">{customer.access || '—'}</span>
                   </div>
                   <div className="flex flex-col gap-1 sm:col-span-2">
-                    <span className="text-muted-foreground text-sm font-semibold">Address</span>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Address</span>
                     <span className="font-medium">{address}</span>
                   </div>
                 </div>

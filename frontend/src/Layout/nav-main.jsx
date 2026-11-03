@@ -14,7 +14,7 @@ import {
 // in the menu's own (accent-derived) colours with its icon in the accent, and count badges
 const FINSTAP = {
   group: "px-3 py-1.5",
-  label: "h-7 px-3 text-[0.6875rem] font-semibold text-sidebar-foreground/45",
+  label: "h-7 px-3 text-[0.6875rem] font-medium uppercase tracking-wider text-sidebar-foreground/45",
   menu: "gap-0.5",
   // fs-menu-btn: the pill's settle-in animation (index.css); hover brightens the icon,
   // and a short accent bar grows at the left of the active page
