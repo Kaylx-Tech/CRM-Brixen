@@ -203,12 +203,12 @@ export function OwnerBlogEditor() {
           </div>
         </Panel>
         <Panel title="Preview">
-          <article className="rounded-xl bg-white p-6 text-[15px] leading-7 text-slate-700 [color-scheme:light]">
+          <article className="rounded-xl bg-white p-6 text-[15px] leading-7 text-[#424245] [color-scheme:light]">
             {post.cover_url?.startsWith("https://") && (
               <img src={post.cover_url} alt="" className="mb-6 aspect-[16/9] w-full rounded-xl object-cover" />
             )}
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">{post.title || "Your title"}</h1>
-            {post.excerpt && <p className="mt-3 text-lg text-slate-600">{post.excerpt}</p>}
+            <h1 className="text-3xl font-bold tracking-tight text-[#1d1d1f]">{post.title || "Your title"}</h1>
+            {post.excerpt && <p className="mt-3 text-lg text-[#6e6e73]">{post.excerpt}</p>}
             <PlainText text={post.body} className="mt-6" />
           </article>
         </Panel>

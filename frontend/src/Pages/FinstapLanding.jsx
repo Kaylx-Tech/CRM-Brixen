@@ -32,15 +32,15 @@ import FinstapPricing from "@/Pages/FinstapPricing"
 import { NewsletterSignup } from "@/Pages/Blog/Blog"
 
 // Finstap brand: blue → violet from the logo. The landing page is always light.
-const GRADIENT = "bg-linear-to-r from-[#297bff] to-[#834aff]"
+const GRADIENT = "bg-[#1A69F8]"
 const GRADIENT_TEXT =
-  "bg-linear-to-r from-[#297bff] via-[#5f5cff] to-[#834aff] bg-clip-text text-transparent"
+  "text-[#1A69F8]"
 const CTA = cn(
   GRADIENT,
   "inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(101,89,255,0.7)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_36px_-12px_rgba(101,89,255,0.8)]",
 )
 const GHOST =
-  "inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-800 transition hover:border-[#6559ff]/40 hover:text-[#5f5cff]"
+  "inline-flex items-center justify-center gap-2 rounded-full border border-[#e8e8ed] bg-white px-6 py-3 text-sm font-semibold text-[#1d1d1f] transition hover:border-[#1A69F8]/40 hover:text-[#1A69F8]"
 
 const NAV = [
   ["Features", "#features"],
@@ -188,7 +188,7 @@ function FadeUp({ children, delay = 0, className }) {
 function Header() {
   const [open, setOpen] = useState(false)
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-white/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-[#e8e8ed]/60 bg-white/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <a href="#top" className="flex items-center">
           <img src={finstapLogo} alt="Finstap" className="h-8 w-auto" />
@@ -198,14 +198,14 @@ function Header() {
             <a
               key={href}
               href={href}
-              className="text-sm font-medium text-slate-600 transition hover:text-[#5f5cff]"
+              className="text-sm font-medium text-[#6e6e73] transition hover:text-[#1A69F8]"
             >
               {label}
             </a>
           ))}
         </nav>
         <div className="hidden items-center gap-3 md:flex">
-          <Link to="/login" className="text-sm font-semibold text-slate-700 hover:text-[#5f5cff]">
+          <Link to="/login" className="text-sm font-semibold text-[#424245] hover:text-[#1A69F8]">
             Log in
           </Link>
           <Link to="/signup" className={cn(CTA, "px-5 py-2.5")}>
@@ -214,7 +214,7 @@ function Header() {
         </div>
         <button
           type="button"
-          className="flex size-10 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 md:hidden"
+          className="flex size-10 items-center justify-center rounded-full text-[#424245] hover:bg-[#f5f5f7] md:hidden"
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? "Close menu" : "Open menu"}
         >
@@ -225,14 +225,14 @@ function Header() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="border-t border-slate-200/60 bg-white px-4 pb-5 pt-2 md:hidden"
+          className="border-t border-[#e8e8ed]/60 bg-white px-4 pb-5 pt-2 md:hidden"
         >
           {NAV.map(([label, href]) => (
             <a
               key={href}
               href={href}
               onClick={() => setOpen(false)}
-              className="block rounded-lg px-2 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="block rounded-lg px-2 py-3 text-sm font-medium text-[#424245] hover:bg-[#fbfbfd]"
             >
               {label}
             </a>
@@ -256,26 +256,18 @@ function HeroVisual() {
   const bars = [38, 52, 44, 66, 58, 82, 70]
   return (
     <div className="relative mx-auto w-full max-w-md lg:max-w-none">
-      <span
-        aria-hidden
-        className="absolute -top-10 right-0 size-72 rounded-full bg-[#834aff]/25 blur-3xl"
-      />
-      <span
-        aria-hidden
-        className="absolute -bottom-10 left-0 size-72 rounded-full bg-[#297bff]/25 blur-3xl"
-      />
 
       {/* Revenue overview */}
       <motion.div
         initial={{ opacity: 0, y: 30, rotate: -2 }}
         animate={{ opacity: 1, y: 0, rotate: -2 }}
         transition={{ duration: 0.7, delay: 0.2 }}
-        className="relative w-[78%] rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_30px_60px_-30px_rgba(41,64,140,0.35)] sm:p-5"
+        className="relative w-[78%] rounded-2xl border border-[#e8e8ed]/80 bg-white p-4 shadow-[0_30px_60px_-30px_rgba(41,64,140,0.35)] sm:p-5"
       >
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold text-slate-900">Revenue</p>
-            <p className="text-xs text-slate-500">This month vs last month</p>
+            <p className="text-sm font-semibold text-[#1d1d1f]">Revenue</p>
+            <p className="text-xs text-[#86868b]">This month vs last month</p>
           </div>
           <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-600">
             <IconTrendingUp className="size-3" /> 24%
@@ -288,11 +280,11 @@ function HeroVisual() {
               initial={{ height: 0 }}
               animate={{ height: `${h}%` }}
               transition={{ duration: 0.8, delay: 0.5 + i * 0.07, ease: [0.22, 1, 0.36, 1] }}
-              className={cn("flex-1 rounded-t-lg", i === 5 ? GRADIENT : "bg-slate-200")}
+              className={cn("flex-1 rounded-t-lg", i === 5 ? GRADIENT : "bg-[#e8e8ed]")}
             />
           ))}
         </div>
-        <div className="mt-2 flex justify-between text-[10px] text-slate-400">
+        <div className="mt-2 flex justify-between text-[10px] text-[#a1a1a6]">
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
             <span key={d} className="flex-1 text-center">
               {d}
@@ -306,16 +298,16 @@ function HeroVisual() {
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.45 }}
-        className="relative -mt-16 ml-auto w-[62%] rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_30px_60px_-25px_rgba(101,89,255,0.45)] sm:-mt-20 sm:p-5"
+        className="relative -mt-16 ml-auto w-[62%] rounded-2xl border border-[#e8e8ed]/80 bg-white p-4 shadow-[0_30px_60px_-25px_rgba(101,89,255,0.45)] sm:-mt-20 sm:p-5"
       >
-        <p className="text-center text-sm font-semibold text-slate-900">Clients</p>
-        <p className="text-center text-xs text-slate-500">Active this quarter</p>
+        <p className="text-center text-sm font-semibold text-[#1d1d1f]">Clients</p>
+        <p className="text-center text-xs text-[#86868b]">Active this quarter</p>
         <div className="relative mx-auto mt-3 size-32 sm:size-36">
           <svg viewBox="0 0 120 120" className="size-full -rotate-90">
             <defs>
               <linearGradient id="fs-donut" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#297bff" />
-                <stop offset="100%" stopColor="#834aff" />
+                <stop offset="0%" stopColor="#1A69F8" />
+                <stop offset="100%" stopColor="#1A69F8" />
               </linearGradient>
             </defs>
             <circle cx="60" cy="60" r="48" fill="none" stroke="#eef0f6" strokeWidth="14" />
@@ -333,8 +325,8 @@ function HeroVisual() {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-bold text-slate-900">68%</span>
-            <span className="text-[10px] text-slate-500">Returning clients</span>
+            <span className="text-2xl font-bold text-[#1d1d1f]">68%</span>
+            <span className="text-[10px] text-[#86868b]">Returning clients</span>
           </div>
         </div>
       </motion.div>
@@ -344,16 +336,16 @@ function HeroVisual() {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, delay: 0.75 }}
-        className="absolute bottom-6 left-2 flex gap-5 rounded-2xl border border-slate-200/80 bg-white px-5 py-3 shadow-xl sm:left-6"
+        className="absolute bottom-6 left-2 flex gap-5 rounded-2xl border border-[#e8e8ed]/80 bg-white px-5 py-3 shadow-xl sm:left-6"
       >
         <div>
-          <p className="text-[11px] font-medium text-slate-500">Paid</p>
-          <p className="text-lg font-bold text-slate-900">£8.2K</p>
+          <p className="text-[11px] font-medium text-[#86868b]">Paid</p>
+          <p className="text-lg font-bold text-[#1d1d1f]">£8.2K</p>
         </div>
-        <div className="w-px bg-slate-200" />
+        <div className="w-px bg-[#e8e8ed]" />
         <div>
-          <p className="text-[11px] font-medium text-slate-500">Due</p>
-          <p className="text-lg font-bold text-slate-900">£2.2K</p>
+          <p className="text-[11px] font-medium text-[#86868b]">Due</p>
+          <p className="text-lg font-bold text-[#1d1d1f]">£2.2K</p>
         </div>
       </motion.div>
     </div>
@@ -363,15 +355,15 @@ function HeroVisual() {
 function FaqItem({ q, a }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white">
+    <div className="rounded-2xl border border-[#e8e8ed] bg-white">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
         aria-expanded={open}
       >
-        <span className="font-semibold text-slate-900">{q}</span>
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+        <span className="font-semibold text-[#1d1d1f]">{q}</span>
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#f5f5f7] text-[#6e6e73]">
           {open ? <IconMinus className="size-4" /> : <IconPlus className="size-4" />}
         </span>
       </button>
@@ -381,7 +373,7 @@ function FaqItem({ q, a }) {
         transition={{ duration: 0.25 }}
         className="overflow-hidden"
       >
-        <p className="px-5 pb-5 text-sm leading-relaxed text-slate-600">{a}</p>
+        <p className="px-5 pb-5 text-sm leading-relaxed text-[#6e6e73]">{a}</p>
       </motion.div>
     </div>
   )
@@ -392,22 +384,18 @@ export default function FinstapLanding() {
   return (
     <div
       id="top"
-      className="min-h-screen scroll-smooth bg-white font-sans text-slate-900 antialiased [color-scheme:light]"
+      className="min-h-screen scroll-smooth bg-white font-sans text-[#1d1d1f] antialiased [color-scheme:light]"
     >
       <Header />
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(60%_60%_at_20%_0%,rgba(41,123,255,0.12),transparent),radial-gradient(50%_50%_at_90%_10%,rgba(131,74,255,0.14),transparent)]"
-        />
         <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 pb-20 pt-14 sm:px-6 lg:grid-cols-2 lg:gap-10 lg:pb-28 lg:pt-20">
           <div>
             <motion.span
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 rounded-full border border-[#6559ff]/20 bg-[#6559ff]/5 px-3 py-1 text-xs font-semibold text-[#5f5cff]"
+              className="inline-flex items-center gap-2 rounded-full border border-[#1A69F8]/20 bg-[#1A69F8]/5 px-3 py-1 text-xs font-semibold text-[#1A69F8]"
             >
               <IconBuildingSkyscraper className="size-3.5" /> CRM for accountants & company
               formation
@@ -424,7 +412,7 @@ export default function FinstapLanding() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.15 }}
-              className="mt-5 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg"
+              className="mt-5 max-w-xl text-base leading-relaxed text-[#6e6e73] sm:text-lg"
             >
               Finstap brings your clients, companies, orders, invoices and deadlines together, so
               your team spends less time chasing and more time helping clients.
@@ -446,10 +434,10 @@ export default function FinstapLanding() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className="mt-5 flex items-center gap-2 text-sm text-slate-500"
+              className="mt-5 flex items-center gap-2 text-sm text-[#86868b]"
             >
               <IconCheck className="size-4 text-emerald-500" /> 14-day free trial
-              <span className="text-slate-300">·</span>
+              <span className="text-[#d2d2d7]">·</span>
               <IconCheck className="size-4 text-emerald-500" /> No card to start
             </motion.p>
           </div>
@@ -458,23 +446,23 @@ export default function FinstapLanding() {
       </section>
 
       {/* Features */}
-      <section id="features" className="scroll-mt-20 bg-slate-50/70 py-20 sm:py-24">
+      <section id="features" className="scroll-mt-20 bg-[#fbfbfd]/70 py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <FadeUp className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">
+            <p className="text-base font-semibold text-[#1A69F8]">
               Features
             </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
               Everything your practice runs on
             </h2>
-            <p className="mt-4 text-slate-600">
+            <p className="mt-4 text-[#6e6e73]">
               One workspace for the work you do every day, from the first order to the final filing.
             </p>
           </FadeUp>
           <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map(([Icon, title, text], i) => (
               <FadeUp key={title} delay={(i % 4) * 0.06}>
-                <div className="group h-full rounded-2xl border border-slate-200 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-[#6559ff]/30 hover:shadow-[0_20px_40px_-20px_rgba(101,89,255,0.35)]">
+                <div className="group h-full rounded-2xl border border-[#e8e8ed] bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-[#1A69F8]/30 hover:shadow-[0_20px_40px_-20px_rgba(101,89,255,0.35)]">
                   <span
                     className={cn(
                       "flex size-11 items-center justify-center rounded-xl text-white",
@@ -483,8 +471,8 @@ export default function FinstapLanding() {
                   >
                     <Icon className="size-5" />
                   </span>
-                  <h3 className="mt-5 font-semibold text-slate-900">{title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600">{text}</p>
+                  <h3 className="mt-5 font-semibold text-[#1d1d1f]">{title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[#6e6e73]">{text}</p>
                 </div>
               </FadeUp>
             ))}
@@ -496,13 +484,13 @@ export default function FinstapLanding() {
       <section id="services" className="scroll-mt-20 py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <FadeUp className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">
+            <p className="text-base font-semibold text-[#1A69F8]">
               Why choose us
             </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
               Built for <span className={GRADIENT_TEXT}>UK company services</span>
             </h2>
-            <p className="mt-4 text-slate-600">
+            <p className="mt-4 text-[#6e6e73]">
               The services your clients buy from you every day, handled in the same place as their
               companies.
             </p>
@@ -510,28 +498,24 @@ export default function FinstapLanding() {
           <div className="mt-14 grid gap-5 md:grid-cols-2">
             {SERVICES.map(([Icon, title, text, points], i) => (
               <FadeUp key={title} delay={(i % 2) * 0.08}>
-                <div className="group relative h-full overflow-hidden rounded-3xl border border-slate-200 bg-white p-7 transition duration-300 hover:-translate-y-1 hover:border-[#6559ff]/30 hover:shadow-[0_24px_48px_-24px_rgba(101,89,255,0.4)] sm:p-8">
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute -right-20 -top-20 size-56 rounded-full bg-[#834aff]/10 blur-3xl transition duration-500 group-hover:bg-[#834aff]/20"
-                  />
+                <div className="group relative h-full overflow-hidden rounded-3xl border border-[#e8e8ed] bg-white p-7 transition duration-300 hover:shadow-[0_20px_40px_-24px_rgba(0,0,0,0.18)] sm:p-8">
                   <div className="relative flex items-start gap-4">
                     <span
                       className={cn(
-                        "flex size-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg shadow-[#6559ff]/25",
+                        "flex size-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg shadow-[#1A69F8]/25",
                         GRADIENT,
                       )}
                     >
                       <Icon className="size-6" />
                     </span>
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-900 capitalize">{title}</h3>
-                      <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{text}</p>
+                      <h3 className="text-lg font-semibold text-[#1d1d1f] capitalize">{title}</h3>
+                      <p className="mt-1.5 text-sm leading-relaxed text-[#6e6e73]">{text}</p>
                     </div>
                   </div>
-                  <ul className="relative mt-6 grid gap-2.5 border-t border-slate-100 pt-5">
+                  <ul className="relative mt-6 grid gap-2.5 border-t border-[#f5f5f7] pt-5">
                     {points.map((point) => (
-                      <li key={point} className="flex items-start gap-2.5 text-sm text-slate-700">
+                      <li key={point} className="flex items-start gap-2.5 text-sm text-[#424245]">
                         <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
                           <IconCheck className="size-3.5" />
                         </span>
@@ -550,7 +534,7 @@ export default function FinstapLanding() {
       <section id="how" className="scroll-mt-20 py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <FadeUp className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">
+            <p className="text-base font-semibold text-[#1A69F8]">
               How it works
             </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
@@ -560,7 +544,7 @@ export default function FinstapLanding() {
           <div className="relative mt-14 grid gap-6 md:grid-cols-3">
             <span
               aria-hidden
-              className="absolute left-[16%] right-[16%] top-7 hidden h-px bg-linear-to-r from-[#297bff]/40 via-[#5f5cff]/40 to-[#834aff]/40 md:block"
+              className="absolute left-[16%] right-[16%] top-7 hidden h-px bg-[#e8e8ed] md:block"
             />
             {STEPS.map(([title, text], i) => (
               <FadeUp key={title} delay={i * 0.1} className="relative text-center">
@@ -573,7 +557,7 @@ export default function FinstapLanding() {
                   {i + 1}
                 </span>
                 <h3 className="mt-5 text-lg font-semibold">{title}</h3>
-                <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-slate-600">
+                <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-[#6e6e73]">
                   {text}
                 </p>
               </FadeUp>
@@ -586,28 +570,28 @@ export default function FinstapLanding() {
       <section id="why" className="scroll-mt-20 pb-20 sm:pb-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <FadeUp>
-            <div className="grid items-center gap-10 overflow-hidden rounded-3xl border border-slate-200 bg-linear-to-br from-[#297bff]/[0.06] via-white to-[#834aff]/[0.08] p-8 sm:p-12 lg:grid-cols-2">
+            <div className="grid items-center gap-10 overflow-hidden rounded-3xl bg-[#f5f5f7] p-8 sm:p-12 lg:grid-cols-2">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">
+                <p className="text-base font-semibold text-[#1A69F8]">
                   Why Finstap
                 </p>
                 <h2 className="mt-3 text-3xl font-bold tracking-tight">
                   Your practice, your address, your data
                 </h2>
-                <p className="mt-4 text-slate-600">
+                <p className="mt-4 text-[#6e6e73]">
                   Each company gets its own Finstap workspace at its own address, with your logo and
                   your colours.
                 </p>
-                <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm">
-                  <IconWorld className="size-4 text-[#5f5cff]" />
-                  yourcompany<span className="text-slate-400">.finstap.com</span>
+                <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-[#e8e8ed] bg-white px-4 py-2 text-sm font-medium text-[#424245] shadow-sm">
+                  <IconWorld className="size-4 text-[#1A69F8]" />
+                  yourcompany<span className="text-[#a1a1a6]">.finstap.com</span>
                 </div>
               </div>
               <ul className="grid gap-3">
                 {WHY.map((item) => (
                   <li
                     key={item}
-                    className="flex items-center gap-3 rounded-2xl bg-white/80 px-4 py-3.5 text-sm font-medium text-slate-800 shadow-sm ring-1 ring-slate-200/70"
+                    className="flex items-center gap-3 rounded-2xl bg-white/80 px-4 py-3.5 text-sm font-medium text-[#1d1d1f] shadow-sm ring-1 ring-[#e8e8ed]/70"
                   >
                     <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
                       {item.startsWith("Login") ? (
@@ -629,10 +613,10 @@ export default function FinstapLanding() {
       <FinstapPricing />
 
       {/* FAQ */}
-      <section id="faq" className="scroll-mt-20 bg-slate-50/70 py-20 sm:py-24">
+      <section id="faq" className="scroll-mt-20 bg-[#fbfbfd]/70 py-20 sm:py-24">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
           <FadeUp className="text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">FAQ</p>
+            <p className="text-base font-semibold text-[#1A69F8]">FAQ</p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
               Questions, answered
             </h2>
@@ -652,17 +636,9 @@ export default function FinstapLanding() {
             <div
               className={cn(
                 "relative overflow-hidden rounded-3xl px-6 py-14 text-center text-white sm:px-12 sm:py-16",
-                "bg-linear-to-br from-[#297bff] via-[#5f5cff] to-[#834aff]",
+                "bg-[#1d1d1f]",
               )}
             >
-              <span
-                aria-hidden
-                className="absolute -right-16 -top-20 size-72 rounded-full bg-white/15 blur-3xl"
-              />
-              <span
-                aria-hidden
-                className="absolute -bottom-24 -left-10 size-72 rounded-full bg-[#297bff]/50 blur-3xl"
-              />
               <h2 className="relative text-3xl font-bold tracking-tight sm:text-4xl">
                 Ready to give your practice a calmer week?
               </h2>
@@ -672,7 +648,7 @@ export default function FinstapLanding() {
               <div className="relative mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                 <Link
                   to="/signup"
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#5f5cff] shadow-lg transition hover:-translate-y-0.5"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#1A69F8] shadow-lg transition hover:-translate-y-0.5"
                 >
                   Start free trial <IconArrowRight className="size-4" />
                 </Link>
@@ -689,32 +665,32 @@ export default function FinstapLanding() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white">
+      <footer className="border-t border-[#e8e8ed] bg-white">
         {/* Newsletter sign-up (Content > Newsletter in the owner portal) */}
-        <div className="border-b border-slate-100 bg-[#f6f5ff]">
+        <div className="border-b border-[#f5f5f7] bg-[#f5f5f7]">
           <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center">
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Get the Finstap newsletter</h2>
-              <p className="mt-1 text-sm text-slate-600">Product news and practical tips for UK practices.</p>
+              <h2 className="text-xl font-bold text-[#1d1d1f]">Get the Finstap newsletter</h2>
+              <p className="mt-1 text-sm text-[#6e6e73]">Product news and practical tips for UK practices.</p>
             </div>
             <NewsletterSignup source="landing" />
           </div>
         </div>
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-4 py-10 sm:flex-row sm:px-6">
           <img src={finstapLogo} alt="Finstap" className="h-7 w-auto" />
-          <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-slate-600">
+          <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-[#6e6e73]">
             {NAV.map(([label, href]) => (
-              <a key={href} href={href} className="hover:text-[#5f5cff]">
+              <a key={href} href={href} className="hover:text-[#1A69F8]">
                 {label}
               </a>
             ))}
-            <Link to="/login" className="hover:text-[#5f5cff]">
+            <Link to="/login" className="hover:text-[#1A69F8]">
               Log in
             </Link>
           </nav>
-          <p className="text-sm text-slate-500">© 2026 Finstap. All rights reserved.</p>
+          <p className="text-sm text-[#86868b]">© 2026 Finstap. All rights reserved.</p>
         </div>
-        <div className="border-t border-slate-100 py-4 text-sm text-slate-500">
+        <div className="border-t border-[#f5f5f7] py-4 text-sm text-[#86868b]">
           <LegalLinks />
         </div>
       </footer>

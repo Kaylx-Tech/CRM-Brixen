@@ -442,7 +442,7 @@ export default function OwnerBilling() {
         {data.payments.length ? (
           <div className="overflow-x-auto">
             <Table className="w-full md:min-w-[640px] text-left text-sm">
-              <thead className="border-b text-xs uppercase tracking-wide text-muted-foreground">
+              <thead className="border-b text-xs font-medium text-muted-foreground">
                 <tr>
                   <th className="py-2.5 pr-4 font-semibold">Date</th>
                   <th className="px-3 py-2.5 font-semibold">Workspace</th>

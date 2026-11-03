@@ -5,7 +5,7 @@ import { cn } from "cn"
 import { IconArrowRight, IconCheck, IconChevronDown, IconMinus, IconSparkles } from "@tabler/icons-react"
 import { getApiBase } from "@/lib/api"
 
-const GRADIENT = "bg-linear-to-r from-[#297bff] to-[#834aff]"
+const GRADIENT = "bg-[#1A69F8]"
 
 const money = (v) => `£${Number(v).toLocaleString("en-GB")}`
 
@@ -50,10 +50,10 @@ function PlanCard({ data, index, yearly }) {
       className={cn(
         "relative flex flex-col rounded-3xl p-7",
         popular
-          ? "bg-white shadow-[0_30px_60px_-30px_rgba(101,89,255,0.55)] ring-2 ring-[#6559ff] lg:-translate-y-3"
+          ? "bg-white shadow-[0_30px_60px_-30px_rgba(101,89,255,0.55)] ring-2 ring-[#1A69F8] lg:-translate-y-3"
           : custom
-            ? "bg-slate-900 text-white"
-            : "border border-slate-200 bg-white",
+            ? "bg-[#1d1d1f] text-white"
+            : "border border-[#e8e8ed] bg-white",
       )}
     >
       {popular && (
@@ -61,29 +61,29 @@ function PlanCard({ data, index, yearly }) {
           Most popular
         </span>
       )}
-      <h3 className={cn("text-lg font-semibold", custom ? "text-white" : "text-slate-900")}>{plan.name}</h3>
-      <p className={cn("mt-1 text-sm", custom ? "text-slate-300" : "text-slate-600")}>{plan.tagline}</p>
+      <h3 className={cn("text-lg font-semibold", custom ? "text-white" : "text-[#1d1d1f]")}>{plan.name}</h3>
+      <p className={cn("mt-1 text-sm", custom ? "text-[#d2d2d7]" : "text-[#6e6e73]")}>{plan.tagline}</p>
 
       <div className="mt-6 flex items-baseline gap-1">
         {custom ? (
           <span className="text-3xl font-bold tracking-tight">Let's talk</span>
         ) : (
           <>
-            <span className="text-4xl font-bold tracking-tight text-slate-900">
+            <span className="text-4xl font-bold tracking-tight text-[#1d1d1f]">
               {money(yearly ? Math.round((price / 12) * 100) / 100 : price)}
             </span>
-            <span className="text-sm text-slate-500">/month</span>
+            <span className="text-sm text-[#86868b]">/month</span>
           </>
         )}
       </div>
-      <p className={cn("mt-1 h-5 text-xs", custom ? "text-slate-400" : "text-slate-500")}>
+      <p className={cn("mt-1 h-5 text-xs", custom ? "text-[#a1a1a6]" : "text-[#86868b]")}>
         {custom ? "Custom software, limits and support" : yearly ? `${money(price)} billed yearly, excl. VAT` : "Billed monthly, excl. VAT"}
       </p>
 
       {custom ? (
         <a
           href="mailto:contact@finstap.com?subject=Finstap%20Enterprise"
-          className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:-translate-y-0.5"
+          className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#1d1d1f] transition hover:-translate-y-0.5"
         >
           Contact us <IconArrowRight className="size-4" />
         </a>
@@ -92,19 +92,19 @@ function PlanCard({ data, index, yearly }) {
           to="/signup"
           className={cn(
             "mt-6 inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition hover:-translate-y-0.5",
-            popular ? cn(GRADIENT, "text-white shadow-[0_10px_30px_-10px_rgba(101,89,255,0.7)]") : "border border-slate-200 text-slate-800 hover:border-[#6559ff]/40 hover:text-[#5f5cff]",
+            popular ? cn(GRADIENT, "text-white shadow-[0_10px_30px_-10px_rgba(101,89,255,0.7)]") : "border border-[#e8e8ed] text-[#1d1d1f] hover:border-[#1A69F8]/40 hover:text-[#1A69F8]",
           )}
         >
           Start free trial <IconArrowRight className="size-4" />
         </Link>
       )}
 
-      <ul className={cn("mt-7 space-y-2.5 border-t pt-6 text-sm", custom ? "border-white/10" : "border-slate-100")}>
+      <ul className={cn("mt-7 space-y-2.5 border-t pt-6 text-sm", custom ? "border-white/10" : "border-[#f5f5f7]")}>
         {Object.keys(LIMIT_LINE).map((k) => {
           const n = plan.limits[k]
           return (
-            <li key={k} className={cn("flex items-start gap-2.5", custom ? "text-slate-200" : "text-slate-700")}>
-              <IconCheck className={cn("mt-0.5 size-4 shrink-0", custom ? "text-violet-300" : "text-[#5f5cff]")} />
+            <li key={k} className={cn("flex items-start gap-2.5", custom ? "text-[#e8e8ed]" : "text-[#424245]")}>
+              <IconCheck className={cn("mt-0.5 size-4 shrink-0", custom ? "text-violet-300" : "text-[#1A69F8]")} />
               {n === null ? UNLIMITED_LINE[k] : LIMIT_LINE[k](n)}
             </li>
           )
@@ -112,12 +112,12 @@ function PlanCard({ data, index, yearly }) {
       </ul>
 
       <div className="mt-6">
-        <p className={cn("text-xs font-semibold uppercase tracking-wider", custom ? "text-slate-400" : "text-slate-500")}>
+        <p className={cn("text-sm font-semibold", custom ? "text-[#a1a1a6]" : "text-[#86868b]")}>
           {previous ? `Everything in ${previous}, plus` : "Includes"}
         </p>
         <ul className="mt-3 space-y-2.5 text-sm">
           {newFeatures(data, index).map((f) => (
-            <li key={f} className={cn("flex items-start gap-2.5", custom ? "text-slate-200" : "text-slate-700")}>
+            <li key={f} className={cn("flex items-start gap-2.5", custom ? "text-[#e8e8ed]" : "text-[#424245]")}>
               <IconSparkles className={cn("mt-0.5 size-4 shrink-0", custom ? "text-amber-300" : "text-emerald-500")} />
               {f}
             </li>
@@ -136,13 +136,13 @@ function CompareTable({ data }) {
     return k === "storage_gb" ? `${n} GB` : n.toLocaleString("en-GB")
   }
   return (
-    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+    <div className="overflow-x-auto rounded-2xl border border-[#e8e8ed] bg-white">
       <table className="w-full min-w-[640px] text-left text-sm">
         <thead>
-          <tr className="border-b border-slate-200 bg-slate-50">
-            <th className="px-5 py-3 font-semibold text-slate-500" />
+          <tr className="border-b border-[#e8e8ed] bg-[#fbfbfd]">
+            <th className="px-5 py-3 font-semibold text-[#86868b]" />
             {plans.map((p) => (
-              <th key={p.key} className="px-5 py-3 font-semibold text-slate-900">
+              <th key={p.key} className="px-5 py-3 font-semibold text-[#1d1d1f]">
                 {p.name}
               </th>
             ))}
@@ -150,24 +150,24 @@ function CompareTable({ data }) {
         </thead>
         <tbody>
           {Object.entries(data.limits).map(([k, label]) => (
-            <tr key={k} className="border-b border-slate-100">
-              <td className="px-5 py-3 text-slate-600">{label}</td>
+            <tr key={k} className="border-b border-[#f5f5f7]">
+              <td className="px-5 py-3 text-[#6e6e73]">{label}</td>
               {plans.map((p) => (
-                <td key={p.key} className="px-5 py-3 font-medium tabular-nums text-slate-900">
+                <td key={p.key} className="px-5 py-3 font-medium tabular-nums text-[#1d1d1f]">
                   {cell(p, k)}
                 </td>
               ))}
             </tr>
           ))}
           {Object.entries(data.features).map(([k, label]) => (
-            <tr key={k} className="border-b border-slate-100 last:border-0">
-              <td className="px-5 py-3 text-slate-600">{label}</td>
+            <tr key={k} className="border-b border-[#f5f5f7] last:border-0">
+              <td className="px-5 py-3 text-[#6e6e73]">{label}</td>
               {plans.map((p) => (
                 <td key={p.key} className="px-5 py-3">
                   {p.features.includes(k) ? (
                     <IconCheck className="size-4 text-emerald-500" />
                   ) : (
-                    <IconMinus className="size-4 text-slate-300" />
+                    <IconMinus className="size-4 text-[#d2d2d7]" />
                   )}
                 </td>
               ))}
@@ -193,15 +193,15 @@ export default function FinstapPricing() {
   }, [])
 
   return (
-    <section id="pricing" className="scroll-mt-20 bg-linear-to-b from-white to-[#f6f5ff] py-20 sm:py-24">
+    <section id="pricing" className="scroll-mt-20 bg-[#f5f5f7] py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">Pricing</p>
+          <p className="text-base font-semibold text-[#1A69F8]">Pricing</p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Simple plans that grow with you</h2>
-          <p className="mt-4 text-slate-600">
+          <p className="mt-4 text-[#6e6e73]">
             One price for your whole workspace. Every plan starts with a 14-day free trial, no card needed.
           </p>
-          <div className="mt-8 inline-flex items-center rounded-full border border-slate-200 bg-white p-1 text-sm font-semibold shadow-sm">
+          <div className="mt-8 inline-flex items-center rounded-full border border-[#e8e8ed] bg-white p-1 text-sm font-semibold shadow-sm">
             {[
               [false, "Monthly"],
               [true, "Yearly"],
@@ -212,7 +212,7 @@ export default function FinstapPricing() {
                 onClick={() => setYearly(value)}
                 className={cn(
                   "rounded-full px-5 py-2 transition",
-                  yearly === value ? cn(GRADIENT, "text-white shadow") : "text-slate-600 hover:text-slate-900",
+                  yearly === value ? cn(GRADIENT, "text-white shadow") : "text-[#6e6e73] hover:text-[#1d1d1f]",
                 )}
               >
                 {label}
@@ -233,7 +233,7 @@ export default function FinstapPricing() {
               <button
                 type="button"
                 onClick={() => setCompare((v) => !v)}
-                className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#5f5cff] hover:underline"
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1A69F8] hover:underline"
                 aria-expanded={compare}
               >
                 {compare ? "Hide" : "Compare all features"}
@@ -249,11 +249,11 @@ export default function FinstapPricing() {
         ) : (
           <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="h-[520px] animate-pulse rounded-3xl border border-slate-200 bg-white" />
+              <div key={i} className="h-[520px] animate-pulse rounded-3xl border border-[#e8e8ed] bg-white" />
             ))}
           </div>
         )}
-        <p className="mt-8 text-center text-xs text-slate-500">
+        <p className="mt-8 text-center text-xs text-[#86868b]">
           Need more team members? Add extra users to any plan. Prices exclude VAT.
         </p>
       </div>

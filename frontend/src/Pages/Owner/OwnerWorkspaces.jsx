@@ -75,7 +75,7 @@ export default function OwnerWorkspaces() {
 
       <div className="overflow-x-auto rounded-2xl border bg-card shadow-xs">
         <Table className="w-full md:min-w-[900px] text-left text-sm">
-          <thead className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+          <thead className="border-b bg-muted/40 text-xs font-medium text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-semibold">Workspace</th>
               <th className="px-4 py-3 font-semibold">Owner</th>

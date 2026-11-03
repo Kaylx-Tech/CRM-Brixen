@@ -181,7 +181,7 @@ export default function OwnerNewsletter() {
         {data.subscribers.length ? (
           <div className="max-h-96 overflow-auto">
             <Table className="w-full md:min-w-[520px] text-left text-sm">
-              <thead className="sticky top-0 border-b bg-card text-xs uppercase tracking-wide text-muted-foreground">
+              <thead className="sticky top-0 border-b bg-card text-xs font-medium text-muted-foreground">
                 <tr>
                   <th className="py-2.5 pr-4 font-semibold">Email</th>
                   <th className="px-3 py-2.5 font-semibold">Status</th>
