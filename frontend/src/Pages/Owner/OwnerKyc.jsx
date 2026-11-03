@@ -550,6 +550,7 @@ export default function OwnerKyc() {
                   <thead className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
                       {shows("date") && <th className="px-3 py-2.5 font-semibold">Date</th>}
+                      <th className="px-3 py-2.5 font-semibold">Workspace</th>
                       <th className="px-3 py-2.5 font-semibold">Client</th>
                       {shows("contact") && <th className="px-3 py-2.5 font-semibold">Contact</th>}
                       {shows("price") && <th className="px-3 py-2.5 text-right font-semibold" title="What Finstap charges the workspace for this check">Price</th>}
@@ -566,16 +567,16 @@ export default function OwnerKyc() {
                             {ddmmyy(c.order_date || c.created_at)}
                           </td>
                         )}
-                        <td className="min-w-44 px-3 py-3">
+                        <td className="min-w-36 px-3 py-3">
+                          <Link to={`/owner/workspaces/${c.workspace}`} className="font-medium hover:text-primary">
+                            {c.workspace_name}
+                          </Link>
+                          {c.order_number && <div className="font-mono text-[11px] text-muted-foreground">{c.order_number}</div>}
+                        </td>
+                        <td className="min-w-40 px-3 py-3">
                           <Link to={`/owner/kyc/${c.workspace}/${c.id}`} className="font-semibold hover:text-primary">
                             {c.full_name}
                           </Link>
-                          <div className="mt-0.5 text-xs text-muted-foreground">
-                            <Link to={`/owner/workspaces/${c.workspace}`} className="hover:text-primary">
-                              {c.workspace_name}
-                            </Link>
-                          </div>
-                          {c.order_number && <div className="font-mono text-[11px] text-muted-foreground">{c.order_number}</div>}
                         </td>
                         {shows("contact") && (
                           <td className="px-3 py-3">
