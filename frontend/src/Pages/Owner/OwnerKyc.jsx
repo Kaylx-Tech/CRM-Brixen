@@ -179,7 +179,7 @@ const whole = (value) =>
 const KYC_COLUMNS = [
   ["contact", "Email and phone"],
   ["product", "Product"],
-  ["price", "Price"],
+  ["price", "KYC charge"],
   ["date", "Date"],
   ["payment", "Payment"],
   ["order", "Order status"],
@@ -546,7 +546,7 @@ export default function OwnerKyc() {
                       <th className="px-3 py-2.5 font-semibold">Client</th>
                       {shows("contact") && <th className="px-3 py-2.5 font-semibold">Contact</th>}
                       {shows("product") && <th className="px-3 py-2.5 font-semibold">Product</th>}
-                      {shows("price") && <th className="px-3 py-2.5 text-right font-semibold">Price</th>}
+                      {shows("price") && <th className="px-3 py-2.5 text-right font-semibold" title="What Finstap charges the workspace for this check">KYC charge</th>}
                       {shows("date") && <th className="px-3 py-2.5 font-semibold">Date</th>}
                       {shows("payment") && <th className="px-3 py-2.5 font-semibold">Payment</th>}
                       {shows("order") && <th className="px-3 py-2.5 font-semibold">Order</th>}
@@ -582,7 +582,18 @@ export default function OwnerKyc() {
                         )}
                         {shows("price") && (
                           <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
-                            {c.total != null ? whole(c.total) : "—"}
+                            {c.kyc_free ? (
+                              <span className="text-muted-foreground">Free</span>
+                            ) : c.charge_amount != null ? (
+                              <>
+                                {whole(c.charge_amount)}
+                                <div className={cn("text-xs", c.charge === "paid" ? "text-emerald-600" : "text-amber-600")}>
+                                  {c.charge === "paid" ? "Paid" : "Due"}
+                                </div>
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground" title="Not charged yet">—</span>
+                            )}
                           </td>
                         )}
                         {shows("date") && (

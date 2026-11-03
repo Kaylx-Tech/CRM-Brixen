@@ -243,6 +243,8 @@ def kyc_report(period=None, slug=None):
         charged = kyc_charges(tenant['slug'])
         for c in checks[len(checks) - len(rows):]:
             c['charge'] = (charged.get(c['id']) or {}).get('status') or ''
+            c['charge_amount'] = (charged.get(c['id']) or {}).get('amount')
+            c['kyc_free'] = bool(tenant.get('kyc_free'))
         status = bill.get('status') or (month_status(m, None, False) if m['due'] or m['paid'] else '')
         amount = round(m['amount'], 2)
         workspaces.append({
