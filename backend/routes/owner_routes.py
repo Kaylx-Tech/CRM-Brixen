@@ -53,6 +53,7 @@ or its data; Brixen's adopted database (plan "legacy") cannot be changed from he
 import json
 import os
 import re
+import sqlite3
 import threading
 import time
 
@@ -360,6 +361,11 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
                                   environ.get('HTTP_USER_AGENT', ''))
         except OwnerAuthError as exc:
             return error_response(start_response, str(exc), status_code=400)
+        except sqlite3.OperationalError as exc:
+            # The platform database was busy (another write at that moment): nothing was counted, try again
+            print(f"[Owner login] code check busy: {exc}")
+            return error_response(start_response, "The server was busy for a moment. Please enter the code again.",
+                                  status_code=503)
         return success_response(start_response, data={'token': token, 'admin': admin})
 
     admin = admin_for_token(_token(environ))

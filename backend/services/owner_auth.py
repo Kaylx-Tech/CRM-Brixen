@@ -186,13 +186,27 @@ def verify(challenge, code, ip='', user_agent=''):
             conn.execute("UPDATE platform_login_codes SET used_at = datetime('now') WHERE challenge = ?;", (challenge,))
             conn.commit()
             raise OwnerAuthError("Too many wrong codes. Please sign in again.")
-        if len(code) != 6 or not hmac.compare_digest(row['code_hash'], _code_hash(challenge, code)):
+        right = len(code) == 6 and hmac.compare_digest(row['code_hash'], _code_hash(challenge, code))
+        if not right and len(code) == 6:
+            # Pressing Continue again sends a new code, and an earlier email can arrive later: a code from this
+            # person's other sign-ins of the last few minutes works too (each was emailed to them only)
+            for other in conn.execute("""
+                SELECT challenge, code_hash FROM platform_login_codes
+                WHERE admin_id = ? AND challenge != ? AND used_at IS NULL AND tries < ?
+                  AND datetime(expires_at) > datetime('now');
+            """, (row['admin_id'], challenge, MAX_TRIES)).fetchall():
+                if hmac.compare_digest(other['code_hash'], _code_hash(other['challenge'], code)):
+                    right = True
+                    break
+        if not right:
             conn.execute("UPDATE platform_login_codes SET tries = tries + 1 WHERE challenge = ?;", (challenge,))
             conn.commit()
             left = MAX_TRIES - row['tries'] - 1
             raise OwnerAuthError("That code is not right." + (f" {left} tries left." if left > 0 else ""))
         token = TOKEN_PREFIX + secrets.token_urlsafe(32)
-        conn.execute("UPDATE platform_login_codes SET used_at = datetime('now') WHERE challenge = ?;", (challenge,))
+        # Every open code of this person ends now (the one used and any earlier ones)
+        conn.execute("UPDATE platform_login_codes SET used_at = datetime('now') WHERE admin_id = ? AND used_at IS NULL;",
+                     (row['admin_id'],))
         conn.execute("""
             INSERT INTO platform_sessions (token_hash, admin_id, expires_at, ip, user_agent)
             VALUES (?, ?, datetime('now', ?), ?, ?);
