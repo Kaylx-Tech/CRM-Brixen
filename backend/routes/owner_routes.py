@@ -208,6 +208,29 @@ def _monthly_value(tenant):
     return plans.monthly_value(tenant)
 
 
+def _purge_workspace(tenant):
+    """Remove a deleted workspace for good: its database file, its files on the server and in R2, and its
+    record (billing history rows stay for the books). Returns a short summary."""
+    import shutil
+    from config import STORAGE_DIR
+    slug = tenant['slug']
+    db = tenant.get('db_path') or ''
+    for path in (db, db + '-wal', db + '-shm'):
+        if path and os.path.isfile(path):
+            os.remove(path)
+    folder = os.path.realpath(os.path.join(STORAGE_DIR, 'workspaces', slug))
+    if slug and folder.startswith(os.path.realpath(STORAGE_DIR) + os.sep) and os.path.isdir(folder):
+        shutil.rmtree(folder, ignore_errors=True)
+    files = 0
+    try:
+        from services import r2_storage
+        files = r2_storage.delete_prefix(slug)
+    except Exception as exc:
+        print(f"[Owner] R2 files of {slug} not deleted: {exc}")
+    _platform_execute("DELETE FROM tenants WHERE slug = ? AND deleted_at IS NOT NULL;", (slug,))
+    return f"database and files removed ({files} in R2)"
+
+
 def _all_tenants():
     return _platform_query("""
         SELECT *, CASE WHEN trial_ends_at IS NULL OR datetime(trial_ends_at) > datetime('now') THEN 1 ELSE 0 END
@@ -455,6 +478,28 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
         audit(admin, 'WORKSPACE_REACTIVATED', slug, 'turned back on from Deleted and hidden')
         return success_response(start_response, data={'slug': slug},
                                 message=f"{tenant['name']} is on again. Its data was kept.")
+
+    # A deleted workspace can be removed for good: its database, its files (server and R2) and its record.
+    # Only after it was deleted, and only with a code emailed to the signed-in owner.
+    purge = re.match(r'^/workspaces/([a-z0-9-]+)/purge(-code)?$', sub)
+    if purge and method == 'POST':
+        slug = purge.group(1)
+        tenant = get_tenant(slug)
+        if not tenant or not tenant.get('deleted_at') or tenant.get('plan') == 'legacy':
+            return error_response(start_response, "Only a deleted workspace can be removed for good.", status_code=400)
+        from services.owner_auth import confirm_action_code, request_action_code
+        try:
+            if purge.group(2):
+                challenge = request_action_code(admin, 'purge', slug)
+                return success_response(start_response, data={'challenge': challenge},
+                                        message=f"We emailed a 6-digit code to {admin['email']}.")
+            confirm_action_code(admin, body.get('challenge'), body.get('code'), 'purge', slug)
+        except OwnerAuthError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        removed = _purge_workspace(tenant)
+        audit(admin, 'WORKSPACE_PURGED', slug, f"{tenant['name']}: {removed}")
+        return success_response(start_response, data={'slug': slug},
+                                message=f"{tenant['name']} is deleted for good.")
 
     if sub == '/workspaces' and method == 'GET':
         search = _q(query, 'search').lower()

@@ -234,7 +234,7 @@ def admin_for_token(token):
     """, (_hash(token),), one=True)
 
 
-ACTION_LABELS = {'suspend': 'suspend', 'delete': 'delete'}
+ACTION_LABELS = {'suspend': 'suspend', 'delete': 'delete', 'purge': 'permanently delete'}
 
 
 def request_action_code(admin, action, target):

@@ -144,6 +144,20 @@ def delete(ref):
         return False
 
 
+def delete_prefix(prefix):
+    """Delete every object under "<prefix>/" (a whole deleted workspace's folder). Returns how many."""
+    prefix = str(prefix or '').strip('/')
+    if not prefix or prefix == 'crm' or not is_configured():
+        return 0
+    client, count = get_client(), 0
+    for page in client.get_paginator('list_objects_v2').paginate(Bucket=bucket(), Prefix=prefix + '/'):
+        keys = [{'Key': o['Key']} for o in page.get('Contents') or []]
+        if keys:
+            client.delete_objects(Bucket=bucket(), Delete={'Objects': keys, 'Quiet': True})
+            count += len(keys)
+    return count
+
+
 def error_text(exc):
     text = str(exc)
     if 'InvalidAccessKeyId' in text or 'SignatureDoesNotMatch' in text or 'Unauthorized' in text:

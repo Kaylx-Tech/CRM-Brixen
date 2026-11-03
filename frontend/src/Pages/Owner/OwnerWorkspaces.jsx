@@ -151,6 +151,8 @@ export default function OwnerWorkspaces() {
 /** Deleted workspaces (their data is kept) and suspended adopted ones: turn one back on. */
 function HiddenWorkspaces() {
   const [rows, setRows] = useState([])
+  const [pending, setPending] = useState(null) // {slug, challenge}
+  const [code, setCode] = useState("")
   const load = () => ownerApi("/workspaces/hidden").then((res) => res.ok && setRows(res.data.workspaces || []))
   useEffect(() => {
     load()
@@ -162,6 +164,33 @@ function HiddenWorkspaces() {
     const res = await ownerApi(`/workspaces/${w.slug}/restore`, { method: "POST" })
     if (res.ok) {
       toastDone(id, res.message)
+      load()
+    } else {
+      toastFail(id, res.error)
+    }
+  }
+
+  // Delete for good: a code is emailed to the owner first
+  const askCode = async (w) => {
+    const id = toastProcessing("Sending code…")
+    const res = await ownerApi(`/workspaces/${w.slug}/purge-code`, { method: "POST" })
+    if (res.ok) {
+      toastDone(id, res.message)
+      setCode("")
+      setPending({ slug: w.slug, challenge: res.data.challenge })
+    } else {
+      toastFail(id, res.error)
+    }
+  }
+  const purge = async () => {
+    const id = toastProcessing("Deleting for good…")
+    const res = await ownerApi(`/workspaces/${pending.slug}/purge`, {
+      method: "POST",
+      body: { challenge: pending.challenge, code },
+    })
+    if (res.ok) {
+      toastDone(id, res.message)
+      setPending(null)
       load()
     } else {
       toastFail(id, res.error)
@@ -187,7 +216,41 @@ function HiddenWorkspaces() {
                 {w.kyc_form_base_url ? " · KYC for another website" : ""}
               </div>
             </div>
-            <Button onClick={() => restore(w)}>Turn back on</Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={() => restore(w)}>Turn back on</Button>
+              {w.deleted_at && (
+                <Button variant="outline" className="text-destructive" onClick={() => askCode(w)}>
+                  Delete forever
+                </Button>
+              )}
+            </div>
+            {pending?.slug === w.slug && (
+              <div className="w-full space-y-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
+                <p className="text-sm">
+                  Enter the 6-digit code we emailed you. <b>{w.name}</b>'s database and files are deleted for good; this
+                  cannot be undone.
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    placeholder="123456"
+                    className="w-36 tracking-[0.3em]"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    aria-label="Confirmation code"
+                    autoFocus
+                  />
+                  <Button variant="destructive" disabled={code.length !== 6} onClick={purge}>
+                    Delete forever
+                  </Button>
+                  <Button variant="ghost" onClick={() => setPending(null)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
           </li>
         ))}
       </ul>
