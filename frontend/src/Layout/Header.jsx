@@ -84,8 +84,9 @@ export function SiteHeader({ homeHref = '/admin/dashboard' }) {
             <BreadcrumbList>
               {breadcrumbs.map((item, index) => (
                 <React.Fragment key={index}>
-                  {index > 0 && <BreadcrumbSeparator />}
-                  <BreadcrumbItem>
+                  {/* Phones show just the current page, as iOS does */}
+                  {index > 0 && <BreadcrumbSeparator className="hidden sm:list-item" />}
+                  <BreadcrumbItem className={item.isCurrent ? undefined : "hidden sm:inline-flex"}>
                     {item.isCurrent ? (
                       <BreadcrumbPage className=" text-sm text-foreground">
                         {item.label}

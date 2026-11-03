@@ -247,7 +247,7 @@ export function StaffDashboard() {
   return (
     <div className="flex flex-col gap-6 w-full pb-10">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">{firstName ? `Welcome, ${firstName}` : 'My Dashboard'}</h2>
+        <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">{firstName ? `Welcome, ${firstName}` : 'My Dashboard'}</h2>
         <p className="text-sm text-muted-foreground mt-1">Your orders and this month's performance</p>
       </div>
       <MyPerformance />
@@ -261,7 +261,7 @@ export default function Performance() {
   return (
     <div className="flex flex-col gap-6 w-full pb-10">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Performance</h2>
+        <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">Performance</h2>
         <p className="text-sm text-muted-foreground mt-1">Orders completed, on-time rate and incentive grades</p>
       </div>
       {canSeeTeam ? (

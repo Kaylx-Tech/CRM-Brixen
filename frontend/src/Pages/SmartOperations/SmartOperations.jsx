@@ -231,7 +231,7 @@ export default function SmartOperations() {
     <div className="flex w-full flex-col gap-4 pb-10">
       <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Smart Operations</h2>
+          <h2 className="text-[1.75rem] font-bold leading-tight tracking-[-0.025em]">Smart Operations</h2>
           {linksTab && (
             <p className="mt-0.5 text-sm text-muted-foreground">
               Quick links for the team: partner portals, referral links and forms, grouped by company.
