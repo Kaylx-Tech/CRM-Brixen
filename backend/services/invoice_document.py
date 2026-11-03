@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 
 from db import query_db
-from services.invoice_service import invoice_money_state
+from services.invoice_service import invoice_money_state, invoice_payments
 from services.invoice_mail import INVOICE_BANK_GBP, INVOICE_BANK_PKR
 from services.portal_compat import brand_settings
 
@@ -205,9 +205,15 @@ def document_payload(invoice_id):
                             if money['timing'] == 'Deposit' and money['deposit_amount'] else ''),
         'timing': money['timing'],
         'invoice_date': format_uk_date(invoice.get('created_at')),
+        'due_date': format_uk_date(invoice.get('due_date')) if invoice.get('due_date') else '',
         'paid': money['amount_due'] <= 0.004 and money['status'] == 'Paid',
         'part_paid': money['display_status'] == 'Partial Paid',
         'pakistan_fx': pakistan_fx_note(fx_pounds) if client_is_in_pakistan(invoice) else None,
+        # Each payment with its day and method (part payments too), listed under the totals
+        'payments': [{'date': format_uk_date(p.get('paid_on')), 'method': p.get('method') or '',
+                      'amount': ('-' if float(p.get('amount') or 0) < 0 else '')
+                                + format_money(abs(float(p.get('amount') or 0)))}
+                     for p in invoice_payments(invoice_id) if abs(float(p.get('amount') or 0)) > 0.004],
     }
 
 
@@ -233,172 +239,270 @@ def render_pdf(payload):
     return body
 
 
+def _round_rect(pdf, x, y, w, h, r, op='f'):
+    """A rectangle with round corners (radius r, h / 2 makes a pill) in the current fill colour.
+    fpdf's own rounded corners stay tiny, so the curves are written out directly."""
+    k, page_h = pdf.k, pdf.h
+    r = min(r, h / 2, w / 2)
+    c = 0.5523 * r  # Bezier handle for a quarter circle
+
+    def point(px, py):
+        return f'{px * k:.2f} {(page_h - py) * k:.2f}'
+
+    pdf._out(' '.join([
+        f'{point(x + r, y)} m', f'{point(x + w - r, y)} l',
+        f'{point(x + w - r + c, y)} {point(x + w, y + r - c)} {point(x + w, y + r)} c',
+        f'{point(x + w, y + h - r)} l',
+        f'{point(x + w, y + h - r + c)} {point(x + w - r + c, y + h)} {point(x + w - r, y + h)} c',
+        f'{point(x + r, y + h)} l',
+        f'{point(x + r - c, y + h)} {point(x, y + h - r + c)} {point(x, y + h - r)} c',
+        f'{point(x, y + r)} l',
+        f'{point(x, y + r - c)} {point(x + r - c, y)} {point(x + r, y)} c', op]))
+
+
 def _render_pdf(payload, s=1.0):
-    """Draw the invoice; s scales vertical spacing (1 = normal). Returns (pdf bytes, page count)."""
+    """Draw the invoice like an Apple receipt: the logo, a large amount and status, quiet grey labels,
+    hairline rules, the payments received, then how to pay in a soft grey panel. s scales vertical
+    spacing (1 = normal). Returns (pdf bytes, page count)."""
     from fpdf import FPDF
 
     brand = payload.get('brand') or {}
     invoice = payload.get('invoice') or {}
     gbp, pkr = INVOICE_BANK_GBP, INVOICE_BANK_PKR
-    navy, ink, muted, rule = (0, 57, 113), (31, 41, 55), (107, 114, 128), (212, 212, 216)
+    # Apple's label colours: near-black ink, grey secondary text, light hairlines and panel fill
+    navy, ink, muted, rule, panel = (0, 57, 113), (29, 29, 31), (110, 110, 115), (229, 229, 234), (245, 245, 247)
+    L, R, W = 18, 192, 174
 
     def latin(text):
-        # Core PDF fonts are Latin-1 only
+        # Core PDF fonts are Latin-1 only (the £ sign is in it)
         return str(text or '').encode('latin-1', 'replace').decode('latin-1')
 
     def money(value):
-        return latin(str(value or '').replace('£', 'GBP '))
+        return latin(str(value or ''))
+
+    def hairline(y):
+        pdf.set_draw_color(*rule)
+        pdf.set_line_width(0.2)
+        pdf.line(L, y, R, y)
+
+    def label(text, x, y, w, align='L'):
+        pdf.set_xy(x, y)
+        pdf.set_font('Helvetica', '', 8)
+        pdf.set_text_color(*muted)
+        pdf.cell(w, 4, latin(text), align=align)
+
+    def pill(x, y, text, fill, colour):
+        pdf.set_font('Helvetica', 'B', 8.5)
+        w, h = pdf.get_string_width(text) + 7, 5.6
+        pdf.set_fill_color(*fill)
+        _round_rect(pdf, x, y, w, h, h / 2)
+        pdf.set_text_color(*colour)
+        pdf.set_xy(x, y + 0.2)
+        pdf.cell(w, h - 0.4, text, align='C')
+
+    contact = ' · '.join(filter(None, [brand.get('support_email') or 'contact@brixenconsultants.com',
+                                       _phone_display(brand)]))
 
     class InvoicePDF(FPDF):
         def footer(self):
-            self.set_y(-14)
-            self.set_font('Helvetica', '', 9)
+            self.set_y(-16)
+            self.set_font('Helvetica', '', 8)
             self.set_text_color(*muted)
-            self.cell(0, 8, 'Page 1 of 1', align='R')
+            self.cell(0, 4, latin(f"Thank you for your business. Questions? {contact}"), align='C',
+                      new_x='LMARGIN', new_y='NEXT')
+            self.cell(0, 4, latin(' · '.join(filter(None, [
+                brand.get('legal_name', ''), f"Company No {brand.get('company_number', '')}",
+                f"ICO {brand.get('ico_number', '')}"]))), align='C')
 
     pdf = InvoicePDF(orientation='P', unit='mm', format='A4')
-    pdf.set_auto_page_break(auto=True, margin=16)
+    pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()
-    pdf.set_margins(16, 16, 16)
+    pdf.set_margins(L, 18, 210 - R)
     pdf.set_title(latin(f"Invoice {invoice.get('invoice_number') or ''}"))
 
-    left, top = pdf.get_x(), pdf.get_y()
+    # ── Logo and who it is from ──────────────────────────────────────────────────────────────────
+    top = 18
     if os.path.exists(LOGO_PATH):
         try:
-            pdf.image(LOGO_PATH, x=left, y=top, w=48 if s >= 0.8 else 40)
+            pdf.image(LOGO_PATH, x=L, y=top, w=40 if s >= 0.8 else 34)
         except Exception:
             pass
-
-    pdf.set_xy(left + 100, top)
+    pdf.set_xy(R - 80, top)
     pdf.set_font('Helvetica', 'B', 9)
     pdf.set_text_color(*ink)
-    pdf.multi_cell(78, 4.2, latin('Registered Business name\n' + brand.get('legal_name', '').upper()), align='R')
-    pdf.set_font('Helvetica', '', 9)
-    pdf.set_x(left + 100)
-    pdf.multi_cell(78, 4.2, latin('\n'.join([
+    pdf.cell(80, 4.4, latin(brand.get('legal_name', '')), align='R', new_x='LEFT', new_y='NEXT')
+    pdf.set_font('Helvetica', '', 8.5)
+    pdf.set_text_color(*muted)
+    pdf.set_x(R - 80)
+    pdf.multi_cell(80, 4.2, latin('\n'.join(filter(None, [
         brand.get('registered_office', ''),
         brand.get('support_email') or 'contact@brixenconsultants.com',
         _phone_display(brand),
-        f"Company No - {brand.get('company_number', '')}",
-        f"ICO Reg No - {brand.get('ico_number', '')}",
-    ])), align='R')
+    ]))), align='R')
 
-    pdf.set_y(max(pdf.get_y(), top + 36 * s) + 4 * s)
-    pdf.set_draw_color(*rule)
-    pdf.line(16, pdf.get_y(), 194, pdf.get_y())
-    pdf.ln(6 * s)
-
-    pdf.set_font('Helvetica', 'B', 22 if s >= 0.8 else 18)
+    # ── Title, amount and status ─────────────────────────────────────────────────────────────────
+    y = max(pdf.get_y(), top + 22) + 10 * s
+    pdf.set_xy(L, y)
+    pdf.set_font('Helvetica', 'B', 24 if s >= 0.8 else 20)
     pdf.set_text_color(*ink)
-    pdf.cell(0, 10 * s, 'INVOICE', new_x='LMARGIN', new_y='NEXT')
-    pdf.ln(2 * s)
+    pdf.cell(80, 10, 'Invoice')
+    paid, part_paid = payload.get('paid'), payload.get('part_paid')
+    status = ('Paid', (232, 245, 236), (36, 138, 61)) if paid else \
+        ('Part paid', (255, 244, 222), (178, 104, 0)) if part_paid else \
+        ('Cancelled', (242, 242, 247), (110, 110, 115)) if invoice.get('status') == 'Cancelled' else \
+        ('Due', (230, 240, 255), (0, 102, 204))
+    pdf.set_font('Helvetica', 'B', 24 if s >= 0.8 else 20)
+    pill(L + pdf.get_string_width('Invoice') + 4, y + 2.4, status[0], status[1], status[2])
 
-    meta = [('Reference', invoice.get('invoice_number') or ''), ('Amount due', money(payload.get('amount_due_display'))),
-            ('Invoice Date', payload.get('invoice_date') or ''), ('To', '')]
-    # Reference / Amount due / Date stay narrow so the "To" block has room for long names and addresses
-    widths, y0 = (38, 40, 34, 66), pdf.get_y()
-    bottom = y0
-    x = 16
-    for (label, value), col_w in zip(meta, widths):
-        pdf.set_xy(x, y0)
-        pdf.set_font('Helvetica', 'B', 9)
-        pdf.cell(col_w - 2, 5, label)
-        pdf.set_xy(x, y0 + 5)
-        pdf.set_font('Helvetica', '', 10)
-        if label == 'To':
-            lines = []
-            for field in (payload.get('owner_name'), payload.get('company_name'), payload.get('company_address'),
-                          payload.get('owner_email')):
-                text = str(field or '').strip()
-                if text and text not in lines:
-                    lines.append(text)
-            pdf.multi_cell(col_w - 2, 4.5, latin('\n'.join(lines) or '-'), align='L')
-        else:
-            mark = '  Paid' if label == 'Amount due' and payload.get('paid') else ''
-            pdf.multi_cell(col_w - 2, 4.5, latin(f"{value}{mark}"), align='L')
-        bottom = max(bottom, pdf.get_y())
-        x += col_w
-
-    pdf.set_y(max(bottom, y0 + 28 * s) + 6 * s)
-    row_h = max(8 * s, 5.5)
-    pdf.set_font('Helvetica', '', 9)
+    big = payload.get('total_display') if paid else payload.get('amount_due_display')
+    pdf.set_text_color(*ink)
+    pdf.set_xy(R - 90, y - 1)
+    pdf.set_font('Helvetica', 'B', 22 if s >= 0.8 else 19)
+    pdf.cell(90, 9, money(big), align='R', new_x='LEFT', new_y='NEXT')
+    pdf.set_x(R - 90)
+    pdf.set_font('Helvetica', '', 8.5)
     pdf.set_text_color(*muted)
-    pdf.cell(110, max(7 * s, 5.5), 'Description', border='B')
-    pdf.cell(30, max(7 * s, 5.5), 'Qty', border='B', align='R')
-    pdf.cell(38, max(7 * s, 5.5), 'Amount', border='B', align='R', new_x='LMARGIN', new_y='NEXT')
+    due_line = 'Paid in full' if paid else (f"Due by {payload['due_date']}" if payload.get('due_date') else 'Amount due')
+    pdf.cell(90, 4.5, latin(due_line), align='R')
+
+    # ── Details: number, dates, order, billed to ────────────────────────────────────────────────
+    y += 18 * s
+    hairline(y)
+    y += 5 * s
+    cols = [('Invoice number', invoice.get('invoice_number') or ''), ('Invoice date', payload.get('invoice_date') or ''),
+            ('Order', invoice.get('order_number') or '')]
+    for i, (name, value) in enumerate(cols):
+        label(name, L + i * 36, y, 34)
+        pdf.set_xy(L + i * 36, y + 4.5)
+        pdf.set_font('Helvetica', '', 9.5)
+        pdf.set_text_color(*ink)
+        pdf.multi_cell(34, 4.6, latin(value or '-'), align='L')
+    label('Billed to', L + 112, y, 62)
+    lines = []
+    for field in (payload.get('owner_name'), payload.get('company_name'), payload.get('company_address'),
+                  payload.get('owner_email')):
+        text = str(field or '').strip()
+        if text and text not in lines:
+            lines.append(text)
+    pdf.set_xy(L + 112, y + 4.5)
+    pdf.set_font('Helvetica', '', 9.5)
     pdf.set_text_color(*ink)
-    pdf.set_font('Helvetica', '', 11 if s >= 0.8 else 10)
+    pdf.multi_cell(62, 4.6, latin('\n'.join(lines) or '-'), align='L')
+    y = max(pdf.get_y(), y + 16) + 7 * s
+
+    # ── Items ────────────────────────────────────────────────────────────────────────────────────
+    label('Description', L, y, 120)
+    label('Qty', L + 120, y, 20, 'R')
+    label('Amount', L + 140, y, 34, 'R')
+    y += 5.5
+    hairline(y)
+    row_h = max(7.5 * s, 5.5)
+    pdf.set_y(y)
+    pdf.set_font('Helvetica', '', 10 if s >= 0.8 else 9.5)
+    pdf.set_text_color(*ink)
     for item in payload.get('line_items') or []:
-        y = pdf.get_y()
-        pdf.multi_cell(110, row_h, latin(item.get('description') or 'Professional services'), border="B", align="L")
-        h = pdf.get_y() - y
-        pdf.set_xy(16 + 110, y)
-        pdf.cell(30, max(h, row_h), str(item.get('quantity') or 1), border='B', align='R')
-        pdf.cell(38, max(h, row_h), money(format_money(item.get('amount'))), border='B', align='R',
-                 new_x='LMARGIN', new_y='NEXT')
+        y0 = pdf.get_y() + 1.2
+        pdf.set_xy(L, y0)
+        pdf.multi_cell(120, row_h - 2.4, latin(item.get('description') or 'Professional services'), align='L')
+        h = max(pdf.get_y() - y0, row_h - 2.4)
+        pdf.set_xy(L + 120, y0)
+        pdf.cell(20, row_h - 2.4, str(item.get('quantity') or 1), align='R')
+        pdf.cell(34, row_h - 2.4, money(format_money(item.get('amount'))), align='R')
+        pdf.set_y(y0 + h + 1.2)
+        hairline(pdf.get_y())
 
-    pdf.ln(2 * s)
-    totals = [('Total', payload.get('total_display'))]
-    if payload.get('timing') == 'Deposit' and payload.get('deposit_display'):
-        totals.append(('Deposit now', payload.get('deposit_display')))
-    if float(invoice.get('amount_paid') or 0) > 0.004 or payload.get('paid'):
-        totals.append(('Paid so far', payload.get('paid_display')))
-    totals.append(('Amount due', payload.get('amount_due_display')))
-    for label, value in totals:
-        pdf.set_font('Helvetica', 'B', 11 if s >= 0.8 else 10)
-        pdf.cell(140, max(7 * s, 5), label, align='R')
-        pdf.cell(38, max(7 * s, 5), money(value), align='R', new_x='LMARGIN', new_y='NEXT')
+    # ── Totals, then each payment received ──────────────────────────────────────────────────────
+    pdf.ln(3 * s)
+    totals = [('Subtotal', payload.get('total_display'), False)]
+    if payload.get('timing') == 'Deposit' and payload.get('deposit_display') and not paid:
+        totals.append(('Deposit now', payload.get('deposit_display'), False))
+    if float(invoice.get('amount_paid') or 0) > 0.004 or paid or payload.get('payments'):
+        totals.append(('Paid', f"-{payload.get('paid_display')}", False))
+    totals.append(('Amount due', payload.get('amount_due_display'), True))
+    for name, value, strong in totals:
+        if strong:
+            pdf.set_draw_color(*rule)
+            pdf.line(L + 100, pdf.get_y() + 1, R, pdf.get_y() + 1)
+            pdf.ln(2.5)
+        pdf.set_x(L + 100)
+        pdf.set_font('Helvetica', 'B' if strong else '', 11 if strong else 9.5)
+        pdf.set_text_color(*(ink if strong else muted))
+        pdf.cell(40, max(6 * s, 5), name, align='L')
+        pdf.set_text_color(*ink)
+        pdf.cell(34, max(6 * s, 5), money(value), align='R', new_x='LMARGIN', new_y='NEXT')
 
-    pdf.ln(4 * s)
-    pdf.line(16, pdf.get_y(), 194, pdf.get_y())
-    pdf.ln(6 * s)
-    pdf.set_font('Helvetica', 'B', 16 if s >= 0.8 else 13)
-    pdf.cell(0, 8 * s, 'PAYMENT METHODS', new_x='LMARGIN', new_y='NEXT')
-    pdf.ln(2 * s)
+    payments = payload.get('payments') or []
+    if payments:
+        pdf.ln(3 * s)
+        label('Payments received', L, pdf.get_y(), 120)
+        pdf.ln(5)
+        pdf.set_font('Helvetica', '', 9)
+        for p in payments:
+            pdf.set_text_color(*ink)
+            pdf.set_x(L)
+            pdf.cell(40, 5, latin(p['date']))
+            pdf.set_text_color(*muted)
+            pdf.cell(100, 5, latin(p['method']))
+            pdf.set_text_color(*ink)
+            pdf.cell(34, 5, money(p['amount']), align='R', new_x='LMARGIN', new_y='NEXT')
 
-    def bank_block(title, fields):
-        pdf.set_font('Helvetica', 'B', 10)
-        pdf.cell(0, max(6 * s, 4.5), title, new_x='LMARGIN', new_y='NEXT')
-        pay_y = pdf.get_y()
-        for index, (label, value) in enumerate(fields):
-            x = 16 + index * 60
-            pdf.set_xy(x, pay_y)
-            pdf.set_font('Helvetica', 'B', 9)
-            pdf.cell(58, 5, label, new_x='LMARGIN', new_y='NEXT')
-            pdf.set_x(x)
-            pdf.set_font('Helvetica', '', 10)
-            pdf.multi_cell(58, 5, latin(value), align="L")
-        pdf.set_y(max(pdf.get_y(), pay_y + 10) + 4 * s)
+    # ── How to pay: a soft grey panel ────────────────────────────────────────────────────────────
+    if paid:
+        pages = pdf.page_no()
+        return bytes(pdf.output()), pages
+    pdf.ln(7 * s)
+    box_y = pdf.get_y()
+    fx = payload.get('pakistan_fx') or {}
+    # Height from what is inside: title and two bank rows, then the pay button and the Pakistan note
+    box_h = 37 + (11 if gbp.get('pay_url') else 0) + (16 if fx.get('math') else 0)
+    pdf.set_fill_color(*panel)
+    _round_rect(pdf, L, box_y, W, box_h, 4)
+    pdf.set_xy(L + 6, box_y + 5)
+    pdf.set_font('Helvetica', 'B', 11)
+    pdf.set_text_color(*ink)
+    pdf.cell(0, 5, 'How to pay', new_x='LMARGIN', new_y='NEXT')
 
+    def bank_block(title, fields, y):
+        pdf.set_xy(L + 6, y)
+        pdf.set_font('Helvetica', 'B', 9)
+        pdf.set_text_color(*ink)
+        pdf.cell(20, 4.6, title)
+        for i, (name, value) in enumerate(fields):
+            x = L + 26 + i * 48
+            label(name, x, y - 0.2, 46)
+            pdf.set_xy(x, y + 3.8)
+            pdf.set_font('Helvetica', '', 9)
+            pdf.set_text_color(*ink)
+            pdf.multi_cell(46, 4.4, latin(value), align='L')
+
+    by = box_y + 13
     bank_block('GBP', (('Account title', gbp['account_name']), ('Account number', gbp['account_number']),
-                       ('Sort code', gbp['sort_code'])))
+                       ('Sort code', gbp['sort_code'])), by)
+    by += 11
+    bank_block('PKR', (('Account title', pkr['account_name']), ('Bank name', pkr['bank_name']),
+                       ('IBAN', pkr['iban'])), by)
+    by += 11
     # "Pay now" pill linking to the card payment page (only when a payment link is set)
     if gbp.get('pay_url'):
-        label = 'Pay now in GBP'
-        pdf.set_font('Helvetica', 'B', 10)
-        pill_w, pill_h, pill_y = pdf.get_string_width(label) + 10, 7.5, pdf.get_y()
+        text = 'Pay now by card'
+        pdf.set_font('Helvetica', 'B', 9.5)
+        pw, ph = pdf.get_string_width(text) + 12, 7.5
         pdf.set_fill_color(*navy)
-        try:
-            pdf.rounded_rect(16, pill_y, pill_w, pill_h, pill_h / 2, style='F')
-        except Exception:
-            pdf.rect(16, pill_y, pill_w, pill_h, style='F')
+        _round_rect(pdf, L + 6, by, pw, ph, ph / 2)
         pdf.set_text_color(255, 255, 255)
-        pdf.set_xy(16, pill_y + 0.6)
-        pdf.cell(pill_w, pill_h - 1.2, label, align='C', link=gbp['pay_url'])
-        pdf.set_text_color(*ink)
-        pdf.set_y(pill_y + pill_h + 8 * s)
-
-    bank_block('PKR', (('Account title', pkr['account_name']), ('Bank name', pkr['bank_name']), ('IBAN', pkr['iban'])))
-
-    fx = payload.get('pakistan_fx') or {}
+        pdf.set_xy(L + 6, by + 0.5)
+        pdf.cell(pw, ph - 1, text, align='C', link=gbp['pay_url'])
+        by += ph + 3
     if fx.get('math'):
-        pdf.set_font('Helvetica', 'B', 10)
-        pdf.cell(0, max(6 * s, 4.5), 'If you pay from Pakistan', new_x='LMARGIN', new_y='NEXT')
-        pdf.set_font('Helvetica', 'B', 12 if s >= 0.8 else 11)
-        pdf.cell(0, max(6 * s, 5), money(fx['math']), new_x='LMARGIN', new_y='NEXT')
-        pdf.set_font('Helvetica', '', 9)
-        pdf.multi_cell(0, 5, align="L", text=money(f"Send {fx['pkr_display']} to the UBL account. "
-                                   f"That is {fx['gbp_display']} at today's GBP to PKR rate."))
+        pdf.set_xy(L + 6, by)
+        pdf.set_font('Helvetica', 'B', 9)
+        pdf.set_text_color(*ink)
+        pdf.cell(0, 4.6, latin(f"From Pakistan: {fx['math']}"), new_x='LMARGIN', new_y='NEXT')
+        pdf.set_x(L + 6)
+        pdf.set_font('Helvetica', '', 8.5)
+        pdf.set_text_color(*muted)
+        pdf.multi_cell(W - 12, 4.2, align='L', text=money(
+            f"Send {fx['pkr_display']} to the UBL account. That is {fx['gbp_display']} at today's GBP to PKR rate."))
 
     pages = pdf.page_no()
     return bytes(pdf.output()), pages
