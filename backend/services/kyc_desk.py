@@ -151,11 +151,25 @@ def _media(decision):
     return out
 
 
+def _sent(check_id, f):
+    """A file shows only once the person sent the form: an earlier round, or the current one after Send.
+    What they upload and have not sent yet (a draft) is never shown."""
+    from db import query_db
+    from services import kyc_form
+    row = query_db("SELECT form_round, submitted_at, status FROM id_verifications WHERE id = ?;", (int(check_id),),
+                   one=True) or {}
+    current = row.get('form_round') or 1
+    sent = bool(row.get('submitted_at')) and row.get('status') not in kyc_form.OPEN_STATUSES
+    return (f.get('form_round') or 1) < current or sent
+
+
 def _form_files(check_id):
-    """The form's files, newest round first: [{round, files: [{id, section, label, kind, created_at}]}]."""
+    """The sent form's files, newest round first: [{round, files: [{id, section, label, kind, created_at}]}]."""
     from services import kyc_form
     rounds = {}
     for f in kyc_form.files_for(check_id):
+        if not _sent(check_id, f):
+            continue
         rounds.setdefault(f['form_round'], []).append(f)
     order = list(_FILE_SECTIONS)
     out = []
@@ -215,7 +229,7 @@ def file(slug, check_id, file_id):
         kyc_form.ensure()
         row = query_db("SELECT * FROM id_verification_files WHERE id = ? AND verification_id = ?;",
                        (int(file_id), int(check_id)), one=True)
-        return kyc_form.read_file(row) if row else (None, None)
+        return kyc_form.read_file(row) if row and _sent(check_id, row) else (None, None)
 
 
 def set_status(slug, check_id, status, note, reviewer):
@@ -248,27 +262,33 @@ def set_status(slug, check_id, status, note, reviewer):
     return _desk_row(svc._check(slug, check_id)[1])
 
 
+def remove_stored(file_row):
+    """Delete one stored file's bytes (R2 or the server); the caller removes its row."""
+    import os
+    from services import r2_storage
+    ref_ = str(file_row.get('file_ref') or '')
+    try:
+        if ref_.startswith('local:'):
+            from config import STORAGE_DIR
+            root = os.path.realpath(STORAGE_DIR)
+            path = os.path.realpath(os.path.join(root, ref_[len('local:'):]))
+            if path.startswith(root + os.sep) and os.path.isfile(path):
+                os.remove(path)
+        elif r2_storage.is_r2_ref(ref_):
+            r2_storage.delete(ref_)
+    except Exception as exc:
+        print(f"[KYC desk] could not delete a file of check {file_row.get('verification_id')}: {exc}")
+
+
 def wipe(check_id):
     """Delete what the person sent for one check (run inside its workspace): their photos and files (from R2
     or the server), their answers and Didit's result. Returns how many files were deleted."""
-    import os
     from db import execute_db, query_db
-    from services import kyc_form, r2_storage
+    from services import kyc_form
     kyc_form.ensure()
     files = query_db("SELECT * FROM id_verification_files WHERE verification_id = ?;", (int(check_id),)) or []
     for f in files:
-        ref_ = str(f.get('file_ref') or '')
-        try:
-            if ref_.startswith('local:'):
-                from config import STORAGE_DIR
-                root = os.path.realpath(STORAGE_DIR)
-                path = os.path.realpath(os.path.join(root, ref_[len('local:'):]))
-                if path.startswith(root + os.sep) and os.path.isfile(path):
-                    os.remove(path)
-            elif r2_storage.is_r2_ref(ref_):
-                r2_storage.delete(ref_)
-        except Exception as exc:
-            print(f"[KYC desk] could not delete a file of check {check_id}: {exc}")
+        remove_stored(f)
     execute_db("DELETE FROM id_verification_files WHERE verification_id = ?;", (int(check_id),))
     execute_db("""
         UPDATE id_verifications SET result_json = NULL, didit_session_id = NULL, submitted_at = NULL,

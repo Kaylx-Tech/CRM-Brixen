@@ -327,7 +327,12 @@ def save_file(row, kind, upload):
             fh.write(data)
         ref = 'local:' + os.path.join(sub, name).replace('\\', '/')
 
-    execute_db("UPDATE id_verification_files SET replaced = 1 WHERE verification_id = ? AND form_round = ? AND kind = ?;",
+    # A new photo replaces the last of that kind: the old one is not kept (no draft data is stored)
+    from services.kyc_desk import remove_stored
+    for old in query_db("SELECT * FROM id_verification_files WHERE verification_id = ? AND form_round = ? AND kind = ?;",
+                        (row['id'], form_round, kind)) or []:
+        remove_stored(old)
+    execute_db("DELETE FROM id_verification_files WHERE verification_id = ? AND form_round = ? AND kind = ?;",
                (row['id'], form_round, kind))
     execute_db("""
         INSERT INTO id_verification_files (verification_id, form_round, kind, file_ref, mime_type, size)
