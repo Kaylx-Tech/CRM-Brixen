@@ -236,8 +236,9 @@ def kyc_report(period=None, slug=None):
             checks.append({**r, 'workspace': tenant['slug'], 'workspace_name': tenant['name']})
         bill = billing.get(tenant['slug']) or {}
         # Checks charged one by one (services/kyc_billing.py) count at their charge; older ones by the month
-        from services.kyc_billing import charges as kyc_charges, month_rows, month_status
-        m = month_rows(tenant['slug'], [(r['id'], period) for r in rows], price).get(period) \
+        from services.kyc_billing import charges as kyc_charges, month_rows, month_status, price as kyc_price
+        each = kyc_price(tenant)
+        m = month_rows(tenant['slug'], [(r['id'], period) for r in rows], each).get(period) \
             or {'checks': 0, 'amount': 0.0, 'due': 0, 'paid': 0, 'legacy': 0}
         charged = kyc_charges(tenant['slug'])
         for c in checks[len(checks) - len(rows):]:
@@ -250,6 +251,7 @@ def kyc_report(period=None, slug=None):
             'all_time': _all_time_checks(tenant),
             'kyc_enabled': kyc_on, 'kyc_enabled_at': tenant.get('kyc_enabled_at'),
             'amount': amount,
+            'price': each, 'own_price': tenant.get('kyc_price'),
             'billing_status': status,
             'billed_amount': bill.get('amount') if bill else (amount if status == 'paid' else None),
             'billed_checks': bill.get('checks'),

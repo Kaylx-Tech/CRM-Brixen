@@ -514,6 +514,17 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
             svc.set_kyc_billing(body.get('slug'), body.get('period'), body.get('status'))
             audit(admin, 'KYC_BILLING', body.get('slug'), f"{body.get('period')}: {body.get('status') or 'not billed'}")
             return success_response(start_response, message="Billing updated.")
+        if sub == '/kyc/price' and method == 'POST':
+            from services import kyc_billing
+            try:
+                amount = kyc_billing.set_price(body.get('slug'), body.get('price'))
+            except kyc_billing.KycServiceError as exc:
+                return error_response(start_response, str(exc), status_code=400)
+            audit(admin, 'KYC_PRICE_CHANGED', body.get('slug'),
+                  f"£{amount:.2f} a check" if amount is not None else "back to the general price")
+            return success_response(start_response, message=(
+                f"Price set to £{amount:.2f} a check for this workspace." if amount is not None
+                else "This workspace uses the general price again."))
         if sub == '/kyc/service' and method == 'POST':
             from services import kyc_billing
             on = bool(body.get('enabled'))

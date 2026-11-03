@@ -154,6 +154,42 @@ function DeleteDataButton({ check, onDone }) {
   )
 }
 
+/** The workspace's own price per check; empty uses the general price. Saved when the field is left. */
+function WorkspacePrice({ workspace, general, onSaved }) {
+  const [value, setValue] = useState(workspace.own_price ?? "")
+  const save = async () => {
+    const next = String(value).trim()
+    if (next === String(workspace.own_price ?? "")) return
+    const res = await ownerApi("/kyc/price", { method: "POST", body: { slug: workspace.slug, price: next } })
+    if (res.ok) {
+      toastDone(undefined, res.message)
+      onSaved()
+    } else {
+      toastFail(undefined, res.error)
+      setValue(workspace.own_price ?? "")
+    }
+  }
+  return (
+    <div className="relative w-24">
+      <span className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-xs text-muted-foreground">£</span>
+      <Input
+        type="number"
+        min="0"
+        step="0.01"
+        inputMode="decimal"
+        className="h-8 pl-6 text-right tabular-nums"
+        value={value}
+        placeholder={general != null ? Number(general).toFixed(2) : "0.00"}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+        aria-label={`Price per check for ${workspace.name}`}
+        title="Empty: the general price"
+      />
+    </div>
+  )
+}
+
 function KycCell({ check, onAction, onDeleted }) {
   const [label, tone] = kycLabel(check.status)
   const rejected = REJECTED.includes(check.status)
@@ -279,7 +315,7 @@ export default function OwnerKyc() {
 
       <Panel
         title="Price per check"
-        description="What a workspace pays Finstap for one ID check (excl. VAT). Changes apply to the months you look at from now on."
+        description="What a workspace pays Finstap for one ID check (excl. VAT), unless it has its own price under By workspace. Changes apply to checks from now on."
         className="mb-4"
       >
         {settings ? (
@@ -325,6 +361,9 @@ export default function OwnerKyc() {
                       <th className="px-3 py-2.5 font-semibold">Approved</th>
                       <th className="px-3 py-2.5 font-semibold">Declined</th>
                       <th className="px-3 py-2.5 font-semibold">In progress</th>
+                      <th className="px-3 py-2.5 font-semibold" title="This workspace's price per check. Empty: the general price">
+                        Price / check
+                      </th>
                       <th className="px-3 py-2.5 text-right font-semibold">Amount</th>
                       <th className="py-2.5 pl-3 font-semibold">Billing</th>
                     </tr>
@@ -343,6 +382,14 @@ export default function OwnerKyc() {
                         <td className="px-3 py-2.5 tabular-nums">{w.approved}</td>
                         <td className="px-3 py-2.5 tabular-nums">{w.declined}</td>
                         <td className="px-3 py-2.5 tabular-nums">{w.pending}</td>
+                        <td className="px-3 py-2.5">
+                          <WorkspacePrice
+                            key={`${w.slug}-${w.own_price ?? ""}`}
+                            workspace={w}
+                            general={settings?.kyc_price}
+                            onSaved={load}
+                          />
+                        </td>
                         <td className="px-3 py-2.5 text-right tabular-nums">
                           {money(w.amount)}
                           {w.billing_status && w.billed_amount !== w.amount && (

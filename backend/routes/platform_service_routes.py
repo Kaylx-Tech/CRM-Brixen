@@ -29,9 +29,10 @@ def handle_platform_service_routes(environ, start_response, path, method, user, 
 
     try:
         if path == '/api/admin/finstap-services' and method == 'GET':
+            from services.kyc_billing import price as kyc_price
             prices = svc.settings()
             return success_response(start_response, data={
-                'kyc_price': prices['kyc_price'],
+                'kyc_price': kyc_price(tenant),
                 'ro_price_year': prices['ro_price_year'],
                 'ro_available': bool(prices['ro_addresses']),
                 'requests': svc.ro_requests(slug=tenant['slug']),

@@ -348,6 +348,7 @@ TENANT_COLUMNS = (
     ('kyc_form_base_url', "TEXT"),
     ('kyc_free', "INTEGER"),
     ('kyc_api_key_hash', "TEXT"),
+    ('kyc_price', "REAL"),                    # this workspace's price per ID check; empty: the general price
 )
 
 HANDOFF_SECONDS = 120

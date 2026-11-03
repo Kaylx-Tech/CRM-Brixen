@@ -73,9 +73,32 @@ def enabled(tenant):
     return bool(tenant)
 
 
-def price():
+def price(tenant=None):
+    """The price per ID check: the workspace's own price when the owner set one, else the general price."""
     from services.platform_services import settings
+    if tenant:
+        own = (get_tenant(tenant['slug']) or {}).get('kyc_price')
+        if own is not None:
+            return float(own)
     return float(settings().get('kyc_price') or 0)
+
+
+def set_price(slug, value):
+    """The owner sets a workspace's own price per check ('' or None: back to the general price)."""
+    tenant = get_tenant(slug)
+    if not tenant:
+        raise KycServiceError("Workspace not found")
+    if value in (None, ''):
+        amount = None
+    else:
+        try:
+            amount = round(float(value), 2)
+        except (TypeError, ValueError):
+            raise KycServiceError("The price must be a number")
+        if amount < 0:
+            raise KycServiceError("The price cannot be below zero")
+    _platform_execute("UPDATE tenants SET kyc_price = ? WHERE slug = ?;", (amount, slug))
+    return amount
 
 
 def off_message():
@@ -104,7 +127,7 @@ def charge_check(tenant, check_id, label=''):
     """Charge one ID check, once: paid from the balance now when it covers it, else due until it is paid."""
     if not tenant or (tenant.get('plan') or '') == 'legacy' or (get_tenant(tenant['slug']) or {}).get('kyc_free'):
         return  # Brixen's own database, or a workspace the owner made free (e.g. Brixen's KYC)
-    each = price()
+    each = price(tenant)
     if each <= 0:
         return
     try:
@@ -173,7 +196,7 @@ def month_status(m, bill, current):
 def summary(tenant):
     """The workspace's KYC service for its Billing page (run inside the workspace's database)."""
     from services.autoallot import kyc_credits
-    each = price()
+    each = price(tenant)
     checks = counted_checks()
     billed = {r['period']: r for r in _platform_query(
         "SELECT period, checks, amount, status FROM kyc_billing WHERE tenant_slug = ?;", (tenant['slug'],))}
