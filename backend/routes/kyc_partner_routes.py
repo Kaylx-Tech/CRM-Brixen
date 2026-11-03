@@ -54,6 +54,45 @@ def _get(cfg, path):
         return None, None, "Finstap could not be reached. Please try again in a moment."
 
 
+def finstap_kyc_ready():
+    """Brixen's KYC runs on Finstap (FINSTAP_KYC_KEY is set): KYC orders start their check there."""
+    return bool(_settings()['key'])
+
+
+def start_for_order(order_number, full_name, email, phone=''):
+    """A KYC order: Finstap makes the client's check and emails them the form link (it opens on Brixen's
+    portal). Tried twice; a failure goes to GlitchTip. Returns (data, error)."""
+    cfg = _settings()
+    first, _, last = str(full_name or '').strip().partition(' ')
+    body = json.dumps({'first_name': first, 'last_name': last.strip(), 'email': email, 'phone': phone,
+                       'reference': order_number}).encode()
+    err = None
+    for _attempt in range(2):
+        req = urllib.request.Request(f"{cfg['api']}/kyc-partner/checks", data=body, method='POST', headers={
+            'X-Tenant': cfg['workspace'], 'X-KYC-Key': cfg['key'], 'Content-Type': 'application/json',
+            'Accept': 'application/json', 'User-Agent': 'BrixenCRM/1.0 (+https://brixenconsultants.com)',
+        })
+        try:
+            with urllib.request.urlopen(req, timeout=30) as res:
+                return (json.loads(res.read() or b'{}').get('data') or {}), None
+        except urllib.error.HTTPError as exc:
+            try:
+                err = (json.loads(exc.read() or b'{}').get('error')) or f"Finstap answered {exc.code}"
+            except ValueError:
+                err = f"Finstap answered {exc.code}"
+            if exc.code < 500:
+                break  # a wrong key or missing email will not change on a second try
+        except Exception as exc:
+            err = f"Finstap could not be reached: {exc}"
+    try:
+        from services.error_tracking import report_problem
+        report_problem('kyc', f"KYC check for order {order_number} not started on Finstap ({err})",
+                       level='error', order=order_number, email=email)
+    except ImportError:
+        print(f"[KYC] order {order_number}: {err}")
+    return None, err
+
+
 def _fetch(cfg, path='checks'):
     """(data, error): a JSON answer's data."""
     raw, _type, err = _get(cfg, path)

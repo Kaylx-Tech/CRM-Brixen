@@ -208,8 +208,30 @@ def is_kyc_order(order_id):
 
 
 def _auto_start(order_id, triggered_by):
-    """Add the customer as the first person to verify, start Didit and email them the link."""
+    """Add the customer as the first person to verify, start the check and email them the link: on Finstap's
+    KYC (kyc.finstap.com) when it is connected, else on Didit as before."""
     try:
+        from routes.kyc_partner_routes import finstap_kyc_ready, start_for_order
+        if finstap_kyc_ready():
+            if not is_kyc_order(order_id):
+                return
+            order = query_db("""
+                SELECT o.order_number, o.owner_name, o.owner_form_email, o.checkout_phone, u.full_name, u.email,
+                       u.phone
+                FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = ?;
+            """, (order_id,), one=True)
+            # Website guest orders wait until the team links the real customer
+            if not order or str(order.get('email') or '').lower() == GUEST_EMAIL:
+                return
+            name = (order.get('owner_name') or order.get('full_name') or '').strip()
+            email = (order.get('owner_form_email') or order.get('email') or '').strip()
+            if name and email:
+                data, err = start_for_order(order.get('order_number') or f"order {order_id}", name, email,
+                                            order.get('checkout_phone') or order.get('phone') or '')
+                if data:
+                    print(f"[KYC] order {order_id}: Finstap check {data.get('id')} started, link emailed: "
+                          f"{data.get('emailed')}")
+            return
         if not didit_service.is_configured() or not is_kyc_order(order_id):
             return
         if query_db("SELECT 1 FROM id_verifications WHERE order_id = ? LIMIT 1;", (order_id,), one=True):

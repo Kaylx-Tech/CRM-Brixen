@@ -151,6 +151,7 @@ export default function KycRecords() {
                             {c.full_name}
                           </button>
                           <div className="text-xs text-muted-foreground">{c.email || '—'}</div>
+                          {c.order_number && <div className="font-mono text-xs text-muted-foreground">{c.order_number}</div>}
                         </td>
                         <td className="px-3 py-2.5 whitespace-nowrap">{c.phone || '—'}</td>
                         <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{shortDate(c.created_at)}</td>
