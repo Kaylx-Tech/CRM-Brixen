@@ -15,6 +15,7 @@ POST /api/kyc-form/<code>/file                  one photo or file {kind, file}
 POST /api/kyc-form/<code>/submit                the answers; the check goes to the KYC desk
 GET/POST /api/kyc-link/<workspace>.<code>       the workspace's own KYC link: any client starts a check (no order)
 GET  /api/kyc-partner/checks                    another website's server (X-KYC-Key): its checks and link
+POST /api/kyc-partner/checks                    …starts a check for its order {first_name, last_name, email, reference}
 GET  /api/kyc-partner/checks/<id>[/files/<fid>] one check's details, or one of its documents (read only)
 POST /api/webhooks/didit                        Didit status updates (older checks; signed, no login)
 """
@@ -426,6 +427,19 @@ def handle_id_verification_routes(environ, start_response, path, method, user, b
         return _handle_webhook(environ, start_response, body)
     if path.startswith('/api/kyc-link/'):
         return _handle_workspace_link(environ, start_response, path, method, body)
+    # Another website's server (e.g. Brixen's) starts a check for one of its orders
+    if path == '/api/kyc-partner/checks' and method == 'POST':
+        from tenancy import current_tenant
+        from services import kyc_partner
+        tenant = current_tenant()
+        if not kyc_partner.key_ok(tenant, environ.get('HTTP_X_KYC_KEY')):
+            return error_response(start_response, "Invalid KYC key", status_code=401)
+        data, problem = kyc_partner.create_check(tenant, body)
+        if isinstance(problem, dict):
+            return validation_error(start_response, problem)
+        if problem:
+            return error_response(start_response, problem, status_code=400)
+        return success_response(start_response, data=data, status_code=201)
     # Another website's server (e.g. Brixen's) reads its checks and KYC link with its API key
     if path == '/api/kyc-partner/checks' and method == 'GET':
         from tenancy import current_tenant

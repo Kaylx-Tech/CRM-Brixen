@@ -49,7 +49,8 @@ def ensure():
     columns = {c['name'] for c in (query_db("PRAGMA table_info(id_verifications);") or [])}
     # source 'link': started by a visitor on the workspace's own KYC link (no order); phone: theirs
     for column, kind in (('form_token_hash', 'TEXT'), ('form_expires_at', 'TEXT'), ('submitted_at', 'TEXT'),
-                         ('form_round', 'INTEGER NOT NULL DEFAULT 0'), ('source', 'TEXT'), ('phone', 'TEXT')):
+                         ('form_round', 'INTEGER NOT NULL DEFAULT 0'), ('source', 'TEXT'), ('phone', 'TEXT'),
+                         ('external_ref', 'TEXT')):  # external_ref: the other site's order (e.g. Brixen's)
         if columns and column not in columns:
             execute_db(f"ALTER TABLE id_verifications ADD COLUMN {column} {kind};")
     execute_db("""
@@ -445,6 +446,30 @@ def submit(row, body):
         from services.kyc_billing import charge_check
         charge_check(current_tenant(), row['id'], fields['full_name'])
     return None, None
+
+
+def email_form_link(row, reference=None):
+    """Email the person their form link (a check without an order here, e.g. one Brixen started for its
+    order `reference`). Returns True when sent."""
+    from services.client_mail import compose_client_email
+    from services.email_service import send_email
+    if not row.get('email') or not row.get('session_url'):
+        return False
+    subject, text, html = compose_client_email(
+        subject='Verify your identity', headline='Verify your identity', greeting=row['full_name'],
+        message=("To complete your order we need to verify your identity. It takes about five minutes: follow the "
+                 "secure link below, best on your phone."),
+        points=['Have your ID card, driving licence or passport ready: you will photograph it and take a live '
+                'selfie.',
+                'Have a proof of address from the last 3 months ready (bank statement, utility bill or a '
+                'government letter).',
+                'Your details are sent securely and only seen by the team checking them.'],
+        details=[('Order', reference)] if reference else [],
+        cta_label='Verify my identity', cta_url=row['session_url'], category='ORDER')
+    ok = send_email(row['email'], subject, html, text, category='ORDER', mailbox='kyc')
+    if ok:
+        execute_db("UPDATE id_verifications SET link_sent_at = datetime('now') WHERE id = ?;", (row['id'],))
+    return ok
 
 
 def email_decision(row, status, note, order_number=None):

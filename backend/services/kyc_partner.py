@@ -67,6 +67,44 @@ def key_ok(tenant, key):
     return bool(stored and key and secrets.compare_digest(stored, _hash(key)))
 
 
+def create_check(tenant, body):
+    """The other site starts a check for one of its orders: the person is emailed their form link (it opens on
+    the site). The same order and email again reuse the open check with a new link. Returns
+    ({id, link, emailed, reused}, None) or (None, {field: message} | message)."""
+    from db import execute_db, query_db
+    from services import kyc_billing, kyc_form
+    body = body if isinstance(body, dict) else {}
+    clean = lambda key, limit=160: re.sub(r'\s+', ' ', str(body.get(key) or '')).strip()[:limit]  # noqa: E731
+    name = ' '.join(p for p in (clean('first_name', 80), clean('last_name', 80)) if p) or clean('full_name')
+    email, phone, ref = clean('email', 200).lower(), clean('phone', 40), clean('reference', 60)
+    errors = {}
+    if not name:
+        errors['full_name'] = "The person's name is missing."
+    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+        errors['email'] = "The person's email is missing or not valid."
+    if errors:
+        return None, errors
+    if not kyc_billing.enabled(tenant):
+        return None, "The KYC service is off for this workspace (admin.finstap.com > KYC)."
+    kyc_form.ensure()
+    row = query_db("""
+        SELECT id FROM id_verifications WHERE source = 'partner' AND LOWER(email) = ? AND COALESCE(external_ref, '') = ?
+          AND status IN ('Not Started', 'In Progress', 'Declined') ORDER BY id DESC LIMIT 1;
+    """, (email, ref), one=True)
+    if row:
+        check_id = row['id']
+    else:
+        check_id = execute_db("""
+            INSERT INTO id_verifications (order_id, full_name, email, phone, source, external_ref, created_at, updated_at)
+            VALUES (NULL, ?, ?, ?, 'partner', ?, datetime('now'), datetime('now'));
+        """, (name, email, phone or None, ref or None))
+    fresh = dict(kyc_form.new_link(check_id))
+    if not row:
+        kyc_billing.charge_check(tenant, check_id, name)
+    emailed = kyc_form.email_form_link(fresh, ref)
+    return {'id': check_id, 'link': fresh['session_url'], 'emailed': emailed, 'reused': bool(row)}, None
+
+
 def checks(limit=500):
     """The active workspace's checks for the other site's record (newest first; no files, no prices)."""
     from db import query_db
@@ -74,7 +112,7 @@ def checks(limit=500):
     ensure()
     rows = query_db("""
         SELECT v.id, v.full_name, v.email, v.phone, v.status, v.source, v.created_at, v.submitted_at,
-               v.reviewed_at, v.review_note, v.session_url, o.order_number
+               v.reviewed_at, v.review_note, v.session_url, COALESCE(v.external_ref, o.order_number) AS order_number
         FROM id_verifications v LEFT JOIN orders o ON o.id = v.order_id
         ORDER BY v.id DESC LIMIT ?;
     """, (int(limit),)) or []
