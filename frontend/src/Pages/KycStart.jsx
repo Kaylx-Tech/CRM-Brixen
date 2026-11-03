@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import { IconAlertTriangle, IconArrowRight, IconLoader2, IconShieldCheck } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PhoneInput } from "@/components/ui/phone-input"
 import { Label } from "@/components/ui/label"
 import { getApiBase } from "@/lib/api"
 import { useBranding } from "@/lib/branding"
@@ -124,7 +125,7 @@ export default function KycStart() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="phone">Phone (optional)</Label>
-                <Input id="phone" type="tel" value={form.phone} onChange={set("phone")} autoComplete="tel" />
+                <PhoneInput id="phone" type="tel" value={form.phone} onChange={set("phone")} autoComplete="tel" />
               </div>
             </div>
             {notice && (

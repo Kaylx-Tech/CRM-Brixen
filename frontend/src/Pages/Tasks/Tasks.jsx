@@ -1,3 +1,4 @@
+import { PhoneInput } from "@/components/ui/phone-input"
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -1088,7 +1089,7 @@ const Tasks = ({ view } = {}) => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="staff-phone">Phone</Label>
-                <Input
+                <PhoneInput
                   id="staff-phone"
                   {...invalidProps(staffErrors.errors, 'phone', 'staff-')}
                   value={staffForm.phone}
