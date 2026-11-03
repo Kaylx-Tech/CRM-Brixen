@@ -499,6 +499,26 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
                 return error_response(start_response, str(exc), status_code=400)
             audit(admin, 'KYC_SERVICE_ON' if on else 'KYC_SERVICE_OFF', body.get('slug'), '')
             return success_response(start_response, message=f"KYC service turned {'on' if on else 'off'}.")
+        # KYC for another website (e.g. Brixen's portal): its address, free checks, its API key
+        if sub == '/kyc/partners' and method == 'GET':
+            from services import kyc_partner
+            return success_response(start_response, data={'partners': kyc_partner.partners()})
+        if sub in ('/kyc/partners', '/kyc/partners/key') and method == 'POST':
+            from services import kyc_partner
+            slug = str(body.get('slug') or '').strip().lower()
+            try:
+                if sub == '/kyc/partners':
+                    kyc_partner.setup(slug, body.get('base_url'), bool(body.get('free')))
+                    audit(admin, 'KYC_PARTNER_SET', slug, f"{body.get('base_url') or 'own address'}"
+                                                         f"{', free' if body.get('free') else ''}")
+                    return success_response(start_response, data={'partners': kyc_partner.partners()},
+                                            message="Saved.")
+                key = kyc_partner.new_key(slug)
+                audit(admin, 'KYC_PARTNER_KEY', slug, 'new API key')
+                return success_response(start_response, data={'key': key},
+                                        message="New key made. Copy it now: it is not shown again.")
+            except kyc_partner.PartnerError as exc:
+                return error_response(start_response, str(exc), status_code=400)
         kyc = re.match(r'^/kyc/([a-z0-9-]+)/(\d+)/(reject|resubmit)$', sub)
         if kyc and method == 'POST':
             slug, check_id, act = kyc.group(1), int(kyc.group(2)), kyc.group(3)

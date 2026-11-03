@@ -28,6 +28,7 @@ import { money, ownerApi, shortDate } from "@/lib/owner"
 import { Button, FilterTabs, LoadError, PageTitle, Panel, SELECT, Stat } from "./ownerUi"
 import { AMBER, GREEN, GREY, PILL, RED, REJECTED, SKY, kycLabel } from "../Kyc/kycStatus"
 import KycTeam from "./KycTeam"
+import KycPartners from "./KycPartners"
 import { useServiceSettings } from "./useServiceSettings"
 
 function thisMonth() {
@@ -260,6 +261,8 @@ export default function OwnerKyc() {
       </Panel>
 
       <KycTeam />
+
+      <KycPartners />
 
       {data && (
         <>

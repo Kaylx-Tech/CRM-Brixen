@@ -39,6 +39,8 @@ def link_url(tenant):
                           (code, tenant['slug']))
         code = (get_tenant(tenant['slug']) or {}).get('kyc_link_code') or code
     path = f"/verify/start/{tenant['slug']}.{code}"
+    if (fresh.get('kyc_form_base_url') or '').strip():  # KYC for another website (e.g. Brixen's portal)
+        return fresh['kyc_form_base_url'].strip().rstrip('/') + path
     url = workspace_url(tenant['slug'], path)
     if url:
         return url
@@ -104,8 +106,8 @@ def set_enabled(slug, on, by):
 
 def charge_check(tenant, check_id, label=''):
     """Charge one ID check, once: paid from the balance now when it covers it, else due until it is paid."""
-    if not tenant or (tenant.get('plan') or '') == 'legacy':
-        return
+    if not tenant or (tenant.get('plan') or '') == 'legacy' or (get_tenant(tenant['slug']) or {}).get('kyc_free'):
+        return  # Brixen's own database, or a workspace the owner made free (e.g. Brixen's KYC)
     each = price()
     if each <= 0:
         return

@@ -14,6 +14,7 @@ GET  /api/kyc-form/<code>                       the person's form (no login, the
 POST /api/kyc-form/<code>/file                  one photo or file {kind, file}
 POST /api/kyc-form/<code>/submit                the answers; the check goes to the KYC desk
 GET/POST /api/kyc-link/<workspace>.<code>       the workspace's own KYC link: any client starts a check (no order)
+GET  /api/kyc-partner/checks                    another website's server (X-KYC-Key): its checks and link
 POST /api/webhooks/didit                        Didit status updates (older checks; signed, no login)
 """
 import json
@@ -424,6 +425,19 @@ def handle_id_verification_routes(environ, start_response, path, method, user, b
         return _handle_webhook(environ, start_response, body)
     if path.startswith('/api/kyc-link/'):
         return _handle_workspace_link(environ, start_response, path, method, body)
+    # Another website's server (e.g. Brixen's) reads its checks and KYC link with its API key
+    if path == '/api/kyc-partner/checks' and method == 'GET':
+        from tenancy import current_tenant
+        from services import kyc_billing, kyc_partner
+        tenant = current_tenant()
+        if not kyc_partner.key_ok(tenant, environ.get('HTTP_X_KYC_KEY')):
+            return error_response(start_response, "Invalid KYC key", status_code=401)
+        on = kyc_billing.enabled(tenant)
+        return success_response(start_response, data={
+            'workspace': tenant.get('name'), 'enabled': on,
+            'link': kyc_billing.link_url(tenant) if on else None,
+            'checks': kyc_partner.checks(),
+        })
     if path.startswith('/api/kyc-form/'):
         return _handle_form(start_response, path, method, body)
     if path == '/api/client/id-verification' and method == 'GET':

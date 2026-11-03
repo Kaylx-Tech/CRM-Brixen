@@ -344,6 +344,10 @@ TENANT_COLUMNS = (
     ('kyc_enabled_at', "TIMESTAMP"),           # the paid KYC service is on (services/kyc_billing.py)
     ('kyc_enabled_by', "TEXT"),
     ('kyc_link_code', "TEXT"),                 # the workspace's own KYC link: acme.finstap.com/verify/start/<code>
+    # KYC for another website (e.g. Brixen's portal): its form address, no charge, and its API key's hash
+    ('kyc_form_base_url', "TEXT"),
+    ('kyc_free', "INTEGER"),
+    ('kyc_api_key_hash', "TEXT"),
 )
 
 HANDOFF_SECONDS = 120

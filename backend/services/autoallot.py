@@ -89,7 +89,7 @@ def kyc_credits(tenant):
     owner portal's KYC billing), against the plan's number. Unlimited when no KYC price is set (nothing to pay)."""
     from db import query_db
     from services.platform_services import settings
-    if not tenant or tenant.get('plan') == 'legacy' or not settings().get('kyc_price'):
+    if not tenant or tenant.get('plan') == 'legacy' or not settings().get('kyc_price') or tenant.get('kyc_free'):
         return {'limit': None, 'used': 0, 'available': None}
     limit = _limit(tenant, 'id_checks', PLAN_CREDITS)
     paid = {r['period'] for r in _platform_query(

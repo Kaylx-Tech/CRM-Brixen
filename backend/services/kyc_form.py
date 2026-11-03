@@ -81,9 +81,13 @@ def _slug():
 
 
 def form_url(token):
-    """The person's link: the workspace's own address, so the page carries its logo."""
+    """The person's link: the workspace's own address, so the page carries its logo; or the other website's
+    address when the workspace runs KYC for one (tenants.kyc_form_base_url, e.g. Brixen's portal)."""
     try:
-        from tenancy import workspace_url
+        from tenancy import get_tenant, workspace_url
+        site = ((get_tenant(_slug()) or {}).get('kyc_form_base_url') or '').strip()
+        if site:
+            return f"{site.rstrip('/')}/verify/{token}"
         url = workspace_url(_slug(), f'/verify/{token}')
     except ImportError:
         url = ''
