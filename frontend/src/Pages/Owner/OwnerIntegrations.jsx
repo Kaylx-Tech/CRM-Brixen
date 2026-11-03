@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { ownerApi } from "@/lib/owner"
 import { Button, LoadError, PageTitle, Panel } from "./ownerUi"
+import DeleteConfirmation from "@/components/DeleteConfirmation"
 
 const PILL = "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold"
 
@@ -20,6 +21,8 @@ function IntegrationCard({ group, extra, onSaved }) {
   const initial = () => Object.fromEntries(group.fields.map((f) => [f.name, f.secret ? "" : f.value]))
   const [values, setValues] = useState(initial)
   const [busy, setBusy] = useState(false)
+  // The field whose saved value the owner asked to remove (an alert asks first)
+  const [removing, setRemoving] = useState(null)
 
   const save = async (body) => {
     setBusy(true)
@@ -94,10 +97,7 @@ function IntegrationCard({ group, extra, onSaved }) {
                     type="button"
                     className="shrink-0 text-xs text-muted-foreground underline-offset-2 hover:text-destructive hover:underline"
                     disabled={busy}
-                    onClick={() => {
-                      if (window.confirm(`Remove the ${f.label.toLowerCase()} saved here? The server's value (if any) is used again.`))
-                        save({ clear: [f.name] })
-                    }}
+                    onClick={() => setRemoving(f)}
                   >
                     Remove
                   </button>
@@ -112,6 +112,18 @@ function IntegrationCard({ group, extra, onSaved }) {
           Save
         </Button>
       </form>
+      <DeleteConfirmation
+        isOpen={!!removing}
+        onClose={() => setRemoving(null)}
+        onConfirm={() => {
+          const name = removing.name
+          setRemoving(null)
+          save({ clear: [name] })
+        }}
+        title={removing ? `Remove the ${removing.label.toLowerCase()}?` : ""}
+        description="The value saved here is removed; the server's value (if any) is used again."
+        confirmText="Remove"
+      />
     </Panel>
   )
 }
