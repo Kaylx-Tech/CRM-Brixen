@@ -32,6 +32,8 @@ def _fetch(cfg):
     """(data, error) from Finstap's partner API."""
     req = urllib.request.Request(f"{cfg['api']}/kyc-partner/checks", headers={
         'X-Tenant': cfg['workspace'], 'X-KYC-Key': cfg['key'], 'Accept': 'application/json',
+        # Cloudflare (in front of api.finstap.com) refuses Python's default User-Agent (error 1010)
+        'User-Agent': 'BrixenCRM/1.0 (+https://brixenconsultants.com)',
     })
     try:
         with urllib.request.urlopen(req, timeout=15) as res:
@@ -39,6 +41,8 @@ def _fetch(cfg):
     except urllib.error.HTTPError as exc:
         if exc.code == 401:
             return None, "Finstap refused the KYC key. Make a new key in admin.finstap.com and set FINSTAP_KYC_KEY."
+        if exc.code == 404:
+            return None, "Finstap does not know this workspace. Check FINSTAP_KYC_WORKSPACE (the workspace's name)."
         return None, f"Finstap answered {exc.code}. Please try again in a moment."
     except Exception as exc:
         print(f"[KYC] Finstap could not be reached: {exc}")
