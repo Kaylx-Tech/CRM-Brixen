@@ -12,6 +12,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PhoneInput } from "@/components/ui/phone-input"
+import { SicInput } from "@/components/ui/sic-input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
@@ -542,6 +544,9 @@ function ServiceFileInput({ field, file, onFile, hint }) {
   )
 }
 
+// "Nature of Business (SIC)", "SIC Code / Business Activity": a SIC code picker
+const isSicLabel = (label) => /\bsic\b|nature of business|business activity/i.test(String(label || ""))
+
 /** One text input, radio question or company check from a service's order form. */
 function ServiceFieldInput({ field, value, onChange, hint, error }) {
   const id = `svc-field-${field.key.replace(/[^a-z0-9]+/gi, "-")}`
@@ -567,6 +572,26 @@ function ServiceFieldInput({ field, value, onChange, hint, error }) {
       ) : field.type === "date" || isDateOfBirthLabel(field.label) ? (
         // Date fields (and older "Date of birth" text questions): a calendar and DD/MM/YYYY
         <DateOfBirthInput id={id} value={value} onChange={onChange} allowFuture={!isDateOfBirthLabel(field.label)} />
+      ) : isSicLabel(field.label) ? (
+        // Nature of business: search Companies House's SIC codes
+        <SicInput
+          id={id}
+          className="text-sm"
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
+        />
+      ) : ruleFromLabel(field.label)?.type === "phone" ? (
+        <PhoneInput
+          id={id}
+          className="text-sm"
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder || undefined}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
+        />
       ) : (
         <Input
           id={id}

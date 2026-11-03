@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PhoneInput } from "@/components/ui/phone-input"
+import { SicInput } from "@/components/ui/sic-input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -517,18 +518,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold">SIC Code / Business Activity</Label>
-                    <Select value={sicCode} onValueChange={setSicCode}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="overflow-hidden p-0">
-                        <SelectGroup className="p-1">
-                          {SIC_CODES.map((s) => (
-                            <SelectItem key={s} value={s}>{s}</SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
+                    <SicInput id="qo-sic_code" value={sicCode} onChange={(e) => setSicCode(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="qo-company_email" className="text-sm font-semibold">Company Work Notification Email <RequiredMark /></Label>
