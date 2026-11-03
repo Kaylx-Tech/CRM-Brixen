@@ -56,11 +56,14 @@ def _clear_login_failures(key):
 
 
 def _revoke_user_sessions(user_id, except_token=None):
+    """A new password: every other session ends, and no browser skips the login code any more."""
     execute_db("""
         UPDATE user_sessions
         SET revoked_at = datetime('now')
         WHERE user_id = ? AND revoked_at IS NULL AND session_token != ?;
     """, (user_id, except_token or ''))
+    from services.login_otp import forget_devices
+    forget_devices(user_id)
 
 
 def _public_user(user_row):

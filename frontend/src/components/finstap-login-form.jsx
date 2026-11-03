@@ -131,7 +131,7 @@ export function FinstapLoginForm() {
       })
       const data = await res.json().catch(() => ({}))
       if (res.ok && data.data?.otp_required) {
-        // Password right, new browser (or 24 hours passed): ask for the emailed code
+        // Password right, new browser (or 30 days passed): ask for the emailed code
         toastDone(toastId, "We emailed you a login code")
         setCodeStep({ challenge: data.data.challenge, emailHint: data.data.email_hint,
                       resendAfter: data.data.resend_after, slug })
@@ -185,7 +185,7 @@ export function FinstapLoginForm() {
     return (
       <AuthLayout
         title="Check your email"
-        subtitle={`We sent a 6-digit login code to ${codeStep.emailHint}. This browser will not ask again for 24 hours.`}
+        subtitle={`We sent a 6-digit login code to ${codeStep.emailHint}. This browser will not ask again for 30 days.`}
       >
         <LoginCodeStep
           heading={false}

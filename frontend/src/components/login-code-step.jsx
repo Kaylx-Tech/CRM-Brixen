@@ -116,7 +116,7 @@ export function LoginCodeStep({
           <h1 className="text-2xl font-bold">Check your email</h1>
           <p className="text-balance text-sm text-muted-foreground">
             We sent a 6-digit login code to <span className="font-medium text-foreground">{emailHint}</span>.
-            This browser will not ask again for 24 hours.
+            This browser will not ask again for 30 days.
           </p>
         </div>
       ) : null}

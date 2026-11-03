@@ -85,7 +85,7 @@ export function LoginForm({ className, ...props }) {
       const token = data.token || nested.token || data.session_token || nested.session_token || null
 
       if (isSuccess && nested.otp_required) {
-        // Password right, new browser (or 24 hours passed): ask for the emailed code
+        // Password right, new browser (or 30 days passed): ask for the emailed code
         toastDone(toastId, "We emailed you a login code")
         setCodeStep({ challenge: nested.challenge, emailHint: nested.email_hint, resendAfter: nested.resend_after })
       } else if (isSuccess && token) {

@@ -1,12 +1,13 @@
 """Email login codes (one-time passwords) after the password.
 
 Everyone signing in with email + password gets a 6-digit code by email, unless this browser was
-confirmed for that user in the last 24 hours. A browser is told apart by a random device id the
+confirmed for that user in the last 30 days. A browser is told apart by a random device id the
 CRM keeps in the browser (a new browser has a new id, so it always gets a code). The server only
 stores hashes of the device id and the code.
 
   * a code works for 10 minutes and for 5 tries; a new one can be sent after 60 seconds
-  * a confirmed browser is trusted for 24 hours from the moment the code was entered
+  * a confirmed browser is trusted for 30 days from the moment the code was entered; a new password
+    (changed or reset) forgets every trusted browser of that user, so each one asks for a code again
   * LOGIN_EMAIL_OTP=0 (env) switches codes off, e.g. while email is down
   * when the code email cannot be sent at all (SMTP missing or refusing), the sign-in goes ahead
     without a code and the login screen shows why, so nobody is locked out by an email problem;
@@ -27,7 +28,7 @@ CODE_MINUTES = 10
 MAX_TRIES = 5
 RESEND_SECONDS = 60
 MAX_SENDS = 5
-TRUST_HOURS = 24
+TRUST_DAYS = 30
 
 
 def _workspace_slug():
@@ -97,7 +98,7 @@ def email_hint(email):
 
 
 def device_trusted(user_id, device_id):
-    """This browser entered a code for this user within the last 24 hours."""
+    """This browser entered a code for this user within the last 30 days."""
     device = _device_hash(device_id)
     if not device:
         return False
@@ -119,7 +120,15 @@ def trust_device(user_id, device_id, user_agent=''):
         VALUES (?, ?, datetime('now', ?), ?)
         ON CONFLICT(user_id, device_hash) DO UPDATE SET
             trusted_until = excluded.trusted_until, user_agent = excluded.user_agent;
-    """, (user_id, device, f'+{TRUST_HOURS} hours', (user_agent or '')[:250]))
+    """, (user_id, device, f'+{TRUST_DAYS} days', (user_agent or '')[:250]))
+
+
+def forget_devices(user_id):
+    """No browser is trusted for this user any more (their password changed): the next sign-in on each
+    one asks for a code again. The rows are kept, only their trust ends now."""
+    _ensure_tables()
+    execute_db("UPDATE trusted_devices SET trusted_until = datetime('now') WHERE user_id = ? "
+               "AND datetime(trusted_until) > datetime('now');", (user_id,))
 
 
 FINSTAP_ICON_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -368,7 +377,7 @@ def resend_code(challenge, details=None):
 
 
 def verify_code(challenge, code, device_id, user_agent=''):
-    """Check the code. Returns (user_id, error). A right code trusts this browser for 24 hours."""
+    """Check the code. Returns (user_id, error). A right code trusts this browser for 30 days."""
     row = _open_challenge(challenge)
     if not row:
         return None, "This code has expired. Please log in again to get a new one."

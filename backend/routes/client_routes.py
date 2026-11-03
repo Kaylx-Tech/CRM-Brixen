@@ -265,6 +265,8 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
             return error_response(start_response, "Customer not found", status_code=404)
 
         execute_db("UPDATE users SET password_hash = ? WHERE id = ?;", (hash_password(password), cid))
+        from services.login_otp import forget_devices
+        forget_devices(cid)  # a new password: every browser asks for the login code again
         _audit(user, 'CLIENT_PASSWORD_SET', 'users', cid, f"Set portal password for {target.get('email')}")
 
         name = target.get('full_name') or 'Customer'
