@@ -444,7 +444,7 @@ def email_decision(row, status, note, order_number=None):
                     'documents are not accepted.'],
             details=[('Order', order_number)],
             cta_label='Verify my identity', cta_url=row['session_url'], category='ORDER')
-    ok = send_email(email, subject, html, text, category='ORDER', order_id=row.get('order_id'))
+    ok = send_email(email, subject, html, text, category='ORDER', order_id=row.get('order_id'), mailbox='kyc')
     if ok:
         execute_db("UPDATE id_verifications SET link_sent_at = datetime('now') WHERE id = ?;", (row['id'],))
     else:

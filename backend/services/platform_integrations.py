@@ -72,6 +72,18 @@ GROUPS = [
             ('PLATFORM_SMTP_FROM', 'From address (optional)', False, 'Empty = the username'),
         ],
     },
+    {
+        'id': 'kyc_email', 'title': 'KYC email (Finstap)',
+        'description': "Identity check emails (verify links, approved / rejected) for workspaces without their own "
+                       "email, and the KYC team's sign-in emails. Empty = the no-reply sends them.",
+        'fields': [
+            ('KYC_SMTP_HOST', 'SMTP host', False, 'Empty = the no-reply\'s host'),
+            ('KYC_SMTP_PORT', 'SMTP port', False, 'Usually 587 or 465'),
+            ('KYC_SMTP_USER', 'Username', False, 'For example kyc@finstap.com'),
+            ('KYC_SMTP_PASS', 'Password', True, ''),
+            ('KYC_SMTP_FROM', 'From address (optional)', False, 'Empty = the username'),
+        ],
+    },
 ]
 
 FIELDS = {f[0]: f for g in GROUPS for f in g['fields']}
@@ -79,7 +91,7 @@ SECRETS = {name for name, _l, secret, _h in FIELDS.values() if secret}
 # Read from the server env only, never from (or saved to) the owner portal
 SERVER_ONLY = {f[0] for g in GROUPS if g.get('server_only') for f in g['fields']}
 # Not needed for "connected" (they have defaults: the server's SMTP host and port)
-OPTIONAL = {'PLATFORM_SMTP_HOST', 'PLATFORM_SMTP_PORT'}
+OPTIONAL = {'PLATFORM_SMTP_HOST', 'PLATFORM_SMTP_PORT', 'KYC_SMTP_HOST', 'KYC_SMTP_PORT'}
 
 _cache = {'at': 0.0, 'values': {}}
 _lock = threading.Lock()
@@ -162,7 +174,7 @@ def save(values, clear=None):
             raise IntegrationError(f"{FIELDS[name][1]} is too long")
         if name in SECRETS and not value:
             continue  # left empty: keep what is saved
-        if name == 'PLATFORM_SMTP_PORT' and value and not value.isdigit():
+        if name in ('PLATFORM_SMTP_PORT', 'KYC_SMTP_PORT') and value and not value.isdigit():
             raise IntegrationError("SMTP port must be a number")
         current = _saved().get(name, '')
         if value == current:

@@ -339,7 +339,8 @@ def resubmit_check(slug, check_id, reason=None):
                         'council tax bill). Edited or screenshot documents are not accepted.'],
                 details=[('Order', row.get('order_number'))],
                 cta_label='Verify my identity', cta_url=fresh['session_url'], category='ORDER')
-            emailed = send_email(email, subject, html, text, category='ORDER', order_id=row.get('order_id'))
+            emailed = send_email(email, subject, html, text, category='ORDER', order_id=row.get('order_id'),
+                                 mailbox='kyc')
             if emailed:
                 execute_db("UPDATE id_verifications SET link_sent_at = datetime('now') WHERE id = ?;", (int(check_id),))
             else:

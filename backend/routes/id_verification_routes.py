@@ -196,7 +196,7 @@ def _email_link(row, user):
                 'Your details are sent securely and only seen by the team checking them.'],
         details=[('Order', order.get('order_number'))],
         cta_label='Verify my identity', cta_url=row['session_url'], category='ORDER')
-    ok = send_email(row['email'], subject, html, text, category='ORDER', user_id=order.get('user_id'),
+    ok = send_email(row['email'], subject, html, text, category='ORDER', user_id=order.get('user_id'), mailbox='kyc',
                     order_id=row['order_id'], triggered_by=user.get('id'))
     if not ok:
         return f"The email was not sent: {last_failure_reason() or 'email is not set up'}"

@@ -11,26 +11,28 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 
-def _platform_mailbox():
-    """Finstap's own no-reply mailbox (PLATFORM_SMTP_USER / PLATFORM_SMTP_PASS, optional PLATFORM_SMTP_FROM,
-    PLATFORM_SMTP_HOST, PLATFORM_SMTP_PORT) for the platform's emails: signup codes and the owner portal's
-    codes and links. None when it is not set up, so those emails use the server's SMTP_* mailbox.
-    The owner portal (Integrations) comes before the env."""
+def _platform_mailbox(prefix='PLATFORM'):
+    """One of Finstap's own mailboxes: PLATFORM (the no-reply: signup codes, owner portal codes and links) or
+    KYC (kyc@finstap.com: identity check emails). Settings <prefix>_SMTP_USER / _PASS, optional _FROM, _HOST,
+    _PORT. None when it is not set up (the KYC one then falls back to the no-reply, the no-reply to the
+    server's SMTP_* mailbox). The owner portal (Integrations) comes before the env."""
     try:
         from services.platform_integrations import get as platform
     except ImportError:
         def platform(name):
             return os.environ.get(name, '').strip()
-    user = platform('PLATFORM_SMTP_USER')
-    password = platform('PLATFORM_SMTP_PASS')
+    user = platform(f'{prefix}_SMTP_USER')
+    password = platform(f'{prefix}_SMTP_PASS')
     if not user or not password:
         return None
-    host = (platform('PLATFORM_SMTP_HOST') or os.environ.get('SMTP_HOST') or 'smtp.hostinger.com').strip()
+    host = (platform(f'{prefix}_SMTP_HOST') or platform('PLATFORM_SMTP_HOST') or os.environ.get('SMTP_HOST')
+            or 'smtp.hostinger.com').strip()
     try:
-        port = int(platform('PLATFORM_SMTP_PORT') or os.environ.get('SMTP_PORT') or 587)
+        port = int(platform(f'{prefix}_SMTP_PORT') or platform('PLATFORM_SMTP_PORT') or os.environ.get('SMTP_PORT')
+                   or 587)
     except (TypeError, ValueError):
         port = 587
-    return host, port, user, password, (platform('PLATFORM_SMTP_FROM') or user).strip()
+    return host, port, user, password, (platform(f'{prefix}_SMTP_FROM') or user).strip()
 
 
 def _in_workspace():
@@ -42,6 +44,11 @@ def _in_workspace():
 
 
 def _smtp_config(mailbox=None):
+    if mailbox == 'kyc':
+        own = _platform_mailbox('KYC')
+        if own:
+            return own
+        mailbox = 'platform'  # kyc@ not set up yet: the no-reply sends it
     if mailbox == 'platform':
         own = _platform_mailbox()
         if own:
@@ -141,8 +148,12 @@ def last_failure_reason():
 
 def _fallback_mailbox(mailbox):
     """A workspace that has not set up its own mailbox (Settings › Email) sends every email from Finstap's
-    no-reply, in the company's name with replies going to its support email, so no email is held back."""
-    if mailbox is None and _in_workspace() and not workspace_mailbox_ready():
+    no-reply, in the company's name with replies going to its support email, so no email is held back.
+    Identity check emails (mailbox='kyc') come from kyc@finstap.com instead, unless the workspace has its own."""
+    own_ready = not _in_workspace() or workspace_mailbox_ready()
+    if mailbox == 'kyc':
+        return None if _in_workspace() and own_ready else 'kyc'
+    if mailbox is None and not own_ready:
         return 'platform'
     return mailbox
 
@@ -270,7 +281,7 @@ def _deliver(recipient, subject, html_content, text_content, logo=None, sender_n
     msg = _build_message(subject, formataddr((sender_name or brand_name(), from_email)), recipient, html_content,
                          text_content, logo=logo, images=images, attachments=attachments)
     # Sent from Finstap's no-reply for a workspace: replies go to the company's own support email
-    if mailbox == 'platform' and _in_workspace():
+    if mailbox in ('platform', 'kyc') and _in_workspace():
         try:
             from services.settings_service import get_setting
             reply_to = str(get_setting('support_email', '') or '').strip()
