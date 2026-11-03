@@ -18,6 +18,7 @@ import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { emailProblem } from "@/lib/validation"
 import { maskDob } from "@/lib/date-of-birth"
 import brixenLogo from "@/assets/brixen-logo.png"
 
@@ -402,7 +403,7 @@ export default function KycVerify() {
       for (const side of idType?.sides || []) if (!uploaded.has(side)) out[side] = `Add the ${SIDE_LABEL[side].toLowerCase()} photo.`
       if (!form.first_name.trim()) out.first_name = "Enter your first name as shown on your document."
       if (!form.last_name.trim()) out.last_name = "Enter your last name as shown on your document."
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) out.email = "Enter a valid email address."
+      if (emailProblem(form.email)) out.email = emailProblem(form.email)
       if (!/^\d{2}\/\d{2}\/\d{4}$/.test(form.date_of_birth)) out.date_of_birth = "Enter your date of birth as DD/MM/YYYY."
       if (!form.id_number.trim()) out.id_number = "Enter your document number."
     }

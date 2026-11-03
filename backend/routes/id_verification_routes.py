@@ -18,6 +18,7 @@ from db import query_db, execute_db
 from services import didit_service
 from utils.validation import validation_error
 from utils.response import success_response, error_response
+from utils.validation import email_problem
 
 TEAM_ROLES = ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
 PERSON_ROLES = ('Director', 'PSC', 'Director & PSC', 'Secretary', 'Member', 'Presenter', 'Other')
@@ -80,8 +81,8 @@ def _clean_person(body, partial=False):
             out[key] = str(body.get(key) or '').strip()[:limit]
     if 'full_name' in out and not out['full_name']:
         return None, {'full_name': "Full name is required."}
-    if out.get('email') and not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', out['email']):
-        return None, {'email': "Enter a valid email address, like name@example.com."}
+    if out.get('email') and email_problem(out['email']):
+        return None, {'email': email_problem(out['email'])}
     if out.get('person_role') and out['person_role'] not in PERSON_ROLES:
         out['person_role'] = 'Other'
     # Companies House personal code: 11 letters and numbers, given once the identity is verified

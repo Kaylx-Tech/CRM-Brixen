@@ -23,6 +23,54 @@ PERSONAL_CODE_RE = re.compile(r'^[A-Z0-9]{11}$')
 URL_RE = re.compile(r'^https?://[^\s/$.?#][^\s]*\.[^\s]{2,}$', re.I)
 
 
+# Common mailbox domains: a near miss of one of these (gmai.com, hotmial.co.uk, gmail.con) is a typo
+EMAIL_DOMAINS = (
+    'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.co.uk', 'ymail.com', 'hotmail.com', 'hotmail.co.uk',
+    'outlook.com', 'outlook.co.uk', 'live.com', 'live.co.uk', 'msn.com', 'icloud.com', 'me.com', 'aol.com',
+    'protonmail.com', 'proton.me', 'btinternet.com', 'sky.com', 'virginmedia.com', 'talktalk.net', 'zoho.com',
+)
+# Real domains that sit close to those, never flagged
+EMAIL_OK = set(EMAIL_DOMAINS) | {'mail.com', 'email.com', 'gmx.com', 'gmx.co.uk', 'mac.com', 'live.ca', 'hotmail.fr',
+                                 'yahoo.fr', 'yahoo.in', 'outlook.fr'}
+TLD_TYPOS = {'con': 'com', 'cmo': 'com', 'ocm': 'com', 'comm': 'com', 'coom': 'com', 'vom': 'com', 'xom': 'com',
+             'cpm': 'com', 'couk': 'co.uk', 'co.k': 'co.uk', 'c.uk': 'co.uk', 'ner': 'net', 'nett': 'net',
+             'orgg': 'org'}
+EMAIL_STRICT_RE = re.compile(r"^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*"
+                             r"@([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,}$")
+
+
+def _edit_distance(a, b):
+    row = list(range(len(b) + 1))
+    for i in range(1, len(a) + 1):
+        prev, row[0] = row[0], i
+        for j in range(1, len(b) + 1):
+            keep = row[j]
+            row[j] = min(row[j] + 1, row[j - 1] + 1, prev + (a[i - 1] != b[j - 1]))
+            prev = keep
+    return row[len(b)]
+
+
+def email_problem(value):
+    """The problem with an email address ('' when it looks right): bad format, or a typo in a common domain.
+    Same rules as emailProblem in frontend/src/lib/validation.js."""
+    email = str(value or '').strip()
+    if not EMAIL_STRICT_RE.match(email):
+        return 'Enter a valid email address, like name@example.com.'
+    user, domain = email.split('@', 1)
+    domain = domain.lower()
+    if domain in EMAIL_OK:
+        return ''
+    for bad, good in TLD_TYPOS.items():
+        if domain.endswith('.' + bad):
+            return f'Check the email address: did you mean {user}@{domain[:-len(bad)]}{good}?'
+    best = None
+    for known in EMAIL_DOMAINS:
+        d = _edit_distance(domain, known)
+        if 0 < d <= (1 if len(known) <= 7 else 2) and (best is None or d < best[1]):
+            best = (known, d)
+    return f'Check the email address: did you mean {user}@{best[0]}?' if best else ''
+
+
 def _blank(value):
     if value is None:
         return True
@@ -91,12 +139,12 @@ def check_field(value, rule, values=None):
 
     text = value.strip() if isinstance(value, str) else value
     if kind == 'email':
-        if not EMAIL_RE.match(str(text)):
-            return 'Enter a valid email address, like name@example.com.'
+        if email_problem(text):
+            return email_problem(text)
     elif kind == 'emails':
         for e in [x for x in re.split(r'[,;\s]+', str(text)) if x]:
-            if not EMAIL_RE.match(e):
-                return f'"{e}" is not a valid email address.'
+            if email_problem(e):
+                return email_problem(e) if EMAIL_RE.match(e) else f'"{e}" is not a valid email address.'
     elif kind == 'phone':
         p = clean_phone(text)
         # UK 07700 900123, +44 7700 900123, or international digits without + (447700900123)

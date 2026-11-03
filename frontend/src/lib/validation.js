@@ -55,6 +55,52 @@ export function parseDate(value) {
   return date && isValid(date) && date.getFullYear() >= 1900 && date.getFullYear() <= 2200 ? date : null
 }
 
+// Common mailbox domains: a near miss of one of these (gmai.com, hotmial.co.uk, gmail.con) is a typo
+const EMAIL_DOMAINS = [
+  "gmail.com", "googlemail.com", "yahoo.com", "yahoo.co.uk", "ymail.com", "hotmail.com", "hotmail.co.uk",
+  "outlook.com", "outlook.co.uk", "live.com", "live.co.uk", "msn.com", "icloud.com", "me.com", "aol.com",
+  "protonmail.com", "proton.me", "btinternet.com", "sky.com", "virginmedia.com", "talktalk.net", "zoho.com",
+]
+// Real domains that sit close to those, never flagged
+const EMAIL_OK = new Set([...EMAIL_DOMAINS, "mail.com", "email.com", "gmx.com", "gmx.co.uk", "mac.com", "live.ca", "hotmail.fr", "yahoo.fr", "yahoo.in", "outlook.fr"])
+const TLD_TYPOS = { con: "com", cmo: "com", ocm: "com", comm: "com", coom: "com", vom: "com", xom: "com", cpm: "com", couk: "co.uk", "co.k": "co.uk", "c.uk": "co.uk", ner: "net", nett: "net", orgg: "org" }
+const EMAIL_STRICT_RE = /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,}$/
+
+function editDistance(a, b) {
+  const row = Array.from({ length: b.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= a.length; i++) {
+    let prev = row[0]
+    row[0] = i
+    for (let j = 1; j <= b.length; j++) {
+      const keep = row[j]
+      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1))
+      prev = keep
+    }
+  }
+  return row[b.length]
+}
+
+/** The problem with an email address ("" when it looks right): bad format, or a typo in a common domain. */
+export function emailProblem(value) {
+  const email = String(value || "").trim()
+  if (!EMAIL_STRICT_RE.test(email)) return "Enter a valid email address, like name@example.com."
+  const [user, rawDomain] = email.split("@")
+  const domain = rawDomain.toLowerCase()
+  if (EMAIL_OK.has(domain)) return ""
+  // Wrong ending: gmail.con, yahoo.co.k
+  for (const [bad, good] of Object.entries(TLD_TYPOS)) {
+    if (domain.endsWith(`.${bad}`)) return `Check the email address: did you mean ${user}@${domain.slice(0, -bad.length)}${good}?`
+  }
+  // A near miss of a common domain: gmai.com, gmial.com, hotmial.co.uk, yaho.com
+  let best = null
+  for (const known of EMAIL_DOMAINS) {
+    const d = editDistance(domain, known)
+    const allowed = known.length <= 7 ? 1 : 2
+    if (d > 0 && d <= allowed && (!best || d < best.d)) best = { known, d }
+  }
+  return best ? `Check the email address: did you mean ${user}@${best.known}?` : ""
+}
+
 /** One value against one rule: returns the error message or "" */
 export function checkField(value, rule = {}, values = {}) {
   const label = rule.label || "This field"
@@ -69,11 +115,11 @@ export function checkField(value, rule = {}, values = {}) {
   const text = typeof value === "string" ? value.trim() : value
   switch (rule.type) {
     case "email":
-      if (!EMAIL_RE.test(text)) return `Enter a valid email address, like name@example.com.`
+      if (emailProblem(text)) return emailProblem(text)
       break
     case "emails": {
-      const bad = String(text).split(/[,;\s]+/).filter(Boolean).find((e) => !EMAIL_RE.test(e))
-      if (bad) return `"${bad}" is not a valid email address.`
+      const bad = String(text).split(/[,;\s]+/).filter(Boolean).find((e) => emailProblem(e))
+      if (bad) return EMAIL_RE.test(bad) ? emailProblem(bad) : `"${bad}" is not a valid email address.`
       break
     }
     case "phone": {
