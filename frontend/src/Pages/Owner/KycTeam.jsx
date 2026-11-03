@@ -93,7 +93,8 @@ export default function KycTeam() {
           <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
             {[
               ["workspace", "Workspace name"],
-              ["contact", "Client email and phone"],
+              ["email", "Client email"],
+              ["phone", "Client phone"],
             ].map(([name, label]) => (
               <label key={name} className="flex cursor-pointer items-center gap-2 text-sm">
                 <input

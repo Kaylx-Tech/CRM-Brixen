@@ -39,7 +39,8 @@ _FILE_SECTIONS = {'id_front': ('ID document', 'Front'), 'id_back': ('ID document
 # {name: (platform setting, default '1' shown / '0' hidden, the fields it covers)}
 VIEW = {
     'workspace': ('kyc_desk_show_workspace', '0', ('workspace_name',)),
-    'contact': ('kyc_desk_show_contact', '1', ('email', 'client_email', 'phone')),
+    'email': ('kyc_desk_show_email', '1', ('email', 'client_email')),
+    'phone': ('kyc_desk_show_phone', '1', ('phone',)),
 }
 
 
@@ -48,8 +49,11 @@ def _desk_row(row):
 
 
 def team_view():
-    """{'workspace': bool, 'contact': bool}: what the KYC team is shown."""
-    return {name: svc._setting(key, default) == '1' for name, (key, default, _) in VIEW.items()}
+    """{'workspace': bool, 'email': bool, 'phone': bool}: what the KYC team is shown (email and phone start
+    from the older single "contact" setting)."""
+    contact = svc._setting('kyc_desk_show_contact', '1')
+    return {name: svc._setting(key, contact if name in ('email', 'phone') else default) == '1'
+            for name, (key, default, _) in VIEW.items()}
 
 
 def set_team_view(values):
