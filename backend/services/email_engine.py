@@ -567,12 +567,13 @@ def email_brand_header_html(brand, headline):
     src = email_logo_src(brand)
     if src:
         top = (f'<img src="{html_escape(src)}" alt="{html_escape(name)}" height="36" '
-               'style="display:block;height:36px;width:auto;max-width:200px;border:0;outline:none;text-decoration:none;">')
+               'style="display:block;margin:0 auto;height:36px;width:auto;max-width:200px;border:0;outline:none;'
+               'text-decoration:none;">')
     else:
         top = (f'<p style="margin:0;font-size:17px;letter-spacing:-0.01em;color:#003971;'
                f'font-weight:700;">{html_escape(name)}</p>')
     return (
-        f'<tr><td style="padding:36px 36px 12px;background:#ffffff;">{top}'
+        f'<tr><td align="center" style="padding:36px 36px 12px;background:#ffffff;text-align:center;">{top}'
         f'<h1 style="margin:{16 if src else 8}px 0 0;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-0.02em;color:#1d1d1f;">'
         f'{html_escape(headline)}</h1></td></tr>'
     )
@@ -622,8 +623,8 @@ def build_transactional_shell_html(
 
 def email_signature_html(brand, *, align='left'):
     c = brand_contact_fields(brand)
-    bname = c.get("brand_name") or c.get("display_name") or "Brixen Consultants"
     cname = c.get("company_name") or c.get("legal_name") or "Brixen Consultants Ltd"
+    bname = re.sub(r'\s+(ltd|limited|llp|plc)\.?$', '', cname, flags=re.I).strip() or "Brixen Consultants"
     return (
         f'<div style="margin:24px 0 0;font-family:{EMAIL_FONT_STACK};font-size:15px;line-height:1.5;color:#1d1d1f;text-align:{align};">'
         f'<p style="margin:0 0 8px;font-weight:400;">Kind regards,</p>'
