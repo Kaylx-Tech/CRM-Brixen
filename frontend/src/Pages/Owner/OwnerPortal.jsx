@@ -158,9 +158,6 @@ function OwnerShell({ admin, onSignOut, children }) {
           <NavLink to="/owner/overview" className="flex shrink-0 items-center gap-2">
             <img src={finstapLogo} alt="Finstap" className="h-7 w-auto dark:hidden" />
             <img src={finstapLogoLight} alt="Finstap" className="hidden h-7 w-auto dark:block" />
-            <span className="hidden rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary sm:inline">
-              Owner
-            </span>
           </NavLink>
           {/* Tablets and computers: the menu as header tabs (phones use the tab bar at the bottom) */}
           <nav className="hidden min-w-0 flex-1 gap-1 overflow-x-auto md:flex">
