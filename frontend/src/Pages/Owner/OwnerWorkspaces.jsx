@@ -4,7 +4,8 @@ import { Link, useNavigate } from "react-router-dom"
 import { IconSearch } from "@tabler/icons-react"
 import { Input } from "@/components/ui/input"
 import { money, ownerApi, shortDate } from "@/lib/owner"
-import { LoadError, PageTitle, PlanBadge, SELECT, StatusBadge } from "./ownerUi"
+import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
+import { Button, LoadError, PageTitle, Panel, PlanBadge, SELECT, StatusBadge } from "./ownerUi"
 
 const PLAN_FILTERS = [
   ["", "All plans"],
@@ -142,6 +143,54 @@ export default function OwnerWorkspaces() {
           </tbody>
         </Table>
       </div>
+      <HiddenWorkspaces />
     </>
+  )
+}
+
+/** Deleted workspaces (their data is kept) and suspended adopted ones: turn one back on. */
+function HiddenWorkspaces() {
+  const [rows, setRows] = useState([])
+  const load = () => ownerApi("/workspaces/hidden").then((res) => res.ok && setRows(res.data.workspaces || []))
+  useEffect(() => {
+    load()
+  }, [])
+  if (!rows.length) return null
+
+  const restore = async (w) => {
+    const id = toastProcessing("Turning on…")
+    const res = await ownerApi(`/workspaces/${w.slug}/restore`, { method: "POST" })
+    if (res.ok) {
+      toastDone(id, res.message)
+      load()
+    } else {
+      toastFail(id, res.error)
+    }
+  }
+
+  return (
+    <Panel
+      title="Deleted and hidden workspaces"
+      description="Not shown in the list above. Their data is kept; turn one back on to use it again (e.g. Brixen's KYC)."
+      className="mt-6"
+    >
+      <ul className="divide-y text-sm">
+        {rows.map((w) => (
+          <li key={w.slug} className="flex flex-wrap items-center justify-between gap-3 py-3">
+            <div className="min-w-0">
+              <div className="font-medium">
+                {w.name} <span className="text-muted-foreground">({w.slug})</span>
+              </div>
+              <div className="truncate text-xs text-muted-foreground">
+                {w.deleted_at ? `Deleted ${shortDate(w.deleted_at)}` : "Suspended"}
+                {w.suspended_reason ? ` · ${w.suspended_reason}` : ""}
+                {w.kyc_form_base_url ? " · KYC for another website" : ""}
+              </div>
+            </div>
+            <Button onClick={() => restore(w)}>Turn back on</Button>
+          </li>
+        ))}
+      </ul>
+    </Panel>
   )
 }

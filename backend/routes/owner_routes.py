@@ -431,6 +431,31 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
     if sub == '/overview' and method == 'GET':
         return success_response(start_response, data=_overview())
 
+    # Workspaces the list hides: deleted ones (data kept) and suspended adopted/partner ones, to turn back on
+    if sub == '/workspaces/hidden' and method == 'GET':
+        hidden = _platform_query("""
+            SELECT slug, name, owner_email, status, plan, suspended_reason, deleted_at, deleted_by,
+                   COALESCE(kyc_form_base_url, '') AS kyc_form_base_url
+            FROM tenants
+            WHERE deleted_at IS NOT NULL OR (plan = 'legacy' AND status = 'Suspended')
+            ORDER BY COALESCE(deleted_at, updated_at) DESC;
+        """)
+        return success_response(start_response, data={'workspaces': hidden})
+    restore = re.match(r'^/workspaces/([a-z0-9-]+)/restore$', sub)
+    if restore and method == 'POST':
+        slug = restore.group(1)
+        tenant = get_tenant(slug)
+        if not tenant or tenant['status'] not in ('Active', 'Suspended'):
+            return error_response(start_response, "This workspace was never set up, so it cannot be turned on.",
+                                  status_code=400)
+        _platform_execute("""
+            UPDATE tenants SET status = 'Active', suspended_reason = NULL, deleted_at = NULL, deleted_by = NULL,
+                   updated_at = datetime('now') WHERE slug = ?;
+        """, (slug,))
+        audit(admin, 'WORKSPACE_REACTIVATED', slug, 'turned back on from Deleted and hidden')
+        return success_response(start_response, data={'slug': slug},
+                                message=f"{tenant['name']} is on again. Its data was kept.")
+
     if sub == '/workspaces' and method == 'GET':
         search = _q(query, 'search').lower()
         plan_filter = _q(query, 'plan').lower()
