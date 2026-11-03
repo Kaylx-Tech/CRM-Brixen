@@ -3,9 +3,11 @@
   * Off by default. A workspace admin turns it on in Billing after seeing the price per check; the Finstap
     owner can also turn it on or off for a workspace (admin.finstap.com → KYC). Brixen's own database
     (plan "legacy") always has it. Turning it off only stops NEW checks: running ones carry on.
-  * Every check whose link was made counts once, in the month it started, at the owner's price per check
-    (KYC → Price per check). The owner marks a month invoiced, then paid (kyc_billing in platform.db); an
-    invoiced month shows as due in the workspace's Billing and is paid by card or from the balance.
+  * Every check is charged once, at the owner's price per check (KYC → Price per check), the moment it
+    counts (its link was made; one from the workspace's KYC link once it is sent): a kyc_charges row, paid
+    from the workspace's balance straight away when it covers it, else due (Billing → Services) until a
+    top-up or a card payment pays it. Checks from before per-check charging are billed by the month as
+    before: the owner marks a month invoiced, then paid (kyc_billing).
   * The workspace's Billing shows this month so far and the months before, with their status.
 """
 import datetime
@@ -100,37 +102,91 @@ def set_enabled(slug, on, by):
     return get_tenant(slug)
 
 
-def _month_counts():
-    """{'YYYY-MM': checks} for the active workspace (checks whose link was made)."""
+def charge_check(tenant, check_id, label=''):
+    """Charge one ID check, once: paid from the balance now when it covers it, else due until it is paid."""
+    if not tenant or (tenant.get('plan') or '') == 'legacy':
+        return
+    each = price()
+    if each <= 0:
+        return
+    try:
+        _platform_execute("""
+            INSERT OR IGNORE INTO kyc_charges (tenant_slug, check_id, label, amount) VALUES (?, ?, ?, ?);
+        """, (tenant['slug'], int(check_id), str(label or '')[:160] or None, each))
+        from services.wallet import settle
+        settle(tenant['slug'])
+    except Exception as exc:
+        print(f"[KYC billing] check {check_id} of {tenant['slug']} not charged: {exc}")
+
+
+def charges(slug):
+    """{check_id: {amount, status}} for one workspace."""
+    return {r['check_id']: r for r in _platform_query(
+        "SELECT check_id, amount, status FROM kyc_charges WHERE tenant_slug = ?;", (slug,))}
+
+
+def counted_checks():
+    """[(check_id, 'YYYY-MM')] for the active workspace: the checks that are charged."""
     from db import query_db
     from services.kyc_form import ensure
     try:
         ensure()
-        rows = query_db(f"""
-            SELECT strftime('%Y-%m', created_at) AS period, COUNT(*) AS c FROM id_verifications
-            WHERE {COUNTED_SQL} GROUP BY period;
-        """) or []
+        rows = query_db(f"SELECT id, strftime('%Y-%m', created_at) AS period FROM id_verifications "
+                        f"WHERE {COUNTED_SQL};") or []
     except Exception:
-        return {}
-    return {r['period']: int(r['c'] or 0) for r in rows if r['period']}
+        return []
+    return [(r['id'], r['period']) for r in rows if r['period']]
+
+
+def month_rows(slug, checks, each, billed=None):
+    """Per month: {period: {checks, amount, due, paid, legacy}}; a check with a charge counts at its
+    charge, one without (from before per-check charging) at the price (or the month's billed amount)."""
+    paid_for = charges(slug)
+    out = {}
+    for check_id, period in checks:
+        m = out.setdefault(period, {'checks': 0, 'amount': 0.0, 'due': 0, 'paid': 0, 'legacy': 0})
+        m['checks'] += 1
+        charge = paid_for.get(check_id)
+        if charge:
+            m['amount'] += float(charge['amount'])
+            m['paid' if charge['status'] == 'paid' else 'due'] += 1
+        else:
+            m['legacy'] += 1
+            m['amount'] += each
+    for period, bill in (billed or {}).items():
+        m = out.setdefault(period, {'checks': 0, 'amount': 0.0, 'due': 0, 'paid': 0, 'legacy': 0})
+        if m['legacy'] or not m['checks']:  # the month was billed by hand: its billed amount stands
+            m['amount'] = m['amount'] - m['legacy'] * each + float(bill['amount'] or 0)
+            m['checks'] = max(m['checks'], int(bill['checks'] or 0))
+    return out
+
+
+def month_status(m, bill, current):
+    """How a month reads: paid, invoiced (due), running (this month) or not_billed."""
+    if m['due'] or (bill and bill.get('status') == 'invoiced'):
+        return 'invoiced'
+    if m['legacy'] and not bill:
+        return 'running' if current else 'not_billed'
+    if bill and bill.get('status') != 'paid':
+        return bill.get('status')
+    return 'paid' if m['checks'] else ('running' if current else '')
 
 
 def summary(tenant):
     """The workspace's KYC service for its Billing page (run inside the workspace's database)."""
     from services.autoallot import kyc_credits
     each = price()
-    counts = _month_counts()
+    checks = counted_checks()
     billed = {r['period']: r for r in _platform_query(
         "SELECT period, checks, amount, status FROM kyc_billing WHERE tenant_slug = ?;", (tenant['slug'],))}
+    by_month = month_rows(tenant['slug'], checks, each, billed)
     this_month = datetime.date.today().strftime('%Y-%m')
-    periods = sorted(set(counts) | set(billed) | {this_month}, reverse=True)[:MONTHS_SHOWN]
+    periods = sorted(set(by_month) | {this_month}, reverse=True)[:MONTHS_SHOWN]
     months = []
     for period in periods:
-        bill = billed.get(period) or {}
-        checks = int(bill['checks']) if bill else counts.get(period, 0)
-        amount = float(bill['amount']) if bill else round(counts.get(period, 0) * each, 2)
-        status = bill.get('status') or ('running' if period == this_month else 'not_billed' if checks else '')
-        months.append({'period': period, 'checks': checks, 'amount': round(amount, 2), 'status': status})
+        m = by_month.get(period) or {'checks': 0, 'amount': 0.0, 'due': 0, 'paid': 0, 'legacy': 0}
+        months.append({'period': period, 'checks': m['checks'], 'amount': round(m['amount'], 2),
+                       'status': month_status(m, billed.get(period), period == this_month)})
     fresh = get_tenant(tenant['slug']) or tenant
     on = enabled(fresh)
     return {
@@ -141,6 +197,6 @@ def summary(tenant):
         'credits': kyc_credits(fresh),
         'this_month': next(m for m in months if m['period'] == this_month),
         'months': [m for m in months if m['checks'] or m['period'] == this_month],
-        'total_checks': sum(counts.values()),
+        'total_checks': len(checks),
         'unpaid': round(sum(m['amount'] for m in months if m['status'] in ('invoiced', 'not_billed', 'running')), 2),
     }

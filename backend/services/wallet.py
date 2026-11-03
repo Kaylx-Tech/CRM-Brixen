@@ -7,8 +7,9 @@
   * Services that come due are paid from the balance by themselves (settle): each due item once (ref ro:<id> /
     kyc:<month>, unique), oldest first, while the balance covers it. Paid items free their AutoAllot / ID check
     credit, exactly as a card payment does.
-  * Or pay what is due online by card (Stripe Checkout, services/stripe_billing.pay_services); the plan
-    subscription is paid as before and never from the balance.
+  * Or pay what is due online by card (Stripe Checkout, services/stripe_billing.pay_services).
+  * Each ID check is charged the moment it counts (services/kyc_billing.charge_check) and paid from here.
+  * The plan can be paid from the balance too (pay_plan): one period, the paid-until date moves on.
 Nothing here deletes data: every top-up and charge stays in wallet_entries.
 """
 from tenancy import _platform_execute, _platform_query
@@ -39,6 +40,9 @@ def _mark_paid(slug, ref):
     elif what == 'kyc':
         _platform_execute("UPDATE kyc_billing SET status = 'paid', updated_at = datetime('now') "
                           "WHERE tenant_slug = ? AND period = ?;", (slug, key))
+    elif what == 'kycc' and key.isdigit():
+        _platform_execute("UPDATE kyc_charges SET status = 'paid', paid_at = datetime('now') "
+                          "WHERE id = ? AND tenant_slug = ?;", (int(key), slug))
 
 
 def settle(slug):
@@ -75,6 +79,40 @@ def top_up(slug, amount, note, admin):
         INSERT INTO wallet_entries (tenant_slug, amount, kind, note, created_by) VALUES (?, ?, 'topup', ?, ?);
     """, (slug, amount, (str(note or '').strip() or 'Bank transfer')[:300], (admin or {}).get('email')))
     return settle(slug)
+
+
+def pay_plan(slug, user, plan, cycle):
+    """Pay one period of `plan` from the balance: the plan is set, its paid-until date moves on and the
+    payment is in Payments (method Balance). Returns {amount, period_start, period_end}."""
+    from services import plans
+    from services.platform_billing import BillingError, record_payment
+    from services.stripe_billing import StripeError, price_for
+    from tenancy import get_tenant
+    tenant = get_tenant(slug)
+    if not tenant or tenant.get('plan') == 'legacy':
+        raise WalletError("Workspace not found")
+    if tenant.get('stripe_subscription_id') and tenant.get('subscription_status') in ('active', 'trialing', 'past_due'):
+        raise WalletError("Your plan is paid by card every period. Cancel the card payments first "
+                          "(Card, invoices & cancel) to pay from your balance.")
+    plan = str(plan or '').lower()
+    cycle = str(cycle or 'monthly').lower()
+    try:
+        amount, label = price_for(tenant, plan, cycle)
+    except StripeError as exc:
+        raise WalletError(str(exc))
+    if balance(slug) + 1e-9 < amount:
+        raise WalletError(f"Your balance is £{balance(slug):.2f} and the {plans.PLANS[plan]['name']} plan costs "
+                          f"£{amount:.2f}. Top up first, or pay by card.")
+    who = (user or {}).get('email') or 'workspace'
+    _platform_execute("INSERT INTO wallet_entries (tenant_slug, amount, kind, note, created_by) "
+                      "VALUES (?, ?, 'charge', ?, ?);", (slug, -amount, label, who))
+    # A plan change takes effect now; the period then runs from the old paid-until date (or today)
+    _platform_execute("UPDATE tenants SET plan = ?, billing_cycle = ?, updated_at = datetime('now') WHERE slug = ?;",
+                      (plan, cycle, slug))
+    try:
+        return record_payment(slug, {'email': who}, amount=amount, method='Balance', note=f"{label}, paid from balance")
+    except BillingError as exc:
+        raise WalletError(str(exc))
 
 
 MIN_TOP_UP = 10

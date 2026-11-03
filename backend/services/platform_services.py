@@ -234,15 +234,26 @@ def kyc_report(period=None, slug=None):
             counts[_bucket(r['status'])] += 1
             checks.append({**r, 'workspace': tenant['slug'], 'workspace_name': tenant['name']})
         bill = billing.get(tenant['slug']) or {}
+        # Checks charged one by one (services/kyc_billing.py) count at their charge; older ones by the month
+        from services.kyc_billing import charges as kyc_charges, month_rows, month_status
+        m = month_rows(tenant['slug'], [(r['id'], period) for r in rows], price).get(period) \
+            or {'checks': 0, 'amount': 0.0, 'due': 0, 'paid': 0, 'legacy': 0}
+        charged = kyc_charges(tenant['slug'])
+        for c in checks[len(checks) - len(rows):]:
+            c['charge'] = (charged.get(c['id']) or {}).get('status') or ''
+        status = bill.get('status') or (month_status(m, None, False) if m['due'] or m['paid'] else '')
+        amount = round(m['amount'], 2)
         workspaces.append({
             'slug': tenant['slug'], 'name': tenant['name'], 'owner_email': tenant.get('owner_email'),
             'checks': len(rows), **counts,
             'all_time': _all_time_checks(tenant),
             'kyc_enabled': kyc_on, 'kyc_enabled_at': tenant.get('kyc_enabled_at'),
-            'amount': round(len(rows) * price, 2),
-            'billing_status': bill.get('status') or '',
-            'billed_amount': bill.get('amount'),
+            'amount': amount,
+            'billing_status': status,
+            'billed_amount': bill.get('amount') if bill else (amount if status == 'paid' else None),
             'billed_checks': bill.get('checks'),
+            # Charged per check from the balance: the month is not marked by hand
+            'per_check': bool(m['due'] or m['paid']),
         })
     workspaces.sort(key=lambda w: (-w['checks'], w['name'].lower()))
     return {
@@ -273,6 +284,8 @@ def set_kyc_billing(slug, period, status):
     row = next((w for w in kyc_report(period, slug)['workspaces'] if w['slug'] == slug), None)
     if not row:
         raise ServiceError("This workspace has no KYC checks in that month")
+    if row.get('per_check'):
+        raise ServiceError("This month's checks are charged one by one from the workspace's balance")
     _platform_execute("""
         INSERT INTO kyc_billing (tenant_slug, period, checks, amount, status, updated_at)
         VALUES (?, ?, ?, ?, ?, datetime('now'))

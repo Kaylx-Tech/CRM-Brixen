@@ -20,11 +20,12 @@ function shortDate(value) {
 }
 
 /**
- * Finstap header (workspace admins): the workspace's balance with Finstap. Services (ID checks, registered
- * offices) are paid from it by themselves. Add balance online by card, or by bank transfer (Finstap approves it
- * when the money arrives); what is due can also be paid by card straight away.
+ * Finstap header (workspace admins): the workspace's balance with Finstap. Services (each ID check, registered
+ * offices) are paid from it by themselves, and the plan can be paid from it in Billing. Add balance online by
+ * card, or by bank transfer (Finstap approves it when the money arrives); what is due can also be paid by card.
+ * variant="card" shows it as a box with the balance and an "Add balance" button (the Billing page).
  */
-export default function WalletButton() {
+export default function WalletButton({ variant = 'button', onChange }) {
   const [data, setData] = useState(null)
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState('')
@@ -88,6 +89,7 @@ export default function WalletButton() {
     setAmount('')
     setReference('')
     load()
+    onChange?.()
   }
 
   const copy = async (text) => {
@@ -99,29 +101,63 @@ export default function WalletButton() {
     }
   }
 
+  const openDialog = () => {
+    setOpen(true)
+    load()
+  }
+
   return (
     <>
-      <Button
-        variant="outline"
-        size="sm"
-        className="relative h-7 gap-1.5 px-2 text-xs font-semibold tabular-nums"
-        onClick={() => {
-          setOpen(true)
-          load()
-        }}
-        aria-label={`Balance ${money(data.balance)}`}
-      >
-        <IconWallet className="size-4 text-primary" />
-        <span className="hidden sm:inline">{money(data.balance)}</span>
-        {short && <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-destructive" aria-hidden />}
-      </Button>
+      {variant === 'card' ? (
+        <section className="rounded-xl border bg-card p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="font-semibold">Balance</h3>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Each ID check, registered offices and your plan are paid from your balance.
+              </p>
+            </div>
+            <Button onClick={openDialog}>
+              <IconPlus className="size-4" /> Add balance
+            </Button>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-lg border p-3">
+              <div className="text-xs text-muted-foreground">Balance</div>
+              <div className="mt-1 text-2xl font-semibold tabular-nums">{money(data.balance)}</div>
+            </div>
+            <div className={`rounded-lg border p-3 ${short ? 'border-destructive/40 bg-destructive/5' : ''}`}>
+              <div className="text-xs text-muted-foreground">Due for services</div>
+              <div className={`mt-1 text-2xl font-semibold tabular-nums ${short ? 'text-destructive' : ''}`}>{money(due)}</div>
+            </div>
+          </div>
+          {data.entries?.length > 0 && (
+            <button type="button" className="mt-3 text-sm font-medium text-primary hover:underline" onClick={openDialog}>
+              See recent payments and top-ups
+            </button>
+          )}
+        </section>
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          className="relative h-7 gap-1.5 px-2 text-xs font-semibold tabular-nums"
+          onClick={openDialog}
+          aria-label={`Balance ${money(data.balance)}`}
+        >
+          <IconWallet className="size-4 text-primary" />
+          <span className="hidden sm:inline">{money(data.balance)}</span>
+          {short && <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-destructive" aria-hidden />}
+        </Button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Balance</DialogTitle>
             <DialogDescription>
-              ID checks and registered offices are paid from your balance by themselves. Your plan is paid as before.
+              Each ID check and registered offices are paid from your balance by themselves. You can pay your plan
+              from it in Billing.
             </DialogDescription>
           </DialogHeader>
 

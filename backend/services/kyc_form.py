@@ -415,6 +415,10 @@ def submit(row, body):
     apply_result(row['id'], 'Submitted')
     if row.get('source') == 'link':
         _tell_admins(row)
+        # A check from the workspace's KYC link counts once it is sent (services/kyc_billing.py)
+        from tenancy import current_tenant
+        from services.kyc_billing import charge_check
+        charge_check(current_tenant(), row['id'], fields['full_name'])
     return None, None
 
 

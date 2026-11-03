@@ -10,10 +10,12 @@ import {
   IconLogout,
   IconMail,
   IconReceipt,
+  IconWallet,
 } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
+import WalletButton from '@/components/WalletButton'
 import { apiRequest } from '@/lib/api'
 import finstapLogo from '@/assets/finstap-logo.svg'
 import finstapLogoLight from '@/assets/finstap-logo-light.svg'
@@ -356,6 +358,22 @@ export default function Billing() {
                     {here ? 'Your plan' : onPaidPlan ? `Switch to ${p.name}` : `Choose ${p.name}`}
                   </Button>
                 )}
+                {/* One period paid from the balance (not while the plan is paid by card) */}
+                {!p.custom && !data.pays_by_card && data.wallet && (
+                  <Button
+                    className="mt-2"
+                    variant="outline"
+                    disabled={!!busy || data.wallet.balance + 0.004 < price}
+                    title={data.wallet.balance + 0.004 < price ? `Your balance is ${gbp(data.wallet.balance, 2)}` : undefined}
+                    onClick={() => {
+                      if (!window.confirm(`Pay ${gbp(price, 2)} from your balance for ${p.name} (${cycle})?`)) return
+                      go(`balance-${key}`, '/admin/billing/pay-plan', { plan: key, cycle })
+                    }}
+                  >
+                    {busy === `balance-${key}` ? <IconLoader2 className="size-4 animate-spin" /> : <IconWallet className="size-4" />}
+                    Pay from balance
+                  </Button>
+                )}
               </div>
             )
           })}
@@ -364,6 +382,13 @@ export default function Billing() {
           Card details are entered on Stripe's secure page; Finstap never sees them.
         </p>
       </Section>
+
+      {/* The balance with Finstap: top up by card or bank transfer; services and the plan are paid from it */}
+      <WalletButton
+        key={`${data.wallet?.balance}-${data.wallet?.entries?.length}`}
+        variant="card"
+        onChange={load}
+      />
 
       {data.kyc && (
         <KycService

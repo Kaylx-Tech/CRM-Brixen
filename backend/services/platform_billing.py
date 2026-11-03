@@ -14,7 +14,7 @@ import datetime
 from tenancy import _platform_execute, _platform_query, get_tenant
 from services import plans
 
-METHODS = ('Bank transfer', 'Card', 'Cash', 'Other')
+METHODS = ('Bank transfer', 'Card', 'Cash', 'Balance', 'Other')
 
 
 class BillingError(ValueError):

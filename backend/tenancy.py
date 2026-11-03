@@ -139,6 +139,18 @@ CREATE TABLE IF NOT EXISTS kyc_billing (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (tenant_slug, period)
 );
+-- One row per ID check charged on its own (services/kyc_billing.py): due until the balance pays it
+CREATE TABLE IF NOT EXISTS kyc_charges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tenant_slug TEXT NOT NULL,
+    check_id INTEGER NOT NULL,
+    label TEXT,
+    amount REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'due',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    paid_at TIMESTAMP,
+    UNIQUE (tenant_slug, check_id)
+);
 CREATE TABLE IF NOT EXISTS ro_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     tenant_slug TEXT NOT NULL,

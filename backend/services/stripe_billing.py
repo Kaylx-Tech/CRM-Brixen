@@ -188,6 +188,12 @@ def services_due(slug):
     """, (slug,)):
         items.append({'ref': f"kyc:{r['period']}", 'label': f"KYC checks · {r['period']}",
                       'detail': f"{r['checks']} check(s)", 'amount': round(float(r['amount']), 2)})
+    # ID checks charged one by one that the balance did not cover yet (services/kyc_billing.py)
+    for r in _platform_query("""
+        SELECT id, label, amount, created_at FROM kyc_charges WHERE tenant_slug = ? AND status = 'due' ORDER BY id;
+    """, (slug,)):
+        items.append({'ref': f"kycc:{r['id']}", 'label': f"KYC check · {r['label'] or 'ID check'}",
+                      'detail': str(r['created_at'] or '')[:10], 'amount': round(float(r['amount']), 2)})
     return {'items': items, 'total': round(sum(i['amount'] for i in items), 2)}
 
 
@@ -335,6 +341,9 @@ def handle_event(event):
                 elif what == 'kyc':
                     _platform_execute("UPDATE kyc_billing SET status = 'paid', updated_at = datetime('now') "
                                       "WHERE tenant_slug = ? AND period = ?;", (tenant['slug'], key))
+                elif what == 'kycc' and key.isdigit():
+                    _platform_execute("UPDATE kyc_charges SET status = 'paid', paid_at = datetime('now') "
+                                      "WHERE id = ? AND tenant_slug = ?;", (int(key), tenant['slug']))
             _save_payment(tenant['slug'], round((obj.get('amount_total') or 0) / 100, 2), 'services', obj['id'],
                           note='Services: ' + ', '.join(refs), tenant=tenant)
             return 'services paid'

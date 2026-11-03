@@ -98,11 +98,14 @@ def kyc_credits(tenant):
     from services.kyc_form import ensure
     ensure()
     rows = query_db(f"""
-        SELECT strftime('%Y-%m', created_at) AS period, COUNT(*) AS c FROM id_verifications
-        WHERE {COUNTED_SQL} AND date(created_at) >= date(?)
-        GROUP BY period;
+        SELECT id, strftime('%Y-%m', created_at) AS period FROM id_verifications
+        WHERE {COUNTED_SQL} AND date(created_at) >= date(?);
     """, (_since('kyc_credits_since'),)) or []
-    used = sum(int(r['c'] or 0) for r in rows if r['period'] not in paid)
+    # A check charged on its own is unpaid while its charge is due; an older one while its month is unpaid
+    from services.kyc_billing import charges
+    charged = charges(tenant['slug'])
+    used = sum(1 for r in rows if (charged[r['id']]['status'] != 'paid' if r['id'] in charged
+                                   else r['period'] not in paid))
     return {'limit': limit, 'used': used, 'available': max(limit - used, 0)}
 
 

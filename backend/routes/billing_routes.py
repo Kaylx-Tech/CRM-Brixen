@@ -8,6 +8,7 @@ POST /api/admin/billing/portal     → {url} of Stripe's Customer Portal (card, 
 POST /api/admin/billing/services   → {url} of Stripe Checkout for registered office / KYC charges
 POST /api/admin/billing/kyc        {enabled} → switch the paid KYC service on or off (services/kyc_billing.py)
 POST /api/admin/billing/kyc/new-link → a new address for the workspace's KYC link
+POST /api/admin/billing/pay-plan   {plan, cycle} → pay one period of the plan from the balance
 """
 import re
 
@@ -70,7 +71,22 @@ def handle_billing_routes(environ, start_response, path, method, user, body, que
             'message': plans.LOCK_MESSAGES.get(data.get('locked')),
             'kyc': kyc_billing.summary(tenant),
         })
+        from services import wallet
+        data['wallet'] = wallet.summary(tenant['slug'])
+        # Due services may just have been paid from the balance
+        data['services'] = stripe.services_due(tenant['slug'])
         return success_response(start_response, data=data)
+
+    # Pay one period of a plan from the balance
+    if path == '/api/admin/billing/pay-plan' and method == 'POST':
+        from services import wallet
+        body = body if isinstance(body, dict) else {}
+        try:
+            paid = wallet.pay_plan(tenant['slug'], user, body.get('plan'), body.get('cycle'))
+        except wallet.WalletError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        return success_response(start_response, data=paid,
+                                message=f"Paid £{paid['amount']:.2f} from your balance. Thank you!")
 
     # A new address for the workspace's KYC link (the old one stops working)
     if path == '/api/admin/billing/kyc/new-link' and method == 'POST':

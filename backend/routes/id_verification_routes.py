@@ -136,7 +136,16 @@ def start_session(verification_id):
     if row['status'] not in kyc_form.OPEN_STATUSES:
         return dict(row), "This person has already sent their documents."
     status = 'Declined' if row['status'] == 'Declined' else 'Not Started'
-    return dict(kyc_form.new_link(verification_id, status=status)), None
+    first = not row.get('session_url')
+    fresh = dict(kyc_form.new_link(verification_id, status=status))
+    if first:  # the check counts now: charged from the workspace's balance (services/kyc_billing.py)
+        try:
+            from tenancy import current_tenant
+            from services.kyc_billing import charge_check
+            charge_check(current_tenant(), verification_id, row['full_name'])
+        except ImportError:
+            pass
+    return fresh, None
 
 
 def apply_result(verification_id, status, decision=None):
