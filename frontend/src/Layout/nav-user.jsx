@@ -31,7 +31,7 @@ import { useNavigate } from "react-router-dom"
 import { isAdminRole } from "@/lib/permissions"
 
 const itemClass =
-  "text-slate-200 hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white cursor-pointer rounded-lg px-2.5 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
+  "text-[#e8e8ed] hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white cursor-pointer rounded-lg px-2.5 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
 
 export function NavUser({
   user: defaultUser,

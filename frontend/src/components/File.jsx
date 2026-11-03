@@ -33,9 +33,9 @@ const DefaultPlaceholder = () => {
 const colorBannerMap = {
   doc: "bg-blue-500 text-white",
   pdf: "bg-red-500 text-white",
-  md: "bg-neutral-600 text-white",
-  mdx: "bg-neutral-600 text-white",
-  txt: "bg-gray-500 text-white",
+  md: "bg-[#6e6e73] text-white",
+  mdx: "bg-[#6e6e73] text-white",
+  txt: "bg-[#86868b] text-white",
   csv: "bg-teal-700 text-white",
   xls: "bg-emerald-600 text-white",
   xlsx: "bg-emerald-600 text-white",
@@ -53,7 +53,7 @@ const colorBannerMap = {
   tsx: "bg-blue-600 text-white",
   code: "bg-orange-600 text-white",
   img: "bg-pink-500 text-white",
-  png: "bg-neutral-600 text-white",
+  png: "bg-[#6e6e73] text-white",
   jpg: "bg-green-700 text-white",
   jpeg: "bg-green-700 text-white",
   video: "bg-green-700 text-white",
@@ -69,7 +69,7 @@ export const FileCard = ({ formatFile }) => {
     filePlaceholder = (
       <div className="space-y-1.5">
         <div className="flex items-center gap-1">
-          <div className="text-foreground/30 text-[10px] font-bold">#</div>
+          <div className="text-foreground/30 text-[11px] font-bold">#</div>
           <div className="bg-foreground/20 h-0.5 w-6 rounded-full" />
         </div>
         <div className="space-y-1">
@@ -259,24 +259,24 @@ export const FileCard = ({ formatFile }) => {
     filePlaceholder = (
       <div className="space-y-1">
         <div className="flex items-center gap-0.5">
-          <div className="text-foreground/30   text-[5px]">&lt;</div>
+          <div className="text-foreground/30   text-[11px]">&lt;</div>
           <div className="h-0.75 w-3 rounded-full bg-emerald-400/60" />
-          <div className="text-foreground/30   text-[5px]">&gt;</div>
+          <div className="text-foreground/30   text-[11px]">&gt;</div>
         </div>
         <div className="flex items-center gap-0.5 pl-1">
-          <div className="text-foreground/30   text-[5px]">&lt;</div>
+          <div className="text-foreground/30   text-[11px]">&lt;</div>
           <div className="h-0.75 w-2.5 rounded-full bg-sky-400/60" />
-          <div className="text-foreground/30   text-[5px]">&gt;</div>
+          <div className="text-foreground/30   text-[11px]">&gt;</div>
         </div>
         <div className="flex items-center gap-0.5 pl-1">
-          <div className="text-foreground/30   text-[5px]">&lt;/</div>
+          <div className="text-foreground/30   text-[11px]">&lt;/</div>
           <div className="h-0.75 w-2.5 rounded-full bg-sky-400/60" />
-          <div className="text-foreground/30   text-[5px]">&gt;</div>
+          <div className="text-foreground/30   text-[11px]">&gt;</div>
         </div>
         <div className="flex items-center gap-0.5">
-          <div className="text-foreground/30   text-[5px]">&lt;</div>
+          <div className="text-foreground/30   text-[11px]">&lt;</div>
           <div className="h-0.75 w-1 rounded-full bg-emerald-400/60" />
-          <div className="text-foreground/30   text-[5px]">/&gt;</div>
+          <div className="text-foreground/30   text-[11px]">/&gt;</div>
         </div>
       </div>
     );
@@ -286,7 +286,7 @@ export const FileCard = ({ formatFile }) => {
     filePlaceholder = (
       <div className="space-y-1">
         <div className="flex items-center gap-1">
-          <div className="text-foreground/40   text-[6px]">{"{"}</div>
+          <div className="text-foreground/40   text-[11px]">{"{"}</div>
         </div>
         <div className="flex items-center gap-1 pl-1.5">
           <div className="h-0.75 w-3 rounded-full bg-sky-400/60" />
@@ -301,7 +301,7 @@ export const FileCard = ({ formatFile }) => {
           <div className="h-0.75 w-4 rounded-full bg-sky-400/60" />
         </div>
         <div className="flex items-center gap-1">
-          <div className="text-foreground/40   text-[6px]">{"}"}</div>
+          <div className="text-foreground/40   text-[11px]">{"}"}</div>
         </div>
       </div>
     );
@@ -311,7 +311,7 @@ export const FileCard = ({ formatFile }) => {
     filePlaceholder = (
       <div className="space-y-1">
         <div className="flex items-center gap-1">
-          <div className="text-foreground/40   text-[6px]">{"{"}</div>
+          <div className="text-foreground/40   text-[11px]">{"{"}</div>
         </div>
         <div className="flex items-center gap-1 pl-1.5">
           <div className="bg-foreground/20 h-0.75 w-3 rounded-full" />
@@ -329,7 +329,7 @@ export const FileCard = ({ formatFile }) => {
           <div className="bg-foreground/10 h-0.75 w-3 rounded-full" />
         </div>
         <div className="flex items-center gap-1">
-          <div className="text-foreground/40   text-[6px]">{"}"}</div>
+          <div className="text-foreground/40   text-[11px]">{"}"}</div>
         </div>
       </div>
     );
@@ -341,7 +341,7 @@ export const FileCard = ({ formatFile }) => {
     <div aria-hidden className="relative size-fit">
       <div
         className={cn(
-          "absolute -right-2 bottom-1.5 z-2 rounded px-1.5 py-0.5 text-[8px] font-medium uppercase",
+          "absolute -right-2 bottom-1.5 z-2 rounded px-1.5 py-0.5 text-[11px] font-medium ",
           colorBannerClass
         )}
       >

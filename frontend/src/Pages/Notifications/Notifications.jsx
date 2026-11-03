@@ -242,7 +242,7 @@ export default function NotificationsPage() {
             className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
             All
-            <span className="ml-1.5 rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0 text-[10px] font-semibold">
+            <span className="ml-1.5 rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0 text-[11px] font-semibold">
               {notifications.length}
             </span>
           </TabsTrigger>
@@ -251,7 +251,7 @@ export default function NotificationsPage() {
             className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
             Unread
-            <span className="ml-1.5 rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0 text-[10px] font-semibold">
+            <span className="ml-1.5 rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0 text-[11px] font-semibold">
               {unreadCount}
             </span>
           </TabsTrigger>
@@ -313,12 +313,12 @@ export default function NotificationsPage() {
                               {item.title || 'Notification'}
                             </span>
                             {item.type ? (
-                              <Badge className="bg-muted text-muted-foreground text-[10px]">
+                              <Badge className="bg-muted text-muted-foreground text-[11px]">
                                 {String(item.type).replace(/_/g, ' ')}
                               </Badge>
                             ) : null}
                             {unread ? (
-                              <Badge className="badge-sky text-[10px]">Unread</Badge>
+                              <Badge className="badge-sky text-[11px]">Unread</Badge>
                             ) : null}
                           </div>
                           <p className="text-sm text-muted-foreground mt-1 leading-relaxed">

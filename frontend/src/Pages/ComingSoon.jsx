@@ -7,7 +7,7 @@ const ComingSoon = () => {
       <div>
        <h1 className='text-[130px]'>😊</h1>
       </div>
-      <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">
+      <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
         Coming Soon! 🚀
       </h1>
       <p className="text-xl text-muted-foreground max-w-md mx-auto">

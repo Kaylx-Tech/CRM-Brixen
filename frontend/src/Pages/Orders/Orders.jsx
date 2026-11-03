@@ -98,7 +98,7 @@ function productDot(name) {
   if (/registered office|address|mail forwarding/.test(n)) return 'bg-violet-500'
   if (/formation|incorporation|certificate|name change/.test(n)) return 'bg-indigo-500'
   if (/confirmation|accounts|tax|vat|paye|ad01|dissolution|strike/.test(n)) return 'bg-amber-500'
-  return 'bg-zinc-400'
+  return 'bg-[#a1a1a6]'
 }
 
 const PRODUCT_CHIP =
@@ -109,7 +109,7 @@ const STATUS_PILL = 'inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 te
 
 // Column headings: small and quiet, so the rows carry the weight
 function head(label) {
-  return <span className="text-xs font-medium tracking-wide text-muted-foreground">{label}</span>
+  return <span className="text-xs font-medium text-muted-foreground">{label}</span>
 }
 
 function TruncatedTooltip({ text, className }) {
@@ -555,7 +555,7 @@ export default function Orders() {
           {o.company_name ? (
             <p className="mt-1 truncate text-sm">
               {o.company_registered ? o.company_name : <span className="italic">{o.company_name}</span>}
-              {!o.company_registered ? <Badge className="badge-amber ml-1.5 rounded-full text-[10px]">Desired name</Badge> : null}
+              {!o.company_registered ? <Badge className="badge-amber ml-1.5 rounded-full text-[11px]">Desired name</Badge> : null}
             </p>
           ) : null}
           {/* Phones cannot hover: the internal notes show here, two lines at most */}

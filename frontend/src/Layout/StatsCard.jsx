@@ -186,7 +186,7 @@ export function StatCard({
                 variant="outline"
                 className={cn(
                   "gap-1 font-medium",
-                  compact && "px-1.5 py-0 text-[10px]",
+                  compact && "px-1.5 py-0 text-[11px]",
                   hero
                     ? "text-white border-white/30 bg-white/15"
                     : isDown

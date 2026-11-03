@@ -80,10 +80,10 @@ const SECTIONS = [
 // Grade badge gradient: A green, B blue, C amber, anything lower rose
 const gradeColor = (grade = "") => {
   const g = String(grade).toUpperCase()
-  if (g.startsWith("A")) return "from-emerald-500 to-teal-500"
-  if (g.startsWith("B")) return "from-blue-500 to-indigo-500"
-  if (g.startsWith("C")) return "from-amber-500 to-orange-500"
-  return "from-rose-500 to-pink-500"
+  if (g.startsWith("A")) return "bg-emerald-500"
+  if (g.startsWith("B")) return "bg-blue-500"
+  if (g.startsWith("C")) return "bg-amber-500"
+  return "bg-rose-500"
 }
 
 const activityColor = (kind) =>
@@ -140,7 +140,7 @@ function CustomizeDashboard({ hidden, onToggle, onReset }) {
         <IconLayoutDashboard className="w-4 h-4" />
         Customize
         {hiddenCount > 0 && (
-          <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-[10px]">
+          <Badge variant="secondary" className="ml-0.5 h-5 px-1.5 text-[11px]">
             {hiddenCount} hidden
           </Badge>
         )}
@@ -614,7 +614,7 @@ const Dashboard = () => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {topPerformers.map((p) => (
                   <div key={p.id} className="flex items-center gap-3 p-3.5 rounded-xl border bg-muted/20">
-                    <Badge className={`h-8 w-10 justify-center text-sm border-0 text-white bg-linear-to-br ${gradeColor(p.grade)}`}>{p.grade}</Badge>
+                    <Badge className={`h-8 w-10 justify-center text-sm border-0 text-white ${gradeColor(p.grade)}`}>{p.grade}</Badge>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold truncate">{p.full_name}</p>
                       <p className="text-sm text-muted-foreground truncate">
@@ -657,7 +657,7 @@ const Dashboard = () => {
                     <p className="text-sm font-semibold truncate">{item.title}</p>
                     <p className="text-sm text-muted-foreground truncate">{item.subtitle}</p>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                      <Badge variant="secondary" className="text-[11px] px-1.5 py-0 h-4">
                         {item.meta_tag || item.kind}
                       </Badge>
                       <span className="text-[11px] text-muted-foreground">{item.meta_time}</span>

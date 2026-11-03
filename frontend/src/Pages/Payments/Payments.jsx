@@ -1021,7 +1021,7 @@ export default function Payments() {
           {editInvoice && (
             <div className="grid gap-3 py-1">
               <div>
-                <div className="text-sm font-extrabold">{editInvoice.invoice_number}</div>
+                <div className="text-sm font-bold">{editInvoice.invoice_number}</div>
                 <div className="text-sm text-muted-foreground mt-0.5">
                   {[editInvoice.owner_name || editInvoice.client_name, editInvoice.owner_form_email || editInvoice.client_email, editInvoice.order_number]
                     .filter(Boolean)

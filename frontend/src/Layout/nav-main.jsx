@@ -33,7 +33,7 @@ const GROUPED = {
 const PORTAL = {
   group: "px-2 py-1",
   label:
-    "h-6 gap-2 px-3 text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#8FB3DC] " +
+    "h-6 gap-2 px-3 text-[11px] font-bold tracking-[0.12em] text-[#8FB3DC] " +
     "after:h-px after:flex-1 after:bg-gradient-to-r after:from-white/15 after:to-transparent after:content-['']",
   menu: "gap-0.5",
   button:
