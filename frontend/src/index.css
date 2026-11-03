@@ -396,13 +396,8 @@ html.is-non-apple,
   html {
     @apply font-sans;
   }
-  /* Laptops and desktops (Mac, Windows) show the app at 90% size, like a 90% browser zoom; phones and
-     tablets keep full size (text boxes under 16px make iPhones zoom in) */
-  @media (min-width: 1024px) {
-    html {
-      font-size: 90%;
-    }
-  }
+  /* Every screen uses the normal 100% text size: 90% on desktop read too small (and stacked with a
+     browser zoom). The Apple layer below keeps the look calm without shrinking the text */
 }
 
 @keyframes shimmer {
