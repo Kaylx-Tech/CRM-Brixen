@@ -11,6 +11,8 @@ const COUNTRIES = getCountries()
   .map((iso) => ({ iso, code: getCountryCallingCode(iso), name: NAMES?.of(iso) || iso }))
   .sort((a, b) => a.name.localeCompare(b.name))
 const BY_ISO = Object.fromEntries(COUNTRIES.map((c) => [c.iso, c]))
+// Shown first in the list: the countries Brixen and Finstap customers use most
+const TOP = ["GB", "PK"]
 // The main country for each calling code (+44: United Kingdom, +1: United States, +92: Pakistan)
 const MAIN = Object.fromEntries(Object.entries(metadata.country_calling_codes).map(([code, list]) => [code, list[0]]))
 
@@ -89,11 +91,21 @@ function PhoneInput({ value, onChange, defaultCountry = "GB", className, name, i
           title={`${current.name} (+${current.code})`}
           className="absolute inset-0 cursor-pointer opacity-0"
         >
-          {COUNTRIES.map((c) => (
-            <option key={c.iso} value={c.iso}>
-              {flag(c.iso)} {c.name} (+{c.code})
-            </option>
-          ))}
+          {/* The two used most first; names lead, so pressing P in the open list jumps to Pakistan */}
+          <optgroup label="Most used">
+            {TOP.map((iso) => (
+              <option key={`top-${iso}`} value={iso}>
+                {BY_ISO[iso].name} (+{BY_ISO[iso].code})
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="All countries">
+            {COUNTRIES.filter((c) => !TOP.includes(c.iso)).map((c) => (
+              <option key={c.iso} value={c.iso}>
+                {c.name} (+{c.code})
+              </option>
+            ))}
+          </optgroup>
         </select>
       </div>
       <Input
