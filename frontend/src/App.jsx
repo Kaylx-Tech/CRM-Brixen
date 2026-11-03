@@ -11,6 +11,10 @@ import PageLoading from './components/PageLoading'
 // Pages load only when opened, so the first screen does not wait for the whole CRM
 const lazyPage = (load, name = 'default') => React.lazy(() => load().then((m) => ({ default: m[name] })))
 const Sso = lazyPage(() => import('./Pages/Sso'))
+// KYC form for Brixen's clients (runs on Finstap's KYC; public pages)
+const KycStart = lazyPage(() => import('./Pages/KycForm/KycStart'))
+const KycVerify = lazyPage(() => import('./Pages/KycForm/KycVerify'))
+const KycRecords = lazyPage(() => import('./Pages/KycForm/KycRecords'))
 const AdminLayout = lazyPage(() => import('./Layout/AdminLayout'))
 const Dashboard = lazyPage(() => import('./Pages/Dasboard'))
 const Customers = lazyPage(() => import('./Pages/Customer/Customers'))
@@ -100,6 +104,10 @@ const App = () => {
             {/* Sign-in handed over from the Brixen website (B2B accounts) */}
             <Route path="/sso" element={<Sso />} />
 
+            {/* Identity check for a client: Brixen's KYC link, then the step-by-step form (no sign-in) */}
+            <Route path="/verify/start/:code" element={<KycStart />} />
+            <Route path="/verify/:token" element={<KycVerify />} />
+
             {/* SignUp disabled for now */}
             {/* <Route path="/signup" element={<SignUp />} /> */}
             <Route path="/signup" element={<Navigate to="/login" replace />} />
@@ -142,6 +150,7 @@ const App = () => {
                 <Route path="email-log" element={<PageGuard page="email-log"><EmailLog /></PageGuard>} />
                 <Route path="tickets" element={<PageGuard page="tickets"><Tickets /></PageGuard>} />
                 <Route path="smart-operations" element={<PageGuard page="smart-operations"><SmartOperations /></PageGuard>} />
+                <Route path="kyc" element={<PageGuard page="smart-operations"><KycRecords /></PageGuard>} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="profile" element={<Navigate to="/admin/settings?tab=profile" replace />} />

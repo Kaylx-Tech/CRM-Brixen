@@ -23,6 +23,7 @@ from .ticket_routes import handle_ticket_routes
 from .website_routes import handle_website_routes
 from .smart_link_routes import handle_smart_link_routes
 from .id_verification_routes import handle_id_verification_routes
+from .kyc_partner_routes import handle_kyc_partner_routes
 from .ai_routes import handle_ai_routes
 from .finance_routes import handle_finance_routes
 
@@ -36,6 +37,11 @@ except ImportError:
 def dispatch_api_routes(environ, start_response, path, method, user, body, query):
     """Try to dispatch to any modular API route handler."""
     
+    # KYC run on Finstap: the link and Brixen's record of the checks (routes/kyc_partner_routes.py)
+    res = handle_kyc_partner_routes(environ, start_response, path, method, user, body, query)
+    if res is not None:
+        return res
+
     # 1. Authentication
     res = handle_auth_routes(environ, start_response, path, method, user, body, query)
     if res is not None:

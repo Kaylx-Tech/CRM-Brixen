@@ -17,6 +17,7 @@ import {
   IconUsersGroup,
   IconTrophy,
   IconHeadset,
+  IconId,
 } from "@tabler/icons-react"
 
 export const NAV_GROUPS = [
@@ -34,6 +35,8 @@ export const NAV_GROUPS = [
     label: "Operations",
     items: [
       { title: "Smart Operations", url: "/admin/smart-operations", icon: IconLink },
+      // Identity checks for clients, run on Finstap's KYC (the link and the record)
+      { title: "KYC", url: "/admin/kyc", icon: IconId },
       { title: "Accountancy", url: "/admin/accountancy", icon: IconCalculator },
       { title: "Documents", url: "/admin/documents", icon: IconFileCheck, badge: "documents" },
       { title: "Smart Intake", url: "/admin/intake", icon: IconBrain },
