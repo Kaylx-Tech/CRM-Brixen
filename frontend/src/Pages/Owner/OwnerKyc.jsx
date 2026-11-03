@@ -96,7 +96,7 @@ function ActionDialog({ action, onClose, onDone }) {
           {!reject && (
             <p className="text-xs text-muted-foreground">
               A new form link is made and emailed to {check.email || check.client_email || "the client"}. The old link
-              stops working.
+              stops working and everything they sent before (files and answers) is deleted.
             </p>
           )}
         </div>

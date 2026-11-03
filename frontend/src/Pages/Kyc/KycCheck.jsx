@@ -281,7 +281,7 @@ function Resubmit({ check, onSaved, api }) {
   return (
     <Panel
       title="Ask the client again"
-      description="Makes a new form link and emails it to the client. The old link stops working; what they sent before stays here."
+      description="Makes a new form link and emails it to the client. The old link stops working and everything they sent before (files and answers) is deleted."
     >
       <Textarea
         rows={2}

@@ -327,8 +327,8 @@ def reject_check(slug, check_id, reason):
 
 
 def resubmit_check(slug, check_id, reason=None):
-    """Make a new form link for the person (the old one stops working; what they sent before stays on
-    record) and email it, with what to fix. Returns (row, emailed). The earlier reason stays in the owner
+    """Make a new form link for the person and email it, with what to fix. The old link stops working and
+    everything they sent before (files, answers) is deleted, so they start again from an empty form. Returns (row, emailed). The earlier reason stays in the owner
     activity log."""
     from db import execute_db
     from services import kyc_form
@@ -338,6 +338,9 @@ def resubmit_check(slug, check_id, reason=None):
     reason = str(reason or row.get('reason') or '').strip()[:300]
     emailed = False
     with use_tenant(tenant):
+        from services.kyc_desk import wipe
+        wipe(int(check_id))
+        execute_db("UPDATE id_verifications SET data_deleted_at = NULL WHERE id = ?;", (int(check_id),))
         fresh = dict(kyc_form.new_link(int(check_id), status='Declined' if row.get('status') == 'Declined'
                                        else 'Not Started'))
         execute_db("UPDATE id_verifications SET review_note = NULL, reviewed_by = NULL, reviewed_at = NULL "
