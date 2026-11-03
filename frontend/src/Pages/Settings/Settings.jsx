@@ -1,3 +1,4 @@
+import { PhoneInput } from "@/components/ui/phone-input"
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -646,7 +647,7 @@ export default function Settings() {
                   />
                 </Field>
                 <Field id="support_phone" label="Support phone">
-                  <Input
+                  <PhoneInput
                     id="support_phone"
                     value={form.support_phone}
                     onChange={(e) => setField('support_phone', e.target.value)}
@@ -1268,7 +1269,7 @@ export default function Settings() {
                   />
                 </Field>
                 <Field id="prof_phone" label="Phone number">
-                  <Input
+                  <PhoneInput
                     id="prof_phone"
                     value={profile.phone}
                     onChange={(e) => setProfileField('phone', e.target.value)}

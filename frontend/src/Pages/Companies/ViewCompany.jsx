@@ -1,3 +1,4 @@
+import { PhoneInput } from "@/components/ui/phone-input"
 import React, { useState, useEffect } from 'react'
 import {
   Dialog,
@@ -514,7 +515,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                     <Label htmlFor="company-contact-whatsapp_number" className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
                       Phone / WhatsApp Number
                     </Label>
-                    <Input
+                    <PhoneInput
                       id="company-contact-whatsapp_number"
                       type="tel"
                       value={contact.whatsapp_number}

@@ -1,3 +1,4 @@
+import { PhoneInput } from "@/components/ui/phone-input"
 import React, { useState } from 'react'
 import {
   Dialog,
@@ -230,7 +231,7 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
 
               <div className="grid gap-2">
                 <Label htmlFor="cust-phone">Phone Number</Label>
-                <Input
+                <PhoneInput
                   id="cust-phone"
                   {...invalidProps(errors, 'phone', 'cust-')}
                   placeholder="+44 7911 123456"

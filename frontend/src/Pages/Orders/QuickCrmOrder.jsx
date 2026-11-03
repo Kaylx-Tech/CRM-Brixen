@@ -10,6 +10,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PhoneInput } from "@/components/ui/phone-input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -543,7 +544,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold">Company Contact Phone</Label>
-                    <Input id="qo-company_phone"
+                    <PhoneInput id="qo-company_phone"
                       {...invalidProps(errors, 'company_phone', 'qo-')}
                       className="w-full"
                       value={companyPhone}
@@ -596,7 +597,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold">Director Direct Phone</Label>
-                    <Input id="qo-director_phone"
+                    <PhoneInput id="qo-director_phone"
                       {...invalidProps(errors, 'director_phone', 'qo-')}
                       className="w-full"
                       value={directorPhone}
