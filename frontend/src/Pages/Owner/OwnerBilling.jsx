@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import { IconAlertTriangle, IconCash, IconClockHour4, IconId, IconMapPin, IconReceipt2, IconWallet, IconCheck, IconSearch } from "@tabler/icons-react"
 import { cn } from "cn"
 import { Input } from "@/components/ui/input"
@@ -8,6 +8,7 @@ import { checkField } from "@/lib/validation"
 import { FieldMessage } from "@/components/FormField"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { money, ownerApi, shortDate } from "@/lib/owner"
+import OwnerRevenue from "./OwnerRevenue"
 import { Button, FilterTabs, LoadError, PageTitle, Panel, PlanBadge, SELECT, Stat } from "./ownerUi"
 
 const STATE = {
@@ -211,7 +212,7 @@ function TopUpRequests({ onChange }) {
 }
 
 /** Billing: every workspace's subscription (paid until, overdue) and what it owes for Finstap's services. */
-export default function OwnerBilling() {
+function BillingWorkspaces() {
   const [data, setData] = useState(null)
   const [error, setError] = useState("")
   const [filter, setFilter] = useState("")
@@ -265,10 +266,6 @@ export default function OwnerBilling() {
 
   return (
     <>
-      <PageTitle
-        title="Billing"
-        description="Subscriptions and service charges for every workspace. Record payments here until online payment is switched on."
-      />
       <TopUpRequests onChange={load} />
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Stat label="Monthly revenue (MRR)" value={money(t.mrr)} icon={IconCash} tone="text-emerald-600" />
@@ -473,6 +470,31 @@ export default function OwnerBilling() {
           <p className="text-sm text-muted-foreground">No payments recorded yet.</p>
         )}
       </Panel>
+    </>
+  )
+}
+
+
+/** Billing: the workspaces' subscriptions and charges, and Revenue (what Finstap received). */
+export default function OwnerBilling() {
+  const [params, setParams] = useSearchParams()
+  const tab = params.get("tab") === "revenue" ? "revenue" : ""
+  return (
+    <>
+      <PageTitle
+        title="Billing"
+        description="Subscriptions and service charges for every workspace. Record payments here until online payment is switched on."
+      />
+      <FilterTabs
+        className="mb-6"
+        value={tab}
+        onChange={(v) => setParams(v ? { tab: v } : {})}
+        options={[
+          ["", "Workspaces"],
+          ["revenue", "Revenue"],
+        ]}
+      />
+      {tab === "revenue" ? <OwnerRevenue /> : <BillingWorkspaces />}
     </>
   )
 }

@@ -604,6 +604,8 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
             data = billing.overview()
             data['payments'] = billing.payments(limit=50)
             return success_response(start_response, data=data)
+        if sub == '/billing/revenue' and method == 'GET':
+            return success_response(start_response, data=billing.revenue(_q(query, 'period')))
         pay = re.match(r'^/billing/([a-z0-9-]+)/payments$', sub)
         if pay and method == 'GET':
             return success_response(start_response, data={'payments': billing.payments(pay.group(1))})

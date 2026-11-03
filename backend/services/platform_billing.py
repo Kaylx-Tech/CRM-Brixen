@@ -148,3 +148,56 @@ def record_payment(slug, admin, amount=None, method='Bank transfer', note='', pe
         WHERE slug = ?;
     """, (end.isoformat(), slug))
     return {'amount': amount, 'period_start': start.isoformat(), 'period_end': end.isoformat()}
+
+
+def revenue(period=None, months=12):
+    """What Finstap earned: subscriptions paid, KYC checks paid (per check, or older months marked paid) and
+    registered offices paid, for one month (by workspace) and the last `months` months (one row each)."""
+    today = datetime.date.today()
+    period = str(period or today.strftime('%Y-%m'))[:7]
+    names = {r['slug']: r['name'] for r in _platform_query("SELECT slug, name FROM tenants;")}
+
+    def by_month(sql):
+        return {(r['period'], r['slug']): float(r['amount'] or 0) for r in _platform_query(sql)}
+
+    sources = {
+        'subscriptions': by_month("""
+            SELECT strftime('%Y-%m', created_at) AS period, tenant_slug AS slug, SUM(amount) AS amount
+            FROM subscription_payments GROUP BY 1, 2;"""),
+        'kyc': by_month("""
+            SELECT period, slug, SUM(amount) AS amount FROM (
+                SELECT strftime('%Y-%m', paid_at) AS period, tenant_slug AS slug, amount FROM kyc_charges
+                WHERE status = 'paid' AND paid_at IS NOT NULL
+                UNION ALL
+                SELECT period, tenant_slug, amount FROM kyc_billing WHERE status = 'paid'
+                  AND NOT EXISTS (SELECT 1 FROM kyc_charges c WHERE c.tenant_slug = kyc_billing.tenant_slug
+                                  AND strftime('%Y-%m', c.created_at) = kyc_billing.period)
+            ) GROUP BY 1, 2;"""),
+        'registered_office': by_month("""
+            SELECT strftime('%Y-%m', COALESCE(start_date, decided_at, created_at)) AS period, tenant_slug AS slug,
+                   SUM(COALESCE(price, 0)) AS amount
+            FROM ro_requests WHERE paid = 1 GROUP BY 1, 2;"""),
+    }
+
+    workspaces = {}
+    for source, rows in sources.items():
+        for (month, slug), amount in rows.items():
+            if month == period and amount:
+                w = workspaces.setdefault(slug, {'slug': slug, 'name': names.get(slug, slug), 'subscriptions': 0.0,
+                                                 'kyc': 0.0, 'registered_office': 0.0, 'total': 0.0})
+                w[source] += amount
+                w['total'] += amount
+
+    first = datetime.date(int(period[:4]), int(period[5:7]), 1)
+    trend = []
+    for back in range(months - 1, -1, -1):
+        month = _add_months(first, -back).strftime('%Y-%m')
+        row = {'period': month}
+        for source, rows in sources.items():
+            row[source] = round(sum(a for (m, _), a in rows.items() if m == month), 2)
+        row['total'] = round(sum(row[s] for s in sources), 2)
+        trend.append(row)
+
+    rows = sorted(({k: round(v, 2) if isinstance(v, float) else v for k, v in w.items()} for w in workspaces.values()),
+                  key=lambda w: -w['total'])
+    return {'period': period, 'totals': trend[-1], 'workspaces': rows, 'trend': trend}
