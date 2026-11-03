@@ -393,7 +393,9 @@ export default function KycCheck({ api = kycApi, getToken = getKycToken, backTo 
               >
                 <Facts
                   rows={[
-                    ["Full name (as on the document)", r.full_name],
+                    ["First name", r.first_name || String(r.full_name || "").split(" ")[0]],
+                    ["Last name", r.last_name || String(r.full_name || "").split(" ").slice(1).join(" ")],
+                    ["Email", r.email || check.email || check.client_email],
                     ["Date of birth", r.date_of_birth],
                     ["Document", r.document_type],
                     ["Document number", r.document_number],
