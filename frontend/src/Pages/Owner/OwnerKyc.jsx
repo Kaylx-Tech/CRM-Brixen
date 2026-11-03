@@ -154,6 +154,12 @@ function DeleteDataButton({ check, onDone }) {
   )
 }
 
+// £15 instead of £15.00 (pence only when there are any), for the By workspace table
+const whole = (value) =>
+  new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(
+    Number(value || 0),
+  )
+
 /** The workspace's own price per check; empty uses the general price. Saved when the field is left. */
 function WorkspacePrice({ workspace, general, onSaved }) {
   const [value, setValue] = useState(workspace.own_price ?? "")
@@ -170,16 +176,16 @@ function WorkspacePrice({ workspace, general, onSaved }) {
     }
   }
   return (
-    <div className="relative w-24">
-      <span className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-xs text-muted-foreground">£</span>
+    <div className="relative w-[4.5rem]">
+      <span className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-xs text-muted-foreground">£</span>
       <Input
         type="number"
         min="0"
         step="0.01"
         inputMode="decimal"
-        className="h-8 pl-6 text-right tabular-nums"
+        className="h-7 rounded-md pr-2 pl-5 text-right text-xs tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         value={value}
-        placeholder={general != null ? Number(general).toFixed(2) : "0.00"}
+        placeholder={general != null ? String(Number(general)) : "0"}
         onChange={(e) => setValue(e.target.value)}
         onBlur={save}
         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
@@ -391,14 +397,14 @@ export default function OwnerKyc() {
                           />
                         </td>
                         <td className="px-3 py-2.5 text-right tabular-nums">
-                          {money(w.amount)}
-                          {w.billing_status && w.billed_amount !== w.amount && (
-                            <div className="text-xs text-muted-foreground">billed {money(w.billed_amount)}</div>
+                          {whole(w.amount)}
+                          {w.billing_status && w.billed_amount > 0 && w.billed_amount !== w.amount && (
+                            <div className="text-xs text-muted-foreground">billed {whole(w.billed_amount)}</div>
                           )}
                         </td>
                         <td className="py-2.5 pl-3">
                           <select
-                            className={cn(SELECT, "w-36")}
+                            className={cn(SELECT, "h-7 w-28 rounded-md px-2 text-xs")}
                             value={w.billing_status}
                             onChange={(e) => setBilling(w.slug, e.target.value)}
                             aria-label={`Billing for ${w.name}`}
