@@ -37,6 +37,86 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api";
 import { toastUndoableDelete } from "@/lib/toastActions";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+/** Business / B2B customers who cannot sign in to the portal yet (never signed in, no default password):
+ * see who they are, then give them all the default password at once. */
+function PortalAccessButton({ onDone }) {
+  const [list, setList] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const call = (apply) =>
+    apiRequest("/admin/customers/portal-access", { method: "POST", body: { apply }, label: "Portal access", silent: true });
+
+  const open = async () => {
+    setBusy(true);
+    const res = await call(false);
+    setBusy(false);
+    if (res.ok) setList(res.data?.data?.customers || []);
+    else toast.error(res.reason || "Could not check portal access");
+  };
+
+  const apply = async () => {
+    setBusy(true);
+    const res = await call(true);
+    setBusy(false);
+    if (res.ok) {
+      toast.success(res.data?.message || "Done");
+      setList(null);
+      onDone?.();
+    } else {
+      toast.error(res.reason || "Could not set the passwords");
+    }
+  };
+
+  return (
+    <>
+      <Button variant="outline" onClick={open} disabled={busy}>
+        <IconKey className="mr-2 h-4 w-4" />
+        Portal access for Business
+      </Button>
+      <Dialog open={list !== null} onOpenChange={(o) => !o && !busy && setList(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Portal access for Business customers</DialogTitle>
+            <DialogDescription>
+              {list?.length
+                ? `${list.length} Business customer(s) cannot sign in to the portal yet. They get the default password; customers who already signed in are not changed.`
+                : "Every Business customer can already sign in to the portal."}
+            </DialogDescription>
+          </DialogHeader>
+          {list?.length > 0 && (
+            <ul className="max-h-64 divide-y overflow-auto rounded-lg border text-sm">
+              {list.map((c) => (
+                <li key={c.id} className="px-3 py-2">
+                  <div className="font-medium">{c.name}</div>
+                  <div className="text-xs text-muted-foreground">{c.email}</div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setList(null)} disabled={busy}>
+              {list?.length ? "Cancel" : "Close"}
+            </Button>
+            {list?.length > 0 && (
+              <Button onClick={apply} disabled={busy}>
+                Give portal access ({list.length})
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
 
 const columnHelper = createColumnHelper();
 
@@ -498,10 +578,13 @@ const Customers = () => {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Customers & Signups</h2>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
-          <IconUserPlus className="mr-2 h-4 w-4" />
-          Create Customer
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {isAdminRole() && <PortalAccessButton onDone={loadCustomers} />}
+          <Button onClick={() => setIsModalOpen(true)}>
+            <IconUserPlus className="mr-2 h-4 w-4" />
+            Create Customer
+          </Button>
+        </div>
       </div>
 
       <SectionCards stats={customerStats} isLoading={isLoading} compact />

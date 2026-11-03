@@ -249,6 +249,35 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
             message="Notification email saved. All client emails for this customer will use it.",
             data={"notification_email": saved_email or '', "effective_email": saved_email or ''})
 
+    # ── 4a. POST /api/admin/customers/portal-access {apply} ───────────────────
+    # Business / B2B customers who cannot sign in to the portal yet get the default password. Only those
+    # who have never signed in and whose password is not the default already: a password a customer chose
+    # or used is never changed. Without apply: just the list.
+    if path == '/api/admin/customers/portal-access' and method == 'POST':
+        if str(user.get('role') or '').upper() not in ('SUPER_ADMIN', 'ADMIN'):
+            return _forbidden(start_response)
+        from db import verify_password
+        rows = query_db("""
+            SELECT u.id, u.full_name, u.email, u.password_hash, u.client_type, u.is_b2b
+            FROM users u
+            WHERE u.role = 'CLIENT' AND COALESCE(u.status, 'Active') = 'Active'
+              AND (COALESCE(u.is_b2b, 0) = 1 OR UPPER(COALESCE(u.client_type, '')) IN ('B2B', 'BUSINESS'))
+              AND NOT EXISTS (SELECT 1 FROM user_sessions s WHERE s.user_id = u.id)
+            ORDER BY u.full_name COLLATE NOCASE;
+        """) or []
+        todo = [r for r in rows if r.get('email') and not verify_password(DEFAULT_CUSTOMER_PASSWORD, r.get('password_hash') or '')]
+        people = [{'id': r['id'], 'name': r.get('full_name') or r['email'], 'email': r['email']} for r in todo]
+        if not body.get('apply'):
+            return success_response(start_response, data={'customers': people, 'count': len(people)})
+        new_hash = hash_password(DEFAULT_CUSTOMER_PASSWORD)
+        for r in todo:
+            execute_db("UPDATE users SET password_hash = ? WHERE id = ?;", (new_hash, r['id']))
+        _audit(user, 'CLIENT_PORTAL_ACCESS_BULK', 'users', None,
+               f"Default portal password set for {len(todo)} Business/B2B customer(s)")
+        return success_response(start_response, data={'customers': people, 'count': len(people)}, message=(
+            f"{len(todo)} Business customer(s) can now sign in to the portal with the default password."
+            if todo else "Every Business customer can already sign in."))
+
     # ── 4. POST /api/admin/customers/password (Set / Reset Password) ─────────
     if path in ('/api/admin/customers/password', '/api/admin/customers/set-password') and method == 'POST':
         if not check_permission(user, 'clients.edit'):
