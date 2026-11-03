@@ -184,6 +184,13 @@ def send_email(recipient, subject, html_content, text_content=None, *, category=
         ok, status, error = _deliver(recipient, subject, html_content, text_content, logo=logo,
                                      sender_name=sender_name, images=images, attachments=attachments,
                                      mailbox=mailbox)
+        # kyc@finstap.com refused it (wrong password in Integrations, mailbox full …): the no-reply sends it,
+        # so a KYC team sign-in or a client's KYC email is never held up by that mailbox
+        if not ok and mailbox == 'kyc' and status not in ('invalid_recipient',):
+            print(f"[Email Service] KYC mailbox failed ({str(error)[:120]}), sending from the no-reply instead")
+            ok, status, error = _deliver(recipient, subject, html_content, text_content, logo=logo,
+                                         sender_name=sender_name, images=images, attachments=attachments,
+                                         mailbox='platform')
     _last_failure['status'], _last_failure['error'] = ('', '') if ok else (status, error)
     if log:
         _log_email((recipient or '').strip(), subject,
