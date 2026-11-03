@@ -183,7 +183,6 @@ const KYC_COLUMNS = [
   ["date", "Date"],
   ["payment", "Payment"],
   ["order", "Order status"],
-  ["address", "Address"],
 ]
 const COLUMNS_KEY = "owner-kyc-columns"
 
@@ -551,7 +550,6 @@ export default function OwnerKyc() {
                       {shows("date") && <th className="px-3 py-2.5 font-semibold">Date</th>}
                       {shows("payment") && <th className="px-3 py-2.5 font-semibold">Payment</th>}
                       {shows("order") && <th className="px-3 py-2.5 font-semibold">Order</th>}
-                      {shows("address") && <th className="px-3 py-2.5 font-semibold">Address</th>}
                       <th className="px-3 py-2.5 font-semibold">KYC</th>
                     </tr>
                   </thead>
@@ -603,15 +601,6 @@ export default function OwnerKyc() {
                               <span className={cn(PILL, orderTone(c.order_status))}>{c.order_status}</span>
                             ) : (
                               "—"
-                            )}
-                          </td>
-                        )}
-                        {shows("address") && (
-                          <td className="px-3 py-3">
-                            {c.address ? (
-                              <span className="line-clamp-2 max-w-48 text-xs">{c.address}</span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
                             )}
                           </td>
                         )}
