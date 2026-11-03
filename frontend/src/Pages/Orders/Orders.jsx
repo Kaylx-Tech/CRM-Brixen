@@ -98,7 +98,7 @@ function productDot(name) {
   if (/registered office|address|mail forwarding/.test(n)) return 'bg-violet-500'
   if (/formation|incorporation|certificate|name change/.test(n)) return 'bg-indigo-500'
   if (/confirmation|accounts|tax|vat|paye|ad01|dissolution|strike/.test(n)) return 'bg-amber-500'
-  return 'bg-[#a1a1a6]'
+  return 'bg-zinc-400'
 }
 
 const PRODUCT_CHIP =

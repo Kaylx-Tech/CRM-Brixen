@@ -198,18 +198,18 @@ export default function Notifications() {
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger
-        className="relative inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-3 focus-visible:ring-ring/30 cursor-pointer"
+        className="relative inline-flex items-center justify-center rounded-md p-1.5 hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
         aria-label="Notifications"
       >
         {unreadCount > 0 ? (
-          <IconBellRinging className="size-[1.15rem] stroke-[1.75] text-foreground" />
+          <IconBellRinging className="h-4 w-4 text-primary animate-pulse" />
         ) : (
-          <IconBell className="size-[1.15rem] stroke-[1.75]" />
+          <IconBell className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
         )}
         {unreadCount > 0 && (
           <Badge
             variant="default"
-            className="absolute -top-0.5 -right-0.5 font-semibold text-[9px] min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-[#ff3b30] text-white border-2 border-background"
+            className="absolute -top-1.5 -right-1.5 font-semibold text-[9px] min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background"
           >
             {unreadCount > 99 ? "99+" : unreadCount}
           </Badge>

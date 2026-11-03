@@ -110,7 +110,7 @@ const getCategoryColor = (category) => {
     case 'digital':
       return 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800'
     default:
-      return 'bg-[#86868b]/10 text-[#6e6e73] dark:text-[#a1a1a6] border-[#e8e8ed] dark:border-[#1d1d1f]'
+      return 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
   }
 }
 
@@ -325,7 +325,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                     </div>
                     <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden flex">
                       <div 
-                        className="bg-[#d2d2d7] dark:bg-[#6e6e73] h-full" 
+                        className="bg-slate-300 dark:bg-slate-600 h-full" 
                         style={{ width: `${Math.max(0, 100 - parseFloat(marginPercent))}%` }} 
                       />
                       <div 

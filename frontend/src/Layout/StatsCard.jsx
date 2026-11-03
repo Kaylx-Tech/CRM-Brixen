@@ -33,16 +33,16 @@ import { m, fadeUp, staggerContainer, snappySpring } from "@/lib/motion"
 // The Card itself animates (the grid styles target the card as a direct child)
 const MotionCard = m.create(Card)
 
-// Colour per card: only its icon chip is tinted (the card stays plain, like Apple's widgets)
+// Colour per card: soft tinted surface, a glow in the corner and a coloured icon chip
 const TONES = {
-  blue: { chip: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
-  emerald: { chip: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
-  violet: { chip: "bg-violet-500/15 text-violet-600 dark:text-violet-400" },
-  orange: { chip: "bg-orange-500/15 text-orange-600 dark:text-orange-400" },
-  teal: { chip: "bg-teal-500/15 text-teal-600 dark:text-teal-400" },
-  rose: { chip: "bg-rose-500/15 text-rose-600 dark:text-rose-400" },
-  amber: { chip: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
-  sky: { chip: "bg-sky-500/15 text-sky-600 dark:text-sky-400" },
+  blue: { card: "from-blue-500/12 via-card to-card", glow: "bg-blue-500/25", chip: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
+  emerald: { card: "from-emerald-500/12 via-card to-card", glow: "bg-emerald-500/25", chip: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
+  violet: { card: "from-violet-500/12 via-card to-card", glow: "bg-violet-500/25", chip: "bg-violet-500/15 text-violet-600 dark:text-violet-400" },
+  orange: { card: "from-orange-500/12 via-card to-card", glow: "bg-orange-500/25", chip: "bg-orange-500/15 text-orange-600 dark:text-orange-400" },
+  teal: { card: "from-teal-500/12 via-card to-card", glow: "bg-teal-500/25", chip: "bg-teal-500/15 text-teal-600 dark:text-teal-400" },
+  rose: { card: "from-rose-500/12 via-card to-card", glow: "bg-rose-500/25", chip: "bg-rose-500/15 text-rose-600 dark:text-rose-400" },
+  amber: { card: "from-amber-500/14 via-card to-card", glow: "bg-amber-500/25", chip: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
+  sky: { card: "from-sky-500/12 via-card to-card", glow: "bg-sky-500/25", chip: "bg-sky-500/15 text-sky-600 dark:text-sky-400" },
 }
 
 // Cards without their own tone take these in order
@@ -81,9 +81,10 @@ const toneFor = (title = "", index = 0) =>
 
 const iconForTitle = (title = "") => TITLE_ICONS.find(([re]) => re.test(title))?.[1] ?? IconSparkles
 
-// The headline card: the brand's own accent, solid, with white text (Apple widgets use flat colour)
+// The headline card: solid brand gradient with white text
 const HERO = {
-  card: "border-transparent ring-0 bg-primary text-primary-foreground",
+  card: "border-transparent ring-0 from-[#1A69F8] via-[#3b5bff] to-[#7c3aed] text-white shadow-lg shadow-blue-500/25 dark:from-[#F77C07] dark:via-[#f06a0a] dark:to-[#d9480f] dark:shadow-orange-500/20",
+  glow: "bg-white/25",
   chip: "bg-white/20 text-white",
 }
 
@@ -120,15 +121,14 @@ export function StatCard({
   return (
     <MotionCard
       variants={fadeUp}
+      whileHover={{ y: -3, transition: snappySpring }}
       whileTap={interactive ? { scale: 0.98, transition: snappySpring } : undefined}
       size={compact ? "sm" : "default"}
       className={cn(
-        // Apple widget: a plain card, colour only in the icon; a clickable card darkens a touch on hover
-        "@container/card relative overflow-hidden shadow-xs transition-colors duration-200",
-        hero && !isLoading ? HERO.card : "bg-card",
-        interactive && !hero && "cursor-pointer hover:bg-muted/50",
-        interactive && hero && "cursor-pointer hover:bg-primary/90",
-        active && "ring-2 ring-primary/50"
+        "@container/card relative overflow-hidden shadow-xs",
+        look ? cn("bg-linear-to-br", look.card) : "bg-linear-to-t from-primary/5 to-card",
+        interactive && "cursor-pointer",
+        active && "ring-1 ring-primary/40 border-primary/30"
       )}
       onClick={interactive ? onClick : undefined}
       role={interactive ? "button" : undefined}
@@ -144,6 +144,16 @@ export function StatCard({
           : undefined
       }
     >
+      {look && (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none absolute -top-10 -right-10 rounded-full blur-2xl",
+            compact ? "size-24" : "size-32",
+            look.glow
+          )}
+        />
+      )}
       <CardHeader className={cn("relative @max-[200px]/card:grid-cols-1!", compact ? "gap-0.5" : undefined)}>
         <CardDescription
           className={cn(

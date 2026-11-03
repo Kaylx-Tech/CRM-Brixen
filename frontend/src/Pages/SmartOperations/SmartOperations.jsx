@@ -319,7 +319,7 @@ export default function SmartOperations() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ ...spring, delay: Math.min(i, 9) * 0.04 }}
               >
-                <Card size="sm" className="bg-card">
+                <Card size="sm" className={`bg-linear-to-br ${tone.bar} via-card to-card`}>
                   <CardHeader className="flex flex-row items-center justify-between gap-2">
                     <CardTitle className="flex min-w-0 items-center gap-2">
                       <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${tone.chip}`}>

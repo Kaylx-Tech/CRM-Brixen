@@ -80,10 +80,10 @@ const SECTIONS = [
 // Grade badge gradient: A green, B blue, C amber, anything lower rose
 const gradeColor = (grade = "") => {
   const g = String(grade).toUpperCase()
-  if (g.startsWith("A")) return "bg-emerald-500"
-  if (g.startsWith("B")) return "bg-blue-500"
-  if (g.startsWith("C")) return "bg-amber-500"
-  return "bg-rose-500"
+  if (g.startsWith("A")) return "from-emerald-500 to-teal-500"
+  if (g.startsWith("B")) return "from-blue-500 to-indigo-500"
+  if (g.startsWith("C")) return "from-amber-500 to-orange-500"
+  return "from-rose-500 to-pink-500"
 }
 
 const activityColor = (kind) =>
@@ -614,7 +614,7 @@ const Dashboard = () => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {topPerformers.map((p) => (
                   <div key={p.id} className="flex items-center gap-3 p-3.5 rounded-xl border bg-muted/20">
-                    <Badge className={`h-8 w-10 justify-center text-sm border-0 text-white ${gradeColor(p.grade)}`}>{p.grade}</Badge>
+                    <Badge className={`h-8 w-10 justify-center text-sm border-0 text-white bg-linear-to-br ${gradeColor(p.grade)}`}>{p.grade}</Badge>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold truncate">{p.full_name}</p>
                       <p className="text-sm text-muted-foreground truncate">

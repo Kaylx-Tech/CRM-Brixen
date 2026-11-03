@@ -14,9 +14,9 @@ const ACTION_ICONS = { upload: IconUpload, "credit-card": IconCreditCard, info: 
 // Old Brixen portal look: white panels with blue links
 function Panel({ title, linkLabel, onLink, children }) {
   return (
-    <section className="min-w-0 rounded-lg border border-[#e8e8ed] bg-white dark:border-border dark:bg-card">
+    <section className="min-w-0 rounded-lg border border-slate-200 bg-white dark:border-border dark:bg-card">
       <div className="flex items-center justify-between gap-3 px-[18px] pt-4 pb-3">
-        <h3 className="text-[15px] font-semibold tracking-tight text-[#1d1d1f] dark:text-foreground">{title}</h3>
+        <h3 className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-foreground">{title}</h3>
         {linkLabel ? (
           <button type="button" onClick={onLink} className="inline-flex cursor-pointer items-center gap-1 text-[13px] font-semibold text-[#2563EB] hover:underline">
             {linkLabel} <IconArrowRight className="size-3.5" />
@@ -157,7 +157,7 @@ export default function PortalDashboard() {
 
         {/* Quick actions, as on the old portal home */}
         <section className="rounded-xl bg-white p-4 shadow-[0_4px_14px_rgba(15,23,42,0.05)] dark:bg-card">
-          <h3 className="text-[15px] font-semibold tracking-tight text-[#1d1d1f] dark:text-foreground">Quick Actions</h3>
+          <h3 className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-foreground">Quick Actions</h3>
           <div className="mt-3 flex flex-wrap gap-2">
             {[
               ["Upload Document", IconUpload, "/portal/documents"],
@@ -168,7 +168,7 @@ export default function PortalDashboard() {
                 key={label}
                 type="button"
                 onClick={() => navigate(to)}
-                className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-[#e8e8ed] bg-white px-3 text-xs font-semibold text-[#1d1d1f] hover:bg-[#fbfbfd] dark:border-border dark:bg-card dark:text-foreground"
+                className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-900 hover:bg-slate-50 dark:border-border dark:bg-card dark:text-foreground"
               >
                 <Icon className="size-3.5" /> {label}
               </button>

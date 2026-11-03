@@ -16,15 +16,15 @@ export function PrivacyToggle() {
       <TooltipTrigger render={
         <Button
           onClick={togglePrivacy}
-          variant="ghost"
+          variant="outline"
           size="icon"
-          className="relative cursor-pointer text-muted-foreground hover:text-foreground"
+          className="relative h-7 w-7 cursor-pointer"
           aria-label={isPrivate ? 'Show payments and amounts' : 'Hide payments and amounts'}
         >
           {isPrivate ? (
             <IconEyeOff className="h-[1.15rem] w-[1.15rem] text-primary transition-transform duration-200" />
           ) : (
-            <IconEye className="h-[1.15rem] w-[1.15rem] stroke-[1.75] transition-transform duration-200" />
+            <IconEye className="h-[1.15rem] w-[1.15rem] text-muted-foreground transition-transform duration-200" />
           )}
           <span className="sr-only">Toggle Privacy Mode</span>
         </Button>
