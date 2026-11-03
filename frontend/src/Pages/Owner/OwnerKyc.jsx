@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { Table } from "@/components/ui/table"
 import { Link } from "react-router-dom"
 import {
-  IconAdjustmentsHorizontal,
   IconCash,
   IconCircleCheck,
   IconCircleX,
@@ -31,12 +30,6 @@ import { Button, FilterTabs, LoadError, PageTitle, Panel, SELECT, Stat } from ".
 import { AMBER, GREEN, GREY, PILL, RED, REJECTED, SKY, kycLabel } from "../Kyc/kycStatus"
 import KycTeam from "./KycTeam"
 import { DeleteConfirmation } from "@/components/DeleteConfirmation"
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import KycPartners from "./KycPartners"
 import { useServiceSettings } from "./useServiceSettings"
 
@@ -182,53 +175,6 @@ const whole = (value) =>
     Number(value || 0),
   )
 
-// The KYC orders table's columns (client and KYC form always show); the owner picks the rest, kept per browser
-const KYC_COLUMNS = [
-  ["contact", "Email and phone"],
-  ["price", "Price"],
-  ["date", "Date"],
-  ["payment", "Payment"],
-  ["order", "Order status"],
-]
-const COLUMNS_KEY = "owner-kyc-columns"
-
-function useKycColumns() {
-  const [hidden, setHidden] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(COLUMNS_KEY) || "[]")
-    } catch {
-      return []
-    }
-  })
-  const toggle = (id, on) => {
-    const next = on ? hidden.filter((h) => h !== id) : [...hidden, id]
-    setHidden(next)
-    try {
-      localStorage.setItem(COLUMNS_KEY, JSON.stringify(next))
-    } catch {
-      /* private window: the choice lasts until reload */
-    }
-  }
-  return [(id) => !hidden.includes(id), toggle]
-}
-
-function ColumnsMenu({ shows, toggle }) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-input bg-background px-3 text-sm font-medium hover:bg-muted">
-        <IconAdjustmentsHorizontal className="size-4" /> Columns
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {KYC_COLUMNS.map(([id, label]) => (
-          <DropdownMenuCheckboxItem key={id} checked={shows(id)} onCheckedChange={(on) => toggle(id, !!on)}>
-            {label}
-          </DropdownMenuCheckboxItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
 /** The workspace's own price per check; empty uses the general price. Saved when the field is left. */
 function WorkspacePrice({ workspace, general, onSaved }) {
   const [value, setValue] = useState(workspace.own_price ?? "")
@@ -349,7 +295,6 @@ export default function OwnerKyc() {
   const { settings, save, saving } = useServiceSettings()
   const [period, setPeriod] = useState(thisMonth())
   const [workspace, setWorkspace] = useState("")
-  const [shows, toggleColumn] = useKycColumns()
   const [data, setData] = useState(null)
   const [error, setError] = useState("")
   const [kycFilter, setKycFilter] = useState("")
@@ -541,7 +486,6 @@ export default function OwnerKyc() {
                     onChange={(e) => setSearch(e.target.value)}
                   />
                 </div>
-                <ColumnsMenu shows={shows} toggle={toggleColumn} />
               </div>
             </div>
             {checks.length ? (
@@ -549,24 +493,22 @@ export default function OwnerKyc() {
                 <Table className="w-full text-left text-sm">
                   <thead className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
-                      {shows("date") && <th className="px-3 py-2.5 font-semibold">Date</th>}
+                      <th className="px-3 py-2.5 font-semibold">Date</th>
                       <th className="px-3 py-2.5 font-semibold">Workspace</th>
                       <th className="px-3 py-2.5 font-semibold">Client</th>
-                      {shows("contact") && <th className="px-3 py-2.5 font-semibold">Contact</th>}
-                      {shows("price") && <th className="px-3 py-2.5 text-right font-semibold" title="What Finstap charges the workspace for this check">Price</th>}
-                      {shows("payment") && <th className="px-3 py-2.5 font-semibold">Payment</th>}
-                      {shows("order") && <th className="px-3 py-2.5 font-semibold">Order</th>}
+                      <th className="px-3 py-2.5 font-semibold">Contact</th>
+                      <th className="px-3 py-2.5 text-right font-semibold" title="What Finstap charges the workspace for this check">Price</th>
+                      <th className="px-3 py-2.5 font-semibold">Payment</th>
+                      <th className="px-3 py-2.5 font-semibold">Order</th>
                       <th className="px-3 py-2.5 font-semibold">KYC</th>
                     </tr>
                   </thead>
                   <tbody>
                     {checks.map((c) => (
                       <tr key={`${c.workspace}-${c.id}`} className="border-b align-top last:border-0 hover:bg-muted/30">
-                        {shows("date") && (
-                          <td className="px-3 py-3 whitespace-nowrap text-muted-foreground">
-                            {ddmmyy(c.order_date || c.created_at)}
-                          </td>
-                        )}
+                        <td className="px-3 py-3 whitespace-nowrap text-muted-foreground">
+                          {ddmmyy(c.order_date || c.created_at)}
+                        </td>
                         <td className="min-w-36 px-3 py-3">
                           <Link to={`/owner/workspaces/${c.workspace}`} className="font-medium hover:text-primary">
                             {c.workspace_name}
@@ -578,44 +520,31 @@ export default function OwnerKyc() {
                             {c.full_name}
                           </Link>
                         </td>
-                        {shows("contact") && (
-                          <td className="px-3 py-3">
-                            <div className="max-w-56 truncate" title={c.email || c.client_email || ""}>
-                              {c.email || c.client_email || "—"}
-                            </div>
-                            {c.phone && <div className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">{c.phone}</div>}
-                          </td>
-                        )}
-                        {shows("price") && (
-                          <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
-                            {c.kyc_free ? (
-                              <span className="text-muted-foreground">Free</span>
-                            ) : c.charge_amount != null ? (
-                              <>
-                                {whole(c.charge_amount)}
-                                <div className={cn("text-xs", c.charge === "paid" ? "text-emerald-600" : "text-amber-600")}>
-                                  {c.charge === "paid" ? "Paid" : "Due"}
-                                </div>
-                              </>
-                            ) : (
-                              <span className="text-muted-foreground" title="Not charged yet">—</span>
-                            )}
-                          </td>
-                        )}
-                        {shows("payment") && (
-                          <td className="px-3 py-3">
-                            <span className={cn(PILL, paymentTone(c.payment_status))}>{c.payment_status || "No invoice"}</span>
-                          </td>
-                        )}
-                        {shows("order") && (
-                          <td className="px-3 py-3">
-                            {c.order_status ? (
-                              <span className={cn(PILL, orderTone(c.order_status))}>{c.order_status}</span>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-                        )}
+                        <td className="px-3 py-3">
+                          <div className="max-w-56 truncate" title={c.email || c.client_email || ""}>
+                            {c.email || c.client_email || "—"}
+                          </div>
+                          {c.phone && <div className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">{c.phone}</div>}
+                        </td>
+                        <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
+                          {c.kyc_free ? (
+                            <span className="text-muted-foreground">Free</span>
+                          ) : c.charge_amount != null ? (
+                            whole(c.charge_amount)
+                          ) : (
+                            <span className="text-muted-foreground" title="Not charged yet">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          <span className={cn(PILL, paymentTone(c.payment_status))}>{c.payment_status || "No invoice"}</span>
+                        </td>
+                        <td className="px-3 py-3">
+                          {c.order_status ? (
+                            <span className={cn(PILL, orderTone(c.order_status))}>{c.order_status}</span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
                         <td className="px-3 py-3">
                           <KycCell check={c} onAction={(check, act) => setAction({ check, act })} onDeleted={load} />
                         </td>
