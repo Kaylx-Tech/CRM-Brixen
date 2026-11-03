@@ -17,6 +17,29 @@ function storedUser() {
   }
 }
 
+const reportedAt = new Map()
+
+/**
+ * A call to the server failed (no answer, or a 5xx): report it with the page and the call so it can be
+ * diagnosed, at most once a minute for the same call. The person sees a calm message (lib/api.js).
+ */
+export function reportApiFailure({ url, method, status, error }) {
+  if (!errorTrackingEnabled) return
+  const path = String(url || "").replace(/^https?:\/\/[^/]+/, "").split("?")[0]
+  const key = `${method} ${path} ${status}`
+  const now = Date.now()
+  if (now - (reportedAt.get(key) || 0) < 60000) return
+  reportedAt.set(key, now)
+  Sentry.withScope((scope) => {
+    scope.setTag("area", status ? "api" : "network")
+    scope.setTag("api_status", String(status))
+    scope.setExtra("call", `${method} ${path}`)
+    scope.setExtra("page", window.location.pathname)
+    scope.setExtra("error", String(error || "").slice(0, 300))
+    Sentry.captureMessage(status ? `API ${status}: ${method} ${path}` : `Network: ${method} ${path}`, "error")
+  })
+}
+
 export function initErrorTracking() {
   if (!errorTrackingEnabled) return
   Sentry.init({

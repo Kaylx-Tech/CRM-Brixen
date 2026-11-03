@@ -27,7 +27,16 @@ def _login_sender():
 
 def _smtp_config(sender=None):
     """SMTP host, port, user, password and From. sender='login' uses the login code mailbox when one
-    is set up (same host and port), so login codes come from e.g. noreply@."""
+    is set up (same host and port), so login codes come from e.g. noreply@. sender='env' is the server's
+    own SMTP_* mailbox only (a fallback when the Settings one refuses)."""
+    if sender == 'env':
+        env = lambda name: (os.environ.get(name) or '').strip()  # noqa: E731
+        try:
+            port = int(env('SMTP_PORT') or 587)
+        except ValueError:
+            port = 587
+        return env('SMTP_HOST') or 'smtp.hostinger.com', port, env('SMTP_USER'), env('SMTP_PASS'), \
+            env('SMTP_FROM') or env('SMTP_USER')
     if sender == 'login':
         login_user, login_pass = _login_sender()
         if login_user:
@@ -112,6 +121,35 @@ def last_failure_reason():
     return f'the email server said: {text[:140]}'
 
 
+def _deliver_with_fallbacks(recipient, subject, html_content, text_content, sender=None, **kwargs):
+    """Try the next mailbox when one refuses, so one broken mailbox never holds an email back:
+    login codes: login mailbox → Settings mailbox → server SMTP_*; others: Settings → server SMTP_* → login
+    mailbox. Each failure goes to GlitchTip (once in a while) with the real reason."""
+    chain = ['login', None, 'env'] if sender == 'login' else [sender, 'env', 'login']
+    tried, first_error = set(), None
+    ok, status, error = False, 'not_configured', 'SMTP is not configured'
+    for box in chain:
+        host, _port, user, password, _from = _smtp_config(box)
+        if not user or not password or (host, user) in tried:
+            continue
+        tried.add((host, user))
+        ok, status, error = _deliver(recipient, subject, html_content, text_content, sender=box, **kwargs)
+        if ok or status == 'invalid_recipient':
+            break
+        first_error = first_error or error
+        try:
+            from services.error_tracking import report_problem
+            report_problem('email', f"{box or 'settings'} mailbox could not send", mailbox=box or 'settings',
+                           smtp_user=user, smtp_host=host, error=error)
+        except ImportError:
+            pass
+    if ok and first_error:
+        print(f"[Email Service] sent to {recipient} from a fallback mailbox after: {str(first_error)[:120]}")
+    if not tried:
+        return _deliver(recipient, subject, html_content, text_content, sender=sender, **kwargs)
+    return ok, status, error
+
+
 def send_email(recipient, subject, html_content, text_content=None, *, category=None, user_id=None,
                order_id=None, company_id=None, triggered_by=None, log=True, store_body=True, sender=None, logo=None, images=None):
     """Send an HTML transactional email via SMTP. Returns True only on real send.
@@ -129,7 +167,8 @@ def send_email(recipient, subject, html_content, text_content=None, *, category=
     if category != 'SECURITY' and not emails_enabled():
         ok, status, error = False, 'suppressed', 'Emails are turned off in Settings > Email'
     else:
-        ok, status, error = _deliver(recipient, subject, html_content, text_content, sender=sender, logo=logo, images=images)
+        ok, status, error = _deliver_with_fallbacks(recipient, subject, html_content, text_content, sender=sender,
+                                                    logo=logo, images=images)
     _last_failure['status'], _last_failure['error'] = ('', '') if ok else (status, error)
     if log:
         _log_email((recipient or '').strip(), subject,
@@ -146,7 +185,8 @@ def resend_logged_email(log_id, actor_id=None):
         return False, 'not_found', 'Email not found in the log'
     if not row.get('body_html') and not row.get('body_text'):
         return False, 'not_resendable', 'This email (e.g. a password reset) was not stored, so it cannot be resent'
-    ok, status, error = _deliver(row['recipient'], row['subject'], row.get('body_html'), row.get('body_text'))
+    ok, status, error = _deliver_with_fallbacks(row['recipient'], row['subject'], row.get('body_html'),
+                                                row.get('body_text'))
     execute_db("""
         UPDATE email_outbox
         SET status = ?, attempts = COALESCE(attempts, 0) + 1, last_error = ?,
