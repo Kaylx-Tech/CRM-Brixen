@@ -201,14 +201,15 @@ def decide_transfer(request_id, admin, approve, amount=None, reason=''):
 def _tell_owners(slug, amount):
     """Email the Finstap owners that a transfer is waiting for approval (never blocks the request)."""
     try:
-        from services.email_service import send_email
+        from services import platform_mail
         from services.owner_auth import OWNER_EMAILS
         text = f"Workspace {slug} says it sent £{amount:.2f} by bank transfer. Approve it in the owner portal (Billing)."
-        from tenancy import use_tenant
-        with use_tenant(None):  # Finstap's own mailbox, not the workspace's
-            for email in OWNER_EMAILS:
-                send_email(email, f"Balance top-up to approve: {slug}", None, text,
-                           category='SECURITY', log=False, sender_name='Finstap', mailbox='platform')
+        page = platform_mail.html(f"Balance top-up to approve: {slug}", [
+            f"Workspace {slug} says it sent £{amount:.2f} by bank transfer.",
+            "When the money arrives, approve it in the owner portal (Billing); the workspace's balance then goes up.",
+        ])
+        for email in OWNER_EMAILS:
+            platform_mail.send(email, f"Balance top-up to approve: {slug}", text, page)
     except Exception as exc:
         print(f"[Wallet] owners not told about {slug}'s transfer: {exc}")
 

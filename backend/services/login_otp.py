@@ -257,8 +257,8 @@ def code_email_html(brand, code, *, icon_src='', accent='#1d1d1f', details=None,
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:18px;box-shadow:0 1px 3px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.05);{sans}color:#1d1d1f;">
       <tr><td style="padding:40px 40px 0;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-          <tr><td style="padding:0 0 36px;">
-            <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+          <tr><td align="center" style="padding:0 0 36px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr>
               {f'<td style="padding:0 12px 0 0;vertical-align:middle;">{icon}</td>' if icon else ''}
               <td style="vertical-align:middle;font-size:17px;font-weight:600;letter-spacing:-0.01em;color:#1d1d1f;">{name}</td>
             </tr></table>

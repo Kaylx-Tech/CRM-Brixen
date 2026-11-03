@@ -99,21 +99,15 @@ def _panel_name(role):
 
 
 def _send_code(email, code, role='owner'):
-    from services.email_service import send_email
+    from services import platform_mail
     panel = _panel_name(role)
     subject = f"{code} is your {panel} sign-in code"
     text = (f"Your {panel} sign-in code is {code}.\n\nIt works for {CODE_MINUTES} minutes. "
             "If you did not just sign in, change your password straight away.")
-    html = (f'<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:520px;margin:0 auto;'
-            f'padding:32px 16px;color:#111827;"><p style="font-size:20px;font-weight:700;margin:0 0 16px;">'
-            f'{panel}</p><p style="margin:0 0 20px;color:#4b5563;">Your sign-in code:</p>'
-            f'<p style="font-size:40px;letter-spacing:8px;font-weight:600;background:#f1f4f8;border-radius:14px;'
-            f'padding:24px;text-align:center;margin:0 0 20px;">{code}</p><p style="color:#6b7280;font-size:14px;">'
-            f'It works for {CODE_MINUTES} minutes. If you did not just sign in, change your password straight '
-            f'away.</p></div>')
-    with use_tenant(None):
-        sent = send_email(email, subject, html, text, category='SECURITY', log=False, store_body=False,
-                          sender_name='Finstap', mailbox='kyc' if role == 'kyc' else 'platform')
+    page = platform_mail.html(
+        f"Your {panel} sign-in code", ["Enter this code to finish signing in."], code=code,
+        note=f"It works for {CODE_MINUTES} minutes. If you did not just sign in, change your password straight away.")
+    sent = platform_mail.send(email, subject, text, page, mailbox='kyc' if role == 'kyc' else 'platform')
     if not sent:
         from config import IS_PRODUCTION
         if not IS_PRODUCTION:
@@ -239,21 +233,17 @@ def request_action_code(admin, action, target):
         INSERT INTO platform_action_codes (challenge, admin_id, action, target, code_hash, expires_at)
         VALUES (?, ?, ?, ?, ?, datetime('now', ?));
     """, (challenge, admin['id'], action, target, _code_hash(challenge, code), f'+{CODE_MINUTES} minutes'))
-    from services.email_service import send_email
+    from services import platform_mail
     verb = ACTION_LABELS[action]
     subject = f"{code} confirms: {verb} workspace {target}"
     text = (f"Your code to {verb} the workspace \"{target}\" is {code}.\n\nIt works for {CODE_MINUTES} minutes. "
             "If you did not ask for this, change your owner password straight away.")
-    html = (f'<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:520px;margin:0 auto;'
-            f'padding:32px 16px;color:#111827;"><p style="font-size:20px;font-weight:700;margin:0 0 16px;">'
-            f'Finstap owner portal</p><p style="margin:0 0 20px;color:#4b5563;">Code to {verb} the workspace '
-            f'<strong>{target}</strong>:</p><p style="font-size:40px;letter-spacing:8px;font-weight:600;'
-            f'background:#f1f4f8;border-radius:14px;padding:24px;text-align:center;margin:0 0 20px;">{code}</p>'
-            f'<p style="color:#6b7280;font-size:14px;">It works for {CODE_MINUTES} minutes. If you did not ask for '
-            f'this, change your owner password straight away.</p></div>')
-    with use_tenant(None):
-        sent = send_email(admin['email'], subject, html, text, category='SECURITY', log=False, store_body=False,
-                          sender_name='Finstap', mailbox='platform')
+    page = platform_mail.html(
+        f"Confirm: {verb} workspace {target}", [f"Enter this code in the owner portal to {verb} the workspace "
+                                                f"\"{target}\"."], code=code,
+        note=f"It works for {CODE_MINUTES} minutes. If you did not ask for this, change your owner password "
+             "straight away.")
+    sent = platform_mail.send(admin['email'], subject, text, page)
     if not sent:
         from config import IS_PRODUCTION
         if IS_PRODUCTION:
@@ -296,21 +286,16 @@ def confirm_action_code(admin, challenge, code, action, target):
 
 
 def _send_link(email, url, role='owner'):
-    from services.email_service import send_email
+    from services import platform_mail
     panel = _panel_name(role)
     subject = f"Set your {panel} password"
     text = (f"Open this link to set your {panel} password:\n\n{url}\n\nIt works once, for "
             f"{LINK_MINUTES} minutes. If you did not ask for it, ignore this email.")
-    html = (f'<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:520px;margin:0 auto;'
-            f'padding:32px 16px;color:#111827;"><p style="font-size:20px;font-weight:700;margin:0 0 16px;">'
-            f'{panel}</p><p style="margin:0 0 24px;color:#4b5563;">Use the button to set your password. '
-            f'It works once, for {LINK_MINUTES} minutes.</p><p style="margin:0 0 24px;"><a href="{url}" '
-            f'style="display:inline-block;background:#5f5cff;color:#ffffff;text-decoration:none;font-weight:600;'
-            f'padding:12px 22px;border-radius:999px;">Set password</a></p><p style="color:#6b7280;font-size:14px;">'
-            f'If you did not ask for this, ignore this email. Your password stays the same.</p></div>')
-    with use_tenant(None):
-        sent = send_email(email, subject, html, text, category='SECURITY', log=False, store_body=False,
-                          sender_name='Finstap', mailbox='kyc' if role == 'kyc' else 'platform')
+    page = platform_mail.html(
+        f"Set your {panel} password", [f"Use the button to set your password. It works once, for {LINK_MINUTES} "
+                                       "minutes."], button=("Set password", url),
+        note="If you did not ask for this, ignore this email. Your password stays the same.")
+    sent = platform_mail.send(email, subject, text, page, mailbox='kyc' if role == 'kyc' else 'platform')
     if not sent:
         from config import IS_PRODUCTION
         if not IS_PRODUCTION:

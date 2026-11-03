@@ -661,13 +661,13 @@ def email_brand_header_html(brand, headline, logo_src=None, logo_height=36):
     src = logo_src or email_logo_src(brand)
     if src:
         top = (f'<img src="{html_escape(src)}" alt="{html_escape(name)}" height="{logo_height}" '
-               f'style="display:block;height:{logo_height}px;width:auto;max-width:220px;border:0;outline:none;'
-               'text-decoration:none;">')
+               f'style="display:block;margin:0 auto;height:{logo_height}px;width:auto;max-width:220px;border:0;'
+               'outline:none;text-decoration:none;">')
     else:
         top = (f'<p style="margin:0;font-size:17px;letter-spacing:-0.01em;'
                f'color:{brand_accent()};font-weight:700;">{html_escape(name)}</p>')
     return (
-        f'<tr><td style="padding:36px 36px 12px;background:#ffffff;">{top}'
+        f'<tr><td align="center" style="padding:36px 36px 12px;background:#ffffff;text-align:center;">{top}'
         f'<h1 style="margin:{16 if src else 8}px 0 0;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-0.02em;color:#1d1d1f;">'
         f'{html_escape(headline)}</h1></td></tr>'
     )

@@ -358,6 +358,12 @@ export default function Payments() {
     return { billed, paid, owed, pending, partial, overdue }
   }, [monthInvoices])
 
+  // Every invoice that still has money to come, in any month (the "All unpaid" card)
+  const allUnpaid = useMemo(() => invoices.filter((inv) => {
+    const money = invoiceMoneyBits(inv)
+    return money.status !== 'Cancelled' && money.due > 0.004
+  }).length, [invoices])
+
   const filteredInvoices = useMemo(() => {
     return monthInvoices.filter((inv) => {
       const money = invoiceMoneyBits(inv)
@@ -487,13 +493,16 @@ export default function Payments() {
       active: payFilter === 'partial',
     },
     {
-      title: 'Overdue',
-      value: String(collectionStats.overdue),
-      footerSubText: 'Past due',
-      onClick: () => setPayFilter('overdue'),
-      active: payFilter === 'overdue',
+      title: 'All unpaid',
+      value: String(allUnpaid),
+      footerSubText: 'Every month',
+      onClick: () => {
+        setSelectedMonth('all')
+        setPayFilter('outstanding')
+      },
+      active: payFilter === 'outstanding' && selectedMonth === 'all',
     },
-  ], [collectionStats, payFilter, monthLabel, monthInvoices])
+  ], [collectionStats, payFilter, monthLabel, monthInvoices, allUnpaid, selectedMonth])
 
   const costRows = useMemo(() => orders.map((o) => {
     const sell = parseMoney(o.total ?? o.amount ?? o.price)
@@ -956,7 +965,7 @@ export default function Payments() {
         {/* The Balance Sheet tab has its own month and refresh */}
         {activeTab !== 'balance' && <div className="flex items-center gap-2">
           <Select value={selectedMonth} onValueChange={(v) => setSelectedMonth(v || CURRENT_MONTH)}>
-            <SelectTrigger className="w-[220px] text-sm">
+            <SelectTrigger className="w-auto min-w-[220px] max-w-full text-sm">
               <IconCalendarWeek className="h-4 w-4 shrink-0" />
               <SelectValue placeholder="Month">
                 {MONTH_OPTIONS.find((m) => m.value === selectedMonth)?.label || 'Month'}

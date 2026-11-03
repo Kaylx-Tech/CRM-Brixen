@@ -52,7 +52,7 @@ def code_email_html(logo_src, code):
     """The signup code email, in the same look as the login code email."""
     font = "font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;"
     if logo_src:
-        top = (f'<img src="{logo_src}" alt="Finstap" height="48" style="display:block;height:48px;'
+        top = (f'<img src="{logo_src}" alt="Finstap" height="48" style="display:block;margin:0 auto;height:48px;'
                'width:auto;max-width:240px;border:0;outline:none;text-decoration:none;">')
     else:
         top = '<p style="margin:0;font-size:22px;font-weight:700;color:#1d1d1f;">Finstap</p>'
@@ -61,7 +61,7 @@ def code_email_html(logo_src, code):
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;">
   <tr><td align="center" style="padding:40px 16px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;{font}color:#1d1d1f;">
-      <tr><td style="padding:0 0 40px;">{top}</td></tr>
+      <tr><td align="center" style="padding:0 0 40px;">{top}</td></tr>
       <tr><td style="padding:0 0 20px;font-size:30px;line-height:1.25;font-weight:700;">Confirm your email to create your Finstap workspace.</td></tr>
       <tr><td style="padding:0 0 24px;font-size:16px;line-height:1.5;color:#424245;">Enter this code on the signup page:</td></tr>
       <tr><td align="center" style="background:#f5f5f7;border-radius:16px;padding:32px 16px;font-size:44px;line-height:1;font-weight:500;letter-spacing:6px;color:#1d1d1f;">{code}</td></tr>
