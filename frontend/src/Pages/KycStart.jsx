@@ -20,7 +20,7 @@ export default function KycStart() {
 
   const [info, setInfo] = useState(null)
   const [loadError, setLoadError] = useState("")
-  const [form, setForm] = useState({ full_name: "", email: "", phone: "" })
+  const [form, setForm] = useState({ first_name: "", last_name: "", email: "", phone: "" })
   const [errors, setErrors] = useState({})
   const [notice, setNotice] = useState("")
   const [sending, setSending] = useState(false)
@@ -101,10 +101,17 @@ export default function KycStart() {
               licence or passport and a proof of address ready.
             </p>
             <div className="mt-5 space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="full_name">Full name</Label>
-                <Input id="full_name" value={form.full_name} onChange={set("full_name")} autoComplete="name" />
-                {errors.full_name && <p className="text-xs text-destructive">{errors.full_name}</p>}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="first_name">First name</Label>
+                  <Input id="first_name" value={form.first_name} onChange={set("first_name")} autoComplete="given-name" />
+                  {errors.first_name && <p className="text-xs text-destructive">{errors.first_name}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="last_name">Last name</Label>
+                  <Input id="last_name" value={form.last_name} onChange={set("last_name")} autoComplete="family-name" />
+                  {errors.last_name && <p className="text-xs text-destructive">{errors.last_name}</p>}
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>

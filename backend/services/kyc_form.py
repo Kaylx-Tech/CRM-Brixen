@@ -157,10 +157,15 @@ def start_from_link(tenant, body, ip=''):
     Returns (token, None) or (None, message) or (None, {field: message})."""
     body = body if isinstance(body, dict) else {}
     errors = {}
-    full_name = _text(body, 'full_name')
+    first_name, last_name = _text(body, 'first_name', 80), _text(body, 'last_name', 80)
+    full_name = ' '.join(p for p in (first_name, last_name) if p) or _text(body, 'full_name')
     email = _text(body, 'email', 200).lower()
     phone = _text(body, 'phone', 40)
-    if not full_name:
+    if 'first_name' in body and not first_name:
+        errors['first_name'] = "Enter your first name."
+    if 'last_name' in body and not last_name:
+        errors['last_name'] = "Enter your last name."
+    if not full_name and not errors:
         errors['full_name'] = "Enter your full name."
     if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
         errors['email'] = "Enter a valid email address, like name@example.com."
@@ -240,8 +245,12 @@ def public_view(row):
         workspace = ''
     status = row['status']
     step = 'approved' if status == 'Approved' else 'open' if status in OPEN_STATUSES else 'submitted'
+    first, _, last = str(row['full_name'] or '').strip().partition(' ')
     return {
         'full_name': row['full_name'],
+        'first_name': first,
+        'last_name': last.strip(),
+        'email': row.get('email') or '',
         'workspace': workspace,
         'step': step,
         'reason': row.get('review_note') if status == 'Declined' else None,
@@ -373,8 +382,18 @@ def submit(row, body):
     id_type = _text(body, 'id_type', 40)
     if id_type not in ID_TYPES:
         errors['id_type'] = "Choose your document."
-    fields = {key: _text(body, key) for key in ('full_name', 'date_of_birth', 'id_number', 'address_line1',
-                                                'address_line2', 'city', 'region', 'postal_code', 'country')}
+    fields = {key: _text(body, key) for key in ('full_name', 'first_name', 'last_name', 'date_of_birth', 'id_number',
+                                                'address_line1', 'address_line2', 'city', 'region', 'postal_code',
+                                                'country')}
+    if fields['first_name'] or fields['last_name'] or 'first_name' in body:
+        fields['full_name'] = ' '.join(p for p in (fields['first_name'], fields['last_name']) if p)
+        for key, message in (('first_name', "Enter your first name as shown on your document."),
+                             ('last_name', "Enter your last name as shown on your document.")):
+            if not fields[key]:
+                errors[key] = message
+    email = _text(body, 'email', 200).lower()
+    if 'email' in body and not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+        errors['email'] = "Enter a valid email address, like name@example.com."
     for key, message in (('full_name', "Enter your full name as shown on your document."),
                          ('id_number', "Enter your document number."),
                          ('address_line1', "Enter your address."),
@@ -405,6 +424,9 @@ def submit(row, body):
         'id_type': id_type,
         'document_type': ID_TYPES[id_type][0],
         'full_name': fields['full_name'],
+        'first_name': fields['first_name'] or None,
+        'last_name': fields['last_name'] or None,
+        'email': email or row.get('email'),
         'date_of_birth': born.strftime('%d/%m/%Y'),
         'document_number': fields['id_number'],
         'address': ', '.join(v for v in address.values() if v),
@@ -413,8 +435,8 @@ def submit(row, body):
     }
     execute_db("""
         UPDATE id_verifications SET result_json = ?, submitted_at = datetime('now'), review_note = NULL,
-               updated_at = datetime('now') WHERE id = ?;
-    """, (json.dumps(result), row['id']))
+               full_name = ?, email = COALESCE(?, email), updated_at = datetime('now') WHERE id = ?;
+    """, (json.dumps(result), fields['full_name'] or row['full_name'], email or None, row['id']))
     from routes.id_verification_routes import apply_result
     apply_result(row['id'], 'Submitted')
     if row.get('source') == 'link':

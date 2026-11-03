@@ -37,7 +37,9 @@ const SIDE_LABEL = { id_front: "Front", id_back: "Back" }
 // Which step holds each answer, to go back to the first one the server did not accept
 const FIELD_STEP = {
   id_type: 0,
-  full_name: 1,
+  first_name: 1,
+  last_name: 1,
+  email: 1,
   date_of_birth: 1,
   id_number: 1,
   address_line1: 3,
@@ -50,7 +52,9 @@ const FIELD_STEP = {
 }
 const EMPTY = {
   id_type: "",
-  full_name: "",
+  first_name: "",
+  last_name: "",
+  email: "",
   date_of_birth: "",
   id_number: "",
   address_line1: "",
@@ -323,8 +327,13 @@ export default function KycVerify() {
         const json = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(json.error || "This link is not valid.")
         setInfo(json.data)
-        if (!json.data.full_name) return
-        setForm((f) => (f.full_name ? f : { ...f, full_name: json.data.full_name }))
+        // Start from what the company already has (they can correct it)
+        setForm((f) => ({
+          ...f,
+          first_name: f.first_name || json.data.first_name || "",
+          last_name: f.last_name || json.data.last_name || "",
+          email: f.email || json.data.email || "",
+        }))
       })
       .catch((err) => setLoadError(err.message || "The page could not be loaded. Please try again in a moment."))
   }, [base, query])
@@ -387,7 +396,9 @@ export default function KycVerify() {
     if (step === 0 && !form.id_type) out.id_type = "Choose your document."
     if (step === 1) {
       for (const side of idType?.sides || []) if (!uploaded.has(side)) out[side] = `Add the ${SIDE_LABEL[side].toLowerCase()} photo.`
-      if (!form.full_name.trim()) out.full_name = "Enter your full name as shown on your document."
+      if (!form.first_name.trim()) out.first_name = "Enter your first name as shown on your document."
+      if (!form.last_name.trim()) out.last_name = "Enter your last name as shown on your document."
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) out.email = "Enter a valid email address."
       if (!/^\d{2}\/\d{2}\/\d{4}$/.test(form.date_of_birth)) out.date_of_birth = "Enter your date of birth as DD/MM/YYYY."
       if (!form.id_number.trim()) out.id_number = "Enter your document number."
     }
@@ -580,8 +591,16 @@ export default function KycVerify() {
               ))}
             </div>
             <div className="mt-6 space-y-4">
-              <Field id="full_name" label="Full name" hint="As shown on your document" error={err("full_name")}>
-                <Input id="full_name" value={form.full_name} onChange={set("full_name")} autoComplete="name" />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field id="first_name" label="First name" hint="As shown on your document" error={err("first_name")}>
+                  <Input id="first_name" value={form.first_name} onChange={set("first_name")} autoComplete="given-name" />
+                </Field>
+                <Field id="last_name" label="Last name" hint="As shown on your document" error={err("last_name")}>
+                  <Input id="last_name" value={form.last_name} onChange={set("last_name")} autoComplete="family-name" />
+                </Field>
+              </div>
+              <Field id="email" label="Email" hint="We email you the result here" error={err("email")}>
+                <Input id="email" type="email" value={form.email} onChange={set("email")} autoComplete="email" />
               </Field>
               <Field id="date_of_birth" label="Date of birth" error={err("date_of_birth")}>
                 <Input
