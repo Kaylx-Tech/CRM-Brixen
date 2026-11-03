@@ -9,6 +9,7 @@ API key.
 GET /api/admin/kyc                          → {configured, link, workspace, checks: [...]}
 GET /api/admin/kyc/<id>                     → one check: the client's answers, the order, the documents list
 GET /api/admin/kyc/<id>/files/<file_id>     → one document (photo or PDF)
+POST /api/admin/kyc/start {order_id}        → start a KYC order's check now (one that was missed) and email the link
 
 Env: FINSTAP_KYC_KEY (from admin.finstap.com → KYC → KYC for another website), FINSTAP_KYC_WORKSPACE
 (the Finstap workspace's name, default "brixen"), FINSTAP_API_URL (default https://api.finstap.com/api).
@@ -111,6 +112,39 @@ def _fetch(cfg, path='checks'):
     return (json.loads(raw or b'{}').get('data') or {}), None
 
 
+def _order_person(order_id):
+    """(order_number, name, email, phone) of a KYC order's customer, or None (guest website orders wait)."""
+    from db import query_db
+    from routes.id_verification_routes import GUEST_EMAIL
+    order = query_db("""
+        SELECT o.order_number, o.owner_name, o.owner_form_email, o.checkout_phone, u.full_name, u.email, u.phone
+        FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = ?;
+    """, (int(order_id),), one=True)
+    if not order or str(order.get('email') or '').lower() == GUEST_EMAIL:
+        return None
+    name = (order.get('owner_name') or order.get('full_name') or '').strip()
+    email = (order.get('owner_form_email') or order.get('email') or '').strip()
+    if not name or not email:
+        return None
+    return order.get('order_number') or f"order {order_id}", name, email, order.get('checkout_phone') or order.get('phone') or ''
+
+
+def _missing_orders(checks):
+    """KYC orders from the last 90 days with no check on Finstap yet (e.g. made while Finstap was off)."""
+    from db import query_db
+    have = {str(c.get('order_number') or '').strip() for c in checks}
+    rows = query_db("""
+        SELECT o.id, o.order_number, o.created_at, COALESCE(NULLIF(o.owner_name, ''), u.full_name) AS client_name,
+               COALESCE(NULLIF(o.owner_form_email, ''), u.email) AS email
+        FROM orders o LEFT JOIN users u ON u.id = o.user_id
+        WHERE COALESCE(o.is_draft, 0) = 0 AND datetime(o.created_at) >= datetime('now', '-90 days')
+          AND (o.service_name LIKE '%kyc%' OR EXISTS (SELECT 1 FROM order_line_items li
+               WHERE li.order_id = o.id AND li.product_name LIKE '%kyc%'))
+        ORDER BY o.created_at DESC;
+    """) or []
+    return [r for r in rows if str(r.get('order_number') or '').strip() not in have]
+
+
 def handle_kyc_partner_routes(environ, start_response, path, method, user, body, query):
     if path != '/api/admin/kyc' and not path.startswith('/api/admin/kyc/'):
         return None
@@ -118,15 +152,32 @@ def handle_kyc_partner_routes(environ, start_response, path, method, user, body,
         return error_response(start_response, "Authentication required", status_code=401)
     if user.get('role') not in TEAM_ROLES:
         return error_response(start_response, "KYC is for the team only.", status_code=403)
+    cfg = _settings()
+    if path == '/api/admin/kyc/start' and method == 'POST':
+        if not cfg['key']:
+            return error_response(start_response, "KYC is not connected to Finstap yet.", status_code=400)
+        person = _order_person((body or {}).get('order_id') or 0)
+        if not person:
+            return error_response(start_response, "This order has no customer name and email yet (link the customer "
+                                                  "first).", status_code=400)
+        data, err = start_for_order(*person)
+        if err:
+            return error_response(start_response, err, status_code=502)
+        return success_response(start_response, data=data, message=(
+            f"KYC link emailed to {person[2]}." if data.get('emailed') else "Check started; copy their link to send it."))
     if method != 'GET':
         return error_response(start_response, "Not found", status_code=404)
-    cfg = _settings()
     if path == '/api/admin/kyc':
         if not cfg['key']:
             return success_response(start_response, data={'configured': False, 'link': None, 'checks': []})
         data, err = _fetch(cfg)
         if err:
             return error_response(start_response, err, status_code=502)
+        try:
+            data['missing_orders'] = _missing_orders(data.get('checks') or [])
+        except Exception as exc:
+            print(f"[KYC] KYC orders without a check: {exc}")
+            data['missing_orders'] = []
         return success_response(start_response, data={'configured': True, **data})
 
     match = re.match(r'^/api/admin/kyc/(\d+)(?:/files/(\d+))?$', path)

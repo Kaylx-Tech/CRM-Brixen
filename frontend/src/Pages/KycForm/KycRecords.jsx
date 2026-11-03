@@ -1,27 +1,40 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { IconAlertTriangle, IconCopy, IconEye, IconId, IconRefresh, IconSearch } from '@tabler/icons-react'
+import { IconAlertTriangle, IconCopy, IconEye, IconId, IconRefresh, IconSearch, IconSend } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { apiRequest } from '@/lib/api'
+import { SectionCards } from '../../Layout/StatsCard'
 import KycCheckView from './KycCheckView'
 
 // How a check's status reads to the team (the KYC team at Finstap sets Approved / In Review / Declined)
 function statusLabel(status) {
   if (status === 'Approved') return ['Approved', 'badge-green']
   if (status === 'Declined') return ['Rejected, new link sent', 'bg-destructive/15 text-destructive']
-  if (status === 'In Review') return ['Under review', 'badge-amber']
-  if (status === 'Submitted') return ['Sent, to review', 'badge-sky']
-  if (status === 'In Progress') return ['Filling the form', 'bg-muted text-muted-foreground']
-  return ['Not started', 'bg-muted text-muted-foreground']
+  // The client sent everything: Finstap's KYC team is checking it
+  if (status === 'In Review' || status === 'Submitted') return ['In review', 'badge-amber']
+  if (status === 'In Progress') return ['Filling the form', 'badge-sky']
+  return ['Waiting for client', 'bg-muted text-muted-foreground']
 }
+
+// Which tab a check sits under
+function bucket(status) {
+  if (status === 'Approved') return 'approved'
+  if (status === 'Declined') return 'rejected'
+  if (status === 'In Review' || status === 'Submitted') return 'review'
+  return 'waiting'
+}
+
+const TAB = 'text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+const ORDER_CHIP = 'inline-flex h-6 items-center whitespace-nowrap rounded-md bg-sky-500/10 px-2 text-xs font-semibold tabular-nums tracking-wide text-sky-700 dark:text-sky-300'
 
 function shortDate(value) {
   if (!value) return '—'
   const d = new Date(String(value).replace(' ', 'T') + (String(value).length > 10 ? 'Z' : ''))
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
 
 async function copyText(text, label) {
@@ -43,6 +56,21 @@ export default function KycRecords() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [viewing, setViewing] = useState(null) // the check whose details and documents are open
+  const [tab, setTab] = useState('all')
+  const [starting, setStarting] = useState(0)
+
+  // A KYC order that has no check yet (made while Finstap was off): start it and email the link now
+  const startOrder = async (order) => {
+    setStarting(order.id)
+    const res = await apiRequest('/admin/kyc/start', { method: 'POST', body: { order_id: order.id }, label: 'KYC', silent: true })
+    setStarting(0)
+    if (res.ok) {
+      toast.success(res.data?.message || 'KYC link sent')
+      load()
+    } else {
+      toast.error(res.reason || 'Could not start the check')
+    }
+  }
 
   const load = useCallback(() => {
     apiRequest('/admin/kyc', { label: 'KYC', silent: true }).then((res) => {
@@ -63,14 +91,26 @@ export default function KycRecords() {
   const checks = useMemo(() => {
     const q = search.trim().toLowerCase()
     return (data?.checks || []).filter((c) =>
-      !q || [c.full_name, c.email, c.phone, c.order_number].some((v) => String(v || '').toLowerCase().includes(q)))
-  }, [data, search])
+      (tab === 'all' || bucket(c.status) === tab) &&
+      (!q || [c.full_name, c.email, c.phone, c.order_number].some((v) => String(v || '').toLowerCase().includes(q))))
+  }, [data, search, tab])
+
+  const stats = useMemo(() => {
+    const all = data?.checks || []
+    const count = (b) => all.filter((c) => bucket(c.status) === b).length
+    return [
+      { title: 'KYC checks', value: String(all.length), footerSubText: 'Sent to Finstap', icon: IconId },
+      { title: 'Waiting for client', tone: 'sky', value: String(count('waiting')), footerSubText: 'Link sent, form not sent yet' },
+      { title: 'In review', tone: 'amber', value: String(count('review')), footerSubText: "Finstap's KYC team is checking" },
+      { title: 'Approved', tone: 'emerald', value: String(count('approved')), footerSubText: `${count('rejected')} rejected` },
+    ]
+  }, [data])
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">KYC</h1>
+          <h2 className="text-2xl font-bold tracking-tight">KYC Verification</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Identity checks for your clients. Send them the KYC link; Finstap's KYC team checks what they send.
           </p>
@@ -103,6 +143,33 @@ export default function KycRecords() {
         </div>
       )}
 
+      {data?.configured && <SectionCards stats={stats} isLoading={loading} compact />}
+
+      {data?.missing_orders?.length > 0 && (
+        <Card className="gap-0 border-amber-500/30 p-4">
+          <p className="text-sm font-semibold">KYC orders without a check ({data.missing_orders.length})</p>
+          <p className="text-xs text-muted-foreground">
+            These orders have the KYC product but no check on Finstap yet. Send the link to start it.
+          </p>
+          <ul className="mt-3 divide-y text-sm">
+            {data.missing_orders.map((o) => (
+              <li key={o.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className={ORDER_CHIP}>{o.order_number}</span>
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">{o.client_name || '—'}</div>
+                    <div className="truncate text-xs text-muted-foreground">{o.email || 'No email'} · {shortDate(o.created_at)}</div>
+                  </div>
+                </div>
+                <Button size="sm" className="gap-1.5" disabled={starting === o.id} onClick={() => startOrder(o)}>
+                  <IconSend className="size-3.5" /> Send KYC link
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       {data?.link && (
         <Card className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
@@ -122,7 +189,15 @@ export default function KycRecords() {
       {data?.configured && (
         <Card className="p-4">
           <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h3 className="text-sm font-semibold">Checks</h3>
+            <Tabs value={tab} onValueChange={setTab}>
+              <TabsList className="max-w-full justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <TabsTrigger value="all" className={TAB}>All</TabsTrigger>
+                <TabsTrigger value="waiting" className={TAB}>Waiting</TabsTrigger>
+                <TabsTrigger value="review" className={TAB}>In review</TabsTrigger>
+                <TabsTrigger value="approved" className={TAB}>Approved</TabsTrigger>
+                <TabsTrigger value="rejected" className={TAB}>Rejected</TabsTrigger>
+              </TabsList>
+            </Tabs>
             <div className="relative sm:w-72">
               <IconSearch className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input className="pl-9" placeholder="Search name, email, phone…" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -133,7 +208,8 @@ export default function KycRecords() {
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead className="border-b text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
-                    <th className="py-2 pr-3 font-semibold">Client</th>
+                    <th className="py-2 pr-3 font-semibold">Order #</th>
+                    <th className="px-3 py-2 font-semibold">Client</th>
                     <th className="px-3 py-2 font-semibold">Phone</th>
                     <th className="px-3 py-2 font-semibold">Started</th>
                     <th className="px-3 py-2 font-semibold">Sent</th>
@@ -147,11 +223,13 @@ export default function KycRecords() {
                     return (
                       <tr key={c.id} className="border-b align-top last:border-0">
                         <td className="py-2.5 pr-3">
+                          {c.order_number ? <span className={ORDER_CHIP}>{c.order_number}</span> : <span className="text-xs text-muted-foreground">KYC link</span>}
+                        </td>
+                        <td className="px-3 py-2.5">
                           <button type="button" className="text-left font-medium hover:text-primary" onClick={() => setViewing(c)}>
                             {c.full_name}
                           </button>
                           <div className="text-xs text-muted-foreground">{c.email || '—'}</div>
-                          {c.order_number && <div className="font-mono text-xs text-muted-foreground">{c.order_number}</div>}
                         </td>
                         <td className="px-3 py-2.5 whitespace-nowrap">{c.phone || '—'}</td>
                         <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{shortDate(c.created_at)}</td>
