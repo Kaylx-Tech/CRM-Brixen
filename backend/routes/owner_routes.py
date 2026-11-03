@@ -110,40 +110,58 @@ def _kyc_base(environ):
 
 
 def _desk(environ, start_response, sub, method, admin, body, query):
-    """The KYC desk's routes (KYC team and owners)."""
+    """The KYC desk's routes (KYC team and owners). The team sees only what the owner allows (kyc_desk.VIEW);
+    deleting a person's data is for the owner only."""
+    team = admin.get('role') == 'kyc'
+    owner = (admin.get('role') or 'owner') == 'owner'
     try:
         if sub == '/desk/checks' and method == 'GET':
             return success_response(start_response, data=kyc_desk.checks(_q(query, 'period'),
-                                                                          _q(query, 'workspace') or None))
+                                                                          _q(query, 'workspace') or None, team))
+        if sub == '/desk/view' and method == 'GET' and owner:
+            return success_response(start_response, data=kyc_desk.team_view())
+        if sub == '/desk/view' and method == 'POST' and owner:
+            view = kyc_desk.set_team_view(body)
+            audit(admin, 'KYC_DESK_VIEW_CHANGED', detail=', '.join(f"{k}: {'shown' if v else 'hidden'}"
+                                                                   for k, v in view.items()))
+            return success_response(start_response, data=view, message="Saved.")
         match = re.match(r'^/desk/checks/([a-z0-9-]+)/(\d+)/files/(\d+)$', sub)
         if match and method == 'GET':
-            data, mime = kyc_desk.file(match.group(1), int(match.group(2)), int(match.group(3)))
+            data, mime = kyc_desk.file(kyc_desk.resolve(match.group(1)), int(match.group(2)), int(match.group(3)))
             if data is None:
                 return error_response(start_response, "File not found", status_code=404)
             start_response('200 OK', [('Content-Type', mime or 'application/octet-stream'),
                                       ('Content-Length', str(len(data))), ('Cache-Control', 'private, no-store'),
                                       ('X-Content-Type-Options', 'nosniff')])
             return [data]
-        match = re.match(r'^/desk/checks/([a-z0-9-]+)/(\d+)(?:/(status|resubmit))?$', sub)
+        match = re.match(r'^/desk/checks/([a-z0-9-]+)/(\d+)(?:/(status|resubmit|delete-data))?$', sub)
         if not match:
             return error_response(start_response, "Not found", status_code=404)
-        slug, check_id, act = match.group(1), int(match.group(2)), match.group(3)
+        slug, check_id, act = kyc_desk.resolve(match.group(1)), int(match.group(2)), match.group(3)
         if not act and method == 'GET':
-            return success_response(start_response, data=kyc_desk.detail(slug, check_id))
+            return success_response(start_response, data=kyc_desk.detail(slug, check_id, team))
         if act == 'status' and method == 'POST':
             row = kyc_desk.set_status(slug, check_id, body.get('status'), body.get('note'), admin)
             audit(admin, f"KYC_{row['status'].upper().replace(' ', '_')}", slug,
                   f"{row['full_name']} ({row.get('order_number') or 'no order'})"
                   f"{': ' + row['review_note'] if row.get('review_note') else ''}")
-            return success_response(start_response, data=row, message=f"Saved as {row['status']}.")
+            return success_response(start_response, data=kyc_desk.shown(row, team), message=f"Saved as {row['status']}.")
         if act == 'resubmit' and method == 'POST':
             row, emailed = svc.resubmit_check(slug, check_id, body.get('reason'))
             audit(admin, 'KYC_RESUBMIT', slug, f"{row['full_name']} ({row.get('order_number') or 'no order'}): "
                                                f"new link{' emailed' if emailed else ', not emailed'}"
                                                f"{'; ' + body.get('reason') if body.get('reason') else ''}")
-            return success_response(start_response, data=kyc_desk._desk_row(row), message=(
+            return success_response(start_response, data=kyc_desk.shown(row, team), message=(
                 "New link emailed to the client." if emailed
                 else "New link made, but the email was not sent. Copy the link and send it yourself."))
+        if act == 'delete-data' and method == 'POST':
+            if not owner:
+                return error_response(start_response, "Only the Finstap owner can delete KYC data.", status_code=403)
+            row, files = kyc_desk.delete_data(slug, check_id)
+            audit(admin, 'KYC_DATA_DELETED', slug, f"{row['full_name']} ({row.get('order_number') or 'no order'}): "
+                                                   f"{files} file(s), answers and result deleted")
+            return success_response(start_response, data={'files': files},
+                                    message=f"KYC data deleted ({files} file{'' if files == 1 else 's'}).")
     except svc.ServiceError as exc:
         return error_response(start_response, str(exc), status_code=400)
     return error_response(start_response, "Not found", status_code=404)

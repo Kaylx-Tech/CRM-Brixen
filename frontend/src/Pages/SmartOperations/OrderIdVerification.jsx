@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { IconCopy, IconExternalLink, IconId, IconLoader2, IconMail, IconRefresh } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { apiRequest } from '@/lib/api'
-import { amlLabel, amlTone, checkTone, shortDate } from './idvStatus'
+import { amlLabel, amlTone, checkTone, checkLabel, shortDate } from './idvStatus'
 
 // ID verification on the order view: shown for KYC orders only, with each person's verification status
 export default function OrderIdVerification({ orderId }) {
@@ -78,7 +78,7 @@ export default function OrderIdVerification({ orderId }) {
                   {p.person_role ? <span className="ml-1.5 text-xs font-normal text-muted-foreground">{p.person_role}</span> : null}
                 </p>
                 <div className="mt-1 flex flex-wrap gap-1">
-                  <Badge className={checkTone(p.status)}>{p.status || 'Not Started'}</Badge>
+                  <Badge className={checkTone(p.status)}>{checkLabel(p.status)}</Badge>
                   {p.result?.poa && <Badge className={checkTone(p.result.poa.status)}>Address: {p.result.poa.status}</Badge>}
                   {p.result?.aml && <Badge className={amlTone(p.result.aml)}>AML: {amlLabel(p.result.aml)}</Badge>}
                   {p.ch_personal_code && <Badge variant="outline" className="font-mono">CH {p.ch_personal_code}</Badge>}

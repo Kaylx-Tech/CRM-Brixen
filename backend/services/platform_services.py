@@ -166,7 +166,7 @@ def _workspace_checks(tenant, start, end, check_id=None):
             rows = query_db(f"""
                 SELECT v.id, v.order_id, v.full_name, v.email, v.person_role, v.status, v.ch_personal_code,
                        v.result_json, v.review_note, v.reviewed_by, v.reviewed_at, v.session_url, v.link_sent_at, v.created_at, v.updated_at,
-                       v.source,
+                       v.source, v.data_deleted_at,
                        COALESCE(o.order_number, v.external_ref) AS order_number, o.service_name, o.total,
                        o.status AS order_status, o.created_at AS order_date,
                        u.full_name AS client_name, u.email AS client_email, u.address AS client_address,

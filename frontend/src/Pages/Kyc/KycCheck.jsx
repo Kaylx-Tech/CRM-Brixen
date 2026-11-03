@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { Link, useParams } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
 import {
   IconAlertTriangle,
   IconArrowLeft,
@@ -10,8 +10,10 @@ import {
   IconFileText,
   IconPhotoOff,
   IconRefresh,
+  IconTrash,
   IconX,
 } from "@tabler/icons-react"
+import { DeleteConfirmation } from "@/components/DeleteConfirmation"
 import { cn } from "cn"
 import { Textarea } from "@/components/ui/textarea"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
@@ -23,7 +25,7 @@ import { GREEN, GREY, PILL, RED, REJECTED, kycLabel } from "./kycStatus"
 // The decisions the desk can make (the backend accepts exactly these)
 const DECISIONS = [
   ["Approved", "Approve", IconCheck],
-  ["In Review", "Under review", IconClockHour4],
+  ["In Review", "In review", IconClockHour4],
   ["Declined", "Reject", IconX],
 ]
 
@@ -310,11 +312,51 @@ function Resubmit({ check, onSaved, api }) {
   )
 }
 
+/** Owner only: delete the photos, files, answers and result the person sent (the check itself stays). */
+function DeleteData({ check, api, onDone }) {
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  const remove = async () => {
+    setBusy(true)
+    const id = toastProcessing("Deleting…")
+    const res = await api(`/desk/checks/${check.workspace}/${check.id}/delete-data`, { method: "POST" })
+    setBusy(false)
+    setOpen(false)
+    if (res.ok) {
+      toastDone(id, res.message)
+      onDone()
+    } else {
+      toastFail(id, res.error)
+    }
+  }
+
+  return (
+    <Panel title="Delete KYC data" description="Only you (the Finstap owner) can do this. The KYC team cannot.">
+      {check.data_deleted_at ? (
+        <p className="text-sm text-muted-foreground">Deleted on {shortDate(check.data_deleted_at)}.</p>
+      ) : (
+        <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
+          <IconTrash className="size-4" /> Delete documents and answers
+        </Button>
+      )}
+      <DeleteConfirmation
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        onConfirm={remove}
+        isLoading={busy}
+        title="Delete this person's KYC data?"
+        description="Their photos, files, answers and result are deleted for good. The check and its status stay in the list."
+      />
+    </Panel>
+  )
+}
+
 /**
  * One ID check: the documents and answers the client sent, the order, and the decision. The KYC panel
  * uses it with its own sign-in; the owner portal (/owner/kyc/<workspace>/<id>) passes ownerApi.
  */
-export default function KycCheck({ api = kycApi, getToken = getKycToken, backTo = "/kyc" }) {
+export default function KycCheck({ api = kycApi, getToken = getKycToken, backTo = "/kyc", canDelete = false }) {
   const { slug, id } = useParams()
   const [check, setCheck] = useState(null)
   const [error, setError] = useState("")
@@ -484,6 +526,7 @@ export default function KycCheck({ api = kycApi, getToken = getKycToken, backTo 
         <div className="space-y-4">
           <Decision key={`${check.status}-${check.reviewed_at}`} check={check} onSaved={load} api={api} />
           <Resubmit check={check} onSaved={load} api={api} />
+          {canDelete && <DeleteData check={check} api={api} onDone={load} />}
           <Panel title="Order and client">
             <Facts
               rows={[

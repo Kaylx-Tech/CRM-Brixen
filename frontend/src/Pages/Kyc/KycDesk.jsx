@@ -78,6 +78,7 @@ export default function KycDesk() {
             className="mt-4"
             title="Checks"
             action={
+              data.workspaces.length > 0 && (
               <select
                 className={cn(SELECT, "w-52")}
                 value={workspace}
@@ -91,6 +92,7 @@ export default function KycDesk() {
                   </option>
                 ))}
               </select>
+              )
             }
           >
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -121,7 +123,7 @@ export default function KycDesk() {
                   <thead className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
                       <th className="px-3 py-2.5 font-semibold">Person</th>
-                      <th className="px-3 py-2.5 font-semibold">Workspace · order</th>
+                      <th className="px-3 py-2.5 font-semibold">{data.workspaces.length ? "Workspace · order" : "Order"}</th>
                       <th className="px-3 py-2.5 font-semibold">Product</th>
                       <th className="px-3 py-2.5 font-semibold">Started</th>
                       <th className="px-3 py-2.5 font-semibold">Status</th>
@@ -139,10 +141,10 @@ export default function KycDesk() {
                             <Link to={to} className="font-semibold uppercase hover:text-primary">
                               {c.full_name}
                             </Link>
-                            <div className="text-xs text-muted-foreground">{c.email || c.client_email || "—"}</div>
+                            {(c.email || c.client_email) && <div className="text-xs text-muted-foreground">{c.email || c.client_email}</div>}
                           </td>
                           <td className="px-3 py-3">
-                            <div>{c.workspace_name}</div>
+                            {c.workspace_name && <div>{c.workspace_name}</div>}
                             <div className="font-mono text-xs text-muted-foreground">{c.order_number || (c.source === "link" ? "Workspace KYC link" : "No order")}</div>
                           </td>
                           <td className="px-3 py-3">{c.service_name || "—"}</td>

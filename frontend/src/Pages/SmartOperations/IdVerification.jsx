@@ -33,7 +33,7 @@ import { toast } from 'sonner'
 import { apiRequest } from '@/lib/api'
 import { IS_FINSTAP } from '@/lib/workspace'
 import { useRefreshOnReturn } from '@/lib/useRefreshOnReturn'
-import { amlLabel, amlTone, checkTone, openHits, shortDate } from './idvStatus'
+import { amlLabel, amlTone, checkTone, checkLabel, openHits, shortDate } from './idvStatus'
 import { useFormErrors, checkField } from '@/lib/validation'
 import { FieldMessage, RequiredMark, invalidProps } from '@/components/FormField'
 
@@ -190,7 +190,7 @@ function PersonRow({ person, busy, onAction, onOpen }) {
         </p>
         {/* Overall result, then proof of address and AML, on their own line */}
         <span className="mt-1 flex flex-wrap gap-1">
-          <Badge className={`${checkTone(person.status)} whitespace-nowrap`}>{person.status || 'Not Started'}</Badge>
+          <Badge className={`${checkTone(person.status)} whitespace-nowrap`}>{checkLabel(person.status)}</Badge>
           {person.result?.poa && (
             <Badge className={`${checkTone(person.result.poa.status)} whitespace-nowrap`} title="Proof of address">
               Address: {person.result.poa.status || 'Not Started'}
@@ -598,7 +598,7 @@ export default function IdVerification() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {viewing?.full_name}
-              <Badge className={checkTone(viewing?.status)}>{viewing?.status || 'Not Started'}</Badge>
+              <Badge className={checkTone(viewing?.status)}>{checkLabel(viewing?.status)}</Badge>
             </DialogTitle>
             <DialogDescription>
               {[viewing?.person_role, viewingOrder?.order_number, viewingOrder?.company_name && companyLabel(viewingOrder)]

@@ -50,7 +50,8 @@ def ensure():
     # source 'link': started by a visitor on the workspace's own KYC link (no order); phone: theirs
     for column, kind in (('form_token_hash', 'TEXT'), ('form_expires_at', 'TEXT'), ('submitted_at', 'TEXT'),
                          ('form_round', 'INTEGER NOT NULL DEFAULT 0'), ('source', 'TEXT'), ('phone', 'TEXT'),
-                         ('external_ref', 'TEXT')):  # external_ref: the other site's order (e.g. Brixen's)
+                         ('external_ref', 'TEXT'),  # external_ref: the other site's order (e.g. Brixen's)
+                         ('data_deleted_at', 'TEXT')):
         if columns and column not in columns:
             execute_db(f"ALTER TABLE id_verifications ADD COLUMN {column} {kind};")
     execute_db("""
@@ -445,6 +446,15 @@ def submit(row, body):
         from tenancy import current_tenant
         from services.kyc_billing import charge_check
         charge_check(current_tenant(), row['id'], fields['full_name'])
+    # The KYC team is emailed to check it
+    try:
+        from tenancy import current_tenant
+        from services.kyc_desk import tell_team
+        tenant = current_tenant()
+        if tenant:
+            tell_team(tenant, row)
+    except Exception as exc:
+        print(f"[KYC form] team email for check {row['id']}: {exc}")
     return None, None
 
 

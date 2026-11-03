@@ -14,10 +14,22 @@ export default function KycTeam() {
   const [email, setEmail] = useState("")
   const [name, setName] = useState("")
   const [busy, setBusy] = useState(false)
+  const [view, setView] = useState(null)
 
   const load = useCallback(() => {
     ownerApi("/kyc-users").then((res) => res.ok && setUsers(res.data.users))
+    ownerApi("/desk/view").then((res) => res.ok && setView(res.data))
   }, [])
+
+  const setShown = async (name, on) => {
+    const res = await ownerApi("/desk/view", { method: "POST", body: { [name]: on } })
+    if (res.ok) {
+      setView(res.data)
+      toastDone(undefined, res.message)
+    } else {
+      toastFail(undefined, res.error)
+    }
+  }
 
   useEffect(() => {
     load()
@@ -71,6 +83,31 @@ export default function KycTeam() {
           <IconUserPlus className="size-4" /> Add and email link
         </Button>
       </form>
+
+      {view && (
+        <div className="mt-4 rounded-xl border p-3">
+          <p className="text-sm font-medium">What the KYC team sees</p>
+          <p className="mb-2 text-xs text-muted-foreground">
+            Turned off: hidden from the KYC team (in the list, the check and their emails). You always see everything.
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
+            {[
+              ["workspace", "Workspace name"],
+              ["contact", "Client email and phone"],
+            ].map(([name, label]) => (
+              <label key={name} className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4 accent-primary"
+                  checked={!!view[name]}
+                  onChange={(e) => setShown(name, e.target.checked)}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       {users?.length ? (
         <div className="mt-4 overflow-x-auto">

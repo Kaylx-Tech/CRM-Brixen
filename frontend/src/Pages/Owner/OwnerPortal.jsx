@@ -267,7 +267,7 @@ export default function OwnerPortal() {
         <Route path="kyc" element={<OwnerKyc />} />
         <Route
           path="kyc/:slug/:id"
-          element={<KycCheck api={ownerApi} getToken={getOwnerToken} backTo="/owner/kyc" />}
+          element={<KycCheck api={ownerApi} getToken={getOwnerToken} backTo="/owner/kyc" canDelete />}
         />
         <Route path="registered-office" element={<OwnerRegisteredOffice />} />
         <Route path="plans" element={<OwnerPlans />} />

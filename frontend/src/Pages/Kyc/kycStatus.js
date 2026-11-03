@@ -15,8 +15,8 @@ export function kycLabel(status) {
   if (status === "Approved") return ["KYC Approved", GREEN]
   if (status === "Declined") return ["Rejected", RED]
   if (["Abandoned", "Expired", "Kyc Expired"].includes(status)) return [`Rejected (${status.toLowerCase()})`, RED]
-  if (status === "Submitted") return ["Sent, to review", SKY]
-  if (["In Review", "Resubmitted"].includes(status)) return ["Under Review", AMBER]
+  // The client sent everything: the KYC team checks it now
+  if (["Submitted", "In Review", "Resubmitted"].includes(status)) return ["In review", AMBER]
   if (status === "In Progress") return ["In progress", SKY]
   return ["Waiting for client", GREY]
 }

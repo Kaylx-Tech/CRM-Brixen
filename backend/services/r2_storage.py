@@ -130,6 +130,20 @@ def download(ref):
         return None, None
 
 
+def delete(ref):
+    """Delete "r2:<key>", only inside this workspace's own prefix. True when R2 took it."""
+    key = str(ref or '')[len(REF_PREFIX):] if is_r2_ref(ref) else str(ref or '')
+    if not key.startswith(workspace_prefix() + '/'):
+        print(f"[R2] refused to delete a file outside this workspace: {key[:80]}")
+        return False
+    try:
+        get_client().delete_object(Bucket=bucket(), Key=key)
+        return True
+    except Exception as exc:
+        print(f"[R2] delete failed for {key[:80]}: {error_text(exc)}")
+        return False
+
+
 def error_text(exc):
     text = str(exc)
     if 'InvalidAccessKeyId' in text or 'SignatureDoesNotMatch' in text or 'Unauthorized' in text:

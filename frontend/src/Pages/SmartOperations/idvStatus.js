@@ -11,6 +11,12 @@ export function checkTone(status) {
   return 'bg-muted text-muted-foreground'
 }
 
+// The words for a status: the client sent the form (Submitted) means the KYC team is reviewing it
+export function checkLabel(status) {
+  const s = String(status || 'Not Started')
+  return s === 'Submitted' ? 'In Review' : s
+}
+
 export function shortDate(value) {
   if (!value) return '—'
   const d = new Date(String(value).replace(' ', 'T'))

@@ -8,7 +8,10 @@ portal and the workspace's CRM show it at once. Prices, invoices and billing are
 
 Older checks that ran on Didit still show Didit's result and photos (fetched live from Didit).
 """
+import hashlib
+import hmac
 import json
+import secrets
 from urllib.parse import urlsplit
 
 from tenancy import use_tenant
@@ -32,18 +35,86 @@ _FILE_SECTIONS = {'id_front': ('ID document', 'Front'), 'id_back': ('ID document
                   'selfie': ('Selfie', 'Live photo'), 'poa': ('Proof of address', 'Document')}
 
 
+# What the KYC team sees, set by the owner on the KYC page (the owner always sees everything):
+# {name: (platform setting, default '1' shown / '0' hidden, the fields it covers)}
+VIEW = {
+    'workspace': ('kyc_desk_show_workspace', '0', ('workspace_name',)),
+    'contact': ('kyc_desk_show_contact', '1', ('email', 'client_email', 'phone')),
+}
+
+
 def _desk_row(row):
     return {k: v for k, v in row.items() if k not in _HIDDEN}
 
 
-def checks(period=None, slug=None):
+def team_view():
+    """{'workspace': bool, 'contact': bool}: what the KYC team is shown."""
+    return {name: svc._setting(key, default) == '1' for name, (key, default, _) in VIEW.items()}
+
+
+def set_team_view(values):
+    from tenancy import _platform_execute
+    for name, (key, _, _) in VIEW.items():
+        if name in (values or {}):
+            _platform_execute("""
+                INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;
+            """, (key, '1' if values[name] else '0'))
+    return team_view()
+
+
+def _salt():
+    """A random key kept in the platform settings, so a workspace's desk reference cannot be guessed."""
+    from tenancy import _platform_execute
+    salt = svc._setting('kyc_desk_ref_salt')
+    if not salt:
+        _platform_execute("INSERT OR IGNORE INTO platform_settings (key, value, updated_at) "
+                          "VALUES ('kyc_desk_ref_salt', ?, datetime('now'));", (secrets.token_hex(16),))
+        salt = svc._setting('kyc_desk_ref_salt')
+    return salt
+
+
+def ref(slug):
+    """The workspace as the KYC team sees it in links when its name is hidden: 'w' + 12 hex characters."""
+    return 'w' + hmac.new(_salt().encode(), str(slug).encode(), hashlib.sha256).hexdigest()[:12]
+
+
+def resolve(key):
+    """The workspace slug for a slug or a desk reference."""
+    from tenancy import list_tenants
+    if len(key) == 13 and key.startswith('w'):
+        for tenant in list_tenants():
+            if hmac.compare_digest(ref(tenant['slug']), key):
+                return tenant['slug']
+    return key
+
+
+def shown(row, team, view=None):
+    """A check as the caller may see it: the KYC team gets only what the owner allows."""
+    out = _desk_row(row)
+    if not team:
+        return out
+    view = view or team_view()
+    for name, (_, _, fields) in VIEW.items():
+        if not view[name]:
+            for field in fields:
+                out.pop(field, None)
+    if not view['workspace'] and out.get('workspace'):
+        out['workspace'] = ref(out['workspace'])
+    return out
+
+
+def checks(period=None, slug=None, team=False):
     """Every ID check started in the month, newest first, with its workspace, client and order."""
-    report = svc.kyc_report(period, slug)
+    view = team_view()
+    report = svc.kyc_report(period, resolve(slug) if slug else None)
+    hide_workspace = team and not view['workspace']
     return {
         'period': report['period'],
         'totals': {k: report['totals'][k] for k in ('checks', 'approved', 'declined', 'pending')},
-        'workspaces': [{'slug': w['slug'], 'name': w['name']} for w in report['workspaces']],
-        'checks': sorted((_desk_row(c) for c in report['checks']), key=lambda c: c.get('created_at') or '',
+        'workspaces': [] if hide_workspace else [{'slug': w['slug'], 'name': w['name']} for w in report['workspaces']],
+        'view': view if team else None,
+        'checks': sorted((shown(c, team, view) for c in report['checks']), key=lambda c: c.get('created_at') or '',
                          reverse=True),
     }
 
@@ -95,7 +166,7 @@ def _form_files(check_id):
     return out
 
 
-def detail(slug, check_id):
+def detail(slug, check_id, team=False):
     """One check: what the table shows, the person's answers and files (or Didit's, for older checks)."""
     from db import query_db
     from services import didit_service, kyc_form
@@ -120,8 +191,7 @@ def detail(slug, check_id):
     except ValueError:
         result = {}
     return {
-        **_desk_row(row),
-        'workspace': tenant['slug'], 'workspace_name': tenant['name'],
+        **shown({**row, 'workspace': tenant['slug'], 'workspace_name': tenant['name']}, team),
         'company_name': order.get('company_name'), 'company_number': order.get('company_number'),
         'submitted_at': extra.get('submitted_at'),
         'result': result,
@@ -171,3 +241,77 @@ def set_status(slug, check_id, status, note, reviewer):
                 row = {**row, 'email': before['client_email']}
             kyc_form.email_decision(row, status, note, before.get('order_number'))
     return _desk_row(svc._check(slug, check_id)[1])
+
+
+def delete_data(slug, check_id):
+    """The owner deletes what the person sent: their photos and files (from R2 or the server), their answers
+    and Didit's result. The check stays (marked deleted) so the month's KYC count and the order stay right.
+    Returns how many files were deleted."""
+    import os
+    from db import execute_db, query_db
+    from services import kyc_form, r2_storage
+    tenant, row = svc._check(slug, check_id)
+    with use_tenant(tenant):
+        kyc_form.ensure()
+        files = query_db("SELECT * FROM id_verification_files WHERE verification_id = ?;", (int(check_id),)) or []
+        for f in files:
+            ref_ = str(f.get('file_ref') or '')
+            try:
+                if ref_.startswith('local:'):
+                    from config import STORAGE_DIR
+                    root = os.path.realpath(STORAGE_DIR)
+                    path = os.path.realpath(os.path.join(root, ref_[len('local:'):]))
+                    if path.startswith(root + os.sep) and os.path.isfile(path):
+                        os.remove(path)
+                elif r2_storage.is_r2_ref(ref_):
+                    r2_storage.delete(ref_)
+            except Exception as exc:
+                print(f"[KYC desk] could not delete a file of check {check_id}: {exc}")
+        execute_db("DELETE FROM id_verification_files WHERE verification_id = ?;", (int(check_id),))
+        execute_db("""
+            UPDATE id_verifications SET result_json = NULL, didit_session_id = NULL, form_token_hash = NULL,
+                   session_url = NULL, data_deleted_at = datetime('now'), updated_at = datetime('now')
+            WHERE id = ?;
+        """, (int(check_id),))
+    return row, len(files)
+
+
+def tell_team(tenant, row):
+    """The person sent the form: every active KYC team member is emailed to check it."""
+    from config import TENANT_BASE_DOMAIN
+    from tenancy import _platform_query
+    from services.email_service import send_email
+    people = _platform_query("SELECT email FROM platform_admins WHERE role = 'kyc' AND status = 'Active';") or []
+    if not people:
+        return 0
+    view = team_view()
+    key = tenant['slug'] if view['workspace'] else ref(tenant['slug'])
+    base = f"https://kyc.{TENANT_BASE_DOMAIN}" if TENANT_BASE_DOMAIN and TENANT_BASE_DOMAIN != 'localhost' \
+        else 'http://localhost:5180'
+    url = f"{base}/kyc/checks/{key}/{row['id']}"
+    name = row.get('full_name') or 'A client'
+    where = f" ({tenant['name']})" if view['workspace'] else ''
+    subject = f"ID check to review: {name}"
+    text = (f"{name}{where} has verified their identity and sent their documents.\n\n"
+            f"Please perform the checks and set the status:\n{url}")
+    html = (f'<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:520px;margin:0 auto;'
+            f'padding:32px 16px;color:#111827;"><p style="font-size:20px;font-weight:700;margin:0 0 16px;">'
+            f'ID check to review</p><p style="margin:0 0 24px;color:#4b5563;"><b>{_esc(name)}</b>{_esc(where)} '
+            f'has verified their identity and sent their documents. Please perform the checks and set the status.'
+            f'</p><p style="margin:0 0 24px;"><a href="{url}" style="display:inline-block;background:#5f5cff;'
+            f'color:#ffffff;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:999px;">'
+            f'Open the check</a></p></div>')
+    sent = 0
+    with use_tenant(None):
+        for person in people:
+            if send_email(person['email'], subject, html, text, category='ORDER', log=False,
+                          sender_name='Finstap', mailbox='platform'):
+                sent += 1
+    if not sent:
+        print(f"[KYC desk] team email for check {row['id']}: not sent ({url})")
+    return sent
+
+
+def _esc(text):
+    import html
+    return html.escape(str(text or ''))
