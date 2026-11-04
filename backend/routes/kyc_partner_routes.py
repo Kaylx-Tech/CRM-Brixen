@@ -119,7 +119,7 @@ def _order_person(order_id):
     from db import query_db
     from routes.id_verification_routes import GUEST_EMAIL
     order = query_db("""
-        SELECT o.order_number, o.owner_name, o.owner_form_email, o.order_form_values_json, o.checkout_phone,
+        SELECT o.order_number, o.owner_name, o.owner_form_email, o.order_form_values_json, o.checkout_form_json, o.checkout_phone,
                u.full_name, u.email, u.phone
         FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = ?;
     """, (int(order_id),), one=True)
@@ -152,7 +152,7 @@ def _missing_orders(checks):
     have = {str(c.get('order_number') or '').strip() for c in checks}
     rows = query_db("""
         SELECT o.id, o.order_number, o.created_at, o.status, o.owner_name, o.owner_form_email,
-               o.order_form_values_json, u.full_name, u.email,
+               o.order_form_values_json, o.checkout_form_json, u.full_name, u.email,
                COALESCE(u.is_b2b, 0) AS is_b2b, u.client_type,
                NULLIF(TRIM(COALESCE(c.activation_code, '')), '') AS ch_code,
                (SELECT 1 FROM id_verifications v WHERE v.order_id = o.id AND v.status = 'Approved' LIMIT 1)
@@ -168,7 +168,7 @@ def _missing_orders(checks):
     rows = [dict(r) for r in rows if str(r.get('order_number') or '').strip() not in have]
     for r in rows:
         r['client_name'], r['email'] = order_client(r)
-        for key in ('owner_name', 'owner_form_email', 'order_form_values_json', 'full_name'):
+        for key in ('owner_name', 'owner_form_email', 'order_form_values_json', 'checkout_form_json', 'full_name'):
             r.pop(key, None)
     seen = {}
     for r in rows:
@@ -208,7 +208,7 @@ def _with_order_client(checks, cfg=None):
         return
     marks = ','.join('?' * len(numbers))
     orders = {r['order_number']: r for r in (query_db(f"""
-        SELECT o.order_number, o.owner_name, o.owner_form_email, o.order_form_values_json, u.full_name, u.email
+        SELECT o.order_number, o.owner_name, o.owner_form_email, o.order_form_values_json, o.checkout_form_json, u.full_name, u.email
         FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.order_number IN ({marks});
     """, tuple(numbers)) or [])}
     for c in checks:

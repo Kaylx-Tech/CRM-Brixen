@@ -128,7 +128,6 @@ export default function KycRecords() {
         <div className="flex flex-wrap gap-2">
         {data?.link && (
           <Button
-            variant="outline"
             size="sm"
             className="gap-1.5"
             title={`Copy the KYC link for any client: ${data.link}`}
@@ -239,9 +238,9 @@ export default function KycRecords() {
                 <thead className="border-b text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="py-2 pr-3 font-semibold">Order #</th>
-                    <th className="px-3 py-2 font-semibold">Client</th>
-                    <th className="px-3 py-2 font-semibold">Started</th>
-                    <th className="px-3 py-2 font-semibold" title="When the client sent the completed form">Submitted</th>
+                    <th className="px-3 py-2 font-semibold">Date</th>
+                    <th className="px-3 py-2 font-semibold">Applicant</th>
+                    <th className="px-3 py-2 font-semibold">Email</th>
                     <th className="px-3 py-2 font-semibold">Status</th>
                     <th className="py-2 pl-3" />
                   </tr>
@@ -254,14 +253,13 @@ export default function KycRecords() {
                         <td className="py-2.5 pr-3">
                           {c.order_number ? <span className={ORDER_CHIP}>{c.order_number}</span> : <span className="text-xs text-muted-foreground">KYC link</span>}
                         </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{shortDate(c.created_at)}</td>
                         <td className="px-3 py-2.5">
                           <button type="button" className="text-left font-medium hover:text-primary" onClick={() => setViewing(c)}>
                             {c.full_name}
                           </button>
-                          <div className="text-xs text-muted-foreground">{c.email || '—'}</div>
                         </td>
-                        <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{shortDate(c.created_at)}</td>
-                        <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{shortDate(c.submitted_at)}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground">{c.email || '—'}</td>
                         <td className="px-3 py-2.5">
                           <Badge className={`${tone} whitespace-nowrap`}>{label}</Badge>
                           {c.reason && <div className="mt-1 max-w-56 text-xs text-muted-foreground">{c.reason}</div>}
