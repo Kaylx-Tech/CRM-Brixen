@@ -113,18 +113,51 @@ def _fetch(cfg, path='checks'):
     return (json.loads(raw or b'{}').get('data') or {}), None
 
 
+def _form_contact(form_json):
+    """(name, email) the client typed on the order form ("Full Name", "First name" + "Last name", "Email"…)."""
+    try:
+        values = json.loads(form_json or '{}') or {}
+    except ValueError:
+        return '', ''
+    if not isinstance(values, dict):
+        return '', ''
+    name = email = first = last = ''
+    for label, value in values.items():
+        key, text = str(label).lower(), str(value or '').strip()
+        if not text or isinstance(value, (dict, list)):
+            continue
+        skip = re.search(r'company|business|trading|access|notification|work|partner|referr', key)
+        if not email and 'mail' in key and '@' in text and not skip:
+            email = text
+        elif re.search(r'first\s*name|given name|forename', key) and not first:
+            first = text
+        elif re.search(r'last\s*name|surname|family name', key) and not last:
+            last = text
+        elif not name and 'name' in key and not skip and '@' not in text:
+            name = text
+    return (f"{first} {last}".strip() or name), email
+
+
+def order_client(order):
+    """The client as the order says (the order form's details first, then the account): (name, email)."""
+    form_name, form_email = _form_contact(order.get('order_form_values_json'))
+    name = (order.get('owner_name') or form_name or order.get('full_name') or '').strip()
+    email = (order.get('owner_form_email') or form_email or order.get('email') or '').strip()
+    return name, email
+
+
 def _order_person(order_id):
     """(order_number, name, email, phone) of a KYC order's customer, or None (guest website orders wait)."""
     from db import query_db
     from routes.id_verification_routes import GUEST_EMAIL
     order = query_db("""
-        SELECT o.order_number, o.owner_name, o.owner_form_email, o.checkout_phone, u.full_name, u.email, u.phone
+        SELECT o.order_number, o.owner_name, o.owner_form_email, o.order_form_values_json, o.checkout_phone,
+               u.full_name, u.email, u.phone
         FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = ?;
     """, (int(order_id),), one=True)
     if not order or str(order.get('email') or '').lower() == GUEST_EMAIL:
         return None
-    name = (order.get('owner_name') or order.get('full_name') or '').strip()
-    email = (order.get('owner_form_email') or order.get('email') or '').strip()
+    name, email = order_client(order)
     if not name or not email:
         return None
     return order.get('order_number') or f"order {order_id}", name, email, order.get('checkout_phone') or order.get('phone') or ''
@@ -150,9 +183,8 @@ def _missing_orders(checks):
     _ensure_ignored()
     have = {str(c.get('order_number') or '').strip() for c in checks}
     rows = query_db("""
-        SELECT o.id, o.order_number, o.created_at, o.status,
-               COALESCE(NULLIF(o.owner_name, ''), u.full_name) AS client_name,
-               COALESCE(NULLIF(o.owner_form_email, ''), u.email) AS email,
+        SELECT o.id, o.order_number, o.created_at, o.status, o.owner_name, o.owner_form_email,
+               o.order_form_values_json, u.full_name, u.email,
                COALESCE(u.is_b2b, 0) AS is_b2b, u.client_type,
                NULLIF(TRIM(COALESCE(c.activation_code, '')), '') AS ch_code,
                (SELECT 1 FROM id_verifications v WHERE v.order_id = o.id AND v.status = 'Approved' LIMIT 1)
@@ -166,6 +198,10 @@ def _missing_orders(checks):
         ORDER BY o.created_at DESC;
     """) or []
     rows = [dict(r) for r in rows if str(r.get('order_number') or '').strip() not in have]
+    for r in rows:
+        r['client_name'], r['email'] = order_client(r)
+        for key in ('owner_name', 'owner_form_email', 'order_form_values_json', 'full_name'):
+            r.pop(key, None)
     seen = {}
     for r in rows:
         key = str(r.get('email') or '').strip().lower()
@@ -177,6 +213,25 @@ def _missing_orders(checks):
         if key and key not in seen:
             seen[key] = r['order_number']
     return rows
+
+
+def _with_order_client(checks):
+    """A check made for an order shows the client as the order says (not the customer account's details)."""
+    from db import query_db
+    numbers = [str(c.get('order_number') or '').strip() for c in checks if c.get('order_number')]
+    if not numbers:
+        return
+    marks = ','.join('?' * len(numbers))
+    orders = {r['order_number']: r for r in (query_db(f"""
+        SELECT o.order_number, o.owner_name, o.owner_form_email, o.order_form_values_json, u.full_name, u.email
+        FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.order_number IN ({marks});
+    """, tuple(numbers)) or [])}
+    for c in checks:
+        order = orders.get(str(c.get('order_number') or '').strip())
+        if order:
+            name, email = order_client(order)
+            c['full_name'] = name or c.get('full_name')
+            c['email'] = email or c.get('email')
 
 
 def handle_kyc_partner_routes(environ, start_response, path, method, user, body, query):
@@ -217,6 +272,7 @@ def handle_kyc_partner_routes(environ, start_response, path, method, user, body,
         data, err = _fetch(cfg)
         if err:
             return error_response(start_response, err, status_code=502)
+        _with_order_client(data.get('checks') or [])
         try:
             data['missing_orders'] = _missing_orders(data.get('checks') or [])
         except Exception as exc:

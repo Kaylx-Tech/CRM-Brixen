@@ -229,7 +229,7 @@ export default function KycRecords() {
             </Tabs>
             <div className="relative sm:w-72">
               <IconSearch className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input className="pl-9" placeholder="Search name, email, phone…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input className="pl-9" placeholder="Search name, email, order…" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
           </div>
           {checks.length ? (
@@ -239,9 +239,8 @@ export default function KycRecords() {
                   <tr>
                     <th className="py-2 pr-3 font-semibold">Order #</th>
                     <th className="px-3 py-2 font-semibold">Client</th>
-                    <th className="px-3 py-2 font-semibold">Phone</th>
                     <th className="px-3 py-2 font-semibold">Started</th>
-                    <th className="px-3 py-2 font-semibold">Sent</th>
+                    <th className="px-3 py-2 font-semibold" title="When the client sent the completed form">Submitted</th>
                     <th className="px-3 py-2 font-semibold">Status</th>
                     <th className="py-2 pl-3" />
                   </tr>
@@ -260,7 +259,6 @@ export default function KycRecords() {
                           </button>
                           <div className="text-xs text-muted-foreground">{c.email || '—'}</div>
                         </td>
-                        <td className="px-3 py-2.5 whitespace-nowrap">{c.phone || '—'}</td>
                         <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{shortDate(c.created_at)}</td>
                         <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{shortDate(c.submitted_at)}</td>
                         <td className="px-3 py-2.5">
