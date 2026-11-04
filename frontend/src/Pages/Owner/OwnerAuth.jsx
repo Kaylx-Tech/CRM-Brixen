@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { getApiBase } from "@/lib/api"
+import { getDeviceId } from "@/lib/device"
 import { kycApi, ownerApi } from "@/lib/owner"
 import finstapLogo from "@/assets/finstap-logo.svg"
 import finstapLogoLight from "@/assets/finstap-logo-light.svg"
@@ -102,9 +103,11 @@ export function OwnerLogin({ onSignedIn, panel = "owner" }) {
     if (!check({ email, password })) return
     setBusy(true)
     setError("")
-    const res = await p.api("/login", { method: "POST", body: { email, password, panel } })
+    const res = await p.api("/login", { method: "POST", body: { email, password, panel, device_id: getDeviceId() } })
     setBusy(false)
-    if (res.ok) setCode(res.data)
+    // A browser that entered a code in the last 30 days is signed in straight away
+    if (res.ok && res.data?.token) onSignedIn(res.data)
+    else if (res.ok) setCode(res.data)
     else setError(res.error)
   }
 
@@ -113,7 +116,7 @@ export function OwnerLogin({ onSignedIn, panel = "owner" }) {
       <OwnerCard
         panel={panel}
         title="Check your email"
-        subtitle={`We sent a 6-digit code to ${code.email_hint}.`}
+        subtitle={`We sent a 6-digit code to ${code.email_hint}. This browser will not ask again for 30 days.`}
       >
         <LoginCodeStep
           heading={false}

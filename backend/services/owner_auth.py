@@ -4,8 +4,12 @@
     comma-separated) can set their own password from the login page: a one-time link (30 minutes)
     goes to that email. Existing owners can use the same link to reset a forgotten password.
     scripts/create_platform_owner.py does the same from the server terminal.
-  * every sign-in is email + password, then a 6-digit code sent to that email (10 minutes, 5 tries)
-  * a session lasts 12 hours; only hashes of codes and session tokens are stored
+  * every sign-in is email + password, then a 6-digit code sent to that email (10 minutes, 5 tries),
+    unless this browser entered a code for that account in the last 30 days (a random device id the
+    page keeps, like the workspace login in services/login_otp.py; a new browser always gets a code).
+    A new password, or a KYC member turned off, forgets every trusted browser of that account.
+  * a session lasts 30 days and is renewed while it is used; only hashes of codes, device ids and
+    session tokens are stored
   * wrong passwords are slowed down per email and per network
   * everything an owner changes is written to platform_audit
   * role 'kyc': the outside KYC team. The owner adds them in the owner portal (KYC page); they get a
@@ -25,7 +29,8 @@ CODE_MINUTES = 10
 MAX_TRIES = 5
 RESEND_SECONDS = 60
 MAX_SENDS = 5
-SESSION_HOURS = 12
+SESSION_DAYS = 30
+TRUST_DAYS = 30
 TOKEN_PREFIX = 'owner.'
 # What each kind of account is called in its emails and where its set-password page is
 PANELS = {
@@ -60,6 +65,41 @@ def _hash(value):
 
 def _code_hash(challenge, code):
     return hmac.new(str(challenge).encode('utf-8'), str(code).strip().encode('utf-8'), hashlib.sha256).hexdigest()
+
+
+def _device_hash(device_id):
+    device_id = str(device_id or '').strip()[:100]
+    return hashlib.sha256(device_id.encode('utf-8')).hexdigest() if len(device_id) >= 16 else ''
+
+
+def device_trusted(admin_id, device_id):
+    """This browser entered a sign-in code for this account within the last 30 days."""
+    device = _device_hash(device_id)
+    if not device:
+        return False
+    ensure_platform()
+    return bool(_platform_query("""
+        SELECT 1 FROM platform_trusted_devices
+        WHERE admin_id = ? AND device_hash = ? AND datetime(trusted_until) > datetime('now') LIMIT 1;
+    """, (admin_id, device), one=True))
+
+
+def forget_devices(admin_id):
+    """No browser is trusted for this account any more: the next sign-in on each one asks for a code."""
+    ensure_platform()
+    _platform_execute("UPDATE platform_trusted_devices SET trusted_until = datetime('now') WHERE admin_id = ? "
+                      "AND datetime(trusted_until) > datetime('now');", (admin_id,))
+
+
+def _open_session(conn, admin_id, ip='', user_agent=''):
+    """A new 30-day session for this account (inside the caller's transaction). Returns the token."""
+    token = TOKEN_PREFIX + secrets.token_urlsafe(32)
+    conn.execute("""
+        INSERT INTO platform_sessions (token_hash, admin_id, expires_at, ip, user_agent)
+        VALUES (?, ?, datetime('now', ?), ?, ?);
+    """, (_hash(token), admin_id, f'+{SESSION_DAYS} days', (ip or '')[:64], (user_agent or '')[:250]))
+    conn.execute("UPDATE platform_admins SET last_login_at = datetime('now') WHERE id = ?;", (admin_id,))
+    return token
 
 
 def _blocked(keys):
@@ -117,9 +157,10 @@ def _send_code(email, code, role='owner'):
     return sent
 
 
-def start_login(email, password, ip='', panel='owner'):
-    """Check the password and email a code. Returns (challenge, email_hint). `panel` is the page signed in
-    from: KYC team accounts only open the KYC panel (owners may open both)."""
+def start_login(email, password, ip='', panel='owner', device_id='', user_agent=''):
+    """Check the password, then either sign in straight away (this browser is trusted: returns
+    {'token', 'admin'}) or email a code (returns {'challenge', 'email_hint'}). `panel` is the page signed
+    in from: KYC team accounts only open the KYC panel (owners may open both)."""
     email = str(email or '').strip().lower()
     keys = [f"e:{email}", f"i:{ip}"]
     wait = _blocked(keys)
@@ -132,16 +173,27 @@ def start_login(email, password, ip='', panel='owner'):
         raise OwnerAuthError("Email or password is not right.")
     if (admin.get('role') or 'owner') == 'kyc' and panel != 'kyc':
         raise OwnerAuthError("This account is for the KYC panel. Sign in at kyc.finstap.com.")
+    if device_trusted(admin['id'], device_id):
+        conn = _platform_conn()
+        try:
+            conn.execute("BEGIN IMMEDIATE;")
+            token = _open_session(conn, admin['id'], ip, user_agent)
+            conn.commit()
+        finally:
+            conn.close()
+        signed_in = admin_for_token(token)
+        audit(signed_in, 'SIGNED_IN', detail=f"from {ip} (trusted browser)" if ip else "trusted browser")
+        return {'token': token, 'admin': signed_in}
     challenge = secrets.token_urlsafe(24)
     code = f"{secrets.randbelow(1000000):06d}"
     _platform_execute("""
-        INSERT INTO platform_login_codes (challenge, admin_id, code_hash, expires_at)
-        VALUES (?, ?, ?, datetime('now', ?));
-    """, (challenge, admin['id'], _code_hash(challenge, code), f'+{CODE_MINUTES} minutes'))
+        INSERT INTO platform_login_codes (challenge, admin_id, code_hash, expires_at, device_hash)
+        VALUES (?, ?, ?, datetime('now', ?), ?);
+    """, (challenge, admin['id'], _code_hash(challenge, code), f'+{CODE_MINUTES} minutes', _device_hash(device_id)))
     if not _send_code(email, code, admin.get('role')):
         raise OwnerAuthError("We could not email your sign-in code. Check the server's email settings.")
     name, _, domain = email.partition('@')
-    return challenge, f"{name[:1]}•••@{domain}"
+    return {'challenge': challenge, 'email_hint': f"{name[:1]}•••@{domain}"}
 
 
 def resend(challenge):
@@ -166,8 +218,8 @@ def resend(challenge):
         raise OwnerAuthError("We could not email your sign-in code. Please try again.")
 
 
-def verify(challenge, code, ip='', user_agent=''):
-    """Check the code. Returns (session_token, admin)."""
+def verify(challenge, code, ip='', user_agent='', device_id=''):
+    """Check the code. Returns (session_token, admin). A right code trusts this browser for 30 days."""
     challenge = str(challenge or '')
     code = ''.join(ch for ch in str(code or '') if ch.isdigit())
     ensure_platform()
@@ -203,15 +255,19 @@ def verify(challenge, code, ip='', user_agent=''):
             conn.commit()
             left = MAX_TRIES - row['tries'] - 1
             raise OwnerAuthError("That code is not right." + (f" {left} tries left." if left > 0 else ""))
-        token = TOKEN_PREFIX + secrets.token_urlsafe(32)
         # Every open code of this person ends now (the one used and any earlier ones)
         conn.execute("UPDATE platform_login_codes SET used_at = datetime('now') WHERE admin_id = ? AND used_at IS NULL;",
                      (row['admin_id'],))
-        conn.execute("""
-            INSERT INTO platform_sessions (token_hash, admin_id, expires_at, ip, user_agent)
-            VALUES (?, ?, datetime('now', ?), ?, ?);
-        """, (_hash(token), row['admin_id'], f'+{SESSION_HOURS} hours', (ip or '')[:64], (user_agent or '')[:250]))
-        conn.execute("UPDATE platform_admins SET last_login_at = datetime('now') WHERE id = ?;", (row['admin_id'],))
+        token = _open_session(conn, row['admin_id'], ip, user_agent)
+        # The browser that asked for the code is the one trusted (its device id must match)
+        device = _device_hash(device_id)
+        if device and row['device_hash'] == device:
+            conn.execute("""
+                INSERT INTO platform_trusted_devices (admin_id, device_hash, trusted_until, user_agent)
+                VALUES (?, ?, datetime('now', ?), ?)
+                ON CONFLICT(admin_id, device_hash) DO UPDATE SET
+                    trusted_until = excluded.trusted_until, user_agent = excluded.user_agent;
+            """, (row['admin_id'], device, f'+{TRUST_DAYS} days', (user_agent or '')[:250]))
         conn.commit()
     finally:
         conn.close()
@@ -221,17 +277,29 @@ def verify(challenge, code, ip='', user_agent=''):
 
 
 def admin_for_token(token):
-    """The owner signed in with this token, or None."""
+    """The owner signed in with this token, or None. A session in use is renewed to 30 days from now
+    (at most once a day, so the platform database is not written on every request)."""
     token = str(token or '')
     if not token.startswith(TOKEN_PREFIX):
         return None
-    return _platform_query("""
-        SELECT a.id, a.email, a.full_name, a.last_login_at, COALESCE(a.role, 'owner') AS role
+    row = _platform_query(f"""
+        SELECT a.id, a.email, a.full_name, a.last_login_at, COALESCE(a.role, 'owner') AS role,
+               datetime(s.expires_at) < datetime('now', '+{SESSION_DAYS - 1} days') AS renew
         FROM platform_sessions s
         JOIN platform_admins a ON a.id = s.admin_id
         WHERE s.token_hash = ? AND s.revoked_at IS NULL AND datetime(s.expires_at) > datetime('now')
           AND a.status = 'Active' LIMIT 1;
     """, (_hash(token),), one=True)
+    if not row:
+        return None
+    row = dict(row)
+    if row.pop('renew', 0):
+        try:
+            _platform_execute("UPDATE platform_sessions SET expires_at = datetime('now', ?) WHERE token_hash = ?;",
+                              (f'+{SESSION_DAYS} days', _hash(token)))
+        except Exception as exc:  # a busy database must not sign anyone out; the next request renews it
+            print(f"[Owner session] could not renew: {exc}")
+    return row
 
 
 ACTION_LABELS = {'suspend': 'suspend', 'delete': 'delete', 'purge': 'permanently delete'}
@@ -376,6 +444,7 @@ def set_password_with_link(token, password, full_name=''):
     admin = _platform_query("SELECT id, email FROM platform_admins WHERE email = ? LIMIT 1;", (email,), one=True)
     _platform_execute("UPDATE platform_sessions SET revoked_at = datetime('now') WHERE admin_id = ? AND revoked_at IS NULL;",
                       (admin['id'],))
+    forget_devices(admin['id'])
     audit(admin, 'PASSWORD_SET' if existing else 'OWNER_CREATED')
     return email
 
@@ -396,6 +465,7 @@ def change_password(admin, current, new, keep_token=''):
         UPDATE platform_sessions SET revoked_at = datetime('now')
         WHERE admin_id = ? AND revoked_at IS NULL AND token_hash != ?;
     """, (row['id'], _hash(keep_token)))
+    forget_devices(row['id'])
     audit(admin, 'PASSWORD_CHANGED')
 
 
@@ -456,5 +526,6 @@ def set_kyc_user_status(owner, user_id, status):
     if status != 'Active':
         _platform_execute("UPDATE platform_sessions SET revoked_at = datetime('now') "
                           "WHERE admin_id = ? AND revoked_at IS NULL;", (user['id'],))
+        forget_devices(user['id'])
     audit(owner, 'KYC_USER_ENABLED' if status == 'Active' else 'KYC_USER_DISABLED', detail=user['email'])
     return {**{k: user[k] for k in ('id', 'email', 'full_name')}, 'status': status}

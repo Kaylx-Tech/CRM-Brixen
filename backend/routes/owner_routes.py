@@ -390,12 +390,19 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
     # ── sign-in (no session yet) ──
     if sub == '/login' and method == 'POST':
         try:
-            challenge, hint = start_login(body.get('email'), body.get('password'), _ip(environ),
-                                          panel='kyc' if body.get('panel') == 'kyc' else 'owner')
+            started = start_login(body.get('email'), body.get('password'), _ip(environ),
+                                  panel='kyc' if body.get('panel') == 'kyc' else 'owner',
+                                  device_id=body.get('device_id'), user_agent=environ.get('HTTP_USER_AGENT', ''))
         except OwnerAuthError as exc:
             return error_response(start_response, str(exc), status_code=429 if exc.wait else 400)
-        return success_response(start_response, data={'challenge': challenge, 'email_hint': hint,
-                                                      'resend_after': 60})
+        except sqlite3.OperationalError as exc:
+            print(f"[Owner login] sign-in busy: {exc}")
+            return error_response(start_response, "The server was busy for a moment. Please try again.",
+                                  status_code=503)
+        if started.get('token'):
+            # This browser entered a code in the last 30 days: signed in without a new one
+            return success_response(start_response, data=started)
+        return success_response(start_response, data={**started, 'resend_after': 60})
     if sub == '/login/resend' and method == 'POST':
         try:
             resend(body.get('challenge'))
@@ -427,7 +434,7 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
     if sub == '/login/verify' and method == 'POST':
         try:
             token, admin = verify(body.get('challenge'), body.get('code'), _ip(environ),
-                                  environ.get('HTTP_USER_AGENT', ''))
+                                  environ.get('HTTP_USER_AGENT', ''), device_id=body.get('device_id'))
         except OwnerAuthError as exc:
             return error_response(start_response, str(exc), status_code=400)
         except sqlite3.OperationalError as exc:

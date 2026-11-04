@@ -31,7 +31,7 @@ const SECTIONS = [
       {
         list: [
           "Passwords are stored only as Argon2id hashes, a modern algorithm designed to resist cracking. Nobody at Finstap can see your password.",
-          "Signing in from a new browser needs a 6-digit code sent by email. A code works for 10 minutes and allows 5 tries; a confirmed browser is trusted for 24 hours.",
+          "Signing in from a new browser needs a 6-digit code sent by email. A code works for 10 minutes and allows 5 tries; a confirmed browser is trusted for 30 days.",
           "Login codes are stored only as hashes, and the email shows the device, approximate location, IP address and time of the sign-in so you can spot misuse.",
           "Every new workspace owner confirms their email with a code before the workspace is created, and signups are rate limited.",
           "Sign-in sessions end after 30 days at the latest and password resets use single-use emailed links.",

@@ -128,7 +128,7 @@ const SECTIONS = [
         list: [
           "Account and workspace information: for as long as the workspace is active.",
           "After a workspace is closed: you can ask for an export for 30 days; we then delete the workspace data within 90 days, except copies the law requires us to keep.",
-          "Login codes: they work for 10 minutes. A confirmed browser is trusted for 24 hours. Sign-in sessions end after 30 days at the latest.",
+          "Login codes: they work for 10 minutes. A confirmed browser is trusted for 30 days. A sign-in stays open for 30 days after it was last used.",
           "Security and sign-in records: up to 12 months, unless needed longer to investigate a problem.",
           "Billing records: 6 years, as UK tax law requires.",
           "Support messages: up to 2 years after the conversation ends.",

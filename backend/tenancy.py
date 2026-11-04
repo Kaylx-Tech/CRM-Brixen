@@ -103,7 +103,17 @@ CREATE TABLE IF NOT EXISTS platform_login_codes (
     sends INTEGER NOT NULL DEFAULT 1,
     sent_at TIMESTAMP NOT NULL DEFAULT (datetime('now')),
     expires_at TIMESTAMP NOT NULL,
-    used_at TIMESTAMP
+    used_at TIMESTAMP,
+    device_hash TEXT
+);
+-- Browsers that entered a sign-in code: no code again on them for 30 days (services/owner_auth.py)
+CREATE TABLE IF NOT EXISTS platform_trusted_devices (
+    admin_id INTEGER NOT NULL,
+    device_hash TEXT NOT NULL,
+    trusted_until TIMESTAMP NOT NULL,
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (admin_id, device_hash)
 );
 CREATE TABLE IF NOT EXISTS platform_sessions (
     token_hash TEXT PRIMARY KEY,
@@ -434,6 +444,10 @@ def ensure_platform():
             have = {row['name'] for row in conn.execute("PRAGMA table_info(platform_admins);").fetchall()}
             if 'role' not in have:
                 conn.execute("ALTER TABLE platform_admins ADD COLUMN role TEXT NOT NULL DEFAULT 'owner';")
+            # The browser that asked for a sign-in code (only that browser is trusted once the code is right)
+            have = {row['name'] for row in conn.execute("PRAGMA table_info(platform_login_codes);").fetchall()}
+            if 'device_hash' not in have:
+                conn.execute("ALTER TABLE platform_login_codes ADD COLUMN device_hash TEXT;")
             have = {row['name'] for row in conn.execute("PRAGMA table_info(ro_requests);").fetchall()}
             for column, kind in RO_COLUMNS:
                 if column not in have:

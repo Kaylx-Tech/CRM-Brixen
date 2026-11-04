@@ -223,7 +223,7 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
                 return error_response(start_response, website_only_message(), status_code=403,
                                       details={'login_target': 'website', 'website_url': website_login_url()})
 
-        # Email login code: needed unless this browser entered one for this user in the last 24 hours
+        # Email login code: needed unless this browser entered one for this user in the last 30 days
         device_id = str(body.get('device_id') or '').strip()[:100]
         if login_otp.otp_enabled() and not login_otp.device_trusted(user_row['id'], device_id):
             full = query_db("SELECT id, email, full_name FROM users WHERE id = ?;", (user_row['id'],), one=True)
