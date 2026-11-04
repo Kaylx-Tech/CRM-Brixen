@@ -86,7 +86,7 @@ function AddDocument({ api, check, onSaved }) {
   const inputId = `add-doc-${check.id}`
   return (
     <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-dashed px-3 py-2 text-sm">
-      <span className="text-muted-foreground">Add or replace a document:</span>
+      <span className="text-muted-foreground">Add or replace a document (photo or PDF):</span>
       <select
         className="h-8 rounded-md border border-input bg-background px-2 text-sm"
         value={kind}
