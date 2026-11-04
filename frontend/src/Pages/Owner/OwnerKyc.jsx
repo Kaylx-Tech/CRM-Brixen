@@ -214,6 +214,8 @@ function WorkspacePrice({ workspace, general, onSaved }) {
 function KycCell({ check, onAction, onDeleted }) {
   const [label, tone] = kycLabel(check.status)
   const rejected = REJECTED.includes(check.status)
+  // Approved: just the result, nothing else to do
+  if (check.status === "Approved") return <span className={cn(PILL, tone)}>{label}</span>
   return (
     <div className="flex min-w-40 flex-col items-start gap-1.5">
       <span className={cn(PILL, tone)}>{label}</span>
