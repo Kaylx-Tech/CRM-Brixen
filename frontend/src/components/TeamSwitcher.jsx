@@ -8,6 +8,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
@@ -20,6 +23,7 @@ import {
   IconMoon,
   IconSun,
   IconUser,
+  IconUsers,
 } from "@tabler/icons-react"
 import { toast } from "sonner"
 import { apiRequest } from "@/lib/api"
@@ -169,10 +173,10 @@ export default function TeamSwitcher() {
         <IconChevronDown className="hidden size-4 text-muted-foreground sm:block" />
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-64 rounded-xl p-1 shadow-lg">
+      <DropdownMenuContent align="end" className="w-56 rounded-xl p-1 shadow-lg">
         {/* Who is signed in */}
-        <div className="flex items-center gap-2.5 px-2 py-2">
-          <Avatar className="size-8">
+        <div className="flex items-center gap-2 px-2 py-1.5">
+          <Avatar className="size-7">
             <AvatarImage src={user.avatar_url || ""} alt={name} />
             <AvatarFallback className={impersonated ? "bg-amber-500 text-white" : "bg-primary/15 text-xs font-semibold text-primary"}>
               {initials(name)}
@@ -205,25 +209,33 @@ export default function TeamSwitcher() {
         {canSwitch ? (
           <>
             <DropdownMenuGroup>
-              <DropdownMenuLabel className="px-2 text-xs font-medium text-muted-foreground">Switch user</DropdownMenuLabel>
-              {users === null ? (
-                <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground"><Spinner /> Loading team…</div>
-              ) : users.length === 0 ? (
-                <p className="px-3 py-2 text-sm text-muted-foreground">No other team members to switch to.</p>
-              ) : (
-                users.map((u) => (
-                  <DropdownMenuItem key={u.id} className="gap-2.5 rounded-md px-2 py-1.5" onClick={() => switchTo(u)} disabled={busyId !== null}>
-                    <Avatar className="size-6">
-                      <AvatarFallback className="text-[10px]">{initials(u.full_name)}</AvatarFallback>
-                    </Avatar>
-                    <span className="flex min-w-0 flex-col">
-                      <span className="truncate text-sm">{u.full_name}</span>
-                      <span className="truncate text-[11px] text-muted-foreground">{u.role} · {u.email}</span>
-                    </span>
-                    {busyId === u.id ? <Spinner className="ml-auto" /> : null}
-                  </DropdownMenuItem>
-                ))
-              )}
+              {/* Switch user: one row; the team opens beside it, so the menu stays small */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className={ROW}>
+                  <IconUsers />
+                  Switch user
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-60 rounded-xl p-1">
+                  {users === null ? (
+                    <div className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground"><Spinner /> Loading team…</div>
+                  ) : users.length === 0 ? (
+                    <p className="px-2 py-1.5 text-sm text-muted-foreground">No other team members to switch to.</p>
+                  ) : (
+                    users.map((u) => (
+                      <DropdownMenuItem key={u.id} className="gap-2 rounded-md px-2 py-1.5" onClick={() => switchTo(u)} disabled={busyId !== null}>
+                        <Avatar className="size-6">
+                          <AvatarFallback className="text-[10px]">{initials(u.full_name)}</AvatarFallback>
+                        </Avatar>
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate text-sm">{u.full_name}</span>
+                          <span className="truncate text-[11px] text-muted-foreground">{u.role}</span>
+                        </span>
+                        {busyId === u.id ? <Spinner className="ml-auto" /> : null}
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
             </DropdownMenuGroup>
             <DropdownMenuSeparator className={SEP} />
           </>
