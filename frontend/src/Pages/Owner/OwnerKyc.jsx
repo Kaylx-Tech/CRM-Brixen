@@ -309,16 +309,6 @@ export default function OwnerKyc() {
     load()
   }, [load])
 
-  const setBilling = async (slug, status) => {
-    const res = await ownerApi("/kyc/billing", { method: "POST", body: { slug, period, status } })
-    if (res.ok) {
-      toastDone(undefined, res.message)
-      load()
-    } else {
-      toastFail(undefined, res.error)
-    }
-  }
-
   const checks = useMemo(() => {
     const q = search.trim().toLowerCase()
     return (data?.checks || []).filter((c) => {
@@ -393,8 +383,8 @@ export default function OwnerKyc() {
                       <th className="px-3 py-2.5 font-semibold" title="This workspace's price per check. Empty: the general price">
                         Price / check
                       </th>
-                      <th className="px-3 py-2.5 text-right font-semibold">Amount</th>
-                      <th className="py-2.5 pl-3 font-semibold">Billing</th>
+                      <th className="px-3 py-2.5 text-right font-semibold" title="What Finstap charges this workspace for its KYC checks this month">KYC charges</th>
+                      <th className="py-2.5 pl-3 text-right font-semibold" title="What the workspace has left on its Finstap balance">Balance</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -421,21 +411,9 @@ export default function OwnerKyc() {
                         </td>
                         <td className="px-3 py-2.5 text-right tabular-nums">
                           {whole(w.amount)}
-                          {w.billing_status && w.billed_amount > 0 && w.billed_amount !== w.amount && (
-                            <div className="text-xs text-muted-foreground">billed {whole(w.billed_amount)}</div>
-                          )}
                         </td>
-                        <td className="py-2.5 pl-3">
-                          <select
-                            className={cn(SELECT, "h-7 w-28 rounded-md px-2 text-xs")}
-                            value={w.billing_status}
-                            onChange={(e) => setBilling(w.slug, e.target.value)}
-                            aria-label={`Billing for ${w.name}`}
-                          >
-                            <option value="">Not billed</option>
-                            <option value="invoiced">Invoiced</option>
-                            <option value="paid">Paid</option>
-                          </select>
+                        <td className={cn("py-2.5 pl-3 text-right tabular-nums", (w.balance || 0) <= 0 && "text-destructive")}>
+                          {whole(w.balance || 0)}
                         </td>
                       </tr>
                     ))}
