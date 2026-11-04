@@ -119,6 +119,23 @@ function AddDocument({ api, check, onSaved }) {
 function FormFile({ file, check, getToken, api, onSaved, canEdit }) {
   const [url, setUrl] = useState("")
   const [failed, setFailed] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  // Owner only: delete this one document
+  const deleteFile = async () => {
+    setDeleting(true)
+    const id = toastProcessing("Deleting…")
+    const res = await api(`/desk/checks/${check.workspace}/${check.id}/files/${file.id}/delete`, { method: "POST" })
+    setDeleting(false)
+    setConfirmDelete(false)
+    if (res.ok) {
+      toastDone(id, res.message)
+      onSaved()
+    } else {
+      toastFail(id, res.error)
+    }
+  }
 
   useEffect(() => {
     let objectUrl = ""
@@ -183,7 +200,28 @@ function FormFile({ file, check, getToken, api, onSaved, canEdit }) {
               <IconExternalLink className="size-4" />
             </a>
           )}
+          {canEdit && (
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-destructive"
+              title="Delete this document"
+              aria-label="Delete this document"
+              onClick={() => setConfirmDelete(true)}
+            >
+              <IconTrash className="size-4" />
+            </button>
+          )}
         </span>
+        {canEdit && (
+          <DeleteConfirmation
+            isOpen={confirmDelete}
+            onClose={() => setConfirmDelete(false)}
+            onConfirm={deleteFile}
+            isLoading={deleting}
+            title="Delete this document?"
+            description={`${file.section} · ${file.label} is deleted for good. Nobody is told.`}
+          />
+        )}
       </figcaption>
     </figure>
   )

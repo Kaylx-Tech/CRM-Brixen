@@ -353,6 +353,22 @@ def owner_put_file(slug, check_id, kind, data):
         """, (row['id'], form_round, kind, ref, mime, len(data)))
 
 
+def owner_delete_file(slug, check_id, file_id):
+    """The owner deletes one of the check's documents (from R2 or the server). Returns True when it existed."""
+    from db import execute_db, query_db
+    from services import kyc_form
+    tenant, _ = svc._check(slug, check_id)
+    with use_tenant(tenant):
+        kyc_form.ensure()
+        row = query_db("SELECT * FROM id_verification_files WHERE id = ? AND verification_id = ?;",
+                       (int(file_id), int(check_id)), one=True)
+        if not row:
+            return False
+        remove_stored(row)
+        execute_db("DELETE FROM id_verification_files WHERE id = ?;", (int(file_id),))
+    return True
+
+
 def remove_check(slug, check_id):
     """The owner removes a check completely (e.g. a test): its files, the check itself and its charge if it was
     not paid yet. Returns the removed row."""

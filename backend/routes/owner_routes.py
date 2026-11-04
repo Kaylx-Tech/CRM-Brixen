@@ -125,6 +125,15 @@ def _desk(environ, start_response, sub, method, admin, body, query):
             audit(admin, 'KYC_DESK_VIEW_CHANGED', detail=', '.join(f"{k}: {'shown' if v else 'hidden'}"
                                                                    for k, v in view.items()))
             return success_response(start_response, data=view, message="Saved.")
+        match = re.match(r'^/desk/checks/([a-z0-9-]+)/(\d+)/files/(\d+)/delete$', sub)
+        if match and method == 'POST':
+            if not owner:
+                return error_response(start_response, "Only the Finstap owner can delete a document.", status_code=403)
+            slug = kyc_desk.resolve(match.group(1))
+            if not kyc_desk.owner_delete_file(slug, int(match.group(2)), int(match.group(3))):
+                return error_response(start_response, "Document not found", status_code=404)
+            audit(admin, 'KYC_DOCUMENT_DELETED', slug, f"check {match.group(2)}: file {match.group(3)}")
+            return success_response(start_response, data={'id': int(match.group(3))}, message="Document deleted.")
         match = re.match(r'^/desk/checks/([a-z0-9-]+)/(\d+)/files/(\d+)$', sub)
         if match and method == 'GET':
             data, mime = kyc_desk.file(kyc_desk.resolve(match.group(1)), int(match.group(2)), int(match.group(3)))
