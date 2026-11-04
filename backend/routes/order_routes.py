@@ -250,6 +250,14 @@ def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False, own_orders_
         except Exception as exc:
             print(f"[formation company] order {order_id}: {exc}")
 
+    # Codes typed on the form (authentication code, personal code) go to the company's compliance record
+    if not as_draft:
+        from services.order_company_codes import sync_order_codes
+        try:
+            sync_order_codes(order_id)
+        except Exception as exc:
+            print(f"[order codes] order {order_id}: {exc}")
+
     return {
         'id': order_id,
         'order_id': order_id,
@@ -768,6 +776,12 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
             updates.append("updated_at = datetime('now')")
             params.append(order_id)
             execute_db(f"UPDATE orders SET {', '.join(updates)} WHERE id = ?;", params)
+            # Codes typed on the form go to the company's compliance record
+            try:
+                from services.order_company_codes import sync_order_codes
+                sync_order_codes(order_id)
+            except Exception as exc:
+                print(f"[order codes] order {order_id}: {exc}")
         if any(k in body for k in ('price', 'total', 'status')):
             from services.invoice_service import sync_invoice_with_order
             sync_invoice_with_order(order_id)
