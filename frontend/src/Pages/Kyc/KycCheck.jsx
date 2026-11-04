@@ -10,6 +10,8 @@ import {
   IconFileText,
   IconPhotoOff,
   IconRefresh,
+  IconReplace,
+  IconUpload,
   IconTrash,
   IconX,
 } from "@tabler/icons-react"
@@ -51,8 +53,70 @@ function Facts({ rows }) {
   )
 }
 
+const DOC_KINDS = [
+  ["id_front", "ID document · Front"],
+  ["id_back", "ID document · Back"],
+  ["selfie", "Selfie"],
+  ["poa", "Proof of address"],
+]
+
+/** Owner only: put a document on the check (a new one, or in place of the one of that kind). Nobody is told. */
+async function uploadDocument(api, check, kind, file) {
+  if (!file) return false
+  const data = await new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ""))
+    reader.onerror = () => reject(new Error("read"))
+    reader.readAsDataURL(file)
+  }).catch(() => "")
+  if (!data) {
+    toastFail(undefined, "The file could not be read")
+    return false
+  }
+  const id = toastProcessing("Uploading…")
+  const res = await api(`/desk/checks/${check.workspace}/${check.id}/upload`, { method: "POST", body: { kind, data } })
+  if (res.ok) toastDone(id, res.message)
+  else toastFail(id, res.error)
+  return res.ok
+}
+
+/** Owner only: a small "Add document" control (choose which one, then the file). */
+function AddDocument({ api, check, onSaved }) {
+  const [kind, setKind] = useState("id_front")
+  const inputId = `add-doc-${check.id}`
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-dashed px-3 py-2 text-sm">
+      <span className="text-muted-foreground">Add or replace a document:</span>
+      <select
+        className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+        value={kind}
+        onChange={(e) => setKind(e.target.value)}
+        aria-label="Which document"
+      >
+        {DOC_KINDS.map(([value, label]) => (
+          <option key={value} value={value}>{label}</option>
+        ))}
+      </select>
+      <label htmlFor={inputId} className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground">
+        <IconUpload className="size-4" /> Upload
+      </label>
+      <input
+        id={inputId}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,application/pdf"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0]
+          e.target.value = ""
+          if (await uploadDocument(api, check, kind, file)) onSaved()
+        }}
+      />
+    </div>
+  )
+}
+
 /** One file the person sent, loaded with the panel's sign-in (the files are private). */
-function FormFile({ file, check, getToken }) {
+function FormFile({ file, check, getToken, api, onSaved, canEdit }) {
   const [url, setUrl] = useState("")
   const [failed, setFailed] = useState(false)
 
@@ -98,35 +162,53 @@ function FormFile({ file, check, getToken }) {
         <span>
           <span className="font-semibold">{file.section}</span> · {file.label}
         </span>
-        {url && (
-          <a href={url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary" aria-label="Open">
-            <IconExternalLink className="size-4" />
-          </a>
-        )}
+        <span className="flex items-center gap-2">
+          {canEdit && file.file_kind && (
+            <label className="cursor-pointer text-muted-foreground hover:text-primary" title="Replace this document">
+              <IconReplace className="size-4" />
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                className="hidden"
+                onChange={async (e) => {
+                  const picked = e.target.files?.[0]
+                  e.target.value = ""
+                  if (await uploadDocument(api, check, file.file_kind, picked)) onSaved()
+                }}
+              />
+            </label>
+          )}
+          {url && (
+            <a href={url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary" aria-label="Open">
+              <IconExternalLink className="size-4" />
+            </a>
+          )}
+        </span>
       </figcaption>
     </figure>
   )
 }
 
 /** What the person uploaded on the form: the latest time first, earlier tries folded away. */
-function FormFiles({ check, getToken }) {
+function FormFiles({ check, getToken, api, onSaved, canEdit }) {
   const [latest, ...earlier] = check.submissions
-  const grid = (files) => (
+  const grid = (files, editable) => (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {files.map((f) => (
-        <FormFile key={f.id} file={f} check={check} getToken={getToken} />
+        <FormFile key={f.id} file={f} check={check} getToken={getToken} api={api} onSaved={onSaved} canEdit={editable} />
       ))}
     </div>
   )
   return (
     <>
-      {grid(latest.files)}
+      {grid(latest.files, canEdit)}
+      {canEdit && <AddDocument api={api} check={check} onSaved={onSaved} />}
       {earlier.map((s) => (
         <details key={s.round} className="mt-4 rounded-xl border px-4 py-3">
           <summary className="cursor-pointer text-sm font-medium">
             Earlier try ({s.files.length} file{s.files.length === 1 ? "" : "s"}, {shortDate(s.files[0]?.created_at)})
           </summary>
-          <div className="mt-3">{grid(s.files)}</div>
+          <div className="mt-3">{grid(s.files, false)}</div>
         </details>
       ))}
     </>
@@ -450,11 +532,14 @@ export default function KycCheck({ api = kycApi, getToken = getKycToken, backTo 
             <>
               <Panel title="Documents" description="The photos and files the client sent on the form.">
                 {(check.submissions || []).length ? (
-                  <FormFiles check={check} getToken={getToken} />
+                  <FormFiles check={check} getToken={getToken} api={api} onSaved={load} canEdit={canDelete || check.can_delete} />
                 ) : (
-                  <Empty icon={IconPhotoOff} title="No documents yet">
-                    The client has not uploaded anything on their new link yet.
-                  </Empty>
+                  <>
+                    <Empty icon={IconPhotoOff} title="No documents yet">
+                      The client has not uploaded anything on their new link yet.
+                    </Empty>
+                    {(canDelete || check.can_delete) && <AddDocument api={api} check={check} onSaved={load} />}
+                  </>
                 )}
               </Panel>
               <Panel

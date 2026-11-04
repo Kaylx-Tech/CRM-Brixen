@@ -159,6 +159,8 @@ def _sent(check_id, f):
     row = query_db("SELECT form_round, submitted_at, status FROM id_verifications WHERE id = ?;", (int(check_id),),
                    one=True) or {}
     current = row.get('form_round') or 1
+    if '-owner-' in str(f.get('file_ref') or ''):
+        return True  # put there by the owner: always shown
     sent = bool(row.get('submitted_at')) and row.get('status') not in kyc_form.OPEN_STATUSES
     return (f.get('form_round') or 1) < current or sent
 
@@ -176,7 +178,7 @@ def _form_files(check_id):
     for number in sorted(rounds, reverse=True):
         files = sorted(rounds[number], key=lambda f: order.index(f['kind']) if f['kind'] in order else 9)
         out.append({'round': number, 'files': [{
-            'id': f['id'], 'section': _FILE_SECTIONS.get(f['kind'], ('File', f['kind']))[0],
+            'id': f['id'], 'file_kind': f['kind'], 'section': _FILE_SECTIONS.get(f['kind'], ('File', f['kind']))[0],
             'label': _FILE_SECTIONS.get(f['kind'], ('File', f['kind']))[1],
             'kind': 'pdf' if f['mime_type'] == 'application/pdf' else 'image',
             'created_at': f['created_at'],
@@ -306,6 +308,48 @@ def delete_data(slug, check_id):
         files = wipe(check_id)
         execute_db("UPDATE id_verifications SET data_deleted_at = datetime('now') WHERE id = ?;", (int(check_id),))
     return row, files
+
+
+def owner_put_file(slug, check_id, kind, data):
+    """The owner adds or replaces one of the check's documents (ID front/back, selfie, proof of address) in the
+    client's latest round. Nobody is told (no email, no notification). Returns the saved file's id."""
+    import os
+    import uuid
+    from db import execute_db, query_db
+    from services import kyc_form
+    if kind not in _FILE_SECTIONS:
+        raise svc.ServiceError("Choose which document this is")
+    data = data or b''
+    if not data:
+        raise svc.ServiceError("Choose a file to upload")
+    if len(data) > kyc_form.MAX_BYTES:
+        raise svc.ServiceError("The file is too large. Use a photo or PDF under 10 MB.")
+    mime, ext = kyc_form._sniff(data)
+    if not mime or (ext == 'pdf' and kind != 'poa'):
+        raise svc.ServiceError("Upload a photo (JPG, PNG or WebP)" + (" or a PDF." if kind == 'poa' else "."))
+    tenant, _ = svc._check(slug, check_id)
+    with use_tenant(tenant):
+        kyc_form.ensure()
+        row = query_db("SELECT id, form_round FROM id_verifications WHERE id = ?;", (int(check_id),), one=True)
+        form_round = row.get('form_round') or 1
+        name = f"idv-{row['id']}-r{form_round}-{kind}-owner-{uuid.uuid4().hex[:10]}.{ext}"
+        ref = kyc_form._save_to_r2(row['id'], name, data, mime)
+        if not ref:
+            from config import STORAGE_DIR
+            folder = os.path.join('workspaces', tenant['slug'], 'kyc')
+            os.makedirs(os.path.join(STORAGE_DIR, folder), exist_ok=True)
+            with open(os.path.join(STORAGE_DIR, folder, name), 'wb') as fh:
+                fh.write(data)
+            ref = 'local:' + os.path.join(folder, name).replace('\\', '/')
+        for old in query_db("SELECT * FROM id_verification_files WHERE verification_id = ? AND form_round = ? AND kind = ?;",
+                            (row['id'], form_round, kind)) or []:
+            remove_stored(old)
+        execute_db("DELETE FROM id_verification_files WHERE verification_id = ? AND form_round = ? AND kind = ?;",
+                   (row['id'], form_round, kind))
+        return execute_db("""
+            INSERT INTO id_verification_files (verification_id, form_round, kind, file_ref, mime_type, size)
+            VALUES (?, ?, ?, ?, ?, ?);
+        """, (row['id'], form_round, kind, ref, mime, len(data)))
 
 
 def remove_check(slug, check_id):

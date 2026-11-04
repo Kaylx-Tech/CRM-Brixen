@@ -134,7 +134,7 @@ def _desk(environ, start_response, sub, method, admin, body, query):
                                       ('Content-Length', str(len(data))), ('Cache-Control', 'private, no-store'),
                                       ('X-Content-Type-Options', 'nosniff')])
             return [data]
-        match = re.match(r'^/desk/checks/([a-z0-9-]+)/(\d+)(?:/(status|resubmit|delete-data|remove))?$', sub)
+        match = re.match(r'^/desk/checks/([a-z0-9-]+)/(\d+)(?:/(status|resubmit|delete-data|remove|upload))?$', sub)
         if not match:
             return error_response(start_response, "Not found", status_code=404)
         slug, check_id, act = kyc_desk.resolve(match.group(1)), int(match.group(2)), match.group(3)
@@ -154,6 +154,19 @@ def _desk(environ, start_response, sub, method, admin, body, query):
             return success_response(start_response, data=kyc_desk.shown(row, team), message=(
                 "New link emailed to the client." if emailed
                 else "New link made, but the email was not sent. Copy the link and send it yourself."))
+        if act == 'upload' and method == 'POST':
+            if not owner:
+                return error_response(start_response, "Only the Finstap owner can change a check's documents.",
+                                      status_code=403)
+            import base64
+            try:
+                data = base64.b64decode(str((body or {}).get('data') or '').split(',')[-1], validate=False)
+            except (ValueError, TypeError):
+                return error_response(start_response, "The file could not be read", status_code=400)
+            kind = str((body or {}).get('kind') or '')
+            kyc_desk.owner_put_file(slug, check_id, kind, data)
+            audit(admin, 'KYC_DOCUMENT_SET', slug, f"check {check_id}: {kind}")
+            return success_response(start_response, data={'id': check_id}, message="Document saved.")
         if act == 'remove' and method == 'POST':
             if not owner:
                 return error_response(start_response, "Only the Finstap owner can remove a check.", status_code=403)
