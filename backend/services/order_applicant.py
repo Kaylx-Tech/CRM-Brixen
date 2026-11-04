@@ -18,6 +18,14 @@ _NOT_EMAIL = r'company|business|trading|access|notification|work|partner|referr|
 _NOT_PERSON = r'company|business|trading|bank|account|access|notification|work|partner|referr|sort code|address'
 
 
+def _person_name(text):
+    """Companies House writes "NAQVI, Syed Khilat Mehdi": as "Syed Khilat Mehdi Naqvi"."""
+    if ',' in text:
+        last, first = [s.strip() for s in text.split(',', 1)]
+        text = f"{first} {last.title() if last.isupper() else last}".strip()
+    return text
+
+
 def _answers(raw, out=None):
     """Every (label, answer) pair in an order's saved form: {"Label": answer}, the services' own questions
     ({"service_fields": [{label, value}]}) and website checkout data ([{key|display_key, value}])."""
@@ -31,6 +39,17 @@ def _answers(raw, out=None):
         for item in raw:
             _answers(item, out)
     elif isinstance(raw, dict):
+        # A company picked from Companies House: only its directors (the person to verify when no name was
+        # asked); the company's own name, number and office are never the applicant
+        company = raw.get('company') if isinstance(raw.get('company'), dict) else None
+        if company is not None or ('directors' in raw and 'company_number' in raw):
+            for director in (company or raw).get('directors') or []:
+                person = director.get('name') if isinstance(director, dict) else director
+                if person:
+                    out.append(('director name', _person_name(str(person))))
+            raw = {k: v for k, v in raw.items() if k != 'company'} if company is not None else {}
+            if not raw:
+                return out
         label = raw.get('label') or raw.get('display_key') or raw.get('key') or raw.get('name')
         value = raw.get('value') if 'value' in raw else raw.get('display_value')
         if label and isinstance(value, (str, int, float)) and not isinstance(value, bool):
