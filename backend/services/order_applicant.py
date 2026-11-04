@@ -26,9 +26,10 @@ def _person_name(text):
     return text
 
 
-def _answers(raw, out=None):
-    """Every (label, answer) pair in an order's saved form: {"Label": answer}, the services' own questions
-    ({"service_fields": [{label, value}]}) and website checkout data ([{key|display_key, value}])."""
+def _answers(raw, out=None, services=()):
+    """Every (label, answer, services) in an order's saved form: {"Label": answer}, the services' own questions
+    ({"service_fields": [{label, value, services}]}, services = the products the question is for) and website
+    checkout data ([{key|display_key, value}])."""
     out = [] if out is None else out
     if isinstance(raw, str):
         try:
@@ -37,8 +38,10 @@ def _answers(raw, out=None):
             return out
     if isinstance(raw, list):
         for item in raw:
-            _answers(item, out)
+            _answers(item, out, services)
     elif isinstance(raw, dict):
+        if isinstance(raw.get('services'), list):
+            services = tuple(str(s) for s in raw['services'])
         # A company picked from Companies House: only its directors (the person to verify when no name was
         # asked); the company's own name, number and office are never the applicant
         company = raw.get('company') if isinstance(raw.get('company'), dict) else None
@@ -46,32 +49,44 @@ def _answers(raw, out=None):
             for director in (company or raw).get('directors') or []:
                 person = director.get('name') if isinstance(director, dict) else director
                 if person:
-                    out.append(('director name', _person_name(str(person))))
+                    out.append(('director name', _person_name(str(person)), services))
             raw = {k: v for k, v in raw.items() if k != 'company'} if company is not None else {}
             if not raw:
                 return out
         label = raw.get('label') or raw.get('display_key') or raw.get('key') or raw.get('name')
         value = raw.get('value') if 'value' in raw else raw.get('display_value')
         if label and isinstance(value, (str, int, float)) and not isinstance(value, bool):
-            out.append((str(label), str(value)))
+            out.append((str(label), str(value), services))
         for key, value in raw.items():
             # The buyer's own billing/shipping/account details are not the applicant's
             if str(key).lower() in ('billing', 'shipping', 'customer', 'user', 'account'):
                 continue
+            if key == 'services':
+                continue
             if isinstance(value, (dict, list)):
-                _answers(value, out)
+                _answers(value, out, services)
             elif isinstance(value, str) and key not in ('label', 'value', 'display_key', 'display_value', 'key',
                                                           'name', 'type', 'id'):
-                out.append((str(key), value))
+                out.append((str(key), value, services))
     return out
 
 
-def form_contact(*form_jsons):
+def form_contact(*form_jsons, product='kyc'):
     """(name, email) of the person the order is for, from the order form ("Person to Verify", "Full name",
-    "First name" + "Last name", "Email"…) and the website checkout."""
+    "First name" + "Last name", "Email"…) and the website checkout. Questions asked for the product (e.g. the
+    "KYC Verification" ones) come first; the other products' questions only fill what they leave open."""
     pairs = []
     for raw in form_jsons:
         _answers(raw, pairs)
+    want = str(product or '').lower()
+    mine = [(l, v) for l, v, s in pairs if want and any(want in x.lower() for x in s)]
+    rest = [(l, v) for l, v, s in pairs if not (want and any(want in x.lower() for x in s))]
+    name_a, email_a = _contact(mine)
+    name_b, email_b = _contact(rest)
+    return name_a or name_b, email_a or email_b
+
+
+def _contact(pairs):
     email = first = last = ''
     found = {}
     for label, value in pairs:
