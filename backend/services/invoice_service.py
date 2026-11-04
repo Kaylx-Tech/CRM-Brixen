@@ -372,7 +372,10 @@ def ensure_invoice_for_order(order_id, paid=False):
         if paid and existing.get('status') != 'Paid':
             update_admin_invoice(existing['id'], {'status': 'Paid'})
         return existing['id']
-    status = 'Paid' if paid else ('Cancelled' if order.get('status') in ('Cancelled', 'Refunded') else 'Pending')
+    # A cancelled or refunded order gets no new invoice (one an admin deleted stays deleted)
+    if not paid and order.get('status') in ('Cancelled', 'Refunded'):
+        return None
+    status = 'Paid' if paid else 'Pending'
     method = str(order.get('payment_mode') or '').strip() or None
     timing = 'Advance' if (paid or method == 'Website Charge') else 'After work'
     total = float(order.get('total') or 0)
@@ -420,7 +423,8 @@ def backfill_invoices_from_orders():
     """Invoices for placed orders that do not have one yet (run when the invoice list opens)."""
     rows = query_db("""
         SELECT o.id FROM orders o
-        WHERE COALESCE(o.is_draft, 0) = 0 AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.order_id = o.id)
+        WHERE COALESCE(o.is_draft, 0) = 0 AND COALESCE(o.status, '') NOT IN ('Cancelled', 'Refunded')
+          AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.order_id = o.id)
         ORDER BY o.id;
     """) or []
     return sum(1 for r in rows if ensure_invoice_for_order(r['id']))
