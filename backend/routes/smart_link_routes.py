@@ -60,7 +60,8 @@ def _kyc_orders(user):
         clauses.append("o.created_by_id = ?")
         params.append(user.get('id'))
     rows = query_db(f"""
-        SELECT o.id, o.order_number, o.service_name, o.status, o.created_at, o.owner_name, o.order_form_values_json,
+        SELECT o.id, o.order_number, o.service_name, o.status, o.created_at, o.owner_name, o.owner_form_email,
+               o.order_form_values_json, o.checkout_form_json,
                u.full_name AS customer_name, u.email AS customer_email,
                c.name AS company_name, c.company_number, cb.full_name AS created_by_name,
                (SELECT GROUP_CONCAT(li.product_name, ', ') FROM order_line_items li
@@ -89,7 +90,13 @@ def _kyc_orders(user):
             except (TypeError, ValueError):
                 values = {}
             o['company_name'] = proposed_company_name(values) or None
-    # The people to verify on each order, with their Didit status
+    # The applicant (the order form's person, e.g. "Director name"), not the account that placed the order
+    from services.order_applicant import applicant
+    for o in orders:
+        o['applicant_name'], o['applicant_email'] = applicant(
+            {**o, 'full_name': o.get('customer_name'), 'email': o.get('customer_email')})
+        o.pop('checkout_form_json', None)
+        # The people to verify on each order, with their Didit status
     from routes.id_verification_routes import people_for_orders
     people = people_for_orders([o['id'] for o in orders])
     for o in orders:

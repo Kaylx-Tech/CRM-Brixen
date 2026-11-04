@@ -272,7 +272,7 @@ export default function IdVerification() {
     const q = search.trim().toLowerCase()
     if (!q) return orders
     return orders.filter((o) =>
-      [o.order_number, o.customer_name, o.customer_email, o.owner_name, o.company_name, o.company_number,
+      [o.order_number, o.applicant_name, o.applicant_email, o.customer_name, o.customer_email, o.owner_name, o.company_name, o.company_number,
         kycProduct(o), o.status, ...(o.people || []).flatMap((p) => [p.full_name, p.email, p.status])]
         .some((v) => String(v || '').toLowerCase().includes(q)),
     )
@@ -309,12 +309,12 @@ export default function IdVerification() {
   }
 
   const openAdd = (order) => {
-    // The first person is usually the customer themself
+    // The first person is the order's applicant (the order form's person), not the account holder
     const first = !(order.people || []).length
     setPersonForm({
       ...EMPTY_PERSON,
-      full_name: first ? order.owner_name || order.customer_name || '' : '',
-      email: first ? order.customer_email || '' : '',
+      full_name: first ? order.applicant_name || order.owner_name || order.customer_name || '' : '',
+      email: first ? order.applicant_email || order.customer_email || '' : '',
     })
     personErrors.clear()
     setAdding(order)
@@ -506,7 +506,7 @@ export default function IdVerification() {
                     </Link>
                     <span className="text-xs text-muted-foreground">{shortDate(o.created_at)}</span>
                   </div>
-                  <p className="truncate text-sm font-medium" title={o.customer_email}>{o.customer_name || '—'}</p>
+                  <p className="truncate text-sm font-medium" title={o.applicant_email || o.customer_email}>{o.applicant_name || o.customer_name || '—'}</p>
                   <p className="truncate text-xs text-muted-foreground">
                     {companyLabel(o)}
                     {' · '}

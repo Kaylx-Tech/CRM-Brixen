@@ -241,10 +241,10 @@ def build_admin_order_list(user, query):
             except (TypeError, ValueError):
                 values = {}
             item['company_name'] = proposed_company_name(values) or None
-        if not item.get('owner_name'):
-            item['owner_name'] = item.get('client_name')
-        if not item.get('owner_form_email'):
-            item['owner_form_email'] = item.get('client_email')
+        # The owner shown is the applicant (the order form's person), not the account that placed the order
+        from services.order_applicant import applicant
+        item['owner_name'], item['owner_form_email'] = applicant(
+            {**item, 'full_name': item.get('client_name'), 'email': item.get('client_email')})
         listed.append(item)
 
     products = query_db("""
