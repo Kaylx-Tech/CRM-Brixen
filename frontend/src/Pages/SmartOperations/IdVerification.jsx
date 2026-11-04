@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { SectionCards } from '../../Layout/StatsCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Dialog,
@@ -16,7 +18,6 @@ import {
 } from '@/components/ui/dialog'
 import {
   IconAlertTriangle,
-  IconBrandWhatsapp,
   IconCheck,
   IconCopy,
   IconExternalLink,
@@ -174,58 +175,72 @@ function acspPack(person) {
   ].filter(([, v]) => v)
 }
 
-function PersonRow({ person, busy, onAction, onOpen }) {
-  const started = !!person.session_url
+// Which tab a person is under (an order with nobody yet waits for one)
+function bucketOf(person) {
+  const s = String(person?.status || 'Not Started')
+  if (!person || ['Not Started', 'In Progress', 'Expired'].includes(s)) return 'waiting'
+  if (s === 'Approved') return 'approved'
+  if (['Declined', 'Abandoned', 'Kyc Expired'].includes(s)) return 'rejected'
+  return 'review'
+}
+
+const TABS = [['all', 'All'], ['waiting', 'Not started'], ['review', 'In review'], ['approved', 'Approved'], ['rejected', 'Rejected']]
+const TAB = 'text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+const ORDER_CHIP = 'inline-flex h-6 items-center whitespace-nowrap rounded-md bg-sky-500/10 px-2 text-xs font-semibold tabular-nums tracking-wide text-sky-700 hover:bg-sky-500/20 dark:text-sky-300'
+
+function ddmmyy(value) {
+  const d = new Date(String(value || '').replace(' ', 'T'))
+  return !value || Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' })
+}
+
+/** The one thing to do on a row: add a person, start, email the link (copy and refresh beside it), or view. */
+function RowAction({ order, person, busy, onAction, onOpen, onAdd }) {
+  const addMore = order && person && (
+    <Button variant="ghost" size="xs" className="h-7 w-7 p-0 text-muted-foreground" title="Add another person" onClick={() => onAdd(order)}>
+      <IconPlus className="size-3.5" />
+    </Button>
+  )
+  if (!person) {
+    return (
+      <Button size="xs" className="h-7 gap-1" onClick={() => onAdd(order)}>
+        <IconPlus className="size-3.5" /> Add
+      </Button>
+    )
+  }
+  const open = ['Not Started', 'In Progress', 'Expired', 'Declined'].includes(person.status || 'Not Started')
+  if (!person.session_url && open) {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <Button size="xs" className="h-7 gap-1" disabled={busy} onClick={() => onAction(person, 'session')}>
+          {busy ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconPlayerPlay className="size-3.5" />} Start
+        </Button>
+        {addMore}
+      </span>
+    )
+  }
+  if (person.session_url && open) {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <Button variant="ghost" size="xs" className="h-7 w-7 p-0 text-muted-foreground" title="Copy the link" onClick={() => copyText(person.session_url, 'Link')}>
+          <IconCopy className="size-3.5" />
+        </Button>
+        <Button variant="ghost" size="xs" className="h-7 w-7 p-0 text-muted-foreground" title="Get the latest status" disabled={busy} onClick={() => onAction(person, 'refresh')}>
+          {busy ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconRefresh className="size-3.5" />}
+        </Button>
+        <Button variant="outline" size="xs" className="h-7 gap-1" disabled={busy || !person.email} onClick={() => onAction(person, 'email')}>
+          <IconMail className="size-3.5" /> {person.link_sent_at ? 'Resend' : 'Email'}
+        </Button>
+        {addMore}
+      </span>
+    )
+  }
   return (
-    <div className="flex flex-col gap-2 rounded-lg border bg-background/60 p-2.5 sm:flex-row sm:items-center">
-      <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onOpen(person)}>
-        <p className="truncate text-sm font-medium">
-          {person.full_name}
-          {person.person_role ? <span className="ml-1.5 text-xs font-normal text-muted-foreground">{person.person_role}</span> : null}
-        </p>
-        <p className="truncate text-xs text-muted-foreground">
-          {person.email || 'No email'}
-          {person.link_sent_at ? ` · link emailed ${shortDate(person.link_sent_at)}` : ''}
-          {person.ch_personal_code ? ` · CH code ${person.ch_personal_code}` : ''}
-        </p>
-        {/* Overall result, then proof of address and AML, on their own line */}
-        <span className="mt-1 flex flex-wrap gap-1">
-          <Badge className={`${checkTone(person.status)} whitespace-nowrap`}>{checkLabel(person.status)}</Badge>
-          {person.result?.poa && (
-            <Badge className={`${checkTone(person.result.poa.status)} whitespace-nowrap`} title="Proof of address">
-              Address: {person.result.poa.status || 'Not Started'}
-            </Badge>
-          )}
-          {person.result?.aml && (
-            <Badge className={`${amlTone(person.result.aml)} whitespace-nowrap`} title="AML screening">
-              AML: {amlLabel(person.result.aml)}
-            </Badge>
-          )}
-        </span>
-      </button>
-      <div className="flex flex-wrap items-center gap-1">
-        {started ? (
-          <>
-            <Button variant="outline" size="xs" className="h-7 gap-1" title="Copy verification link" onClick={() => copyText(person.session_url, 'Link')}>
-              <IconCopy className="size-3.5" />
-              Link
-            </Button>
-            <Button variant="outline" size="xs" className="h-7 gap-1" title="Email the link" disabled={busy || !person.email} onClick={() => onAction(person, 'email')}>
-              <IconMail className="size-3.5" />
-              Email
-            </Button>
-            <Button variant="ghost" size="xs" className="h-7 w-7 p-0 text-muted-foreground" title="Get the latest status" disabled={busy} onClick={() => onAction(person, 'refresh')}>
-              {busy ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconRefresh className="size-3.5" />}
-            </Button>
-          </>
-        ) : (
-          <Button variant="outline" size="xs" className="h-7 gap-1" disabled={busy} onClick={() => onAction(person, 'session')}>
-            {busy ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconPlayerPlay className="size-3.5" />}
-            Start
-          </Button>
-        )}
-      </div>
-    </div>
+    <span className="inline-flex items-center gap-1">
+      <Button variant="outline" size="xs" className="h-7 gap-1" onClick={() => onOpen(person)}>
+        <IconUserCheck className="size-3.5" /> View
+      </Button>
+      {addMore}
+    </span>
   )
 }
 
@@ -238,6 +253,7 @@ export default function IdVerification() {
   const [kycLink, setKycLink] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [tab, setTab] = useState('all')
   const [busyId, setBusyId] = useState(null)
   const [adding, setAdding] = useState(null) // the order a person is being added to
   const [personForm, setPersonForm] = useState(EMPTY_PERSON)
@@ -277,6 +293,32 @@ export default function IdVerification() {
         .some((v) => String(v || '').toLowerCase().includes(q)),
     )
   }, [orders, search])
+
+  // Table rows: every person on every order, orders with nobody yet, then checks from the KYC link
+  const rows = useMemo(() => {
+    const out = []
+    for (const o of shown) {
+      const people = o.people || []
+      if (!people.length) out.push({ key: `o-${o.id}`, order: o, person: null })
+      people.forEach((p) => out.push({ key: `p-${p.id}`, order: o, person: p }))
+    }
+    const q = search.trim().toLowerCase()
+    linkChecks
+      .filter((p) => !q || [p.full_name, p.email, p.status].some((v) => String(v || '').toLowerCase().includes(q)))
+      .forEach((p) => out.push({ key: `l-${p.id}`, order: null, person: p }))
+    return tab === 'all' ? out : out.filter((r) => bucketOf(r.person) === tab)
+  }, [shown, linkChecks, search, tab])
+
+  const stats = useMemo(() => {
+    const people = [...orders.flatMap((o) => o.people || []), ...linkChecks]
+    const count = (b) => people.filter((p) => bucketOf(p) === b).length
+    return [
+      { title: 'KYC orders', value: String(orders.length), footerSubText: `${linkChecks.length} from your KYC link`, icon: IconId },
+      { title: 'Not started', tone: 'sky', value: String(count('waiting') + orders.filter((o) => !(o.people || []).length).length), footerSubText: 'Waiting for the client' },
+      { title: 'In review', tone: 'amber', value: String(count('review')), footerSubText: 'The KYC team is checking' },
+      { title: 'Approved', tone: 'emerald', value: String(count('approved')), footerSubText: `${count('rejected')} rejected` },
+    ]
+  }, [orders, linkChecks])
 
   // Put a changed person back into its order
   const replacePerson = (person) => {
@@ -379,62 +421,6 @@ export default function IdVerification() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* The first thing on the page: how to get a client verified (send this link) */}
-      {kycLink && (
-        <Card className="overflow-hidden border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                <IconUserCheck className="size-6" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-lg font-semibold">Verify a client's identity (KYC)</h2>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  Send this link to any client. They upload their ID, take a selfie and add a proof of address;
-                  the KYC team checks it and you see the result below. KYC orders send it by themselves.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="min-w-0 flex-1 truncate rounded-lg border bg-background px-3 py-2 font-mono text-sm" title={kycLink}>
-              {kycLink}
-            </div>
-            <div className="flex shrink-0 gap-2">
-              <Button className="gap-1.5" onClick={() => copyText(kycLink, 'KYC link')}>
-                <IconCopy className="size-4" /> Copy link
-              </Button>
-              <Button
-                variant="outline"
-                className="gap-1.5"
-                nativeButton={false}
-                render={
-                  <a
-                    href={`https://wa.me/?text=${encodeURIComponent(`Please verify your identity here: ${kycLink}`)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  />
-                }
-              >
-                <IconBrandWhatsapp className="size-4" /> WhatsApp
-              </Button>
-              <Button
-                variant="outline"
-                className="gap-1.5"
-                nativeButton={false}
-                render={
-                  <a
-                    href={`mailto:?subject=${encodeURIComponent('Please verify your identity')}&body=${encodeURIComponent(`Please verify your identity here: ${kycLink}`)}`}
-                  />
-                }
-              >
-                <IconMail className="size-4" /> Email
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
-
       {!configured && (
         <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
           <IconAlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
@@ -455,13 +441,17 @@ export default function IdVerification() {
         </div>
       )}
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="relative w-full md:max-w-sm">
-          <IconSearch className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Search customer, company, person or order…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        {!isLoading && (
-          <div className="flex flex-wrap items-center gap-2">
+      <SectionCards stats={stats} isLoading={isLoading} compact />
+
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList className="max-w-full justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {TABS.map(([value, label]) => (
+              <TabsTrigger key={value} value={value} className={TAB}>{label}</TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <div className="flex flex-wrap items-center gap-2">
             {/* Finstap: unpaid ID checks the plan allows (none shown when checks are free) */}
             {credits?.limit != null && (
               <span
@@ -471,75 +461,91 @@ export default function IdVerification() {
                 {credits.available} of {credits.limit} ID check credits left
               </span>
             )}
-            <p className="text-sm text-muted-foreground">
-              {shown.length === orders.length ? `${orders.length} KYC order${orders.length === 1 ? '' : 's'}` : `${shown.length} of ${orders.length}`}
-            </p>
+          <div className="relative w-full sm:w-72">
+            <IconSearch className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input className="pl-9" placeholder="Search applicant, company, order…" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-        )}
+          {kycLink && (
+            <Button size="sm" className="gap-1.5" title={kycLink} onClick={() => copyText(kycLink, 'General KYC link')}>
+              <IconCopy className="size-4" /> General KYC Link
+            </Button>
+          )}
+        </div>
       </div>
 
       {isLoading && orders.length === 0 ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}
         </div>
-      ) : shown.length === 0 ? (
+      ) : rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed bg-card/40 px-4 py-16 text-center">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
             <IconId className="h-6 w-6" />
           </div>
-          <h3 className="text-lg font-semibold">{search.trim() ? 'No KYC orders found' : 'No KYC orders yet'}</h3>
+          <h3 className="text-lg font-semibold">{search.trim() || tab !== 'all' ? 'No checks found' : 'No KYC orders yet'}</h3>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-            {search.trim()
-              ? 'Try another name, company or order number.'
+            {search.trim() || tab !== 'all'
+              ? 'Try another name, company, order number or tab.'
               : 'Orders with a KYC product show up here, ready for identity verification.'}
           </p>
         </div>
       ) : (
-        <div className="grid gap-3 xl:grid-cols-2">
-          {shown.map((o) => (
-            <Card key={o.id} size="sm" className="gap-3 p-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                    <Link to={`/admin/orders?open=${o.id}`} className="text-sm font-semibold text-primary hover:underline">
-                      {o.order_number}
-                    </Link>
-                    <span className="text-xs text-muted-foreground">{shortDate(o.created_at)}</span>
-                  </div>
-                  <p className="truncate text-sm font-medium" title={o.applicant_email || o.customer_email}>{o.applicant_name || o.customer_name || '—'}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {companyLabel(o)}
-                    {' · '}
-                    {kycProduct(o)}
-                  </p>
-                </div>
-                <Badge className={`${statusTone(o.status)} shrink-0 whitespace-nowrap`}>{o.status || 'Pending'}</Badge>
-              </div>
-
-              <div className="space-y-1.5">
-                {(o.people || []).map((p) => (
-                  <PersonRow key={p.id} person={p} busy={busyId === p.id} onAction={runAction} onOpen={openResult} />
+        // One line per person to verify (and one per KYC order that has nobody yet)
+        <Card className="overflow-hidden p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[820px] text-left text-sm">
+              <thead className="border-b text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2.5 font-semibold">Order</th>
+                  <th className="px-3 py-2.5 font-semibold">Date</th>
+                  <th className="px-3 py-2.5 font-semibold">Applicant</th>
+                  <th className="px-3 py-2.5 font-semibold">Company</th>
+                  <th className="px-3 py-2.5 font-semibold">Status</th>
+                  <th className="px-4 py-2.5" />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(({ key, order, person }) => (
+                  <tr key={key} className="border-b align-middle last:border-0 hover:bg-muted/30">
+                    <td className="px-4 py-2.5">
+                      {order ? (
+                        <Link to={`/admin/orders?open=${order.id}`} className={ORDER_CHIP}>{order.order_number}</Link>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">KYC link</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{ddmmyy((order || person).created_at)}</td>
+                    <td className="max-w-56 px-3 py-2.5">
+                      {person ? (
+                        <button type="button" className="block max-w-full truncate text-left hover:text-primary" onClick={() => openResult(person)} title={person.email || ''}>
+                          <span className="font-medium">{person.full_name}</span>
+                          {person.person_role ? <span className="text-xs text-muted-foreground"> · {person.person_role}</span> : null}
+                        </button>
+                      ) : (
+                        <span className="text-muted-foreground">No person yet</span>
+                      )}
+                    </td>
+                    <td className="max-w-56 truncate px-3 py-2.5 text-muted-foreground" title={order ? companyLabel(order) : ''}>
+                      {order ? companyLabel(order).replace(' (not registered yet)', ' · not registered') : '—'}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {person ? (
+                        <Badge className={`${checkTone(person.status)} whitespace-nowrap`}>
+                          {person.session_url && ['Not Started', 'In Progress'].includes(person.status || 'Not Started')
+                            ? (person.link_sent_at ? 'Link emailed' : 'Link ready')
+                            : checkLabel(person.status)}
+                        </Badge>
+                      ) : (
+                        <Badge className="badge-amber whitespace-nowrap">Add person</Badge>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                      <RowAction order={order} person={person} busy={person && busyId === person.id} onAction={runAction} onOpen={openResult} onAdd={openAdd} />
+                    </td>
+                  </tr>
                 ))}
-                <Button variant="ghost" size="xs" className="h-7 gap-1 text-muted-foreground" onClick={() => openAdd(o)}>
-                  <IconPlus className="size-3.5" />
-                  {(o.people || []).length ? 'Add another person' : 'Add person to verify'}
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {linkChecks.length > 0 && (
-        <Card className="space-y-2 p-4">
-          <div>
-            <h3 className="text-sm font-semibold">From your KYC link</h3>
-            <p className="text-xs text-muted-foreground">Clients who started a check on your KYC link, newest first.</p>
-          </div>
-          <div className="space-y-1.5">
-            {linkChecks.map((p) => (
-              <PersonRow key={p.id} person={p} busy={busyId === p.id} onAction={runAction} onOpen={openResult} />
-            ))}
+              </tbody>
+            </table>
           </div>
         </Card>
       )}
