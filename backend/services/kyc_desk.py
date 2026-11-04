@@ -325,8 +325,9 @@ def owner_put_file(slug, check_id, kind, data):
     if len(data) > kyc_form.MAX_BYTES:
         raise svc.ServiceError("The file is too large. Use a photo or PDF under 10 MB.")
     mime, ext = kyc_form._sniff(data)
-    if not mime:
-        raise svc.ServiceError("Upload a photo (JPG, PNG or WebP) or a PDF.")
+    # Documents can be a photo or a PDF; the selfie must be a photo
+    if not mime or (ext == 'pdf' and kind == 'selfie'):
+        raise svc.ServiceError("Upload a photo (JPG, PNG or WebP)" + ("." if kind == 'selfie' else " or a PDF."))
     tenant, _ = svc._check(slug, check_id)
     with use_tenant(tenant):
         kyc_form.ensure()

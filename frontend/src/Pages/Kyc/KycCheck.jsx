@@ -86,7 +86,7 @@ function AddDocument({ api, check, onSaved }) {
   const inputId = `add-doc-${check.id}`
   return (
     <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-dashed px-3 py-2 text-sm">
-      <span className="text-muted-foreground">Add or replace a document (photo or PDF):</span>
+      <span className="text-muted-foreground">Add or replace a document (photo or PDF; selfie: photo only):</span>
       <select
         className="h-8 rounded-md border border-input bg-background px-2 text-sm"
         value={kind}
@@ -103,7 +103,7 @@ function AddDocument({ api, check, onSaved }) {
       <input
         id={inputId}
         type="file"
-        accept="image/jpeg,image/png,image/webp,application/pdf"
+        accept={kind === "selfie" ? "image/jpeg,image/png,image/webp" : "image/jpeg,image/png,image/webp,application/pdf"}
         className="hidden"
         onChange={async (e) => {
           const file = e.target.files?.[0]
@@ -168,7 +168,7 @@ function FormFile({ file, check, getToken, api, onSaved, canEdit }) {
               <IconReplace className="size-4" />
               <input
                 type="file"
-                accept="image/jpeg,image/png,image/webp,application/pdf"
+                accept={file.file_kind === "selfie" ? "image/jpeg,image/png,image/webp" : "image/jpeg,image/png,image/webp,application/pdf"}
                 className="hidden"
                 onChange={async (e) => {
                   const picked = e.target.files?.[0]
