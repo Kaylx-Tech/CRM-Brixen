@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/breadcrumb'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
-import { ModeToggle } from '@/components/ThemeTogge'
 import Notification from '@/components/Notification'
 import { PrivacyToggle } from '@/components/PrivacyToggle'
 import TeamSwitcher from '@/components/TeamSwitcher'
@@ -105,7 +104,6 @@ export function SiteHeader({ homeHref = '/admin/dashboard' }) {
         <div className="flex items-center gap-2">
           <PrivacyToggle />
           <Notification />
-          <ModeToggle />
           <Separator orientation="vertical" className="mx-1 h-6 data-vertical:self-auto" />
           <TeamSwitcher />
         </div>
