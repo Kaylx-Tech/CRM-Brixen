@@ -5,6 +5,7 @@ import { Table } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { ownerApi, shortDate } from "@/lib/owner"
+import { emailProblem } from "@/lib/validation"
 import { Button, Panel } from "./ownerUi"
 import { GREEN, GREY, PILL } from "../Kyc/kycStatus"
 
@@ -37,6 +38,11 @@ export default function KycTeam() {
 
   const add = async (e) => {
     e.preventDefault()
+    const problem = emailProblem(email)
+    if (problem) {
+      toastFail(undefined, problem)
+      return
+    }
     setBusy(true)
     const id = toastProcessing("Adding…")
     const res = await ownerApi("/kyc-users", { method: "POST", body: { email, full_name: name } })

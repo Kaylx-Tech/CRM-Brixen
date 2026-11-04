@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { PhoneInput } from "@/components/ui/phone-input"
 import { Label } from "@/components/ui/label"
 import { getApiBase } from "@/lib/api"
+import { emailProblem } from "@/lib/validation"
 import { useBranding } from "@/lib/branding"
 
 /**
@@ -43,6 +44,11 @@ export default function KycStart() {
 
   const start = async (e) => {
     e.preventDefault()
+    const problem = emailProblem(form.email)
+    if (problem) {
+      setErrors((er) => ({ ...er, email: problem }))
+      return
+    }
     setSending(true)
     setNotice("")
     try {

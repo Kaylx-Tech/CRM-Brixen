@@ -23,6 +23,7 @@ import threading
 import time
 
 from db import hash_password, verify_password
+from utils.validation import email_problem
 from tenancy import _platform_conn, _platform_execute, _platform_query, ensure_platform, use_tenant
 
 CODE_MINUTES = 10
@@ -494,8 +495,8 @@ def add_kyc_user(owner, email, full_name, kyc_base_url):
     Returns (user, emailed)."""
     email = str(email or '').strip().lower()
     name = str(full_name or '').strip()[:120]
-    if '@' not in email or '.' not in email.split('@')[-1]:
-        raise OwnerAuthError("Write a valid email address.")
+    if email_problem(email):
+        raise OwnerAuthError(email_problem(email))
     ensure_platform()
     existing = _platform_query("SELECT * FROM platform_admins WHERE email = ? LIMIT 1;", (email,), one=True)
     if existing and (existing.get('role') or 'owner') != 'kyc':

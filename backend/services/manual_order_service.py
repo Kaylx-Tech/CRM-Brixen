@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import secrets
 from db import query_db, execute_db, hash_password
+from utils.validation import email_problem
 
 
 def _optional_id(value):
@@ -29,6 +30,8 @@ def _ensure_client(data, actor=None):
         email = str(data.get('new_client_email') or '').strip().lower()
         if not full_name or not email:
             return None, None, 'Please enter the new client name and email.'
+        if email_problem(email):
+            return None, None, email_problem(email)
         existing = query_db("SELECT * FROM users WHERE lower(email) = lower(?) LIMIT 1;", (email,), one=True)
         if existing:
             return int(existing['id']), dict(existing), None

@@ -149,6 +149,7 @@ const SETTINGS_SCHEMA = {
   portal_url: { label: 'Portal URL', type: 'url' },
   uk_formfill_pro_url: { label: 'UK FormFill Pro URL', type: 'url' },
   smtp_port: hourRule('SMTP port', 1, 65535),
+  smtp_from: { label: 'Send from address', type: 'email' },
   wordpress_url: { label: 'WordPress URL', type: 'url' },
   didit_callback_url: { label: 'Didit callback URL', type: 'url' },
   compliance_alerts_send_hour: hourRule('Send hour', 0, 23),
@@ -946,6 +947,7 @@ export default function Settings() {
                 <Field id="smtp_from" label="Send from address">
                   <Input
                     id="smtp_from"
+                    type="email"
                     value={form.smtp_from}
                     onChange={(e) => setField('smtp_from', e.target.value)}
                     disabled={isLoading}

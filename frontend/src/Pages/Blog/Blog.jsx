@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom"
 import { IconArrowLeft, IconArrowRight, IconCircleCheck, IconLoader2 } from "@tabler/icons-react"
 import { cn } from "cn"
 import { getApiBase } from "@/lib/api"
+import { emailProblem } from "@/lib/validation"
 import { PlainText } from "@/lib/plainText"
 import { LegalLinks } from "@/Pages/Legal/LegalLayout"
 import finstapLogo from "@/assets/finstap-logo.svg"
@@ -28,6 +29,11 @@ export function NewsletterSignup({ source = "website", dark = false, className }
 
   const submit = async (e) => {
     e.preventDefault()
+    const problem = emailProblem(email)
+    if (problem) {
+      setState({ busy: false, done: "", error: problem })
+      return
+    }
     setState({ busy: true, done: "", error: "" })
     const res = await getJson("/platform/newsletter/subscribe", {
       method: "POST",

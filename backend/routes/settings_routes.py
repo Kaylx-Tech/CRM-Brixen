@@ -4,7 +4,7 @@ from database settings with fallback to environment variables.
 """
 import re
 
-from utils.validation import validate, validation_error
+from utils.validation import email_problem, validate, validation_error
 from utils.response import success_response, error_response
 from services.settings_service import (
     get_all_settings,
@@ -34,6 +34,7 @@ SETTINGS_RULES = {
     'portal_url': {'label': 'Portal URL', 'type': 'url'},
     'uk_formfill_pro_url': {'label': 'UK FormFill Pro URL', 'type': 'url'},
     'smtp_port': _int_rule('SMTP port', 1, 65535),
+    'smtp_from': {'label': 'Send from address', 'type': 'email'},
     'wordpress_url': {'label': 'WordPress URL', 'type': 'url'},
     'didit_callback_url': {'label': 'Didit callback URL', 'type': 'url'},
     'compliance_alerts_send_hour': _int_rule('Send hour', 0, 23),
@@ -119,6 +120,9 @@ def handle_settings_routes(environ, start_response, path, method, user, body, qu
         if isinstance(body, dict):
             test_email = body.get('test_email') or body.get('email') or user.get('email')
             custom_cfg = body.get('smtp_config')
+        test_email = str(test_email or '').strip() or None
+        if test_email and email_problem(test_email):
+            return validation_error(start_response, {'test_email': email_problem(test_email)})
 
         result = test_smtp_connection(test_email=test_email, custom_cfg=custom_cfg)
         if result.get('success'):

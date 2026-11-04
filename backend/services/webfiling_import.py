@@ -8,6 +8,7 @@ import re
 import uuid
 
 from db import query_db, execute_db, unusable_password_hash
+from utils.validation import email_problem
 from services.smart_intake import (
     companies_house_api_key,
     companies_house_status_value,
@@ -19,7 +20,6 @@ from services.smart_intake import (
 )
 
 MAX_NUMBERS = 100
-EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 
 def canonical_company_number(raw):
@@ -100,8 +100,8 @@ def _ensure_client(data, actor):
     new_email = (data.get('new_client_email') or data.get('client_email') or '').strip().lower()
     if not new_name:
         return None, None, 'Enter the new client full name'
-    if not new_email or not EMAIL_RE.match(new_email):
-        return None, None, 'Enter a valid client email'
+    if not new_email or email_problem(new_email):
+        return None, None, email_problem(new_email) or 'Enter a valid client email'
 
     try:
         from services import permanent_purge

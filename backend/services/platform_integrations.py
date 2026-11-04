@@ -165,6 +165,12 @@ def save(values, clear=None):
     if any(name in SERVER_ONLY for name in list(values) + list(clear or [])):
         raise IntegrationError("This key is set on the server (Coolify env), not here")
     clear = [c for c in (clear or []) if c in FIELDS]
+    # A "From address" must be an email address (checked before anything is saved)
+    from utils.validation import email_problem
+    for name in ('PLATFORM_SMTP_FROM', 'KYC_SMTP_FROM'):
+        value = str(values.get(name) or '').strip()
+        if name not in clear and value and email_problem(value):
+            raise IntegrationError(f"{FIELDS[name][1]}: {email_problem(value)}")
     changed = []
     for name, value in values.items():
         if name not in FIELDS or name in clear:
