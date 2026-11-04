@@ -125,6 +125,18 @@ export default function KycRecords() {
             Identity checks for your clients. Send them the KYC link; Finstap's KYC team checks what they send.
           </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        {data?.link && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            title={`Copy the KYC link for any client: ${data.link}`}
+            onClick={() => copyText(data.link, 'General KYC link')}
+          >
+            <IconCopy className="size-4" /> General KYC Link
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"
@@ -137,6 +149,7 @@ export default function KycRecords() {
         >
           <IconRefresh className={`size-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
         </Button>
+        </div>
       </div>
 
       {error && (
@@ -199,18 +212,6 @@ export default function KycRecords() {
         </Card>
       )}
 
-      {data?.link && (
-        <Card className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold">Your KYC link</p>
-            <p className="text-xs text-muted-foreground">Send it to any client: they verify their identity on your portal.</p>
-            <p className="mt-1 truncate font-mono text-xs" title={data.link}>{data.link}</p>
-          </div>
-          <Button variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={() => copyText(data.link, 'KYC link')}>
-            <IconCopy className="size-3.5" /> Copy link
-          </Button>
-        </Card>
-      )}
       {data?.configured && !data.link && (
         <p className="text-sm text-muted-foreground">The KYC service is off for Brixen's workspace on Finstap.</p>
       )}
