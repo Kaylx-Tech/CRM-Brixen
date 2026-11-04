@@ -3,6 +3,7 @@ import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "reac
 import { cn } from "cn"
 import {
   IconActivity,
+  IconGift,
   IconBuildingSkyscraper,
   IconChevronDown,
   IconId,
@@ -26,6 +27,7 @@ import { ModeToggle } from "@/components/ThemeTogge"
 import { PageTransition } from "@/lib/motion"
 import { getOwnerToken, ownerApi, setOwnerToken } from "@/lib/owner"
 import KycCheck from "../Kyc/KycCheck"
+import OwnerPartnerPerks from "./OwnerPartnerPerks"
 import finstapLogo from "@/assets/finstap-logo.svg"
 import finstapLogoLight from "@/assets/finstap-logo-light.svg"
 import { OwnerForgot, OwnerLogin, OwnerSetPassword } from "./OwnerAuth"
@@ -54,6 +56,7 @@ const NAV = [
       ["Activity log", "/owner/activity", IconActivity],
       ["KYC", "/owner/kyc", IconId],
       ["Registered office", "/owner/registered-office", IconMapPin],
+      ["Partner Perks", "/owner/perks", IconGift],
     ],
   },
   // Content (Blogs, Newsletter) is off the menu for now (user, 2026-10-28); its pages stay at /owner/content/…
@@ -75,6 +78,7 @@ const MORE = [
   ["Plans", "/owner/plans", IconTags],
   ["Activity log", "/owner/activity", IconActivity],
   ["KYC", "/owner/kyc", IconId],
+  ["Partner Perks", "/owner/perks", IconGift],
   ["Integrations", "/owner/integrations", IconPlugConnected],
   ["Settings", "/owner/settings", IconSettings],
 ]
@@ -270,6 +274,7 @@ export default function OwnerPortal() {
         <Route path="plans" element={<OwnerPlans />} />
         <Route path="activity" element={<OwnerActivity />} />
         <Route path="billing" element={<OwnerBilling />} />
+        <Route path="perks" element={<OwnerPartnerPerks />} />
         <Route path="content/blog" element={<OwnerBlog />} />
         <Route path="content/blog/:id" element={<OwnerBlogEditor />} />
         <Route path="content/newsletter" element={<OwnerNewsletter />} />

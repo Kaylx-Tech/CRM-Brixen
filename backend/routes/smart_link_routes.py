@@ -113,6 +113,12 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
             ORDER BY LOWER(l.category), l.sort_order, LOWER(l.title);
         """) or []
         links = [dict(r) for r in rows]
+        # Finstap's Partner Perks (set in admin.finstap.com) for every workspace, read only
+        try:
+            from services.partner_perks import for_workspace
+            links = for_workspace() + links
+        except ImportError:
+            pass
         categories = sorted({l['category'] for l in links}, key=str.lower)
         return success_response(start_response, data={
             'links': links, 'categories': categories, 'can_manage': role in MANAGE_ROLES,

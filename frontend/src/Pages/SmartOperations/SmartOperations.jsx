@@ -110,7 +110,12 @@ function LinkRow({ link, canManage, onEdit, onDelete }) {
   return (
     <div className="group flex flex-wrap items-start gap-x-3 gap-y-2 rounded-xl border bg-background/60 p-3 transition-colors hover:border-primary/30">
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold" title={link.title}>{link.title}</p>
+        <p className="flex items-center gap-1.5 truncate text-sm font-semibold" title={link.title}>
+          <span className="truncate">{link.title}</span>
+          {link.from_finstap && (
+            <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-px text-[10px] font-semibold text-primary">Finstap</span>
+          )}
+        </p>
         <a
           href={link.url}
           target="_blank"
@@ -139,7 +144,7 @@ function LinkRow({ link, canManage, onEdit, onDelete }) {
         >
           <IconExternalLink className="size-3.5" />
         </Button>
-        {canManage && (
+        {canManage && !link.from_finstap && (
           <>
             <Button variant="ghost" size="xs" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => onEdit(link)} title="Edit">
               <IconPencil className="size-3.5" />

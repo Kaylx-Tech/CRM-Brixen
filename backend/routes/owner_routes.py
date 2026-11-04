@@ -501,6 +501,24 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
         return success_response(start_response, data={'slug': slug},
                                 message=f"{tenant['name']} is deleted for good.")
 
+    # Partner Perks for every workspace (services/partner_perks.py)
+    perk = re.match(r'^/perks(?:/(\d+))?$', sub)
+    if perk:
+        from services import partner_perks
+        try:
+            if method == 'GET' and not perk.group(1):
+                return success_response(start_response, data={'perks': partner_perks.all_perks()})
+            if method in ('POST', 'PUT'):
+                perks = partner_perks.save(body, perk.group(1))
+                audit(admin, 'PARTNER_PERK_SAVED', None, f"{(body or {}).get('category')}: {(body or {}).get('title')}")
+                return success_response(start_response, data={'perks': perks}, message="Saved. Every workspace sees it.")
+            if method == 'DELETE' and perk.group(1):
+                perks = partner_perks.remove(perk.group(1))
+                audit(admin, 'PARTNER_PERK_REMOVED', None, f"perk {perk.group(1)}")
+                return success_response(start_response, data={'perks': perks}, message="Removed from every workspace.")
+        except partner_perks.PerkError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+
     if sub == '/workspaces' and method == 'GET':
         search = _q(query, 'search').lower()
         plan_filter = _q(query, 'plan').lower()
