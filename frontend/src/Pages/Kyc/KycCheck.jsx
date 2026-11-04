@@ -313,7 +313,9 @@ function Resubmit({ check, onSaved, api }) {
 }
 
 /** Owner only: delete the photos, files, answers and result the person sent (the check itself stays). */
-function DeleteData({ check, api, onDone }) {
+function DeleteData({ check, api, onDone, backTo }) {
+  const navigate = useNavigate()
+  const [removeOpen, setRemoveOpen] = useState(false)
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -331,6 +333,21 @@ function DeleteData({ check, api, onDone }) {
     }
   }
 
+  // Remove the check completely (e.g. a test): files, the check and its unpaid charge
+  const removeCheck = async () => {
+    setBusy(true)
+    const id = toastProcessing("Removing…")
+    const res = await api(`/desk/checks/${check.workspace}/${check.id}/remove`, { method: "POST" })
+    setBusy(false)
+    setRemoveOpen(false)
+    if (res.ok) {
+      toastDone(id, res.message)
+      navigate(backTo)
+    } else {
+      toastFail(id, res.error)
+    }
+  }
+
   return (
     <Panel title="Delete KYC data" description="Only you (the Finstap owner) can do this. The KYC team cannot.">
       {check.data_deleted_at ? (
@@ -340,6 +357,17 @@ function DeleteData({ check, api, onDone }) {
           <IconTrash className="size-4" /> Delete documents and answers
         </Button>
       )}
+      <Button variant="outline" size="sm" className="mt-2 text-destructive" onClick={() => setRemoveOpen(true)}>
+        <IconTrash className="size-4" /> Remove check completely
+      </Button>
+      <DeleteConfirmation
+        isOpen={removeOpen}
+        onClose={() => setRemoveOpen(false)}
+        onConfirm={removeCheck}
+        isLoading={busy}
+        title="Remove this check completely?"
+        description="For a test or a mistake: the check, its files and its unpaid charge are removed from every list. This cannot be undone."
+      />
       <DeleteConfirmation
         isOpen={open}
         onClose={() => setOpen(false)}
@@ -526,7 +554,7 @@ export default function KycCheck({ api = kycApi, getToken = getKycToken, backTo 
         <div className="space-y-4">
           <Decision key={`${check.status}-${check.reviewed_at}`} check={check} onSaved={load} api={api} />
           <Resubmit check={check} onSaved={load} api={api} />
-          {(canDelete || check.can_delete) && <DeleteData check={check} api={api} onDone={load} />}
+          {(canDelete || check.can_delete) && <DeleteData check={check} api={api} onDone={load} backTo={backTo} />}
           <Panel title="Order and client">
             <Facts
               rows={[

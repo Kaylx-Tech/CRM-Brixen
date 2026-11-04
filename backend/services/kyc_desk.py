@@ -308,6 +308,20 @@ def delete_data(slug, check_id):
     return row, files
 
 
+def remove_check(slug, check_id):
+    """The owner removes a check completely (e.g. a test): its files, the check itself and its charge if it was
+    not paid yet. Returns the removed row."""
+    from db import execute_db
+    from tenancy import _platform_execute
+    tenant, row = svc._check(slug, check_id)
+    with use_tenant(tenant):
+        wipe(check_id)
+        execute_db("DELETE FROM id_verifications WHERE id = ?;", (int(check_id),))
+    _platform_execute("DELETE FROM kyc_charges WHERE tenant_slug = ? AND check_id = ? AND status != 'paid';",
+                      (tenant['slug'], int(check_id)))
+    return row
+
+
 def tell_team(tenant, row):
     """The person sent the form: every active KYC team member is emailed to check it."""
     from config import TENANT_BASE_DOMAIN

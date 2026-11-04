@@ -13,27 +13,53 @@ _PERSON_LABELS = (
     r'director|signatory|shareholder|contact person|person',
     r'name',
 )
+# Emails that are not the person's own ("Email address" is fine)
+_NOT_EMAIL = r'company|business|trading|access|notification|work|partner|referr|forwarding'
 _NOT_PERSON = r'company|business|trading|bank|account|access|notification|work|partner|referr|sort code|address'
 
 
-def form_contact(form_json):
+def _answers(raw, out=None):
+    """Every (label, answer) pair in an order's saved form: {"Label": answer}, the services' own questions
+    ({"service_fields": [{label, value}]}) and website checkout data ([{key|display_key, value}])."""
+    out = [] if out is None else out
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw or '{}')
+        except ValueError:
+            return out
+    if isinstance(raw, list):
+        for item in raw:
+            _answers(item, out)
+    elif isinstance(raw, dict):
+        label = raw.get('label') or raw.get('display_key') or raw.get('key') or raw.get('name')
+        value = raw.get('value') if 'value' in raw else raw.get('display_value')
+        if label and isinstance(value, (str, int, float)) and not isinstance(value, bool):
+            out.append((str(label), str(value)))
+        for key, value in raw.items():
+            # The buyer's own billing/shipping/account details are not the applicant's
+            if str(key).lower() in ('billing', 'shipping', 'customer', 'user', 'account'):
+                continue
+            if isinstance(value, (dict, list)):
+                _answers(value, out)
+            elif isinstance(value, str) and key not in ('label', 'value', 'display_key', 'display_value', 'key',
+                                                          'name', 'type', 'id'):
+                out.append((str(key), value))
+    return out
+
+
+def form_contact(*form_jsons):
     """(name, email) of the person the order is for, from the order form ("Person to Verify", "Full name",
-    "First name" + "Last name", "Email"…)."""
-    try:
-        values = json.loads(form_json or '{}') or {}
-    except ValueError:
-        return '', ''
-    if not isinstance(values, dict):
-        return '', ''
+    "First name" + "Last name", "Email"…) and the website checkout."""
+    pairs = []
+    for raw in form_jsons:
+        _answers(raw, pairs)
     email = first = last = ''
     found = {}
-    for label, value in values.items():
-        if isinstance(value, (dict, list)):
-            continue
+    for label, value in pairs:
         key, text = str(label).lower(), str(value or '').strip()
         if not text:
             continue
-        if not email and 'mail' in key and '@' in text and not re.search(_NOT_PERSON, key):
+        if not email and 'mail' in key and '@' in text and not re.search(_NOT_EMAIL, key):
             email = text
             continue
         if re.search(r'first\s*name|given name|forename', key):
@@ -57,7 +83,7 @@ def form_contact(form_json):
 def applicant(order):
     """The person the order is for: the order form's person (e.g. "Person to Verify") first, then the order's
     owner details, then the customer account (which can be someone else, e.g. who placed the order)."""
-    form_name, form_email = form_contact(order.get('order_form_values_json'))
+    form_name, form_email = form_contact(order.get('order_form_values_json'), order.get('checkout_form_json'))
     name = (form_name or order.get('owner_name') or order.get('full_name') or '').strip()
     email = (form_email or order.get('owner_form_email') or order.get('email') or '').strip()
     return name, email

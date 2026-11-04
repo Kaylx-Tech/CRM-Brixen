@@ -273,7 +273,7 @@ def _auto_start(order_id, triggered_by):
         if query_db("SELECT 1 FROM id_verifications WHERE order_id = ? LIMIT 1;", (order_id,), one=True):
             return
         order = query_db("""
-            SELECT o.id, o.owner_name, o.owner_form_email, o.order_form_values_json, o.created_by_id, u.full_name, u.email
+            SELECT o.id, o.owner_name, o.owner_form_email, o.order_form_values_json, o.checkout_form_json, o.created_by_id, u.full_name, u.email
             FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = ?;
         """, (order_id,), one=True)
         # Website guest orders wait until the team links the real customer

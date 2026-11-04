@@ -134,7 +134,7 @@ def _desk(environ, start_response, sub, method, admin, body, query):
                                       ('Content-Length', str(len(data))), ('Cache-Control', 'private, no-store'),
                                       ('X-Content-Type-Options', 'nosniff')])
             return [data]
-        match = re.match(r'^/desk/checks/([a-z0-9-]+)/(\d+)(?:/(status|resubmit|delete-data))?$', sub)
+        match = re.match(r'^/desk/checks/([a-z0-9-]+)/(\d+)(?:/(status|resubmit|delete-data|remove))?$', sub)
         if not match:
             return error_response(start_response, "Not found", status_code=404)
         slug, check_id, act = kyc_desk.resolve(match.group(1)), int(match.group(2)), match.group(3)
@@ -154,6 +154,12 @@ def _desk(environ, start_response, sub, method, admin, body, query):
             return success_response(start_response, data=kyc_desk.shown(row, team), message=(
                 "New link emailed to the client." if emailed
                 else "New link made, but the email was not sent. Copy the link and send it yourself."))
+        if act == 'remove' and method == 'POST':
+            if not owner:
+                return error_response(start_response, "Only the Finstap owner can remove a check.", status_code=403)
+            row = kyc_desk.remove_check(slug, check_id)
+            audit(admin, 'KYC_CHECK_REMOVED', slug, f"{row['full_name']} ({row.get('order_number') or 'no order'})")
+            return success_response(start_response, data={'id': check_id}, message="Check removed.")
         if act == 'delete-data' and method == 'POST':
             if not owner:
                 return error_response(start_response, "Only the Finstap owner can delete KYC data.", status_code=403)
