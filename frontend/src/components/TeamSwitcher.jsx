@@ -26,12 +26,12 @@ import { apiRequest } from "@/lib/api"
 import { getCurrentUser, getRole, homePath, isAdminRole } from "@/lib/permissions"
 import { useTheme } from "@/hooks/theme-provider"
 
-// Menu rows: roomy, regular-weight text and thin outline icons (the account menu's Apple-like look)
+// Menu rows: compact, like the sidebar's account menu (small text, small outline icons)
 const ROW =
-  "gap-3.5 rounded-lg px-3 py-2.5 text-[0.9375rem] font-normal text-foreground/90 " +
-  "[&_svg]:size-5! [&_svg]:stroke-[1.5] [&_svg]:text-muted-foreground"
-// Lines between groups run edge to edge, with a little air around them
-const SEP = "-mx-2 my-1.5"
+  "gap-2.5 rounded-md px-2 py-1.5 text-sm font-normal text-foreground/90 " +
+  "[&_svg]:size-4! [&_svg]:stroke-[1.75] [&_svg]:text-muted-foreground"
+// Lines between groups run edge to edge
+const SEP = "-mx-1 my-1"
 
 const APPEARANCE = [
   { value: "light", label: "Light", Icon: IconSun },
@@ -43,7 +43,7 @@ const APPEARANCE = [
 function AppearanceSwitch() {
   const { theme, setTheme } = useTheme()
   return (
-    <div role="radiogroup" aria-label="Appearance" className="flex items-center gap-1 rounded-xl bg-muted p-1">
+    <div role="radiogroup" aria-label="Appearance" className="flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
       {APPEARANCE.map(({ value, label, Icon }) => {
         const active = (theme || "system") === value
         return (
@@ -55,13 +55,13 @@ function AppearanceSwitch() {
             aria-label={label}
             title={label}
             onClick={() => setTheme(value)}
-            className={`grid size-8 cursor-pointer place-items-center rounded-lg transition-[background-color,color,box-shadow] duration-200 ${
+            className={`grid size-6 cursor-pointer place-items-center rounded-md transition-[background-color,color,box-shadow] duration-200 ${
               active
                 ? "bg-background text-foreground shadow-sm ring-2 ring-primary"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Icon className="size-[1.125rem] stroke-[1.5]" />
+            <Icon className="size-3.5 stroke-[1.75]" />
           </button>
         )
       })}
@@ -169,19 +169,19 @@ export default function TeamSwitcher() {
         <IconChevronDown className="hidden size-4 text-muted-foreground sm:block" />
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-80 rounded-2xl p-2 shadow-xl">
+      <DropdownMenuContent align="end" className="w-64 rounded-xl p-1 shadow-lg">
         {/* Who is signed in */}
-        <div className="flex items-center gap-3.5 px-3 py-3">
-          <Avatar className="size-11">
+        <div className="flex items-center gap-2.5 px-2 py-2">
+          <Avatar className="size-8">
             <AvatarImage src={user.avatar_url || ""} alt={name} />
-            <AvatarFallback className={impersonated ? "bg-amber-500 text-white" : "bg-primary/15 text-[0.9375rem] font-semibold text-primary"}>
+            <AvatarFallback className={impersonated ? "bg-amber-500 text-white" : "bg-primary/15 text-xs font-semibold text-primary"}>
               {initials(name)}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <p className="truncate text-[0.9375rem] font-medium">{name}</p>
+            <p className="truncate text-sm font-medium">{name}</p>
             {user.email && user.email !== name ? (
-              <p className="truncate text-[0.8125rem] text-muted-foreground">{user.email}</p>
+              <p className="truncate text-xs text-muted-foreground">{user.email}</p>
             ) : null}
           </div>
         </div>
@@ -205,20 +205,20 @@ export default function TeamSwitcher() {
         {canSwitch ? (
           <>
             <DropdownMenuGroup>
-              <DropdownMenuLabel className="px-3 text-xs font-medium text-muted-foreground">Switch user</DropdownMenuLabel>
+              <DropdownMenuLabel className="px-2 text-xs font-medium text-muted-foreground">Switch user</DropdownMenuLabel>
               {users === null ? (
                 <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground"><Spinner /> Loading team…</div>
               ) : users.length === 0 ? (
                 <p className="px-3 py-2 text-sm text-muted-foreground">No other team members to switch to.</p>
               ) : (
                 users.map((u) => (
-                  <DropdownMenuItem key={u.id} className="gap-3 rounded-lg px-3 py-2" onClick={() => switchTo(u)} disabled={busyId !== null}>
-                    <Avatar className="size-8">
-                      <AvatarFallback className="text-xs">{initials(u.full_name)}</AvatarFallback>
+                  <DropdownMenuItem key={u.id} className="gap-2.5 rounded-md px-2 py-1.5" onClick={() => switchTo(u)} disabled={busyId !== null}>
+                    <Avatar className="size-6">
+                      <AvatarFallback className="text-[10px]">{initials(u.full_name)}</AvatarFallback>
                     </Avatar>
                     <span className="flex min-w-0 flex-col">
-                      <span className="truncate text-[0.9375rem]">{u.full_name}</span>
-                      <span className="truncate text-xs text-muted-foreground">{u.role} · {u.email}</span>
+                      <span className="truncate text-sm">{u.full_name}</span>
+                      <span className="truncate text-[11px] text-muted-foreground">{u.role} · {u.email}</span>
                     </span>
                     {busyId === u.id ? <Spinner className="ml-auto" /> : null}
                   </DropdownMenuItem>
@@ -238,9 +238,9 @@ export default function TeamSwitcher() {
         <DropdownMenuSeparator className={SEP} />
 
         {/* Appearance stays in the menu while it is changed (not a menu item, so it does not close it) */}
-        <div className="flex items-center justify-between gap-3 px-3 py-1.5 text-[0.9375rem] text-foreground/90">
-          <span className="flex items-center gap-3.5">
-            <IconSun className="size-5 stroke-[1.5] text-muted-foreground" />
+        <div className="flex items-center justify-between gap-2 px-2 py-1 text-sm text-foreground/90">
+          <span className="flex items-center gap-2.5">
+            <IconSun className="size-4 stroke-[1.75] text-muted-foreground" />
             Appearance
           </span>
           <AppearanceSwitch />
@@ -248,7 +248,7 @@ export default function TeamSwitcher() {
         <DropdownMenuSeparator className={SEP} />
 
         <DropdownMenuGroup>
-          <DropdownMenuItem className={ROW} onClick={signOut}>
+          <DropdownMenuItem className={`${ROW} text-destructive! [&_svg]:text-destructive!`} onClick={signOut}>
             <IconLogout />
             Log out
           </DropdownMenuItem>
