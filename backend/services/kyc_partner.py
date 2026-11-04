@@ -121,6 +121,36 @@ def create_check(tenant, body):
     return {'id': check_id, 'link': fresh['session_url'], 'emailed': emailed, 'reused': bool(row)}, None
 
 
+def correct_person(check_id, body):
+    """The other site corrects who a check is for (its applicant, e.g. after it first sent the account holder's
+    name). Only before the person sent the form. A new email gets a fresh link; the old one stops working.
+    Returns ({id, emailed}, None) or (None, message)."""
+    from db import execute_db, query_db
+    from services import kyc_form
+    from utils.validation import email_problem
+    body = body if isinstance(body, dict) else {}
+    name = str(body.get('full_name') or '').strip()[:160]
+    email = str(body.get('email') or '').strip().lower()[:200]
+    if not name:
+        return None, "The person's name is missing."
+    if email and email_problem(email):
+        return None, email_problem(email)
+    kyc_form.ensure()
+    row = query_db("SELECT * FROM id_verifications WHERE id = ? AND source = 'partner';", (int(check_id),), one=True)
+    if not row:
+        return None, "Check not found"
+    if row['status'] not in ('Not Started', 'In Progress', 'Declined'):
+        return None, "The person already sent the form; it cannot be changed now."
+    new_email = email and email != str(row.get('email') or '').lower()
+    execute_db("UPDATE id_verifications SET full_name = ?, email = COALESCE(?, email), updated_at = datetime('now') "
+               "WHERE id = ?;", (name, email or None, int(check_id)))
+    emailed = False
+    if new_email:
+        fresh = dict(kyc_form.new_link(int(check_id)))
+        emailed = kyc_form.email_form_link(fresh, row.get('external_ref'))
+    return {'id': int(check_id), 'emailed': emailed}, None
+
+
 def checks(limit=500):
     """The active workspace's checks for the other site's record (newest first; no files, no prices)."""
     from db import query_db
