@@ -56,7 +56,9 @@ def form_contact(*form_jsons):
     email = first = last = ''
     found = {}
     for label, value in pairs:
-        key, text = str(label).lower(), str(value or '').strip()
+        # Only the question itself counts: "Company already registered: No › Director name" is "director name"
+        key = re.split(r'\s*[›>]\s*', str(label).lower())[-1].split(':')[-1].strip()
+        text = str(value or '').strip()
         if not text:
             continue
         if not email and 'mail' in key and '@' in text and not re.search(_NOT_EMAIL, key):
