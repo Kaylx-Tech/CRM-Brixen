@@ -21,6 +21,7 @@ import re
 import urllib.error
 import urllib.request
 
+from services.order_applicant import applicant as order_client
 from utils.response import success_response, error_response
 
 TEAM_ROLES = ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
@@ -113,64 +114,6 @@ def _fetch(cfg, path='checks'):
     return (json.loads(raw or b'{}').get('data') or {}), None
 
 
-# Order form labels for the person being verified, best first: "Person to Verify", "KYC owner", "Applicant",
-# then "Full name", then a director or signatory, then any other name that is not a company's
-_PERSON_LABELS = (
-    r'verif|kyc|applicant|owner|holder',
-    r'full\s*name|legal name|your name|client name|customer name',
-    r'director|signatory|shareholder|contact person|person',
-    r'name',
-)
-_NOT_PERSON = r'company|business|trading|bank|account|access|notification|work|partner|referr|sort code|address'
-
-
-def _form_contact(form_json):
-    """(name, email) of the person the order is for, from the order form ("Person to Verify", "Full name",
-    "First name" + "Last name", "Email"…)."""
-    try:
-        values = json.loads(form_json or '{}') or {}
-    except ValueError:
-        return '', ''
-    if not isinstance(values, dict):
-        return '', ''
-    email = first = last = ''
-    found = {}
-    for label, value in values.items():
-        if isinstance(value, (dict, list)):
-            continue
-        key, text = str(label).lower(), str(value or '').strip()
-        if not text:
-            continue
-        if not email and 'mail' in key and '@' in text and not re.search(_NOT_PERSON, key):
-            email = text
-            continue
-        if re.search(r'first\s*name|given name|forename', key):
-            first = first or text
-            continue
-        if re.search(r'last\s*name|surname|family name', key):
-            last = last or text
-            continue
-        # A person's name: letters (and . ' -), not a company's, not an email or a number
-        if re.search(_NOT_PERSON, key) or not re.fullmatch(r"[^\W\d_][^\W\d_ .'-]*(?:[ .'-]+[^\W\d_][^\W\d_.'-]*)*", text) \
-                or len(text) > 80:
-            continue
-        for rank, pattern in enumerate(_PERSON_LABELS):
-            if re.search(pattern, key):
-                found.setdefault(rank, text)
-                break
-    name = f"{first} {last}".strip() or next((found[r] for r in sorted(found)), '')
-    return name, email
-
-
-def order_client(order):
-    """The person the order is for: the order form's person (e.g. "Person to Verify") first, then the order's
-    owner details, then the customer account (which can be someone else, e.g. who placed the order)."""
-    form_name, form_email = _form_contact(order.get('order_form_values_json'))
-    name = (form_name or order.get('owner_name') or order.get('full_name') or '').strip()
-    email = (form_email or order.get('owner_form_email') or order.get('email') or '').strip()
-    return name, email
-
-
 def _order_person(order_id):
     """(order_number, name, email, phone) of a KYC order's customer, or None (guest website orders wait)."""
     from db import query_db
@@ -240,8 +183,25 @@ def _missing_orders(checks):
     return rows
 
 
-def _with_order_client(checks):
-    """A check made for an order shows the client as the order says (not the customer account's details)."""
+def _correct_on_finstap(cfg, check_id, name, email):
+    """Tell Finstap the applicant of a check that was made with the account holder's details."""
+    body = json.dumps({'full_name': name, 'email': email}).encode()
+    req = urllib.request.Request(f"{cfg['api']}/kyc-partner/checks/{int(check_id)}/person", data=body, method='POST',
+                                 headers={'X-Tenant': cfg['workspace'], 'X-KYC-Key': cfg['key'],
+                                          'Content-Type': 'application/json', 'Accept': 'application/json',
+                                          'User-Agent': 'BrixenCRM/1.0 (+https://brixenconsultants.com)'})
+    try:
+        with urllib.request.urlopen(req, timeout=20):
+            return True
+    except Exception as exc:
+        print(f"[KYC] check {check_id}: applicant not corrected on Finstap ({exc})")
+        return False
+
+
+def _with_order_client(checks, cfg=None):
+    """A check made for an order shows the applicant as the order says (not the customer account's details).
+    One that still carries other details and is not sent yet is corrected on Finstap too (a new email gets
+    a fresh link)."""
     from db import query_db
     numbers = [str(c.get('order_number') or '').strip() for c in checks if c.get('order_number')]
     if not numbers:
@@ -255,6 +215,10 @@ def _with_order_client(checks):
         order = orders.get(str(c.get('order_number') or '').strip())
         if order:
             name, email = order_client(order)
+            differs = (name and name.strip().lower() != str(c.get('full_name') or '').strip().lower()) or \
+                (email and email.strip().lower() != str(c.get('email') or '').strip().lower())
+            if differs and cfg and c.get('id') and c.get('status') in ('Not Started', 'In Progress', 'Declined'):
+                _correct_on_finstap(cfg, c['id'], name or c.get('full_name'), email or c.get('email'))
             c['full_name'] = name or c.get('full_name')
             c['email'] = email or c.get('email')
 
@@ -297,7 +261,7 @@ def handle_kyc_partner_routes(environ, start_response, path, method, user, body,
         data, err = _fetch(cfg)
         if err:
             return error_response(start_response, err, status_code=502)
-        _with_order_client(data.get('checks') or [])
+        _with_order_client(data.get('checks') or [], cfg)
         try:
             data['missing_orders'] = _missing_orders(data.get('checks') or [])
         except Exception as exc:

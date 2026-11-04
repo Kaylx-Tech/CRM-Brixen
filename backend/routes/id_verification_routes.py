@@ -14,6 +14,7 @@ POST /api/webhooks/didit                        Didit status updates (signed, no
 import json
 import re
 
+from services.order_applicant import applicant
 from db import query_db, execute_db
 from services import didit_service
 from utils.validation import validation_error
@@ -217,15 +218,15 @@ def _auto_start(order_id, triggered_by):
             if not is_kyc_order(order_id):
                 return
             order = query_db("""
-                SELECT o.order_number, o.owner_name, o.owner_form_email, o.checkout_phone, u.full_name, u.email,
+                SELECT o.order_number, o.owner_name, o.owner_form_email, o.order_form_values_json, o.checkout_phone, u.full_name, u.email,
                        u.phone
                 FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = ?;
             """, (order_id,), one=True)
             # Website guest orders wait until the team links the real customer
             if not order or str(order.get('email') or '').lower() == GUEST_EMAIL:
                 return
-            name = (order.get('owner_name') or order.get('full_name') or '').strip()
-            email = (order.get('owner_form_email') or order.get('email') or '').strip()
+            # Always the applicant (the order form's person), not the account that placed the order
+            name, email = applicant(order)
             if name and email:
                 data, err = start_for_order(order.get('order_number') or f"order {order_id}", name, email,
                                             order.get('checkout_phone') or order.get('phone') or '')
@@ -238,14 +239,14 @@ def _auto_start(order_id, triggered_by):
         if query_db("SELECT 1 FROM id_verifications WHERE order_id = ? LIMIT 1;", (order_id,), one=True):
             return
         order = query_db("""
-            SELECT o.id, o.owner_name, o.owner_form_email, o.created_by_id, u.full_name, u.email
+            SELECT o.id, o.owner_name, o.owner_form_email, o.order_form_values_json, o.created_by_id, u.full_name, u.email
             FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = ?;
         """, (order_id,), one=True)
         # Website guest orders wait until the team links the real customer
         if not order or str(order.get('email') or '').lower() == GUEST_EMAIL:
             return
-        name = (order.get('owner_name') or order.get('full_name') or '').strip()
-        email = (order.get('owner_form_email') or order.get('email') or '').strip()
+        # Always the applicant (the order form's person), not the account that placed the order
+        name, email = applicant(order)
         if not name:
             return
         verification_id = execute_db("""
