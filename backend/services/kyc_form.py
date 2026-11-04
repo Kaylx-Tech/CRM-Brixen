@@ -313,8 +313,9 @@ def save_file(row, kind, upload):
     if len(data) > MAX_BYTES:
         return "The file is too large. Use a photo or PDF under 10 MB."
     mime, ext = _sniff(data)
-    if not mime or (ext == 'pdf' and kind != 'poa'):
-        return "Upload a photo (JPG, PNG or WebP)" + (" or a PDF." if kind == 'poa' else ".")
+    # Documents can be a photo or a PDF; the selfie must be a photo
+    if not mime or (ext == 'pdf' and kind == 'selfie'):
+        return "Upload a photo (JPG, PNG or WebP)" + ("." if kind == 'selfie' else " or a PDF.")
 
     form_round = row.get('form_round') or 1
     name = f"idv-{row['id']}-r{form_round}-{kind}-{uuid.uuid4().hex[:10]}.{ext}"

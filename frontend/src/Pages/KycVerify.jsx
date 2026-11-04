@@ -586,6 +586,7 @@ export default function KycVerify() {
                     busy={uploading === side}
                     onCapture={(blob) => capture(side, blob)}
                     onFile={(file) => attach(side, file)}
+                    accept="image/*,application/pdf"
                   />
                   {err(side) && <p className="mt-1 text-xs text-destructive">{err(side)}</p>}
                 </div>
