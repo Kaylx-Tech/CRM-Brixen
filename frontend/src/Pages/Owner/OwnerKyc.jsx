@@ -479,7 +479,6 @@ export default function OwnerKyc() {
                       <th className="px-3 py-2.5 font-semibold">Contact</th>
                       <th className="px-3 py-2.5 text-right font-semibold" title="What Finstap charges the workspace for this check">Price</th>
                       <th className="px-3 py-2.5 font-semibold">Payment</th>
-                      <th className="px-3 py-2.5 font-semibold">Order</th>
                       <th className="px-3 py-2.5 font-semibold">KYC</th>
                     </tr>
                   </thead>
@@ -517,13 +516,6 @@ export default function OwnerKyc() {
                         </td>
                         <td className="px-3 py-3">
                           <span className={cn(PILL, paymentTone(c.payment_status))}>{c.payment_status || "No invoice"}</span>
-                        </td>
-                        <td className="px-3 py-3">
-                          {c.order_status ? (
-                            <span className={cn(PILL, orderTone(c.order_status))}>{c.order_status}</span>
-                          ) : (
-                            "—"
-                          )}
                         </td>
                         <td className="px-3 py-3">
                           <KycCell check={c} onAction={(check, act) => setAction({ check, act })} onDeleted={load} />
