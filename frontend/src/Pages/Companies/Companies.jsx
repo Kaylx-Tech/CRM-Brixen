@@ -202,7 +202,6 @@ const Companies = () => {
   // Months that have registered companies, newest first, with how many in each
   // Year filter (Apple Photos style): the newest year with companies first; "none" = no incorporation date
   const [pickedYear, setPickedYear] = useState('')
-  const [activeMonth, setActiveMonth] = useState('')
   const incMonth = ALL_MONTHS
   const monthCounts = companies.reduce((acc, c) => {
     const key = incorporationMonth(c.incDate)
@@ -269,21 +268,6 @@ const Companies = () => {
     else if (pageNumbers[pageNumbers.length - 1] !== '…') pageNumbers.push('…')
   }
 
-  // The month on screen (its heading is near the top), for the month list on the right
-  const monthKeys = monthGroups.map((g) => g.key).join(',')
-  useEffect(() => {
-    if (!monthKeys) return undefined
-    // The last month whose heading has reached the pinned spot under the header is the one on screen
-    const update = () => {
-      const sections = [...document.querySelectorAll('section[data-month]')]
-      let current = sections[0]?.dataset.month || ''
-      for (const s of sections) if (s.getBoundingClientRect().top <= 140) current = s.dataset.month
-      setActiveMonth(current)
-    }
-    update()
-    document.addEventListener('scroll', update, { capture: true, passive: true })
-    return () => document.removeEventListener('scroll', update, { capture: true })
-  }, [monthKeys])
 
   // Selection handlers
   const handleToggleSelect = (id) => {
@@ -436,7 +420,7 @@ const Companies = () => {
         {/* Month registered + search */}
         <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto shrink-0">
           {yearOptions.length > 0 && (
-            <Tabs value={incYear} onValueChange={(v) => { setPickedYear(v); setActiveMonth('') }}>
+            <Tabs value={incYear} onValueChange={(v) => setPickedYear(v)}>
               <TabsList className="max-w-full justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {yearOptions.map((y) => (
                   <TabsTrigger key={y} value={y} className="gap-1.5 rounded-full text-sm">
@@ -538,17 +522,32 @@ const Companies = () => {
         </div>
       ) : (
         <div className="flex flex-col gap-4 pb-8">
-        <div className="flex gap-4">
-          <div className="min-w-0 flex-1">
+        <div>
+          <div>
             {monthGroups.map((group, gi) => (
               <section key={group.key} id={`month-${group.key}`} data-month={group.key} className="mb-5 scroll-mt-[84px]">
                 {/* The month heading stays pinned at the top while its companies scroll past */}
-                <div className="sticky top-[74px] z-[9] -mx-1 mb-2 flex items-baseline gap-2 bg-background/85 px-1 py-2 backdrop-blur-md">
+                <div className="sticky top-[74px] z-[9] -mx-1 mb-2 flex items-center gap-2 bg-background/85 px-1 py-2 backdrop-blur-md">
                   <h3 className="text-base font-semibold tracking-tight">{groupLabel(group.key)}</h3>
                   {group.key !== 'none' && <span className="text-xs text-muted-foreground">{group.key.slice(0, 4)}</span>}
                   <span className="text-xs text-muted-foreground">
                     · {groupCount(group.key)} compan{groupCount(group.key) === 1 ? 'y' : 'ies'} registered
                   </span>
+                  {/* Jump to another month of this page; the pinned bar's month is highlighted */}
+                  {monthGroups.length > 1 && (
+                    <nav className="ml-auto hidden items-center gap-0.5 sm:flex" aria-label="Months">
+                      {monthGroups.map((g) => (
+                        <button
+                          key={g.key}
+                          type="button"
+                          className={`rounded-full px-2 py-0.5 text-xs transition-colors ${g.key === group.key ? 'bg-primary/10 font-semibold text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                          onClick={() => document.getElementById(`month-${g.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                        >
+                          {g.key === 'none' ? 'No date' : new Date(`${g.key}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'short' })}
+                        </button>
+                      ))}
+                    </nav>
+                  )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {group.companies.map((company, ci) => {
@@ -578,24 +577,6 @@ const Companies = () => {
               </section>
             ))}
           </div>
-          {/* Months of this page, like the Photos scrubber: the one on screen is highlighted; click to jump */}
-          {monthGroups.length > 1 && (
-            <nav className="sticky top-[92px] hidden w-14 shrink-0 self-start xl:block" aria-label="Months">
-              <ul className="space-y-1.5 text-right text-xs">
-                {monthGroups.map((g) => (
-                  <li key={g.key}>
-                    <button
-                      type="button"
-                      className={`transition-colors ${activeMonth === g.key ? 'font-semibold text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                      onClick={() => document.getElementById(`month-${g.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                    >
-                      {g.key === 'none' ? '—' : new Date(`${g.key}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'short' })}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          )}
         </div>
 
         {/* Companies per page (25 / 50 / 75 / 100) and the page buttons */}
