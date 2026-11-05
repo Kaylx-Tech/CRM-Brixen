@@ -73,6 +73,16 @@ export default function OwnerTeamPay() {
     }
   }
 
+  const payOne = async (entry) => {
+    const res = await ownerApi(`/kyc-payouts/${entry.id}/paid`, { method: "POST" })
+    if (res.ok) {
+      toastDone(undefined, res.message)
+      load()
+    } else {
+      toastFail(undefined, res.error)
+    }
+  }
+
   if (error) return <LoadError error={error} />
   if (!users) return <p className="text-sm text-muted-foreground">Loading…</p>
   // The month picked (by the day the check was charged); "All time" shows everything
@@ -172,7 +182,7 @@ export default function OwnerTeamPay() {
                   <TableHead>Name</TableHead>
                   <TableHead>Checked by</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="pl-4">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -183,10 +193,16 @@ export default function OwnerTeamPay() {
                     <TableCell className="font-medium">{e.person_name || "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{e.reviewer_name}</TableCell>
                     <TableCell className="text-right tabular-nums">{pounds(e.amount)}</TableCell>
-                    <TableCell>
-                      <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", e.status === "paid" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-amber-500/15 text-amber-800 dark:text-amber-300")}>
-                        {e.status === "paid" ? `Paid ${shortDate(e.paid_at)}` : "To pay"}
-                      </span>
+                    <TableCell className="pl-4">
+                      {e.status === "paid" ? (
+                        <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                          Paid {shortDate(e.paid_at)}
+                        </span>
+                      ) : (
+                        <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => payOne(e)}>
+                          <IconCheck className="size-3.5" /> Mark as paid
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

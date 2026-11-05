@@ -26,16 +26,28 @@ def _ensure():
 
 def record(slug, check_id, reviewer, status):
     """A KYC team member decided a check: charge it once at their rate (nothing for the owner's own decisions)."""
-    if (reviewer or {}).get('role') != 'kyc' or status not in ('Approved', 'Declined'):
+    if status not in ('Approved', 'Declined'):
         return
     _ensure()
-    member = _platform_query("SELECT id, full_name, email, rate_per_check FROM platform_admins WHERE id = ?;",
-                             (reviewer['id'],), one=True) or {}
+    if (reviewer or {}).get('role') == 'kyc':
+        member = _platform_query("SELECT id, full_name, email, rate_per_check FROM platform_admins WHERE id = ?;",
+                                 (reviewer['id'],), one=True) or {}
+    else:
+        member = _only_member() or {}  # every check goes through the KYC team, even one the owner decided
+    if not member:
+        return
     rate = float(member.get('rate_per_check') or 0)
     _platform_execute("""
         INSERT OR IGNORE INTO kyc_payouts (tenant_slug, check_id, reviewer_id, reviewer_name, amount)
         VALUES (?, ?, ?, ?, ?);
     """, (slug, int(check_id), member['id'], member.get('full_name') or member.get('email'), rate))
+
+
+def _only_member():
+    """The KYC team's only active member, when there is exactly one (all checks are theirs)."""
+    rows = _platform_query("SELECT id, full_name, email, rate_per_check FROM platform_admins "
+                           "WHERE role = 'kyc' AND status = 'Active';") or []
+    return rows[0] if len(rows) == 1 else None
 
 
 def backfill():
@@ -53,6 +65,7 @@ def backfill():
                 by_name[str(key).strip().lower()] = m
     if not by_name:
         return 0
+    only = _only_member()
     added = 0
     for tenant in list_tenants():
         if tenant.get('plan') == 'legacy' or not os.path.exists(tenant.get('db_path') or ''):
@@ -60,13 +73,14 @@ def backfill():
         try:
             with use_tenant(tenant):
                 rows = query_db("""
-                    SELECT id, reviewed_by FROM id_verifications
-                    WHERE status IN ('Approved', 'Declined') AND COALESCE(reviewed_by, '') != '';
+                    SELECT id, reviewed_by FROM id_verifications WHERE status IN ('Approved', 'Declined');
                 """) or []
         except Exception:
             continue
         for r in rows:
-            m = by_name.get(str(r['reviewed_by']).strip().lower())
+            # The team member who decided it; a check decided by anyone else (the owner, an older Didit result)
+            # still went through the KYC team: it is theirs when the team has one member
+            m = by_name.get(str(r['reviewed_by'] or '').strip().lower()) or only
             if not m:
                 continue
             before = _platform_query("SELECT 1 FROM kyc_payouts WHERE tenant_slug = ? AND check_id = ?;",
@@ -144,6 +158,16 @@ def set_rate(member_id, value):
     _platform_execute("UPDATE kyc_payouts SET amount = ? WHERE reviewer_id = ? AND status = 'due';",
                       (rate or 0, int(member_id)))
     return rate
+
+
+def mark_entry_paid(entry_id):
+    """One check is paid. Returns its amount (0 when it was not due)."""
+    _ensure()
+    row = _platform_query("SELECT amount FROM kyc_payouts WHERE id = ? AND status = 'due';", (int(entry_id),), one=True)
+    if not row:
+        return 0.0
+    _platform_execute("UPDATE kyc_payouts SET status = 'paid', paid_at = datetime('now') WHERE id = ?;", (int(entry_id),))
+    return round(float(row['amount'] or 0), 2)
 
 
 def mark_paid(member_id, period=None):
