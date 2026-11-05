@@ -9,6 +9,42 @@ import { emailProblem } from "@/lib/validation"
 import { Button, Panel } from "./ownerUi"
 import { GREEN, GREY, PILL } from "../Kyc/kycStatus"
 
+// £3, or £2.50 when there are pence
+const pounds = (v) => `£${Number(v || 0).toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+
+/** A member's rate per check: saved when the field is left (empty: no charge). */
+function RateInput({ user, onSaved }) {
+  const [value, setValue] = useState(user.rate ?? "")
+  const save = async () => {
+    if (String(value).trim() === String(user.rate ?? "")) return
+    const res = await ownerApi(`/kyc-users/${user.id}/rate`, { method: "POST", body: { rate: String(value).trim() } })
+    if (res.ok) {
+      toastDone(undefined, res.message)
+      onSaved()
+    } else {
+      toastFail(undefined, res.error)
+      setValue(user.rate ?? "")
+    }
+  }
+  return (
+    <div className="relative w-[4.5rem]">
+      <span className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-xs text-muted-foreground">£</span>
+      <Input
+        type="number"
+        min="0"
+        step="0.01"
+        className="h-7 rounded-md pr-2 pl-5 text-right text-xs tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        value={value}
+        placeholder="0"
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+        aria-label={`Rate per check for ${user.full_name}`}
+      />
+    </div>
+  )
+}
+
 /** The outside KYC team: who can sign in to kyc.finstap.com. Adding someone emails them a set-password link. */
 export default function KycTeam() {
   const [users, setUsers] = useState(null)
@@ -54,6 +90,17 @@ export default function KycTeam() {
       load()
     } else {
       toastFail(id, res.error)
+    }
+  }
+
+  const markPaid = async (user) => {
+    if (!window.confirm(`Mark ${pounds(user.due)} as paid to ${user.full_name}?`)) return
+    const res = await ownerApi(`/kyc-users/${user.id}/paid`, { method: "POST" })
+    if (res.ok) {
+      toastDone(undefined, res.message)
+      load()
+    } else {
+      toastFail(undefined, res.error)
     }
   }
 
@@ -124,6 +171,8 @@ export default function KycTeam() {
                 <th className="py-2.5 pr-4 font-semibold">Name</th>
                 <th className="px-3 py-2.5 font-semibold">Status</th>
                 <th className="px-3 py-2.5 font-semibold">Last sign-in</th>
+                <th className="px-3 py-2.5 font-semibold" title="What you pay them for each check they approve or reject">Rate / check</th>
+                <th className="px-3 py-2.5 text-right font-semibold" title="Checks they decided, and what you owe them">You owe</th>
                 <th className="py-2.5 pl-3" />
               </tr>
             </thead>
@@ -140,7 +189,21 @@ export default function KycTeam() {
                     </span>
                   </td>
                   <td className="px-3 py-2.5 text-muted-foreground">{shortDate(u.last_login_at) || "Never"}</td>
-                  <td className="py-2.5 pl-3 text-right">
+                  <td className="px-3 py-2.5">
+                    <RateInput key={`${u.id}-${u.rate ?? ""}`} user={u} onSaved={load} />
+                  </td>
+                  <td className="px-3 py-2.5 text-right tabular-nums">
+                    <div className={cn("font-medium", u.due > 0 && "text-amber-700 dark:text-amber-300")}>{pounds(u.due)}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {u.checks} check{u.checks === 1 ? "" : "s"} · {pounds(u.paid)} paid
+                    </div>
+                  </td>
+                  <td className="space-x-1 py-2.5 pl-3 text-right whitespace-nowrap">
+                    {u.due > 0 && (
+                      <Button size="sm" variant="outline" onClick={() => markPaid(u)}>
+                        Mark paid
+                      </Button>
+                    )}
                     <Button size="sm" variant={u.status === "Active" ? "ghost" : "outline"} onClick={() => toggle(u)}>
                       {u.status === "Active" ? "Turn off" : "Turn on"}
                     </Button>

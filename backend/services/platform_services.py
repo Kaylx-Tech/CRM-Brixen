@@ -238,6 +238,8 @@ def kyc_report(period=None, slug=None):
         # Checks charged one by one (services/kyc_billing.py) count at their charge; older ones by the month
         from services.kyc_billing import charges as kyc_charges, month_rows, month_status, price as kyc_price
         from services.wallet import balance as wallet_balance
+        from services.kyc_payouts import for_checks as kyc_payouts_for_checks
+        payouts = kyc_payouts_for_checks()
         each = kyc_price(tenant)
         m = month_rows(tenant['slug'], [(r['id'], period) for r in rows], each).get(period) \
             or {'checks': 0, 'amount': 0.0, 'due': 0, 'paid': 0, 'legacy': 0}
@@ -245,6 +247,8 @@ def kyc_report(period=None, slug=None):
         for c in checks[len(checks) - len(rows):]:
             c['charge'] = (charged.get(c['id']) or {}).get('status') or ''
             c['charge_amount'] = (charged.get(c['id']) or {}).get('amount')
+            payout = payouts.get((tenant['slug'], c['id'])) or {}
+            c['cost'], c['cost_status'], c['cost_to'] = payout.get('amount'), payout.get('status'), payout.get('reviewer_name')
             c['kyc_free'] = bool(tenant.get('kyc_free'))
         status = bill.get('status') or (month_status(m, None, False) if m['due'] or m['paid'] else '')
         amount = round(m['amount'], 2)

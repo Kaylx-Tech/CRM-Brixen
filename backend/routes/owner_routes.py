@@ -151,6 +151,11 @@ def _desk(environ, start_response, sub, method, admin, body, query):
             return success_response(start_response, data=kyc_desk.detail(slug, check_id, team, owner))
         if act == 'status' and method == 'POST':
             row = kyc_desk.set_status(slug, check_id, body.get('status'), body.get('note'), admin)
+            try:
+                from services import kyc_payouts
+                kyc_payouts.record(slug, check_id, admin, row.get('status'))
+            except Exception as exc:
+                print(f"[KYC payouts] check {check_id}: {exc}")
             audit(admin, f"KYC_{row['status'].upper().replace(' ', '_')}", slug,
                   f"{row['full_name']} ({row.get('order_number') or 'no order'})"
                   f"{': ' + row['review_note'] if row.get('review_note') else ''}")
@@ -468,7 +473,26 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
         return error_response(start_response, "This is for the Finstap owner only.", status_code=403)
 
     if sub == '/kyc-users' and method == 'GET':
-        return success_response(start_response, data={'users': kyc_users()})
+        from services import kyc_payouts
+        totals = kyc_payouts.team_totals()
+        users = [{**u, **(totals.get(u['id']) or {'rate': None, 'checks': 0, 'due': 0.0, 'paid': 0.0})}
+                 for u in kyc_users()]
+        return success_response(start_response, data={'users': users})
+    pay = re.match(r'^/kyc-users/(\d+)/(rate|paid)$', sub)
+    if pay and method == 'POST':
+        from services import kyc_payouts
+        member_id = int(pay.group(1))
+        if pay.group(2) == 'rate':
+            try:
+                rate = kyc_payouts.set_rate(member_id, (body or {}).get('rate'))
+            except ValueError as exc:
+                return error_response(start_response, str(exc), status_code=400)
+            audit(admin, 'KYC_TEAM_RATE', None, f"member {member_id}: {rate if rate is not None else 'no rate'}")
+            return success_response(start_response, message=(f"Rate set to £{rate:g} per check." if rate is not None
+                                                             else "Rate removed."))
+        amount = kyc_payouts.mark_paid(member_id)
+        audit(admin, 'KYC_TEAM_PAID', None, f"member {member_id}: £{amount}")
+        return success_response(start_response, message=f"Marked £{amount:g} as paid.")
     if sub == '/kyc-users' and method == 'POST':
         try:
             user, emailed = add_kyc_user(admin, body.get('email'), body.get('full_name'), _kyc_base(environ))
