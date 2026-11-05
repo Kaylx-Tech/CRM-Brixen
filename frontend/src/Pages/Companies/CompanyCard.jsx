@@ -8,7 +8,7 @@ import { IconDotsVertical, IconTrash, IconShieldCheck, IconAlertTriangle } from 
 import ViewCompany from './ViewCompany'
 import { needsAttention, attentionSummary } from './attention'
 
-const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh }) => {
+const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh, monthTag }) => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
 
   const name = company?.name || "Unnamed Company";
@@ -88,7 +88,11 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
               <span>{countryName}</span>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              
+              {monthTag && (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground" title="Registered">
+                  {monthTag}
+                </span>
+              )}
               <Badge className={
                 status === 'Active' ? 'badge-green' :
                 status === 'Dissolved' ? 'badge-red' :
