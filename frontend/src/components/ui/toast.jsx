@@ -45,7 +45,9 @@ export const toast = (message, options = {}) => {
   // Replacing an existing toast must not fire its commit/onDismiss side-effects
   clearDismissTimer(id)
 
+  // options first: an `id: undefined` passed in must not wipe the id (the toast would never close)
   const newToast = {
+    ...options,
     id,
     type: options.type || "default",
     message,
@@ -55,7 +57,6 @@ export const toast = (message, options = {}) => {
     cancel: options.cancel,
     onDismiss: options.onDismiss,
     createdAt: Date.now(),
-    ...options,
   }
 
   // Same id → update in place (shell stays; content morphs)
