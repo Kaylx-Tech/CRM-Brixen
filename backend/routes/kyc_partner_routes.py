@@ -11,6 +11,8 @@ GET /api/admin/kyc/<id>                     → one check: the client's answers,
 GET /api/admin/kyc/<id>/files/<file_id>     → one document (photo or PDF)
 POST /api/admin/kyc/start {order_id}        → start a KYC order's check now (one that was missed) and email the link
 POST /api/admin/kyc/ignore {order_id, undo?} → leave a missed KYC order out of the list (no link)
+POST /api/admin/kyc/<id>/order {order_number} → link a check to an order (e.g. one from the general KYC link)
+POST /api/admin/kyc/<id>/remove             → delete a check the client has not sent yet (admins)
 
 Env: FINSTAP_KYC_KEY (from admin.finstap.com → KYC → KYC for another website), FINSTAP_KYC_WORKSPACE
 (the Finstap workspace's name, default "brixen"), FINSTAP_API_URL (default https://api.finstap.com/api).
@@ -183,6 +185,37 @@ def _missing_orders(checks):
     return rows
 
 
+def _post(cfg, path, payload):
+    """(data, error): POST to Finstap's KYC partner API with the workspace's key."""
+    req = urllib.request.Request(f"{cfg['api']}/kyc-partner/{path}", data=json.dumps(payload or {}).encode(),
+                                 method='POST', headers={'X-Tenant': cfg['workspace'], 'X-KYC-Key': cfg['key'],
+                                                         'Content-Type': 'application/json', 'Accept': 'application/json',
+                                                         'User-Agent': 'BrixenCRM/1.0 (+https://brixenconsultants.com)'})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as res:
+            return (json.loads(res.read() or b'{}').get('data') or {}), None
+    except urllib.error.HTTPError as exc:
+        try:
+            return None, (json.loads(exc.read() or b'{}').get('error')) or f"Finstap answered {exc.code}"
+        except ValueError:
+            return None, f"Finstap answered {exc.code}"
+    except Exception as exc:
+        return None, f"Finstap could not be reached: {exc}"
+
+
+def _find_order(typed):
+    """An order by its number; "BRX-1008" finds "BRX-1008-OCT26" when only one order starts with it."""
+    from db import query_db
+    number = re.sub(r'\s+', '', str(typed or '')).upper()
+    if not number:
+        return None
+    rows = query_db("SELECT id, order_number FROM orders WHERE UPPER(order_number) = ? OR UPPER(order_number) LIKE ? "
+                    "ORDER BY (UPPER(order_number) = ?) DESC LIMIT 2;", (number, f"{number}-%", number)) or []
+    if rows and (rows[0]['order_number'].upper() == number or len(rows) == 1):
+        return rows[0]
+    return None
+
+
 def _correct_on_finstap(cfg, check_id, name, email):
     """Tell Finstap the applicant of a check that was made with the account holder's details."""
     body = json.dumps({'full_name': name, 'email': email}).encode()
@@ -253,6 +286,26 @@ def handle_kyc_partner_routes(environ, start_response, path, method, user, body,
             return error_response(start_response, err, status_code=502)
         return success_response(start_response, data=data, message=(
             f"KYC link emailed to {person[2]}." if data.get('emailed') else "Check started; copy their link to send it."))
+    # Link a check to an order (one started from the general KYC link), or delete one the client has not sent
+    action = re.match(r'^/api/admin/kyc/(\d+)/(order|remove)$', path)
+    if action and method == 'POST':
+        if not cfg['key']:
+            return error_response(start_response, "KYC is not connected to Finstap yet.", status_code=400)
+        if action.group(2) == 'order':
+            order = _find_order((body or {}).get('order_number'))
+            if not order:
+                return error_response(start_response, "No order with that number. Check it and try again.", status_code=400)
+            _data, err = _post(cfg, f"checks/{action.group(1)}/order", {'reference': order['order_number']})
+            if err:
+                return error_response(start_response, err, status_code=400)
+            return success_response(start_response, data={'order_number': order['order_number']},
+                                    message=f"Linked to {order['order_number']}.")
+        if user.get('role') not in ('SUPER_ADMIN', 'ADMIN'):
+            return error_response(start_response, "Only an admin can delete a KYC check.", status_code=403)
+        _data, err = _post(cfg, f"checks/{action.group(1)}/remove", {})
+        if err:
+            return error_response(start_response, err, status_code=400)
+        return success_response(start_response, message="KYC check deleted. Its link no longer works.")
     if method != 'GET':
         return error_response(start_response, "Not found", status_code=404)
     if path == '/api/admin/kyc':

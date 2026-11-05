@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { IconAlertTriangle, IconCopy, IconEye, IconId, IconRefresh, IconSearch, IconSend } from '@tabler/icons-react'
+import { IconAlertTriangle, IconCopy, IconEye, IconId, IconLink, IconRefresh, IconSearch, IconSend, IconTrash } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { apiRequest } from '@/lib/api'
+import { isAdminRole } from '@/lib/permissions'
 import { SectionCards } from '../../Layout/StatsCard'
 import KycCheckView from './KycCheckView'
 
@@ -66,6 +67,31 @@ export default function KycRecords() {
       load()
     } else {
       toast.error(res.reason || 'Could not remove it')
+    }
+  }
+
+  // A check from the general KYC link: link it to its order by the order number
+  const linkOrder = async (check) => {
+    const typed = window.prompt(`Order number for ${check.full_name} (e.g. BRX-1008):`)
+    if (!typed || !typed.trim()) return
+    const res = await apiRequest(`/admin/kyc/${check.id}/order`, { method: 'POST', body: { order_number: typed.trim() }, label: 'KYC', silent: true })
+    if (res.ok) {
+      toast.success(res.data?.message || 'Order linked')
+      load()
+    } else {
+      toast.error(res.reason || 'Could not link the order')
+    }
+  }
+
+  // A check the client has not sent yet (e.g. a second link for the same person): delete it (admins)
+  const removeCheck = async (check) => {
+    if (!window.confirm(`Delete the KYC check for ${check.full_name}${check.order_number ? ` (${check.order_number})` : ''}? Their link will stop working.`)) return
+    const res = await apiRequest(`/admin/kyc/${check.id}/remove`, { method: 'POST', label: 'KYC', silent: true })
+    if (res.ok) {
+      toast.success(res.data?.message || 'KYC check deleted')
+      load()
+    } else {
+      toast.error(res.reason || 'Could not delete it')
     }
   }
 
@@ -251,7 +277,16 @@ export default function KycRecords() {
                     return (
                       <tr key={c.id} className="border-b align-top last:border-0">
                         <td className="py-2.5 pr-3">
-                          {c.order_number ? <span className={ORDER_CHIP}>{c.order_number}</span> : <span className="text-xs text-muted-foreground">KYC link</span>}
+                          {c.order_number ? (
+                            <span className={ORDER_CHIP}>{c.order_number}</span>
+                          ) : (
+                            <div className="flex flex-col items-start gap-1">
+                              <span className="text-xs text-muted-foreground">KYC link</span>
+                              <button type="button" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline" onClick={() => linkOrder(c)}>
+                                <IconLink className="size-3.5" /> Link order
+                              </button>
+                            </div>
+                          )}
                         </td>
                         <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{shortDate(c.created_at)}</td>
                         <td className="px-3 py-2.5">
@@ -271,6 +306,11 @@ export default function KycRecords() {
                           {c.session_url && (
                             <Button variant="ghost" size="xs" className="h-7 gap-1 text-muted-foreground" onClick={() => copyText(c.session_url, "Client's link")}>
                               <IconCopy className="size-3.5" /> Their link
+                            </Button>
+                          )}
+                          {isAdminRole() && !c.submitted_at && ['Not Started', 'In Progress'].includes(c.status) && (
+                            <Button variant="ghost" size="xs" className="h-7 gap-1 text-destructive hover:text-destructive" onClick={() => removeCheck(c)} aria-label={`Delete the KYC check for ${c.full_name}`}>
+                              <IconTrash className="size-3.5" /> Delete
                             </Button>
                           )}
                         </td>
