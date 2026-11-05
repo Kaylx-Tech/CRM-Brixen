@@ -98,7 +98,28 @@ def set_price(slug, value):
         if amount < 0:
             raise KycServiceError("The price cannot be below zero")
     _platform_execute("UPDATE tenants SET kyc_price = ? WHERE slug = ?;", (amount, slug))
+    reprice_due(slug)
     return amount
+
+
+def reprice_due(slug=None):
+    """Checks not paid yet follow the price per check: after a price change their charge is the new price
+    (one workspace, or every workspace on the general price when `slug` is None). Paid ones stay as paid."""
+    from tenancy import list_tenants
+    tenants = [get_tenant(slug)] if slug else [t for t in list_tenants() if t.get('kyc_price') is None]
+    for tenant in tenants:
+        if not tenant:
+            continue
+        each = price(tenant)
+        if each <= 0:
+            continue  # no price set: unpaid checks keep what they were charged
+        _platform_execute("UPDATE kyc_charges SET amount = ? WHERE tenant_slug = ? AND status = 'due' AND amount != ?;",
+                          (each, tenant['slug'], each))
+        try:
+            from services.wallet import settle
+            settle(tenant['slug'])  # a lower price may now be covered by the balance
+        except Exception as exc:
+            print(f"[KYC billing] {tenant['slug']} not settled after the price change: {exc}")
 
 
 def off_message():

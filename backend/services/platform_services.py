@@ -70,6 +70,7 @@ def settings():
 
 
 def save_settings(body):
+    old_kyc_price = settings().get('kyc_price')
     values = {
         'kyc_price': _money(body.get('kyc_price'), 'KYC price'),
         'ro_price_year': _money(body.get('ro_price_year'), 'Registered office price'),
@@ -85,6 +86,9 @@ def save_settings(body):
             INSERT INTO platform_settings (key, value, updated_at) VALUES ('topup_bank_details', ?, datetime('now'))
             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;
         """, (str(body.get('topup_bank_details') or '').strip()[:1000],))
+    if values['kyc_price'] != old_kyc_price:  # unpaid checks follow the new general price
+        from services.kyc_billing import reprice_due
+        reprice_due()
     _platform_execute("""
         INSERT INTO platform_settings (key, value, updated_at) VALUES ('ro_addresses', ?, datetime('now'))
         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;
@@ -238,6 +242,7 @@ def kyc_report(period=None, slug=None):
         # Checks charged one by one (services/kyc_billing.py) count at their charge; older ones by the month
         from services.kyc_billing import charges as kyc_charges, month_rows, month_status, price as kyc_price
         from services.wallet import balance as wallet_balance
+        from services.stripe_billing import services_due
         from services.kyc_payouts import for_checks as kyc_payouts_for_checks
         payouts = kyc_payouts_for_checks()
         each = kyc_price(tenant)
@@ -259,7 +264,8 @@ def kyc_report(period=None, slug=None):
             'kyc_enabled': kyc_on, 'kyc_enabled_at': tenant.get('kyc_enabled_at'),
             'amount': amount,
             'price': each, 'own_price': tenant.get('kyc_price'),
-            'balance': wallet_balance(tenant['slug']),
+            # What is left after what it owes: below zero while checks (or other services) are unpaid
+            'balance': round(wallet_balance(tenant['slug']) - services_due(tenant['slug'])['total'], 2),
             'billing_status': status,
             'billed_amount': bill.get('amount') if bill else (amount if status == 'paid' else None),
             'billed_checks': bill.get('checks'),

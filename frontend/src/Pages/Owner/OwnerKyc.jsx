@@ -386,7 +386,7 @@ export default function OwnerKyc() {
                         Price / check
                       </th>
                       <th className="px-3 py-2.5 text-right font-semibold" title="What Finstap charges this workspace for its KYC checks this month">KYC charges</th>
-                      <th className="py-2.5 pl-3 text-right font-semibold" title="What the workspace has left on its Finstap balance">Balance</th>
+                      <th className="py-2.5 pl-3 text-right font-semibold" title="The workspace's Finstap balance minus what it still owes (below zero: unpaid checks)">Balance</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -414,7 +414,7 @@ export default function OwnerKyc() {
                         <td className="px-3 py-2.5 text-right tabular-nums">
                           {whole(w.amount)}
                         </td>
-                        <td className={cn("py-2.5 pl-3 text-right tabular-nums", (w.balance || 0) <= 0 && "text-destructive")}>
+                        <td className={cn("py-2.5 pl-3 text-right tabular-nums", (w.balance || 0) < 0 && "text-destructive")}>
                           {whole(w.balance || 0)}
                         </td>
                       </tr>
