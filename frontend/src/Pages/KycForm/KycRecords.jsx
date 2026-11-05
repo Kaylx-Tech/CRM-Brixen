@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { IconAlertTriangle, IconCopy, IconEye, IconId, IconLink, IconRefresh, IconSearch, IconSend, IconTrash } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -47,6 +48,87 @@ async function copyText(text, label) {
   }
 }
 
+/** Link a KYC check (e.g. from the general KYC link) to its order: the person's own orders first, then the newest. */
+function OrderPicker({ check, onClose, onLinked }) {
+  const [q, setQ] = useState('')
+  const [orders, setOrders] = useState(null)
+  const [saving, setSaving] = useState('')
+
+  useEffect(() => {
+    if (!check) return undefined
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams({ q, email: check.email || '', name: check.full_name || '' })
+      apiRequest(`/admin/kyc/orders?${params}`, { label: 'KYC', silent: true }).then((res) => {
+        setOrders(res.ok ? res.data?.data?.orders || [] : [])
+      })
+    }, q ? 250 : 0)
+    return () => clearTimeout(timer)
+  }, [check, q])
+
+  const link = async (order) => {
+    setSaving(order.order_number)
+    const res = await apiRequest(`/admin/kyc/${check.id}/order`, { method: 'POST', body: { order_number: order.order_number }, label: 'KYC', silent: true })
+    setSaving('')
+    if (res.ok) {
+      toast.success(res.data?.message || `Linked to ${order.order_number}`)
+      onLinked()
+    } else {
+      toast.error(res.reason || 'Could not link the order')
+    }
+  }
+
+  const mine = (orders || []).filter((o) => o.suggested)
+  const rest = (orders || []).filter((o) => !o.suggested)
+  const Row = ({ o }) => (
+    <button
+      type="button"
+      disabled={!!saving}
+      onClick={() => link(o)}
+      className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted ${o.suggested ? 'bg-primary/[0.06]' : ''}`}
+    >
+      <span className="min-w-0">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className={ORDER_CHIP}>{o.order_number}</span>
+          <span className="truncate font-medium">{o.applicant || '—'}</span>
+        </span>
+        <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+          {[o.email, shortDate(o.created_at), o.status, o.kyc ? 'KYC' : ''].filter(Boolean).join(' · ')}
+        </span>
+      </span>
+      <span className="shrink-0 text-xs font-medium text-primary">{saving === o.order_number ? 'Linking…' : 'Link'}</span>
+    </button>
+  )
+
+  return (
+    <Dialog open={!!check} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>Link to an order</DialogTitle>
+          <DialogDescription>{check ? `${check.full_name}${check.email ? ` · ${check.email}` : ''}` : ''}</DialogDescription>
+        </DialogHeader>
+        <div className="relative">
+          <IconSearch className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search order number, name or email" className="pl-8" />
+        </div>
+        <div className="max-h-[50vh] space-y-1 overflow-y-auto">
+          {orders === null ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Loading orders…</p>
+          ) : !orders.length ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">No orders found.</p>
+          ) : (
+            <>
+              {mine.length > 0 && <p className="px-1 pt-1 text-xs font-medium text-muted-foreground">Orders for this person</p>}
+              {mine.map((o) => <Row key={o.id} o={o} />)}
+              {rest.length > 0 && <p className="px-1 pt-2 text-xs font-medium text-muted-foreground">{mine.length ? 'Other recent orders' : 'Recent orders'}</p>}
+              {rest.map((o) => <Row key={o.id} o={o} />)}
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 /**
  * KYC: Brixen's identity checks, run on Finstap. The KYC link to send to any client (they verify on
  * portal.brixenconsultants.com), and the record of every check with the status Finstap's KYC team set.
@@ -70,18 +152,9 @@ export default function KycRecords() {
     }
   }
 
-  // A check from the general KYC link: link it to its order by the order number
-  const linkOrder = async (check) => {
-    const typed = window.prompt(`Order number for ${check.full_name} (e.g. BRX-1008):`)
-    if (!typed || !typed.trim()) return
-    const res = await apiRequest(`/admin/kyc/${check.id}/order`, { method: 'POST', body: { order_number: typed.trim() }, label: 'KYC', silent: true })
-    if (res.ok) {
-      toast.success(res.data?.message || 'Order linked')
-      load()
-    } else {
-      toast.error(res.reason || 'Could not link the order')
-    }
-  }
+  // A check from the general KYC link: pick its order in the order picker
+  const [linking, setLinking] = useState(null)
+  const linkOrder = (check) => setLinking(check)
 
   // A check the client has not sent yet (e.g. a second link for the same person): delete it (admins)
   const removeCheck = async (check) => {
@@ -329,6 +402,7 @@ export default function KycRecords() {
         </Card>
       )}
 
+      <OrderPicker key={linking?.id || 'none'} check={linking} onClose={() => setLinking(null)} onLinked={() => { setLinking(null); load() }} />
       <KycCheckView key={viewing?.id || 'none'} check={viewing} statusLabel={statusLabel} onClose={() => setViewing(null)} />
     </div>
   )

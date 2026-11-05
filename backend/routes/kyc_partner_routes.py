@@ -11,6 +11,7 @@ GET /api/admin/kyc/<id>                     → one check: the client's answers,
 GET /api/admin/kyc/<id>/files/<file_id>     → one document (photo or PDF)
 POST /api/admin/kyc/start {order_id}        → start a KYC order's check now (one that was missed) and email the link
 POST /api/admin/kyc/ignore {order_id, undo?} → leave a missed KYC order out of the list (no link)
+GET  /api/admin/kyc/orders?q=&email=&name=  → orders to link a check to (the person's own orders first)
 POST /api/admin/kyc/<id>/order {order_number} → link a check to an order (e.g. one from the general KYC link)
 POST /api/admin/kyc/<id>/remove             → delete a check the client has not sent yet (admins)
 
@@ -203,6 +204,42 @@ def _post(cfg, path, payload):
         return None, f"Finstap could not be reached: {exc}"
 
 
+def _order_choices(text, email='', name=''):
+    """Orders to pick from when linking a KYC check: the ones that mention the check's person first (their email
+    or name in the order or its form), then the newest; `text` filters by number, name or email. Each with its
+    applicant (the order form's person) so the right one is easy to spot."""
+    from db import query_db
+    text = str(text or '').strip().lower()[:80]
+    email = str(email or '').strip().lower()[:200]
+    name = str(name or '').strip().lower()[:160]
+    where, args = '', []
+    if text:
+        like = f"%{text}%"
+        where = ("WHERE LOWER(o.order_number) LIKE ? OR LOWER(COALESCE(o.owner_name, '')) LIKE ? "
+                 "OR LOWER(COALESCE(u.full_name, '')) LIKE ? OR LOWER(COALESCE(u.email, '')) LIKE ? "
+                 "OR LOWER(COALESCE(o.order_form_values_json, '')) LIKE ?")
+        args = [like] * 5
+    rank = "(CASE WHEN ? != '' AND (LOWER(COALESCE(o.order_form_values_json, '')) LIKE ? OR LOWER(COALESCE(o.owner_form_email, '')) = ? " \
+           "OR LOWER(COALESCE(u.email, '')) = ?) THEN 0 WHEN ? != '' AND (LOWER(COALESCE(o.order_form_values_json, '')) LIKE ? " \
+           "OR LOWER(COALESCE(o.owner_name, '')) = ?) THEN 1 ELSE 2 END)"
+    rows = query_db(f"""
+        SELECT o.id, o.order_number, o.created_at, o.status, o.owner_name, o.owner_form_email,
+               o.order_form_values_json, o.checkout_form_json, u.full_name, u.email,
+               EXISTS (SELECT 1 FROM order_line_items li WHERE li.order_id = o.id AND li.product_name LIKE '%kyc%') AS has_kyc,
+               {rank} AS match
+        FROM orders o LEFT JOIN users u ON u.id = o.user_id
+        {where}
+        ORDER BY match, o.id DESC LIMIT 25;
+    """, tuple([email, f"%{email}%", email, email, name, f"%{name}%", name] + args)) or []
+    out = []
+    for r in rows:
+        person, person_email = order_client(r)
+        out.append({'id': r['id'], 'order_number': r['order_number'], 'created_at': r['created_at'],
+                    'status': r['status'], 'applicant': person or '', 'email': person_email or '',
+                    'kyc': bool(r['has_kyc']), 'suggested': r['match'] < 2})
+    return out
+
+
 def _find_order(typed):
     """An order by its number; "BRX-1008" finds "BRX-1008-OCT26" when only one order starts with it."""
     from db import query_db
@@ -286,6 +323,9 @@ def handle_kyc_partner_routes(environ, start_response, path, method, user, body,
             return error_response(start_response, err, status_code=502)
         return success_response(start_response, data=data, message=(
             f"KYC link emailed to {person[2]}." if data.get('emailed') else "Check started; copy their link to send it."))
+    if path == '/api/admin/kyc/orders' and method == 'GET':
+        pick = lambda key: ((query or {}).get(key) or [''])[0]  # noqa: E731
+        return success_response(start_response, data={'orders': _order_choices(pick('q'), pick('email'), pick('name'))})
     # Link a check to an order (one started from the general KYC link), or delete one the client has not sent
     action = re.match(r'^/api/admin/kyc/(\d+)/(order|remove)$', path)
     if action and method == 'POST':
