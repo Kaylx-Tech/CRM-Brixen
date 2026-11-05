@@ -419,17 +419,37 @@ const Companies = () => {
 
         {/* Month registered + search */}
         <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto shrink-0">
+          {/* Year filter: a slim segmented control; the picked year is a solid pill (like Add Company) that slides */}
           {yearOptions.length > 0 && (
-            <Tabs value={incYear} onValueChange={(v) => setPickedYear(v)}>
-              <TabsList className="max-w-full justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {yearOptions.map((y) => (
-                  <TabsTrigger key={y} value={y} className="gap-1.5 rounded-full text-sm">
-                    {y === 'none' ? 'No date' : y}
-                    <span className="text-xs tabular-nums text-muted-foreground">{yearCounts[y]}</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+            <div
+              role="tablist"
+              aria-label="Year registered"
+              className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full bg-muted/70 p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {yearOptions.map((y) => {
+                const on = y === incYear
+                return (
+                  <button
+                    key={y}
+                    type="button"
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => setPickedYear(y)}
+                    className={`relative flex h-7 shrink-0 items-center gap-1 rounded-full px-3 text-[13px] font-medium transition-colors ${on ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {on && (
+                      <m.span
+                        layoutId="company-year-pill"
+                        className="absolute inset-0 rounded-full bg-primary shadow-sm"
+                        transition={spring}
+                      />
+                    )}
+                    <span className="relative">{y === 'none' ? 'No date' : y}</span>
+                    <span className={`relative text-[11px] tabular-nums ${on ? 'text-primary-foreground/75' : 'text-muted-foreground/70'}`}>{yearCounts[y]}</span>
+                  </button>
+                )
+              })}
+            </div>
           )}
           <div className="relative w-full md:w-auto">
             <IconSearch className="absolute left-2.5 top-1.5 h-4 w-4 text-muted-foreground" />
