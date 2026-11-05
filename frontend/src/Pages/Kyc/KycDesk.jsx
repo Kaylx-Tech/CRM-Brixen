@@ -124,7 +124,6 @@ export default function KycDesk() {
                     <tr>
                       <th className="px-3 py-2.5 font-semibold">Person</th>
                       <th className="px-3 py-2.5 font-semibold">{data.workspaces.length ? "Workspace · order" : "Order"}</th>
-                      <th className="px-3 py-2.5 font-semibold">Product</th>
                       <th className="px-3 py-2.5 font-semibold">Started</th>
                       <th className="px-3 py-2.5 font-semibold">Status</th>
                       <th className="px-3 py-2.5 font-semibold">Reviewed</th>
@@ -147,7 +146,6 @@ export default function KycDesk() {
                             {c.workspace_name && <div>{c.workspace_name}</div>}
                             <div className="font-mono text-xs text-muted-foreground">{c.order_number || (c.source === "link" ? "Workspace KYC link" : "No order")}</div>
                           </td>
-                          <td className="px-3 py-3">{c.service_name || "—"}</td>
                           <td className="px-3 py-3 whitespace-nowrap text-muted-foreground">{shortDate(c.created_at)}</td>
                           <td className="px-3 py-3">
                             <span className={cn(PILL, tone)}>{label}</span>
