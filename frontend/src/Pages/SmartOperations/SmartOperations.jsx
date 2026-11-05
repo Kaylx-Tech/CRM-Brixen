@@ -67,6 +67,29 @@ function hostOf(url) {
   }
 }
 
+/**
+ * Open a partner link in a small window centred over the CRM, so the person stays in the app. The link itself
+ * (with its referral code) is what opens. Partner sites (Namecheap, Tide, Wise, WorldFirst…) refuse to show inside
+ * another site's page, so this is a browser popup window, not a box inside the page.
+ * Ctrl / Cmd / middle click still open a normal tab; a blocked popup opens a tab instead.
+ */
+function openInPopup(event, url) {
+  if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return
+  event.preventDefault()
+  const width = Math.min(1100, Math.round(window.screen.availWidth * 0.8))
+  const height = Math.min(800, Math.round(window.screen.availHeight * 0.85))
+  const left = Math.round((window.screenX ?? window.screenLeft ?? 0) + (window.outerWidth - width) / 2)
+  const top = Math.round((window.screenY ?? window.screenTop ?? 0) + (window.outerHeight - height) / 2)
+  const features = `popup=yes,width=${width},height=${height},left=${Math.max(0, left)},top=${Math.max(0, top)},resizable=yes,scrollbars=yes`
+  const win = window.open(url, 'finstap-partner', features)
+  if (!win) {
+    window.open(url, '_blank', 'noopener')
+    return
+  }
+  win.opener = null // the partner site cannot reach back into the CRM
+  win.focus()
+}
+
 // Finstap: the partner (affiliate) links are "Partner Perks": signing up through them helps Finstap, and Finstap
 // helps the workspace set the service up for free
 const PERK_OFFER = 'Free setup help from Finstap'
@@ -120,6 +143,7 @@ function LinkRow({ link, canManage, onEdit, onDelete }) {
           href={link.url}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={(e) => openInPopup(e, link.url)}
           className="block truncate text-xs text-primary hover:underline"
           title={link.url}
         >
@@ -138,9 +162,9 @@ function LinkRow({ link, canManage, onEdit, onDelete }) {
           variant="outline"
           size="xs"
           className="h-7"
-          title="Open link"
+          title="Open in a popup"
           nativeButton={false}
-          render={<a href={link.url} target="_blank" rel="noopener noreferrer" />}
+          render={<a href={link.url} target="_blank" rel="noopener noreferrer" onClick={(e) => openInPopup(e, link.url)} />}
         >
           <IconExternalLink className="size-3.5" />
         </Button>
