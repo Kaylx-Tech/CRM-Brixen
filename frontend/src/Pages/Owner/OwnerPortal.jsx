@@ -5,7 +5,6 @@ import {
   IconActivity,
   IconGift,
   IconBuildingSkyscraper,
-  IconChevronDown,
   IconId,
   IconLayoutDashboard,
   IconLogout,
@@ -44,14 +43,13 @@ import OwnerBlog, { OwnerBlogEditor } from "./OwnerBlog"
 import OwnerNewsletter from "./OwnerNewsletter"
 import OwnerIntegrations from "./OwnerIntegrations"
 
-// The owner menu as header tabs. A plain entry is [label, path, icon]; a group has items and opens a small menu.
+// The owner menu in the sidebar. A plain entry is [label, path, icon]; a group is a small heading with its pages.
 const NAV = [
   ["Overview", "/owner/overview", IconLayoutDashboard],
   ["Workspaces", "/owner/workspaces", IconBuildingSkyscraper],
   ["Plans", "/owner/plans", IconTags],
   {
     label: "Activity",
-    icon: IconActivity,
     items: [
       ["Activity log", "/owner/activity", IconActivity],
       ["KYC", "/owner/kyc", IconId],
@@ -60,12 +58,17 @@ const NAV = [
     ],
   },
   // Content (Blogs, Newsletter) is off the menu for now (user, 2026-10-28); its pages stay at /owner/content/…
-  ["Integrations", "/owner/integrations", IconPlugConnected],
-  ["Billing", "/owner/billing", IconReceipt2],
-  ["Settings", "/owner/settings", IconSettings],
+  {
+    label: "Platform",
+    items: [
+      ["Integrations", "/owner/integrations", IconPlugConnected],
+      ["Billing", "/owner/billing", IconReceipt2],
+      ["Settings", "/owner/settings", IconSettings],
+    ],
+  },
 ]
 
-const NAV_ITEM = "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition"
+const NAV_ITEM = "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
 
 // Phones: an Instagram-style tab bar at the bottom (icons only); the rest of the menu opens from "More"
 const TAB_BAR = [
@@ -128,73 +131,89 @@ function MobileTabBar() {
   )
 }
 
-function NavGroup({ group }) {
-  const navigate = useNavigate()
-  const { pathname } = useLocation()
-  const active = group.items.some(([, to]) => pathname === to || pathname.startsWith(`${to}/`))
-  const Icon = group.icon
+function SidebarLink({ label, to, icon: Icon }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        className={cn(NAV_ITEM, "outline-none", active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}
-      >
-        <Icon className="size-4" />
-        <span className="hidden lg:inline">{group.label}</span>
-        <IconChevronDown className="size-3.5 opacity-60" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-48">
-        {group.items.map(([label, to, ItemIcon]) => (
-          <DropdownMenuItem key={to} onClick={() => navigate(to)} className={cn(pathname.startsWith(to) && "text-primary")}>
-            <ItemIcon className="size-4" />
-            {label}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        cn(NAV_ITEM, isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")
+      }
+    >
+      <Icon className="size-4 shrink-0" />
+      <span className="truncate">{label}</span>
+    </NavLink>
+  )
+}
+
+function Logo({ className }) {
+  return (
+    <NavLink to="/owner/overview" className={cn("flex shrink-0 items-center", className)}>
+      <img src={finstapLogo} alt="Finstap" className="h-7 w-auto dark:hidden" />
+      <img src={finstapLogoLight} alt="Finstap" className="hidden h-7 w-auto dark:block" />
+    </NavLink>
+  )
+}
+
+/** Tablets and computers: a fixed sidebar on the left with the whole menu, the owner's name and Sign out. */
+function OwnerSidebar({ admin, onSignOut }) {
+  return (
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r bg-background md:flex">
+      <div className="flex h-16 items-center px-5">
+        <Logo />
+      </div>
+      <nav aria-label="Owner menu" className="flex-1 overflow-y-auto px-3 py-2">
+        <div className="flex flex-col gap-0.5">
+          {NAV.map((entry) =>
+            Array.isArray(entry) ? (
+              <SidebarLink key={entry[1]} label={entry[0]} to={entry[1]} icon={entry[2]} />
+            ) : (
+              <div key={entry.label} className="mt-4 flex flex-col gap-0.5">
+                <p className="px-3 pb-1 text-xs font-medium text-muted-foreground">{entry.label}</p>
+                {entry.items.map(([label, to, Icon]) => (
+                  <SidebarLink key={to} label={label} to={to} icon={Icon} />
+                ))}
+              </div>
+            ),
+          )}
+        </div>
+      </nav>
+      <div className="flex flex-col gap-2 border-t p-3">
+        <div className="flex items-center justify-between gap-2 px-1">
+          <span className="truncate text-sm text-muted-foreground" title={admin?.email}>
+            {admin?.full_name || admin?.email}
+          </span>
+          <ModeToggle />
+        </div>
+        <Button variant="outline" onClick={onSignOut} className="w-full justify-start">
+          <IconLogout className="size-4" />
+          Sign out
+        </Button>
+      </div>
+    </aside>
   )
 }
 
 function OwnerShell({ admin, onSignOut, children }) {
   return (
     <div className="min-h-screen bg-muted/30">
-      <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 md:h-16 md:justify-start">
-          <NavLink to="/owner/overview" className="flex shrink-0 items-center gap-2">
-            <img src={finstapLogo} alt="Finstap" className="h-7 w-auto dark:hidden" />
-            <img src={finstapLogoLight} alt="Finstap" className="hidden h-7 w-auto dark:block" />
-          </NavLink>
-          {/* Tablets and computers: the menu as header tabs (phones use the tab bar at the bottom) */}
-          <nav className="hidden min-w-0 flex-1 gap-1 overflow-x-auto md:flex">
-            {NAV.map((entry) => {
-              if (!Array.isArray(entry)) return <NavGroup key={entry.label} group={entry} />
-              const [label, to, Icon] = entry
-              return (
-                <NavLink
-                  key={to}
-                  to={to}
-                  className={({ isActive }) =>
-                    cn(NAV_ITEM, isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")
-                  }
-                >
-                  <Icon className="size-4" />
-                  <span className="hidden lg:inline">{label}</span>
-                </NavLink>
-              )
-            })}
-          </nav>
+      <OwnerSidebar admin={admin} onSignOut={onSignOut} />
+      {/* Phones: a slim header with the logo; the menu is the tab bar at the bottom */}
+      <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur-xl md:hidden">
+        <div className="flex h-14 items-center justify-between gap-4 px-4">
+          <Logo />
           <div className="flex shrink-0 items-center gap-2">
             <ModeToggle />
-            <span className="hidden text-sm text-muted-foreground 2xl:inline">{admin?.full_name || admin?.email}</span>
             <Button variant="outline" size="lg" onClick={onSignOut} aria-label="Sign out">
               <IconLogout className="size-4" />
-              <span className="hidden lg:inline">Sign out</span>
             </Button>
           </div>
         </div>
       </header>
-      <PageTransition>
-        <main className="mx-auto max-w-7xl px-4 pt-5 pb-28 sm:px-6 md:py-8">{children}</main>
-      </PageTransition>
+      <div className="md:pl-60">
+        <PageTransition>
+          <main className="mx-auto max-w-7xl px-4 pt-5 pb-28 sm:px-6 md:py-8">{children}</main>
+        </PageTransition>
+      </div>
       <MobileTabBar />
     </div>
   )
@@ -202,7 +221,7 @@ function OwnerShell({ admin, onSignOut, children }) {
 
 /**
  * The Finstap owner portal. Signed out: /owner/login, /owner/forgot and /owner/set-password (the
- * emailed link). Signed in: header tabs for the platform, its services, content and billing.
+ * emailed link). Signed in: a sidebar menu for the platform, its services, content and billing.
  */
 export default function OwnerPortal() {
   const navigate = useNavigate()
