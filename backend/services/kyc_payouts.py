@@ -107,9 +107,24 @@ def team_totals():
 def entries(limit=300):
     """The latest charges, newest first: when, which workspace, who checked it, how much, paid or not."""
     _ensure()
+    from db import query_db
+    from tenancy import get_tenant, use_tenant
     names = {r['slug']: r['name'] for r in _platform_query("SELECT slug, name FROM tenants;") or []}
-    rows = _platform_query("SELECT * FROM kyc_payouts ORDER BY id DESC LIMIT ?;", (int(limit),)) or []
-    return [{**dict(r), 'workspace_name': names.get(r['tenant_slug'], r['tenant_slug'])} for r in rows]
+    rows = [dict(r) for r in _platform_query("SELECT * FROM kyc_payouts ORDER BY id DESC LIMIT ?;", (int(limit),)) or []]
+    # The person each check was for, from its workspace
+    people = {}
+    for slug in {r['tenant_slug'] for r in rows}:
+        tenant = get_tenant(slug)
+        ids = [r['check_id'] for r in rows if r['tenant_slug'] == slug]
+        try:
+            with use_tenant(tenant):
+                marks = ','.join('?' * len(ids))
+                for v in query_db(f"SELECT id, full_name FROM id_verifications WHERE id IN ({marks});", tuple(ids)) or []:
+                    people[(slug, v['id'])] = v['full_name']
+        except Exception:
+            pass
+    return [{**r, 'workspace_name': names.get(r['tenant_slug'], r['tenant_slug']),
+             'person_name': people.get((r['tenant_slug'], r['check_id']))} for r in rows]
 
 
 def set_rate(member_id, value):

@@ -144,8 +144,9 @@ export default function OwnerTeamPay() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Checked by</TableHead>
                   <TableHead>Workspace</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Checked by</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
@@ -154,8 +155,9 @@ export default function OwnerTeamPay() {
                 {entries.map((e) => (
                   <TableRow key={e.id}>
                     <TableCell className="text-muted-foreground">{shortDate(e.created_at)}</TableCell>
-                    <TableCell>{e.reviewer_name}</TableCell>
                     <TableCell>{e.workspace_name}</TableCell>
+                    <TableCell className="font-medium">{e.person_name || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{e.reviewer_name}</TableCell>
                     <TableCell className="text-right tabular-nums">{pounds(e.amount)}</TableCell>
                     <TableCell>
                       <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", e.status === "paid" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-amber-500/15 text-amber-800 dark:text-amber-300")}>
