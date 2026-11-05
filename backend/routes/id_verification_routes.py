@@ -17,6 +17,8 @@ GET/POST /api/kyc-link/<workspace>.<code>       the workspace's own KYC link: an
 GET  /api/kyc-partner/checks                    another website's server (X-KYC-Key): its checks and link
 POST /api/kyc-partner/checks                    …starts a check for its order {first_name, last_name, email, reference}
 GET  /api/kyc-partner/checks/<id>[/files/<fid>] one check's details, or one of its documents (read only)
+POST /api/kyc-partner/checks/<id>/order         …links the check to one of its orders {reference}
+POST /api/kyc-partner/checks/<id>/remove        …deletes a check the person has not sent yet
 POST /api/webhooks/didit                        Didit status updates (older checks; signed, no login)
 """
 import json
@@ -464,6 +466,22 @@ def handle_id_verification_routes(environ, start_response, path, method, user, b
         if not kyc_partner.key_ok(tenant, environ.get('HTTP_X_KYC_KEY')):
             return error_response(start_response, "Invalid KYC key", status_code=401)
         data, problem = kyc_partner.correct_person(int(match.group(1)), body)
+        if problem:
+            return error_response(start_response, problem, status_code=400)
+        return success_response(start_response, data=data)
+    # …links a check to one of its orders, or deletes one the person has not sent yet
+    match = re.match(r'^/api/kyc-partner/checks/(\d+)/(order|remove)$', path)
+    if match and method == 'POST':
+        from tenancy import current_tenant
+        from services import kyc_partner
+        tenant = current_tenant()
+        if not kyc_partner.key_ok(tenant, environ.get('HTTP_X_KYC_KEY')):
+            return error_response(start_response, "Invalid KYC key", status_code=401)
+        if match.group(2) == 'order':
+            data, problem = kyc_partner.set_reference(int(match.group(1)), body)
+        else:
+            data, problem = kyc_partner.remove_unsent(tenant, int(match.group(1)))
+            data = {'id': int(match.group(1))} if data else data
         if problem:
             return error_response(start_response, problem, status_code=400)
         return success_response(start_response, data=data)

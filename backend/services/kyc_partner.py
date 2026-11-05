@@ -151,6 +151,37 @@ def correct_person(check_id, body):
     return {'id': int(check_id), 'emailed': emailed}, None
 
 
+def set_reference(check_id, body):
+    """The other site links a check to one of its orders (e.g. one the person started from the general KYC link).
+    Returns ({id, order_number}, None) or (None, message)."""
+    from db import execute_db, query_db
+    from services import kyc_form
+    ref = re.sub(r'\s+', ' ', str((body or {}).get('reference') or '')).strip()[:60]
+    if not ref:
+        return None, "Enter the order number."
+    kyc_form.ensure()
+    if not query_db("SELECT id FROM id_verifications WHERE id = ?;", (int(check_id),), one=True):
+        return None, "Check not found"
+    execute_db("UPDATE id_verifications SET external_ref = ?, updated_at = datetime('now') WHERE id = ?;",
+               (ref, int(check_id)))
+    return {'id': int(check_id), 'order_number': ref}, None
+
+
+def remove_unsent(tenant, check_id):
+    """The other site deletes a check the person has not sent yet (e.g. a second link for the same person):
+    the check, its link and its charge if not paid. A check that was sent stays. Returns (row, None) or
+    (None, message)."""
+    from db import query_db
+    from services import kyc_desk, kyc_form
+    kyc_form.ensure()
+    row = query_db("SELECT id, status, submitted_at FROM id_verifications WHERE id = ?;", (int(check_id),), one=True)
+    if not row:
+        return None, "Check not found"
+    if row['submitted_at'] or row['status'] not in ('Not Started', 'In Progress'):
+        return None, "The person already sent this check, so it cannot be deleted here."
+    return kyc_desk.remove_check(tenant['slug'], int(check_id)), None
+
+
 def checks(limit=500):
     """The active workspace's checks for the other site's record (newest first; no files, no prices)."""
     from db import query_db
