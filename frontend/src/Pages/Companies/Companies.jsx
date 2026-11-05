@@ -200,16 +200,27 @@ const Companies = () => {
   ]
 
   // Months that have registered companies, newest first, with how many in each
-  const [incMonth, setIncMonth] = useState(ALL_MONTHS)
+  // Year filter (Apple Photos style): the newest year with companies first; "none" = no incorporation date
+  const [pickedYear, setPickedYear] = useState('')
+  const [activeMonth, setActiveMonth] = useState('')
+  const incMonth = ALL_MONTHS
   const monthCounts = companies.reduce((acc, c) => {
     const key = incorporationMonth(c.incDate)
     if (key) acc[key] = (acc[key] || 0) + 1
     return acc
   }, {})
-  const monthOptions = Object.keys(monthCounts).sort().reverse()
+  const yearCounts = companies.reduce((acc, c) => {
+    const key = incorporationMonth(c.incDate)?.slice(0, 4) || 'none'
+    acc[key] = (acc[key] || 0) + 1
+    return acc
+  }, {})
+  const yearOptions = Object.keys(yearCounts).filter((y) => y !== 'none').sort().reverse()
+  if (yearCounts.none) yearOptions.push('none')
+  const incYear = yearOptions.includes(pickedYear) ? pickedYear : yearOptions[0] || ''
+  const yearOf = (c) => incorporationMonth(c.incDate)?.slice(0, 4) || 'none'
 
   const filteredCompanies = companies.filter((company) => {
-    if (incMonth !== ALL_MONTHS && incorporationMonth(company.incDate) !== incMonth) return false
+    if (incYear && yearOf(company) !== incYear) return false
     const term = searchTerm.toLowerCase()
     const matchesSearch =
       (company.name && company.name.toLowerCase().includes(term)) ||
@@ -232,7 +243,7 @@ const Companies = () => {
 
   // A new search, tab or page size starts again on page 1
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0])
-  const filterKey = `${activeTab}|${searchTerm}|${pageSize}|${incMonth}`
+  const filterKey = `${activeTab}|${searchTerm}|${pageSize}|${incYear}`
   const [pageInfo, setPageInfo] = useState({ key: filterKey, page: 1 })
   const totalPages = Math.max(1, Math.ceil(filteredCompanies.length / pageSize))
   const currentPage = Math.min(pageInfo.key === filterKey ? pageInfo.page : 1, totalPages)
@@ -241,12 +252,38 @@ const Companies = () => {
     document.querySelector('main')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
   }
   const pageCompanies = filteredCompanies.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const monthGroups = []
+  for (const company of pageCompanies) {
+    const key = incorporationMonth(company.incDate) || 'none'
+    const last = monthGroups[monthGroups.length - 1]
+    if (last && last.key === key) last.companies.push(company)
+    else monthGroups.push({ key, companies: [company] })
+  }
+  const groupLabel = (key) => (key === 'none' ? 'No registration date' : new Date(`${key}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'long' }))
+  const groupCount = (key) => filteredCompanies.filter((c) => (incorporationMonth(c.incDate) || 'none') === key).length
+
   // 1 … 4 5 6 … 18
   const pageNumbers = []
   for (let p = 1; p <= totalPages; p++) {
     if (p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1) pageNumbers.push(p)
     else if (pageNumbers[pageNumbers.length - 1] !== '…') pageNumbers.push('…')
   }
+
+  // The month on screen (its heading is near the top), for the month list on the right
+  const monthKeys = monthGroups.map((g) => g.key).join(',')
+  useEffect(() => {
+    if (!monthKeys) return undefined
+    // The last month whose heading has reached the pinned spot under the header is the one on screen
+    const update = () => {
+      const sections = [...document.querySelectorAll('section[data-month]')]
+      let current = sections[0]?.dataset.month || ''
+      for (const s of sections) if (s.getBoundingClientRect().top <= 140) current = s.dataset.month
+      setActiveMonth(current)
+    }
+    update()
+    document.addEventListener('scroll', update, { capture: true, passive: true })
+    return () => document.removeEventListener('scroll', update, { capture: true })
+  }, [monthKeys])
 
   // Selection handlers
   const handleToggleSelect = (id) => {
@@ -398,22 +435,18 @@ const Companies = () => {
 
         {/* Month registered + search */}
         <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto shrink-0">
-          <Select value={incMonth} onValueChange={(v) => setIncMonth(v || ALL_MONTHS)}>
-            <SelectTrigger className="w-full sm:w-[200px]" aria-label="Month registered">
-              <IconCalendarDue className="h-4 w-4 text-muted-foreground" />
-              <SelectValue>
-                {incMonth === ALL_MONTHS ? 'All months' : `${monthLabel(incMonth)} (${monthCounts[incMonth] || 0})`}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_MONTHS}>All months</SelectItem>
-              {monthOptions.map((key) => (
-                <SelectItem key={key} value={key}>
-                  {monthLabel(key)} ({monthCounts[key]})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {yearOptions.length > 0 && (
+            <Tabs value={incYear} onValueChange={(v) => { setPickedYear(v); setActiveMonth('') }}>
+              <TabsList className="max-w-full justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {yearOptions.map((y) => (
+                  <TabsTrigger key={y} value={y} className="gap-1.5 rounded-full text-sm">
+                    {y === 'none' ? 'No date' : y}
+                    <span className="text-xs tabular-nums text-muted-foreground">{yearCounts[y]}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          )}
           <div className="relative w-full md:w-auto">
             <IconSearch className="absolute left-2.5 top-1.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -426,14 +459,6 @@ const Companies = () => {
         </div>
       </div>
 
-      {incMonth !== ALL_MONTHS && !isLoading && (
-        <p className="text-sm text-muted-foreground -mt-2">
-          Companies registered at Companies House in {monthLabel(incMonth)}.{' '}
-          <button type="button" className="text-primary underline-offset-2 hover:underline" onClick={() => setIncMonth(ALL_MONTHS)}>
-            Show all months
-          </button>
-        </p>
-      )}
 
       {activeTab === 'attention' && !isLoading && (
         <p className="text-sm text-muted-foreground -mt-2">
@@ -501,8 +526,6 @@ const Companies = () => {
           <p className="text-sm text-muted-foreground max-w-sm mt-1 mb-4">
             {searchTerm
               ? `No records found matching "${searchTerm}". Try searching by a different name or number.`
-              : incMonth !== ALL_MONTHS
-                ? `No companies registered in ${monthLabel(incMonth)} for this view.`
               : activeTab === 'attention'
                 ? 'No Companies House attention items right now.'
                 : 'No registered company records available for the selected view.'}
@@ -515,29 +538,64 @@ const Companies = () => {
         </div>
       ) : (
         <div className="flex flex-col gap-4 pb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {pageCompanies.map((company, i) => (
-            // Cards come in one after another (first rows only, so long lists stay instant)
-            <m.div
-              key={company.id || i}
-              className="h-full"
-              initial={i < 12 ? { opacity: 0, y: 14, scale: 0.985 } : false}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ ...spring, delay: Math.min(i, 12) * 0.035 }}
-            >
-              <CompanyCard
-                company={company}
-                monthTag={incorporationMonth(company.incDate) ? shortMonthLabel(incorporationMonth(company.incDate)) : ''}
-                isSelected={selectedIds.includes(company.id)}
-                onToggleSelect={handleToggleSelect}
-                onRefresh={fetchCompanies}
-                onDelete={isAdminRole() ? (id) => {
-                  setSingleDeleteId(id)
-                  setDeleteConfirmOpen(true)
-                } : undefined}
-              />
-            </m.div>
-          ))}
+        <div className="flex gap-4">
+          <div className="min-w-0 flex-1">
+            {monthGroups.map((group, gi) => (
+              <section key={group.key} id={`month-${group.key}`} data-month={group.key} className="mb-5 scroll-mt-[84px]">
+                {/* The month heading stays pinned at the top while its companies scroll past */}
+                <div className="sticky top-[74px] z-[9] -mx-1 mb-2 flex items-baseline gap-2 bg-background/85 px-1 py-2 backdrop-blur-md">
+                  <h3 className="text-base font-semibold tracking-tight">{groupLabel(group.key)}</h3>
+                  {group.key !== 'none' && <span className="text-xs text-muted-foreground">{group.key.slice(0, 4)}</span>}
+                  <span className="text-xs text-muted-foreground">
+                    · {groupCount(group.key)} compan{groupCount(group.key) === 1 ? 'y' : 'ies'} registered
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {group.companies.map((company, ci) => {
+                    const i = gi * 3 + ci
+                    return (
+                      <m.div
+                        key={company.id || `${group.key}-${ci}`}
+                        className="h-full"
+                        initial={i < 12 ? { opacity: 0, y: 14, scale: 0.985 } : false}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ ...spring, delay: Math.min(i, 12) * 0.035 }}
+                      >
+                        <CompanyCard
+                          company={company}
+                          isSelected={selectedIds.includes(company.id)}
+                          onToggleSelect={handleToggleSelect}
+                          onRefresh={fetchCompanies}
+                          onDelete={isAdminRole() ? (id) => {
+                            setSingleDeleteId(id)
+                            setDeleteConfirmOpen(true)
+                          } : undefined}
+                        />
+                      </m.div>
+                    )
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+          {/* Months of this page, like the Photos scrubber: the one on screen is highlighted; click to jump */}
+          {monthGroups.length > 1 && (
+            <nav className="sticky top-[92px] hidden w-14 shrink-0 self-start xl:block" aria-label="Months">
+              <ul className="space-y-1.5 text-right text-xs">
+                {monthGroups.map((g) => (
+                  <li key={g.key}>
+                    <button
+                      type="button"
+                      className={`transition-colors ${activeMonth === g.key ? 'font-semibold text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                      onClick={() => document.getElementById(`month-${g.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    >
+                      {g.key === 'none' ? '—' : new Date(`${g.key}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'short' })}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
         </div>
 
         {/* Companies per page (25 / 50 / 75 / 100) and the page buttons */}
