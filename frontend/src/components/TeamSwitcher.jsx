@@ -155,22 +155,22 @@ export default function TeamSwitcher() {
         render={
           <Button
             variant="ghost"
-            className={`h-auto gap-2 px-1.5 py-1 ${impersonated ? "bg-amber-500/10 hover:bg-amber-500/15" : ""}`}
+            className={`h-auto gap-2 px-1.5 py-0.5 ${impersonated ? "bg-amber-500/10 hover:bg-amber-500/15" : ""}`}
             aria-label="Account menu"
           />
         }
       >
-        <Avatar className="size-8">
+        <Avatar className="size-7">
           <AvatarImage src={user.avatar_url || ""} alt={name} />
           <AvatarFallback className={impersonated ? "bg-amber-500 text-white" : "bg-primary text-primary-foreground"}>
             {initials(name)}
           </AvatarFallback>
         </Avatar>
         <span className="hidden min-w-0 flex-col items-start text-left leading-tight sm:flex">
-          <span className="max-w-40 truncate text-sm font-medium">{name}</span>
-          <span className={`max-w-40 truncate text-xs ${impersonated ? "text-amber-600" : "text-muted-foreground"}`}>{subtitle}</span>
+          <span className="max-w-40 truncate text-[13px] font-medium">{name}</span>
+          <span className={`max-w-40 truncate text-[11px] ${impersonated ? "text-amber-600" : "text-muted-foreground"}`}>{subtitle}</span>
         </span>
-        <IconChevronDown className="hidden size-4 text-muted-foreground sm:block" />
+        <IconChevronDown className="hidden size-3.5 text-muted-foreground sm:block" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-56 rounded-xl p-1 shadow-lg">
