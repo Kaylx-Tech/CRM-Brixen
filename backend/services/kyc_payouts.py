@@ -1,5 +1,6 @@
-"""What Finstap owes the KYC team: each member has a rate per check (set by the owner on the KYC page), and every
-check they decide (Approved or Declined) is charged once at that rate. The owner marks a member's checks paid."""
+"""What Finstap owes the KYC team: every check a team member decides (Approved or Declined), before or after the
+rate was set, is owed once at their rate per check (Billing › KYC team pay). What is not paid yet follows the
+rate when it changes; the owner marks a member's checks paid."""
 from tenancy import _platform_execute, _platform_query
 
 
@@ -31,12 +32,54 @@ def record(slug, check_id, reviewer, status):
     member = _platform_query("SELECT id, full_name, email, rate_per_check FROM platform_admins WHERE id = ?;",
                              (reviewer['id'],), one=True) or {}
     rate = float(member.get('rate_per_check') or 0)
-    if rate <= 0:
-        return
     _platform_execute("""
         INSERT OR IGNORE INTO kyc_payouts (tenant_slug, check_id, reviewer_id, reviewer_name, amount)
         VALUES (?, ?, ?, ?, ?);
     """, (slug, int(check_id), member['id'], member.get('full_name') or member.get('email'), rate))
+
+
+def backfill():
+    """Every check the KYC team decided before (Approved or Declined, with the reviewer's name) is owed too:
+    matched to the team member by name or email. Returns how many were added."""
+    import os
+    from db import query_db
+    from tenancy import list_tenants, use_tenant
+    _ensure()
+    members = _platform_query("SELECT id, full_name, email, rate_per_check FROM platform_admins WHERE role = 'kyc';") or []
+    by_name = {}
+    for m in members:
+        for key in (m.get('full_name'), m.get('email')):
+            if key:
+                by_name[str(key).strip().lower()] = m
+    if not by_name:
+        return 0
+    added = 0
+    for tenant in list_tenants():
+        if tenant.get('plan') == 'legacy' or not os.path.exists(tenant.get('db_path') or ''):
+            continue
+        try:
+            with use_tenant(tenant):
+                rows = query_db("""
+                    SELECT id, reviewed_by FROM id_verifications
+                    WHERE status IN ('Approved', 'Declined') AND COALESCE(reviewed_by, '') != '';
+                """) or []
+        except Exception:
+            continue
+        for r in rows:
+            m = by_name.get(str(r['reviewed_by']).strip().lower())
+            if not m:
+                continue
+            before = _platform_query("SELECT 1 FROM kyc_payouts WHERE tenant_slug = ? AND check_id = ?;",
+                                     (tenant['slug'], r['id']), one=True)
+            if before:
+                continue
+            _platform_execute("""
+                INSERT OR IGNORE INTO kyc_payouts (tenant_slug, check_id, reviewer_id, reviewer_name, amount)
+                VALUES (?, ?, ?, ?, ?);
+            """, (tenant['slug'], r['id'], m['id'], m.get('full_name') or m.get('email'),
+                  float(m.get('rate_per_check') or 0)))
+            added += 1
+    return added
 
 
 def for_checks():
@@ -82,6 +125,9 @@ def set_rate(member_id, value):
             raise ValueError("The rate cannot be below zero")
     _platform_execute("UPDATE platform_admins SET rate_per_check = ? WHERE id = ? AND role = 'kyc';",
                       (rate, int(member_id)))
+    # What is not paid yet follows the new rate (paid checks keep what was paid)
+    _platform_execute("UPDATE kyc_payouts SET amount = ? WHERE reviewer_id = ? AND status = 'due';",
+                      (rate or 0, int(member_id)))
     return rate
 
 

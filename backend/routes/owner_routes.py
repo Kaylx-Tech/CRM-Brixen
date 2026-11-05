@@ -474,6 +474,10 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
 
     if sub == '/kyc-users' and method == 'GET':
         from services import kyc_payouts
+        try:
+            kyc_payouts.backfill()  # checks the team decided before are owed too
+        except Exception as exc:
+            print(f"[KYC payouts] backfill: {exc}")
         totals = kyc_payouts.team_totals()
         users = [{**u, **(totals.get(u['id']) or {'rate': None, 'checks': 0, 'due': 0.0, 'paid': 0.0})}
                  for u in kyc_users()]
