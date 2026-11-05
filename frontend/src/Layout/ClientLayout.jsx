@@ -1,5 +1,5 @@
 import React from "react"
-import { Navigate, Outlet } from "react-router-dom"
+import { Link, Navigate, Outlet } from "react-router-dom"
 import brixenLogo from "@/assets/white-logo.webp"
 import { FinstapMenuLogo } from "@/components/finstap-brand"
 import { IS_FINSTAP } from "@/lib/workspace"
@@ -64,13 +64,14 @@ export default function ClientLayout() {
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <div className="flex w-full flex-col items-center justify-center">
+              {/* The logo opens the dashboard */}
+              <Link to="/portal/dashboard" aria-label="Go to the dashboard" className="flex w-full flex-col items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30">
                 {IS_FINSTAP ? (
                   <FinstapMenuLogo />
                 ) : (
                   <img src={brixenLogo} alt="Brixen" className="h-18 w-auto" />
                 )}
-              </div>
+              </Link>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarHeader>

@@ -5,7 +5,7 @@ import { IS_FINSTAP } from "@/lib/workspace"
 import { loadBranding } from "@/lib/branding"
 import { FINSTAP_NAV_GROUPS } from "@/lib/finstap-nav"
 import { apiRequest } from "@/lib/api"
-import { useLocation } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 import { NavMain } from "@/Layout/nav-main"
 import { NavUser } from "@/Layout/nav-user"
 import {
@@ -36,7 +36,7 @@ import {
   IconTrophy,
 } from "@tabler/icons-react"
 import { CommandManyItems } from "@/components/ComboSearch"
-import { canOpenPath, isStaffRole, isManagerOrAbove } from "@/lib/permissions"
+import { canOpenPath, homePath, isStaffRole, isManagerOrAbove } from "@/lib/permissions"
 
 const data = {
   user: {
@@ -124,14 +124,15 @@ export function AppSidebar({
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="w-full flex flex-col justify-center items-center">
+            {/* The logo opens the dashboard */}
+            <Link to={homePath()} aria-label="Go to the dashboard" className="w-full flex flex-col justify-center items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30">
               {/* Finstap build: its own logo (white text on the dark sidebar) */}
               {IS_FINSTAP ? (
                 <FinstapMenuLogo />
               ) : (
                 <img src={brixenLogo} alt="Brixen" className="h-18 w-auto" />
               )}
-            </div>
+            </Link>
           </SidebarMenuItem>
         </SidebarMenu>
         <button
