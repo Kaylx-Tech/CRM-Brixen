@@ -20,8 +20,7 @@ const GROUPED = {
   // and a short accent bar grows at the left of the active page
   button:
     "fs-menu-btn relative h-9 gap-3 rounded-lg px-3 text-[13.5px] text-sidebar-foreground/75 transition-[background-color,color,box-shadow] duration-200 hover:bg-white/[0.07] hover:text-sidebar-foreground " +
-    "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:font-medium " +
-    "data-active:shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_1px_3px_rgba(0,0,0,0.3)] " +
+    "data-active:bg-sidebar-primary/15 data-active:text-[color-mix(in_oklab,var(--sidebar-primary),white_30%)] data-active:font-medium data-active:ring-1 data-active:ring-inset data-active:ring-sidebar-primary/45 " +
     "before:absolute before:left-1 before:top-1/2 before:h-4 before:w-[3px] before:-translate-y-1/2 before:scale-y-0 before:rounded-full before:bg-sidebar-primary before:transition-transform before:duration-300 data-active:before:scale-y-100 " +
     "[&_svg]:size-[18px]! [&_svg]:text-sidebar-foreground/55 [&_svg]:transition-[transform,color] [&_svg]:duration-200 hover:[&_svg]:translate-x-0.5 hover:[&_svg]:text-sidebar-foreground data-active:[&_svg]:text-sidebar-primary",
   badge:
@@ -39,9 +38,9 @@ const PORTAL = {
   button:
     "relative h-10 gap-3 rounded-xl px-3.5 text-[14px] font-medium text-[#C9D8EC] transition-[background-color,color,transform,box-shadow] duration-200 " +
     "hover:translate-x-0.5 hover:bg-white/[0.08] hover:text-white " +
-    "data-active:translate-x-0 data-active:bg-white data-active:font-semibold data-active:text-[#003971] data-active:shadow-[0_6px_18px_rgba(0,0,0,0.25)] " +
-    "after:absolute after:right-3 after:top-1/2 after:size-1.5 after:-translate-y-1/2 after:scale-0 after:rounded-full after:bg-[#006CFF] after:transition-transform after:duration-300 after:content-[''] data-active:after:scale-100 " +
-    "[&_svg]:size-[18px]! [&_svg]:text-[#8FB3DC] [&_svg]:transition-colors hover:[&_svg]:text-white data-active:[&_svg]:text-[#006CFF]",
+    "data-active:translate-x-0 data-active:bg-sidebar-primary/15 data-active:font-semibold data-active:text-[color-mix(in_oklab,var(--sidebar-primary),white_30%)] data-active:ring-1 data-active:ring-inset data-active:ring-sidebar-primary/45 " +
+    "after:absolute after:right-3 after:top-1/2 after:size-1.5 after:-translate-y-1/2 after:scale-0 after:rounded-full after:bg-sidebar-primary after:transition-transform after:duration-300 after:content-[''] data-active:after:scale-100 " +
+    "[&_svg]:size-[18px]! [&_svg]:text-[#8FB3DC] [&_svg]:transition-colors hover:[&_svg]:text-white data-active:[&_svg]:text-sidebar-primary",
   badge: GROUPED.badge,
 }
 
