@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useLocation } from "react-router-dom"
-import brixenLogo from "@/assets/white-logo.webp"
+import brixenLogo from "@/assets/brixen-logo.png"
 import { NavMain } from "@/Layout/nav-main"
 import { NavUser } from "@/Layout/nav-user"
 import {
@@ -76,13 +76,12 @@ export function AppSidebar({
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            {/* The logo large, with room around it and a soft shadow so it stands out on the menu */}
-            <div className="flex w-full items-center justify-center px-1 pt-4 pb-3">
-              <img
-                src={brixenLogo}
-                alt="Brixen"
-                className="h-16 w-auto max-w-[200px] object-contain drop-shadow-[0_3px_10px_rgba(0,0,0,0.35)]"
-              />
+            {/* The navy logo on a white rounded card (like the client portal), a thin line under it */}
+            <div className="w-full px-2 pt-4 pb-3">
+              <div className="flex h-[72px] items-center justify-center rounded-2xl bg-white px-4 py-3 shadow-[0_6px_18px_rgba(0,0,0,0.25)]">
+                <img src={brixenLogo} alt="Brixen Consultants" className="h-12 w-auto max-w-[190px] object-contain" />
+              </div>
+              <div className="mt-4 h-px bg-white/10" />
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
