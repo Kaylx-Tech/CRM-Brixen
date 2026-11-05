@@ -143,8 +143,9 @@ export function Empty({ icon: Icon, title, children }) {
   )
 }
 
+// Dropdowns: the same small pill as the search fields (26px, thin border, 13px text)
 export const SELECT =
-  "fs-select h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
+  "fs-select h-[26px] w-full rounded-full border border-input bg-transparent pl-3 text-[13px] shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30"
 
 export function LoadError({ error }) {
   return error ? (

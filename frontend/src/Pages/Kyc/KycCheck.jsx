@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { getApiBase } from "@/lib/api"
 import { getKycToken, kycApi, shortDate } from "@/lib/owner"
-import { Button, Empty, LoadError, Panel } from "../Owner/ownerUi"
+import { Button, Empty, LoadError, Panel, SELECT } from "../Owner/ownerUi"
 import { GREEN, GREY, PILL, RED, REJECTED, kycLabel } from "./kycStatus"
 
 // The decisions the desk can make (the backend accepts exactly these)
@@ -88,7 +88,7 @@ function AddDocument({ api, check, onSaved }) {
     <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-dashed px-3 py-2 text-sm">
       <span className="text-muted-foreground">Add or replace a document (photo or PDF; selfie: photo only):</span>
       <select
-        className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+        className={cn(SELECT, "w-auto")}
         value={kind}
         onChange={(e) => setKind(e.target.value)}
         aria-label="Which document"
