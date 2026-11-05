@@ -61,6 +61,14 @@ def team_totals():
     return out
 
 
+def entries(limit=300):
+    """The latest charges, newest first: when, which workspace, who checked it, how much, paid or not."""
+    _ensure()
+    names = {r['slug']: r['name'] for r in _platform_query("SELECT slug, name FROM tenants;") or []}
+    rows = _platform_query("SELECT * FROM kyc_payouts ORDER BY id DESC LIMIT ?;", (int(limit),)) or []
+    return [{**dict(r), 'workspace_name': names.get(r['tenant_slug'], r['tenant_slug'])} for r in rows]
+
+
 def set_rate(member_id, value):
     _ensure()
     if value in (None, ''):

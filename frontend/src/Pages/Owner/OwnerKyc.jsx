@@ -478,7 +478,6 @@ export default function OwnerKyc() {
                       <th className="px-3 py-2.5 font-semibold">Client</th>
                       <th className="px-3 py-2.5 font-semibold">Contact</th>
                       <th className="px-3 py-2.5 text-right font-semibold" title="What Finstap charges the workspace for this check">Price</th>
-                      <th className="px-3 py-2.5 text-right font-semibold" title="What you pay the KYC team member who checked it">Cost</th>
                       <th className="px-3 py-2.5 font-semibold">Payment</th>
                       <th className="px-3 py-2.5 font-semibold">Order</th>
                       <th className="px-3 py-2.5 font-semibold">KYC</th>
@@ -514,13 +513,6 @@ export default function OwnerKyc() {
                             whole(c.charge_amount)
                           ) : (
                             <span className="text-muted-foreground" title="Not charged yet">—</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap" title={c.cost_to ? `${c.cost_to} · ${c.cost_status === "paid" ? "paid" : "to pay"}` : ""}>
-                          {c.cost != null ? (
-                            <span className={c.cost_status === "paid" ? "text-emerald-600" : "text-amber-700 dark:text-amber-300"}>{whole(c.cost)}</span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
                           )}
                         </td>
                         <td className="px-3 py-3">

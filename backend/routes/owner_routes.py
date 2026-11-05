@@ -478,6 +478,9 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
         users = [{**u, **(totals.get(u['id']) or {'rate': None, 'checks': 0, 'due': 0.0, 'paid': 0.0})}
                  for u in kyc_users()]
         return success_response(start_response, data={'users': users})
+    if sub == '/kyc-payouts' and method == 'GET':
+        from services import kyc_payouts
+        return success_response(start_response, data={'entries': kyc_payouts.entries()})
     pay = re.match(r'^/kyc-users/(\d+)/(rate|paid)$', sub)
     if pay and method == 'POST':
         from services import kyc_payouts

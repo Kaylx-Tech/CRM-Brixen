@@ -9,6 +9,7 @@ import { FieldMessage } from "@/components/FormField"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { money, ownerApi, shortDate } from "@/lib/owner"
 import OwnerRevenue from "./OwnerRevenue"
+import OwnerTeamPay from "./OwnerTeamPay"
 import { Button, FilterTabs, LoadError, PageTitle, Panel, PlanBadge, SELECT, Stat } from "./ownerUi"
 
 const STATE = {
@@ -478,7 +479,7 @@ function BillingWorkspaces() {
 /** Billing: the workspaces' subscriptions and charges, and Revenue (what Finstap received). */
 export default function OwnerBilling() {
   const [params, setParams] = useSearchParams()
-  const tab = params.get("tab") === "revenue" ? "revenue" : ""
+  const tab = ["revenue", "team-pay"].includes(params.get("tab")) ? params.get("tab") : ""
   return (
     <>
       <PageTitle
@@ -492,9 +493,10 @@ export default function OwnerBilling() {
         options={[
           ["", "Workspaces"],
           ["revenue", "Revenue"],
+          ["team-pay", "KYC team pay"],
         ]}
       />
-      {tab === "revenue" ? <OwnerRevenue /> : <BillingWorkspaces />}
+      {tab === "revenue" ? <OwnerRevenue /> : tab === "team-pay" ? <OwnerTeamPay /> : <BillingWorkspaces />}
     </>
   )
 }
