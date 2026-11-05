@@ -540,7 +540,7 @@ const Companies = () => {
                         <button
                           key={g.key}
                           type="button"
-                          className={`rounded-full px-2 py-0.5 text-xs transition-colors ${g.key === group.key ? 'bg-primary/10 font-semibold text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                          className={`rounded-full px-2 py-0.5 text-xs transition-colors ${g.key === group.key ? 'bg-primary font-semibold text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
                           onClick={() => document.getElementById(`month-${g.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                         >
                           {g.key === 'none' ? 'No date' : new Date(`${g.key}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'short' })}

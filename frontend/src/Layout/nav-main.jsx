@@ -20,8 +20,7 @@ const FINSTAP = {
   // and a short accent bar grows at the left of the active page
   button:
     "fs-menu-btn relative h-9 gap-3 rounded-lg px-3 text-[0.84375rem] text-sidebar-foreground/75 transition-[background-color,color,box-shadow] duration-200 hover:bg-white/[0.07] hover:text-sidebar-foreground " +
-    "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:font-medium " +
-    "data-active:shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_1px_3px_rgba(0,0,0,0.3)] " +
+    "data-active:bg-sidebar-primary/15 data-active:text-[color-mix(in_oklab,var(--sidebar-primary),white_30%)] data-active:font-medium data-active:ring-1 data-active:ring-inset data-active:ring-sidebar-primary/45 " +
     "before:absolute before:left-1 before:top-1/2 before:h-4 before:w-[3px] before:-translate-y-1/2 before:scale-y-0 before:rounded-full before:bg-sidebar-primary before:transition-transform before:duration-300 data-active:before:scale-y-100 " +
     "[&_svg]:size-[1.125rem]! [&_svg]:text-sidebar-foreground/55 [&_svg]:transition-[transform,color] [&_svg]:duration-200 hover:[&_svg]:translate-x-0.5 hover:[&_svg]:text-sidebar-foreground data-active:[&_svg]:text-sidebar-primary",
   badge:
