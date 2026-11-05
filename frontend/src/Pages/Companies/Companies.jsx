@@ -46,6 +46,24 @@ function incorporationMonth(value) {
   }
   return null
 }
+// "2026-10-14" from the same formats, for sorting newest first
+function incorporationDay(value) {
+  const text = String(value || '').trim()
+  let m = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`
+  m = text.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/)
+  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
+  const parsed = text ? new Date(text) : null
+  if (parsed && !Number.isNaN(parsed.getTime())) {
+    return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`
+  }
+  return null
+}
+// "Nov 2026" for the card's month tag
+const shortMonthLabel = (key) => {
+  const [year, month] = key.split('-').map(Number)
+  return new Date(year, month - 1, 1).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+}
 const monthLabel = (key) => {
   const [year, month] = key.split('-').map(Number)
   return new Date(year, month - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
@@ -208,6 +226,9 @@ const Companies = () => {
     }
     return true
   })
+  // Newest registered first (by incorporation date); companies without a date go last
+  const incKey = (c) => incorporationDay(c.incDate) || ''
+  filteredCompanies.sort((a, b) => incKey(b).localeCompare(incKey(a)))
 
   // A new search, tab or page size starts again on page 1
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0])
@@ -506,6 +527,7 @@ const Companies = () => {
             >
               <CompanyCard
                 company={company}
+                monthTag={incorporationMonth(company.incDate) ? shortMonthLabel(incorporationMonth(company.incDate)) : ''}
                 isSelected={selectedIds.includes(company.id)}
                 onToggleSelect={handleToggleSelect}
                 onRefresh={fetchCompanies}
