@@ -104,7 +104,7 @@ def team_totals():
     return out
 
 
-def entries(limit=300):
+def entries(limit=5000):
     """The latest charges, newest first: when, which workspace, who checked it, how much, paid or not."""
     _ensure()
     from db import query_db
@@ -146,11 +146,15 @@ def set_rate(member_id, value):
     return rate
 
 
-def mark_paid(member_id):
-    """Everything due to the member is paid now. Returns the amount."""
+def mark_paid(member_id, period=None):
+    """What is due to the member (only that month's checks when period "YYYY-MM" is given) is paid now.
+    Returns the amount."""
     _ensure()
-    due = _platform_query("SELECT COALESCE(SUM(amount), 0) AS s FROM kyc_payouts WHERE reviewer_id = ? AND status = 'due';",
-                          (int(member_id),), one=True)['s']
-    _platform_execute("UPDATE kyc_payouts SET status = 'paid', paid_at = datetime('now') "
-                      "WHERE reviewer_id = ? AND status = 'due';", (int(member_id),))
+    where, args = "reviewer_id = ? AND status = 'due'", [int(member_id)]
+    if period:
+        where += " AND strftime('%Y-%m', created_at) = ?"
+        args.append(str(period)[:7])
+    due = _platform_query(f"SELECT COALESCE(SUM(amount), 0) AS s FROM kyc_payouts WHERE {where};", tuple(args),
+                          one=True)['s']
+    _platform_execute(f"UPDATE kyc_payouts SET status = 'paid', paid_at = datetime('now') WHERE {where};", tuple(args))
     return round(float(due or 0), 2)

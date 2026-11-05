@@ -497,7 +497,7 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
             audit(admin, 'KYC_TEAM_RATE', None, f"member {member_id}: {rate if rate is not None else 'no rate'}")
             return success_response(start_response, message=(f"Rate set to £{rate:g} per check." if rate is not None
                                                              else "Rate removed."))
-        amount = kyc_payouts.mark_paid(member_id)
+        amount = kyc_payouts.mark_paid(member_id, (body or {}).get('period'))
         audit(admin, 'KYC_TEAM_PAID', None, f"member {member_id}: £{amount}")
         return success_response(start_response, message=f"Marked £{amount:g} as paid.")
     if sub == '/kyc-users' and method == 'POST':

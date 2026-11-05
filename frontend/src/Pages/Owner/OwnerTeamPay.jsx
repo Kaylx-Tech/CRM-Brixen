@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toastDone, toastFail } from "@/lib/toastActions"
 import { ownerApi, shortDate } from "@/lib/owner"
-import { Button, LoadError, Panel, Stat } from "./ownerUi"
+import { Button, LoadError, Panel, SELECT, Stat } from "./ownerUi"
 
 // £3, or £2.50 when there are pence
 const pounds = (v) => `£${Number(v || 0).toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
@@ -51,6 +51,7 @@ export default function OwnerTeamPay() {
   const [users, setUsers] = useState(null)
   const [entries, setEntries] = useState([])
   const [error, setError] = useState("")
+  const [month, setMonth] = useState("") // "" = all time, else "YYYY-MM"
 
   const load = useCallback(() => {
     ownerApi("/kyc-users").then((res) => (res.ok ? setUsers(res.data.users || []) : setError(res.error)))
@@ -63,7 +64,7 @@ export default function OwnerTeamPay() {
 
   const markPaid = async (user) => {
     if (!window.confirm(`Mark ${pounds(user.due)} as paid to ${user.full_name}?`)) return
-    const res = await ownerApi(`/kyc-users/${user.id}/paid`, { method: "POST" })
+    const res = await ownerApi(`/kyc-users/${user.id}/paid`, { method: "POST", body: { period: month || undefined } })
     if (res.ok) {
       toastDone(undefined, res.message)
       load()
@@ -74,16 +75,39 @@ export default function OwnerTeamPay() {
 
   if (error) return <LoadError error={error} />
   if (!users) return <p className="text-sm text-muted-foreground">Loading…</p>
-  const due = users.reduce((s, u) => s + (u.due || 0), 0)
-  const paid = users.reduce((s, u) => s + (u.paid || 0), 0)
-  const checks = users.reduce((s, u) => s + (u.checks || 0), 0)
+  // The month picked (by the day the check was charged); "All time" shows everything
+  const months = [...new Set(entries.map((e) => String(e.created_at || "").slice(0, 7)).filter(Boolean))].sort().reverse()
+  const shown = month ? entries.filter((e) => String(e.created_at || "").startsWith(month)) : entries
+  const sum = (list, status) => list.filter((e) => (status ? (e.status === "paid") === (status === "paid") : true))
+    .reduce((s, e) => s + Number(e.amount || 0), 0)
+  const perUser = (u) => {
+    const mine = shown.filter((e) => e.reviewer_id === u.id)
+    return { checks: mine.length, paid: sum(mine, "paid"), due: sum(mine, "due") }
+  }
+  const due = sum(shown, "due")
+  const paid = sum(shown, "paid")
+  const checks = shown.length
+  const monthLabel = (m) => new Date(`${m}-01T00:00:00`).toLocaleDateString("en-GB", { month: "long", year: "numeric" })
 
   return (
     <>
-      <p className="mb-4 text-sm text-muted-foreground">
-        What you pay the people who check the KYC. Give each person a rate per check; every check they approve or
-        reject is added once to what you owe them.
-      </p>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          What you pay the people who check the KYC. Give each person a rate per check; every check they approve or
+          reject is added once to what you owe them.
+        </p>
+        <select
+          className={cn(SELECT, "sm:w-48 sm:shrink-0")}
+          value={month}
+          onChange={(e) => setMonth(e.target.value)}
+          aria-label="Month"
+        >
+          <option value="">All time</option>
+          {months.map((m) => (
+            <option key={m} value={m}>{monthLabel(m)}</option>
+          ))}
+        </select>
+      </div>
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Stat label="You owe" value={pounds(due)} icon={IconClockHour4} tone="text-amber-600" />
         <Stat label="Paid so far" value={pounds(paid)} icon={IconCheck} tone="text-emerald-600" />
@@ -106,7 +130,7 @@ export default function OwnerTeamPay() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((u) => (
+                {users.map((u) => ({ ...u, ...perUser(u) })).map((u) => (
                   <TableRow key={u.id}>
                     <TableCell>
                       <div className="font-medium">{u.full_name}</div>
@@ -138,7 +162,7 @@ export default function OwnerTeamPay() {
       </Panel>
 
       <Panel title="Checks charged" description="Newest first. One line per check a team member approved or rejected." className="mt-6">
-        {entries.length ? (
+        {shown.length ? (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -152,7 +176,7 @@ export default function OwnerTeamPay() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {entries.map((e) => (
+                {shown.map((e) => (
                   <TableRow key={e.id}>
                     <TableCell className="text-muted-foreground">{shortDate(e.created_at)}</TableCell>
                     <TableCell>{e.workspace_name}</TableCell>
@@ -170,7 +194,9 @@ export default function OwnerTeamPay() {
             </Table>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Nothing yet. Set a rate above; checks are added when the team approves or rejects them.</p>
+          <p className="text-sm text-muted-foreground">
+            {month ? `Nothing in ${monthLabel(month)}.` : "Nothing yet. Set a rate above; checks are added when the team approves or rejects them."}
+          </p>
         )}
       </Panel>
     </>
