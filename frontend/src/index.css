@@ -277,6 +277,10 @@ html.is-non-apple,
 :root[data-product="finstap"] [data-slot="sidebar-inner"],
 :root[data-product="finstap"] [data-slot="sidebar-inset"] {
   background-color: var(--menu-surface);
+  /* A soft accent glow rising from the bottom-left corner. Fixed to the window, so the menu and the frame
+     around the page share one glow with no edge between them */
+  background-image: radial-gradient(42rem 22rem at 0% 100%, color-mix(in srgb, var(--sidebar-primary) 55%, transparent), transparent 75%);
+  background-attachment: fixed;
 }
 /* Phones: the menu slides over the page, so it blurs what is behind it */
 :root[data-product="finstap"] [data-slot="sidebar"][data-mobile="true"] {
