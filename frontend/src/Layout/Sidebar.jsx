@@ -183,11 +183,6 @@ export function AppSidebar({
           <NavMain groups={navGroups} badges={counts} variant="finstap" />
         </SidebarContent>
         <SidebarFooter className="relative gap-2 px-2 pb-3">
-          {/* A soft glow in the workspace's accent at the bottom of the menu */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 -z-0 h-48 bg-linear-to-t from-sidebar-primary/30 to-transparent"
-          />
           <SidebarMenu className="relative">
             <SidebarMenuItem>
               <SidebarMenuButton
