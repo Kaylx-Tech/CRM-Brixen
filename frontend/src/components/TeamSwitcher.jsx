@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import {
   IconArrowBackUp,
-  IconChevronDown,
   IconCreditCard,
   IconDeviceDesktop,
   IconHistory,
@@ -159,22 +158,19 @@ export default function TeamSwitcher() {
         render={
           <Button
             variant="ghost"
-            className={`h-auto gap-2 px-1.5 py-1 ${impersonated ? "bg-amber-500/10 hover:bg-amber-500/15" : ""}`}
-            aria-label="Account menu"
+            className={`size-9 rounded-full p-0.5 ${impersonated ? "bg-amber-500/10 hover:bg-amber-500/15" : ""}`}
+            aria-label={`Account menu: ${name}, ${subtitle}`}
+            title={`${name} · ${subtitle}`}
           />
         }
       >
+        {/* Just the avatar; the name and role are inside the menu */}
         <Avatar className="size-8">
           <AvatarImage src={user.avatar_url || ""} alt={name} />
           <AvatarFallback className={impersonated ? "bg-amber-500 text-white" : "bg-primary text-primary-foreground"}>
             {initials(name)}
           </AvatarFallback>
         </Avatar>
-        <span className="hidden min-w-0 flex-col items-start text-left leading-tight sm:flex">
-          <span className="max-w-40 truncate text-sm font-medium">{name}</span>
-          <span className={`max-w-40 truncate text-xs ${impersonated ? "text-amber-600" : "text-muted-foreground"}`}>{subtitle}</span>
-        </span>
-        <IconChevronDown className="hidden size-4 text-muted-foreground sm:block" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-56 rounded-xl p-1 shadow-lg">
