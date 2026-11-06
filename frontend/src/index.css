@@ -245,11 +245,15 @@ html.is-non-apple,
   --viz-3: #5b3fe6;
   --viz-4: #93b4ff;
   --viz-5: #9a6bff;
-  --sidebar: #0b0919;
+  /* One soft dark surface for the menu, the frame and the page behind the boxes (not pure black, no blue);
+     cards and boxes a step lighter so they stand on it */
+  --background: #141416;
+  --card: #1c1c1f;
+  --sidebar: #141416;
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: #7c6dff;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1c1840;
+  --sidebar-accent: #26262a;
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: #7c6dff;
@@ -263,7 +267,11 @@ html.is-non-apple,
   --menu-surface: color-mix(in srgb, var(--sidebar) 95%, transparent);
 }
 :root[data-product="finstap"].dark {
-  --menu-surface: color-mix(in srgb, var(--sidebar) 86%, transparent);
+  /* Solid in dark mode: the menu, the frame and the page are the same colour, with no glow showing through */
+  --menu-surface: var(--sidebar);
+}
+:root[data-product="finstap"].dark body {
+  background-image: none;
 }
 :root[data-product="finstap"] body {
   background-image:
