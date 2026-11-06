@@ -47,7 +47,7 @@ const APPEARANCE = [
   { value: "system", label: "Same as this device", Icon: IconDeviceDesktop },
 ]
 
-/** Light / Dark / System as one segmented switch; the chosen one is raised with a ring. */
+/** Light / Dark / System as one segmented switch; the chosen one is raised (no ring). */
 function AppearanceSwitch() {
   const { theme, setTheme } = useTheme()
   return (
@@ -65,7 +65,7 @@ function AppearanceSwitch() {
             onClick={() => setTheme(value)}
             className={`grid size-6 cursor-pointer place-items-center rounded-md transition-[background-color,color,box-shadow] duration-200 ${
               active
-                ? "bg-background text-foreground shadow-sm ring-2 ring-primary"
+                ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
