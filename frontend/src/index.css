@@ -354,23 +354,38 @@ html.is-non-apple,
     0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
-/* Stat cards (Layout/StatsCard.jsx): no outline, a faint wash of the logo's blue to purple, and the 3D look of the
-   dropdowns: a light top edge and a soft shadow under the card. The chosen card (a filter) gets a thin accent edge. */
+/* Stat cards (Layout/StatsCard.jsx): no outline, a wash of the logo's blue to purple, and the 3D look of the
+   dropdowns (a light top edge and a soft shadow under the card). The chosen card (a filter) has no edge either:
+   its wash is stronger and its icon sits on the logo gradient. */
 .fs-stat {
   background: linear-gradient(135deg,
-    color-mix(in srgb, #297bff 7%, var(--card)) 0%,
-    var(--card) 48%,
-    color-mix(in srgb, #834aff 8%, var(--card)) 100%);
+    color-mix(in srgb, #297bff 9%, #ffffff) 0%,
+    #ffffff 52%,
+    color-mix(in srgb, #834aff 10%, #ffffff) 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 1px 2px rgba(15, 23, 42, 0.05),
-    0 12px 28px -14px rgba(15, 23, 42, 0.22);
+    inset 0 1px 0 #ffffff,
+    0 1px 3px rgba(15, 23, 42, 0.06),
+    0 14px 32px -16px rgba(41, 64, 140, 0.3);
+}
+.fs-stat .fs-stat-chip {
+  background: linear-gradient(135deg, color-mix(in srgb, #297bff 14%, #ffffff), color-mix(in srgb, #834aff 14%, #ffffff));
+  color: #4f46e5;
+  box-shadow: inset 0 1px 0 #ffffff, 0 1px 2px rgba(41, 64, 140, 0.15);
 }
 .fs-stat[data-active="true"] {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, #297bff 18%, #ffffff) 0%,
+    color-mix(in srgb, #5f5cff 6%, #ffffff) 52%,
+    color-mix(in srgb, #834aff 20%, #ffffff) 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 0 0 1.5px color-mix(in srgb, var(--primary) 45%, transparent),
-    0 12px 28px -14px rgba(15, 23, 42, 0.22);
+    inset 0 1px 0 #ffffff,
+    0 1px 3px rgba(15, 23, 42, 0.06),
+    0 18px 36px -16px rgba(95, 92, 255, 0.45);
+}
+.fs-stat[data-active="true"] .fs-stat-chip {
+  background: linear-gradient(135deg, #297bff, #834aff);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 10px -3px rgba(95, 92, 255, 0.55);
 }
 .dark .fs-stat {
   background: linear-gradient(135deg,
@@ -382,11 +397,25 @@ html.is-non-apple,
     0 1px 2px rgba(0, 0, 0, 0.3),
     0 14px 30px -14px rgba(0, 0, 0, 0.7);
 }
+.dark .fs-stat .fs-stat-chip {
+  background: rgba(255, 255, 255, 0.08);
+  color: #c9c4ff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
 .dark .fs-stat[data-active="true"] {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, #297bff 22%, var(--card)) 0%,
+    color-mix(in srgb, #5f5cff 8%, var(--card)) 50%,
+    color-mix(in srgb, #834aff 26%, var(--card)) 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.09),
-    0 0 0 1.5px color-mix(in srgb, var(--primary) 55%, transparent),
-    0 14px 30px -14px rgba(0, 0, 0, 0.7);
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 16px 34px -14px rgba(95, 92, 255, 0.4);
+}
+.dark .fs-stat[data-active="true"] .fs-stat-chip {
+  background: linear-gradient(135deg, #297bff, #834aff);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 4px 10px -3px rgba(95, 92, 255, 0.5);
 }
 
 /* Menu rows slide in one after another when the menu opens (--i = row number) */

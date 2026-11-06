@@ -142,7 +142,7 @@ export function StatCard({
           {Icon && !isLoading && (
             <span
               className={cn(
-                "flex shrink-0 items-center justify-center rounded-lg",
+                "fs-stat-chip flex shrink-0 items-center justify-center rounded-lg",
                 compact ? "size-6" : "size-9 rounded-xl",
                 look?.chip
               )}
