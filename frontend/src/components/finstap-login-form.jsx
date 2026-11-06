@@ -33,10 +33,10 @@ import {
 } from "@/lib/workspace"
 
 /**
- * Finstap login, in one of three forms:
- *  - on a company's own subdomain (acme.finstap.com): email and password only
- *  - on the shared address with subdomains on (finstap.com): "find your workspace", then go there
- *  - subdomains off: workspace, email and password (?workspace=acme fills it in)
+ * Finstap login, always the workspace first and then email and password:
+ *  - on a company's own subdomain (acme.finstap.com): the address names the workspace, so email and password only
+ *  - on the shared address with subdomains on (finstap.com): "find your workspace", then go to its own address
+ *  - subdomains off (local tests): step 1 the workspace, step 2 email and password (?workspace=acme fills it in)
  */
 export function FinstapLoginForm() {
   const navigate = useNavigate()
@@ -48,6 +48,10 @@ export function FinstapLoginForm() {
   )
   const [workspaceName, setWorkspaceName] = useState("")
   const [workspaceError, setWorkspaceError] = useState("")
+  // Subdomains off: "workspace" first, then "credentials" once the workspace is found
+  const [step, setStep] = useState("workspace")
+  const twoSteps = !fixedWorkspace && !findMode
+  const askWorkspace = !fixedWorkspace && (findMode || step === "workspace")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -108,14 +112,16 @@ export function FinstapLoginForm() {
       setError("Enter your workspace.")
       return
     }
-    if (findMode) {
-      // The company signs in on its own address
+    if (askWorkspace) {
       if (!workspaceName) {
         setError("No workspace with this name. Check the spelling or create a new one.")
         return
       }
+      setError("")
       setWorkspace(slug)
-      window.location.assign(workspaceUrl(slug, "/login"))
+      // The company signs in on its own address; without subdomains the same page moves to step 2
+      if (findMode) window.location.assign(workspaceUrl(slug, "/login"))
+      else setStep("credentials")
       return
     }
     setError("")
@@ -206,9 +212,9 @@ export function FinstapLoginForm() {
 
   return (
     <AuthLayout
-      title={findMode ? "Find your workspace" : "Welcome Back!"}
+      title={askWorkspace ? "Find your workspace" : "Welcome Back!"}
       subtitle={
-        findMode
+        askWorkspace
           ? "Enter your company's workspace name to sign in"
           : workspaceName
             ? `Please enter your details to sign in to ${workspaceName}`
@@ -224,8 +230,28 @@ export function FinstapLoginForm() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+          {/* Step 2 without subdomains: which workspace, with a way back to step 1 */}
+          {twoSteps && !askWorkspace && (
+            <div className="flex items-center justify-between gap-3 rounded-xl border bg-muted/40 px-3 py-2.5">
+              <span className="flex min-w-0 items-center gap-2 text-sm">
+                <IconBuildingStore className="size-4 shrink-0 text-muted-foreground" />
+                <span className="truncate font-medium">{workspaceName || normalizeSlug(workspace)}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("workspace")
+                  setPassword("")
+                  setError("")
+                }}
+                className="shrink-0 cursor-pointer text-sm font-medium text-primary underline-offset-2 hover:underline"
+              >
+                Change
+              </button>
+            </div>
+          )}
           {/* On a company subdomain the address already names the workspace */}
-          {!fixedWorkspace && (
+          {askWorkspace && (
           <Field>
             <FieldLabel htmlFor="workspace">Workspace</FieldLabel>
             <div className="relative">
@@ -240,6 +266,7 @@ export function FinstapLoginForm() {
                 value={workspace}
                 onChange={(e) => setWorkspaceInput(e.target.value)}
                 disabled={isLoading}
+                autoFocus
               />
             </div>
             {workspaceName ? (
@@ -253,9 +280,9 @@ export function FinstapLoginForm() {
             )}
           </Field>
           )}
-          {findMode ? (
+          {askWorkspace ? (
             <Field>
-              <Button type="submit" className={FINSTAP_CTA}>
+              <Button type="submit" className={FINSTAP_CTA} disabled={!workspaceName}>
                 Continue <IconArrowRight className="size-4" />
               </Button>
             </Field>
@@ -269,6 +296,7 @@ export function FinstapLoginForm() {
               type="email"
               placeholder="you@company.com"
               autoComplete="username"
+              autoFocus={twoSteps}
               value={email}
               onChange={(e) => { setEmail(e.target.value); recheck('email', e.target.value) }}
               disabled={isLoading}
