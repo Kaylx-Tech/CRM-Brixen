@@ -336,6 +336,25 @@ html.is-non-apple,
     0 8px 18px -8px rgba(0, 0, 0, 0.5);
 }
 
+/* The Ctrl/⌘ K search field (components/ui/command.jsx) looks like the menu's search box: raised, with a light
+   top edge and a soft shadow; on the white light theme it is a light key with a fine outline */
+.fs-search-field {
+  background: linear-gradient(180deg, #ffffff, #f4f4f6);
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    inset 0 -1px 0 rgba(15, 23, 42, 0.05),
+    0 0 0 1px rgba(15, 23, 42, 0.09),
+    0 1px 2px rgba(15, 23, 42, 0.08);
+}
+.dark .fs-search-field {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.09));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
 /* Menu rows slide in one after another when the menu opens (--i = row number) */
 @keyframes fs-menu-in {
   from { opacity: 0; transform: translateX(-8px); }

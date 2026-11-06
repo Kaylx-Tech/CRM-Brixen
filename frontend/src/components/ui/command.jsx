@@ -63,12 +63,13 @@ function CommandInput({
   ...props
 }) {
   return (
-    <div data-slot="command-input-wrapper" className="p-1 pb-0">
-      <InputGroup className="h-7! rounded-lg! border-input/30 bg-input/30 shadow-none! *:data-[slot=input-group-addon]:pl-2!">
+    <div data-slot="command-input-wrapper" className="p-1.5 pb-0.5">
+      {/* Same look as the search box in the menu (fs-search-field in index.css) */}
+      <InputGroup className="fs-search-field h-8! rounded-[14px]! border-transparent! *:data-[slot=input-group-addon]:pl-2.5!">
         <CommandPrimitive.Input
           data-slot="command-input"
           className={cn(
-            "w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+            "w-full text-[0.8125rem] outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
             className
           )}
           {...props}
