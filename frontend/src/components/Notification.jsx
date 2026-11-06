@@ -55,7 +55,12 @@ function getNotificationIcon(type = "") {
   return <IconBell className="h-4 w-4 text-primary" />
 }
 
-export default function Notifications() {
+/**
+ * The notifications bell and its list. `placement="sidebar"`: the bell at the bottom of the menu (next to the
+ * person), whose list opens to the right of the menu. `allHref`: the full notifications page.
+ */
+export default function Notifications({ placement = "header", allHref = "/admin/notifications" }) {
+  const inSidebar = placement === "sidebar"
   const navigate = useNavigate()
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -198,15 +203,27 @@ export default function Notifications() {
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger
-        className="relative inline-flex items-center justify-center rounded-md p-1.5 hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
-        aria-label="Notifications"
+        className={
+          inSidebar
+            ? "relative flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-sidebar-foreground/70 transition-colors hover:bg-white/10 hover:text-sidebar-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 data-[popup-open]:bg-white/10 data-[popup-open]:text-sidebar-foreground"
+            : "relative inline-flex items-center justify-center rounded-md p-1.5 hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+        }
+        aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : "Notifications"}
+        title="Notifications"
       >
-        {unreadCount > 0 ? (
+        {inSidebar ? (
+          <IconBell className="size-[1.125rem] stroke-[1.75]" />
+        ) : unreadCount > 0 ? (
           <IconBellRinging className="h-4 w-4 text-primary animate-pulse" />
         ) : (
           <IconBell className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
         )}
-        {unreadCount > 0 && (
+        {inSidebar && unreadCount > 0 ? (
+          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-sidebar-primary px-1 text-[9px] font-semibold text-sidebar-primary-foreground ring-2 ring-sidebar">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        ) : null}
+        {!inSidebar && unreadCount > 0 && (
           <Badge
             variant="default"
             className="absolute -top-1.5 -right-1.5 font-semibold text-[9px] min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background"
@@ -219,6 +236,8 @@ export default function Notifications() {
       <PopoverContent
         className="w-[calc(100vw-2rem)] sm:w-[26rem] p-0 shadow-xl rounded-xl border border-border/70 overflow-hidden"
         align="end"
+        side={inSidebar ? "right" : "bottom"}
+        sideOffset={inSidebar ? 14 : 4}
       >
         {/* Header */}
         <div className="bg-muted/60 backdrop-blur-sm flex items-center justify-between border-b border-border/60 py-2.5 px-4">
@@ -352,7 +371,7 @@ export default function Notifications() {
             className="w-full h-[26px] text-[13px] justify-center cursor-pointer"
             onClick={() => {
               setIsOpen(false)
-              navigate("/admin/notifications")
+              navigate(allHref)
             }}
           >
             View all notifications

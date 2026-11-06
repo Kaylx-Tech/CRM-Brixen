@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/breadcrumb'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
-import Notification from '@/components/Notification'
 import { PrivacyToggle } from '@/components/PrivacyToggle'
 import TeamSwitcher from '@/components/TeamSwitcher'
 import WalletButton from '@/components/WalletButton'
@@ -115,7 +114,6 @@ export function SiteHeader({ homeHref = '/admin/dashboard' }) {
           {/* Finstap: the workspace balance and the hide-amounts eye are for the workspace's admins only */}
           {IS_FINSTAP && isAdminRole() && <WalletButton />}
           {(!IS_FINSTAP || isAdminRole()) && <PrivacyToggle />}
-          <Notification />
           <Separator orientation="vertical" className="mx-1 h-6 data-vertical:self-auto" />
           <TeamSwitcher />
         </div>

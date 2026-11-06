@@ -17,7 +17,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import {
   IconDashboard,
@@ -167,7 +166,6 @@ export function AppSidebar({
             <Link to={homePath()} aria-label="Go to the dashboard" className="min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30">
               <FinstapMenuLogo />
             </Link>
-            <SidebarTrigger className="size-8 shrink-0 text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground" />
           </div>
           <button
             type="button"

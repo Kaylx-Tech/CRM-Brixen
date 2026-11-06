@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react"
-import { Link, useLocation } from "react-router-dom"
-import { IconBell } from "@tabler/icons-react"
+import { Link } from "react-router-dom"
+import Notifications from "@/components/Notification"
 import {
   Avatar,
   AvatarFallback,
@@ -10,32 +9,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { authHeaders, getApiBase } from "@/lib/api"
-
-/** Unread notifications for the bell, refreshed on each page and every minute while the tab is open. */
-function useUnreadCount() {
-  const { pathname } = useLocation()
-  const [count, setCount] = useState(0)
-  useEffect(() => {
-    let alive = true
-    const load = () =>
-      fetch(`${getApiBase()}/client/notifications`, { credentials: "include", headers: { ...authHeaders() } })
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (alive && data && typeof data.unread_count === "number") setCount(data.unread_count)
-        })
-        .catch(() => {})
-    load()
-    const timer = setInterval(() => {
-      if (document.visibilityState === "visible") load()
-    }, 60_000)
-    return () => {
-      alive = false
-      clearInterval(timer)
-    }
-  }, [pathname])
-  return count
-}
 
 function readStoredUser() {
   try {
@@ -47,15 +20,13 @@ function readStoredUser() {
 
 /**
  * The signed-in person at the bottom of the menu: avatar, name and email (no menu: the account menu is the
- * one in the header, top right) and a bell that opens the notifications, with a dot while some are unread.
+ * one in the header, top right) and a bell that opens the notifications list, with the unread count.
  */
 export function NavUser({
   user: defaultUser,
   profileHref = '/admin/settings?tab=profile',
   notificationsHref = '/admin/notifications',
 }) {
-  const unread = useUnreadCount()
-
   const storedUser = readStoredUser()
 
   const user = {
@@ -83,17 +54,8 @@ export function NavUser({
             <span className="truncate text-xs text-sidebar-foreground/65">{user.email}</span>
           </div>
         </Link>
-        <Link
-          to={notificationsHref}
-          aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
-          title="Notifications"
-          className="relative flex size-8 shrink-0 items-center justify-center rounded-lg text-sidebar-foreground/70 transition-colors hover:bg-white/10 hover:text-sidebar-foreground"
-        >
-          <IconBell className="size-[1.125rem] stroke-[1.75]" />
-          {unread > 0 && (
-            <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-sidebar-primary ring-2 ring-sidebar" />
-          )}
-        </Link>
+        {/* The bell opens the notifications list beside the menu */}
+        <Notifications placement="sidebar" allHref={notificationsHref} />
       </SidebarMenuItem>
     </SidebarMenu>
   )
