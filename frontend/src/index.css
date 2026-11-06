@@ -225,13 +225,14 @@ html.is-non-apple,
 :root[data-product="finstap"].dark {
   --primary: #7c6dff;
   --primary-foreground: #ffffff;
-  --secondary: #15122b;
+  /* Neutral greys (no blue on black, like Shopify's dark admin); the accent purple stays for primary */
+  --secondary: #232326;
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: #0e0c1d;
-  --muted-foreground: #b9b4dc;
-  --accent: #17142f;
+  --muted: #1c1c1f;
+  --muted-foreground: #a1a1aa;
+  --accent: #2e2e32;
   --accent-foreground: oklch(0.985 0 0);
-  --popover: #13112a;
+  --popover: #252527;
   --ring: #7c6dff;
   --chart-1: #a9c1ff;
   --chart-2: #4d8dff;
