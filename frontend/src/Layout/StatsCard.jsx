@@ -33,21 +33,6 @@ import { m, fadeUp, staggerContainer, snappySpring } from "@/lib/motion"
 // The Card itself animates (the grid styles target the card as a direct child)
 const MotionCard = m.create(Card)
 
-// Colour per card: soft tinted surface, a glow in the corner and a coloured icon chip
-const TONES = {
-  blue: { card: "from-blue-500/12 via-card to-card", glow: "bg-blue-500/25", chip: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
-  emerald: { card: "from-emerald-500/12 via-card to-card", glow: "bg-emerald-500/25", chip: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
-  violet: { card: "from-violet-500/12 via-card to-card", glow: "bg-violet-500/25", chip: "bg-violet-500/15 text-violet-600 dark:text-violet-400" },
-  orange: { card: "from-orange-500/12 via-card to-card", glow: "bg-orange-500/25", chip: "bg-orange-500/15 text-orange-600 dark:text-orange-400" },
-  teal: { card: "from-teal-500/12 via-card to-card", glow: "bg-teal-500/25", chip: "bg-teal-500/15 text-teal-600 dark:text-teal-400" },
-  rose: { card: "from-rose-500/12 via-card to-card", glow: "bg-rose-500/25", chip: "bg-rose-500/15 text-rose-600 dark:text-rose-400" },
-  amber: { card: "from-amber-500/14 via-card to-card", glow: "bg-amber-500/25", chip: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
-  sky: { card: "from-sky-500/12 via-card to-card", glow: "bg-sky-500/25", chip: "bg-sky-500/15 text-sky-600 dark:text-sky-400" },
-}
-
-// Cards without their own tone take these in order
-const TONE_ORDER = ["blue", "emerald", "violet", "orange", "teal", "rose", "amber", "sky"]
-
 // Cards without their own icon get one from words in the title
 const TITLE_ICONS = [
   [/overdue|attention|fail|error|bounce|reject|cancel/i, IconAlertTriangle],
@@ -66,20 +51,13 @@ const TITLE_ICONS = [
   [/today|month|week|year|new/i, IconCalendarEvent],
 ]
 
-// Meaning first (overdue red, pending amber, done green…), then the order above
-const TITLE_TONES = [
-  [/overdue|issue|fail|owe|reject|quarantine|cancel|not deliver/i, "rose"],
-  [/pending|due|waiting|part paid|review/i, "amber"],
-  [/progress|processing/i, "violet"],
-  [/complete|paid|received|filed|deliver|posted|resolved|profit/i, "emerald"],
-  [/cost/i, "orange"],
-  [/revenue|sell|billed|turnover/i, "sky"],
-]
-
-const toneFor = (title = "", index = 0) =>
-  TITLE_TONES.find(([re]) => re.test(title))?.[1] ?? TONE_ORDER[index % TONE_ORDER.length]
-
 const iconForTitle = (title = "") => TITLE_ICONS.find(([re]) => re.test(title))?.[1] ?? IconSparkles
+
+// Every stat card looks the same (Shopify-style): the plain card surface, a quiet grey icon chip, no colour
+// per card. A "tone" a page still passes is ignored.
+const NEUTRAL = {
+  chip: "bg-muted text-foreground/70 ring-1 ring-inset ring-border",
+}
 
 // The headline card: solid brand gradient with white text
 const HERO = {
@@ -109,14 +87,13 @@ export function StatCard({
   compact = false,
   onClick,
   active = false,
-  tone,
   hero = false,
   icon: Icon,
 }) {
   const isDown = trendDirection === "down"
   const TrendIcon = isDown ? IconTrendingDown : IconTrendingUp
   const interactive = typeof onClick === "function"
-  const look = hero && !isLoading ? HERO : TONES[tone]
+  const look = hero && !isLoading ? HERO : NEUTRAL
 
   return (
     <MotionCard
@@ -126,7 +103,7 @@ export function StatCard({
       size={compact ? "sm" : "default"}
       className={cn(
         "@container/card relative overflow-hidden shadow-xs",
-        look ? cn("bg-linear-to-br", look.card) : "bg-linear-to-t from-primary/5 to-card",
+        look === HERO ? cn("bg-linear-to-br", look.card) : "bg-card",
         interactive && "cursor-pointer",
         active && "ring-1 ring-primary/40 border-primary/30"
       )}
@@ -144,7 +121,7 @@ export function StatCard({
           : undefined
       }
     >
-      {look && (
+      {look.glow && (
         <span
           aria-hidden="true"
           className={cn(
@@ -244,7 +221,6 @@ export function SectionCards({ stats = [], isLoading = false, compact = false })
           key={stat.title || index}
           {...stat}
           hero={false}
-          tone={stat.tone ?? toneFor(stat.title, index)}
           icon={stat.icon ?? (stat.title ? iconForTitle(stat.title) : undefined)}
           compact={compact}
           isLoading={isLoading}
