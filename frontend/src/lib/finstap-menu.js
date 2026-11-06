@@ -6,7 +6,7 @@ export const FINSTAP_MENU = {
   label: "h-7 px-2.5 text-xs font-medium text-sidebar-foreground/55",
   menu: "gap-px",
   button:
-    "fs-menu-btn relative h-8 gap-2.5 rounded-[10px] px-2.5 text-[0.8125rem] font-medium text-sidebar-foreground/85 transition-colors duration-150 hover:bg-white/[0.07] hover:text-sidebar-foreground " +
+    "fs-menu-btn relative h-8 gap-2.5 rounded-[14px] px-2.5 text-[0.8125rem] font-medium text-sidebar-foreground/85 transition-colors duration-150 hover:bg-white/[0.07] hover:text-sidebar-foreground " +
     "data-active:text-sidebar-foreground " +
     "[&_svg]:size-[1.0625rem]! [&_svg]:stroke-[1.75] [&_svg]:text-sidebar-foreground/70 hover:[&_svg]:text-sidebar-foreground data-active:[&_svg]:text-sidebar-foreground",
   badge:
