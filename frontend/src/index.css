@@ -296,56 +296,6 @@ html.is-non-apple,
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.11));
 }
 
-/* The Ctrl/⌘ K search (components/ComboSearch.jsx), 3D like the menu: a floating card with a light top edge and a
-   deep soft shadow, the search field pressed in, and the chosen row raised like a key */
-.fs-palette {
-  border-radius: 20px !important;
-  background: linear-gradient(180deg, #ffffff, #fafafb);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 0 0 1px rgba(15, 23, 42, 0.06),
-    0 24px 60px -16px rgba(15, 23, 42, 0.35),
-    0 8px 18px -8px rgba(15, 23, 42, 0.18);
-}
-.fs-palette [data-slot="command-input-wrapper"] {
-  padding: 0.5rem 0.5rem 0.25rem;
-}
-.fs-palette [data-slot="command-input-wrapper"] [data-slot="input-group"] {
-  height: 2.5rem !important;
-  border-radius: 14px !important;
-  border-color: transparent !important;
-  background: linear-gradient(180deg, #efeff2, #f6f6f8) !important;
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.1), inset 0 0 0 1px rgba(15, 23, 42, 0.05), 0 1px 0 #ffffff !important;
-}
-.fs-palette [data-slot="command-item"] {
-  min-height: 2.25rem;
-  border-radius: 12px !important;
-  padding-inline: 0.625rem;
-}
-.fs-palette [data-slot="command-item"][data-selected="true"] {
-  background: linear-gradient(180deg, #ffffff, #f2f2f5);
-  box-shadow:
-    inset 0 1px 0 #ffffff,
-    inset 0 -1px 0 rgba(15, 23, 42, 0.06),
-    0 0 0 1px rgba(15, 23, 42, 0.07),
-    0 1px 2px rgba(15, 23, 42, 0.08);
-}
-.dark .fs-palette {
-  background: linear-gradient(180deg, #232328, #1b1b1f);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 24px 60px -16px rgba(0, 0, 0, 0.7);
-}
-.dark .fs-palette [data-slot="command-input-wrapper"] [data-slot="input-group"] {
-  background: linear-gradient(180deg, #141417, #19191c) !important;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-}
-.dark .fs-palette [data-slot="command-item"][data-selected="true"] {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.07));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05), 0 1px 2px rgba(0, 0, 0, 0.15);
-}
-
 /* Menu rows slide in one after another when the menu opens (--i = row number) */
 @keyframes fs-menu-in {
   from { opacity: 0; transform: translateX(-8px); }
