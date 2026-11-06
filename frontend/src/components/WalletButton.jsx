@@ -152,7 +152,8 @@ export default function WalletButton({ variant = 'button', onChange }) {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
+        {/* Wide, in two columns: the money and adding to it on the left, how to pay by bank and what happened on the right */}
+        <DialogContent className="gap-5 sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Balance</DialogTitle>
             <DialogDescription>
@@ -161,131 +162,144 @@ export default function WalletButton({ variant = 'button', onChange }) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-xl border bg-muted/40 p-3">
-              <p className="text-xs text-muted-foreground">Balance</p>
-              <p className="text-xl font-bold tabular-nums">{money(data.balance)}</p>
-            </div>
-            <div className={`rounded-xl border p-3 ${short ? 'border-destructive/40 bg-destructive/5' : 'bg-muted/40'}`}>
-              <p className="text-xs text-muted-foreground">Due for services</p>
-              <p className={`text-xl font-bold tabular-nums ${short ? 'text-destructive' : ''}`}>{money(due)}</p>
-            </div>
-          </div>
-
-          {data.due?.items?.length > 0 && (
-            <ul className="max-h-32 space-y-1 overflow-y-auto text-sm">
-              {data.due.items.map((i) => (
-                <li key={i.ref} className="flex justify-between gap-3">
-                  <span className="min-w-0 truncate text-muted-foreground">{i.label}</span>
-                  <span className="shrink-0 tabular-nums">{money(i.amount)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {due > 0 && data.card && (
-            <Button
-              variant="outline"
-              onClick={() => toStripe('/admin/billing/services', undefined, 'Card payment could not start')}
-              disabled={!!busy}
-              className="w-full"
-            >
-              {busy === '/admin/billing/services' ? <IconLoader2 className="size-4 animate-spin" /> : <IconCreditCard className="size-4" />}
-              Pay {money(due)} now by card
-            </Button>
-          )}
-
-          {/* Add balance: online by card, or a bank transfer Finstap approves when it arrives */}
-          <div className="space-y-3 rounded-xl border p-3 text-sm">
-            <p className="flex items-center gap-2 font-medium">
-              <IconPlus className="size-4 text-primary" /> Add balance
-            </p>
-            <Input
-              inputMode="decimal"
-              placeholder={`Amount, £${min} to £${max.toLocaleString('en-GB')}`}
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              aria-label="Amount to add"
-            />
-            <div className="grid gap-2 sm:grid-cols-2">
-              {data.card && (
-                <Button
-                  disabled={!amountOk || !!busy}
-                  onClick={() => toStripe('/admin/billing/wallet/card', { amount: value }, 'Card payment could not start')}
-                >
-                  {busy === '/admin/billing/wallet/card' ? <IconLoader2 className="size-4 animate-spin" /> : <IconCreditCard className="size-4" />}
-                  Pay by card
-                </Button>
-              )}
-              <Button variant="outline" disabled={!amountOk || !!busy} onClick={sentTransfer} className={data.card ? '' : 'sm:col-span-2'}>
-                {busy === 'transfer' ? <IconLoader2 className="size-4 animate-spin" /> : <IconBuildingBank className="size-4" />}
-                I sent a bank transfer
-              </Button>
-            </div>
-            <div className="space-y-2 rounded-lg bg-muted/50 p-2.5">
-              <p className="text-xs font-medium">Bank transfer to Finstap</p>
-              {data.bank_details ? (
-                <p className="whitespace-pre-line text-xs text-muted-foreground">{data.bank_details}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground">Ask Finstap for the bank details.</p>
-              )}
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-muted-foreground">
-                  Reference <span className="font-semibold text-foreground">{data.reference}</span>
-                </span>
-                <Button variant="ghost" size="xs" className="h-6 gap-1" onClick={() => copy(data.reference)}>
-                  <IconCopy className="size-3.5" /> Copy
-                </Button>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex min-w-0 flex-col gap-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border bg-muted/40 p-4">
+                  <p className="text-xs text-muted-foreground">Balance</p>
+                  <p className="mt-1 text-2xl font-bold tabular-nums">{money(data.balance)}</p>
+                </div>
+                <div className={`rounded-2xl border p-4 ${short ? 'border-destructive/40 bg-destructive/5' : 'bg-muted/40'}`}>
+                  <p className="text-xs text-muted-foreground">Due for services</p>
+                  <p className={`mt-1 text-2xl font-bold tabular-nums ${short ? 'text-destructive' : ''}`}>{money(due)}</p>
+                </div>
               </div>
-              <Input
-                className="h-8 text-xs"
-                placeholder="Your transfer reference (optional)"
-                value={reference}
-                onChange={(e) => setReference(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                After you send it, press “I sent a bank transfer”. Finstap checks it and your balance goes up.
-              </p>
+
+              {data.due?.items?.length > 0 && (
+                <ul className="max-h-32 space-y-1 overflow-y-auto text-sm">
+                  {data.due.items.map((i) => (
+                    <li key={i.ref} className="flex justify-between gap-3">
+                      <span className="min-w-0 truncate text-muted-foreground">{i.label}</span>
+                      <span className="shrink-0 tabular-nums">{money(i.amount)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {due > 0 && data.card && (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => toStripe('/admin/billing/services', undefined, 'Card payment could not start')}
+                  disabled={!!busy}
+                  className="w-full"
+                >
+                  {busy === '/admin/billing/services' ? <IconLoader2 className="size-4 animate-spin" /> : <IconCreditCard className="size-4" />}
+                  Pay {money(due)} now by card
+                </Button>
+              )}
+
+              {/* Add balance: online by card, or a bank transfer Finstap approves when it arrives */}
+              <div className="flex flex-col gap-3 rounded-2xl border p-4 text-sm">
+                <p className="flex items-center gap-2 font-medium">
+                  <IconPlus className="size-4 text-primary" /> Add balance
+                </p>
+                <Input
+                  className="h-10"
+                  inputMode="decimal"
+                  placeholder={`Amount, £${min} to £${max.toLocaleString('en-GB')}`}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  aria-label="Amount to add"
+                />
+                <div className="grid gap-2">
+                  {data.card && (
+                    <Button
+                      size="lg"
+                      disabled={!amountOk || !!busy}
+                      onClick={() => toStripe('/admin/billing/wallet/card', { amount: value }, 'Card payment could not start')}
+                    >
+                      {busy === '/admin/billing/wallet/card' ? <IconLoader2 className="size-4 animate-spin" /> : <IconCreditCard className="size-4" />}
+                      Pay by card
+                    </Button>
+                  )}
+                  <Button size="lg" variant="outline" disabled={!amountOk || !!busy} onClick={sentTransfer}>
+                    {busy === 'transfer' ? <IconLoader2 className="size-4 animate-spin" /> : <IconBuildingBank className="size-4" />}
+                    I sent a bank transfer
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Paying by bank? Send the transfer first (details on the right), then press “I sent a bank transfer”.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex min-w-0 flex-col gap-4">
+              <div className="flex flex-col gap-2.5 rounded-2xl border bg-muted/40 p-4 text-sm">
+                <p className="flex items-center gap-2 font-medium">
+                  <IconBuildingBank className="size-4 text-primary" /> Bank transfer to Finstap
+                </p>
+                {data.bank_details ? (
+                  <p className="whitespace-pre-line text-xs text-muted-foreground">{data.bank_details}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Ask Finstap for the bank details.</p>
+                )}
+                <div className="flex items-center justify-between gap-2 rounded-lg bg-background/60 px-3 py-2">
+                  <span className="text-xs text-muted-foreground">
+                    Reference <span className="font-semibold text-foreground">{data.reference}</span>
+                  </span>
+                  <Button variant="ghost" size="xs" className="h-6 gap-1" onClick={() => copy(data.reference)}>
+                    <IconCopy className="size-3.5" /> Copy
+                  </Button>
+                </div>
+                <Input
+                  className="h-9 text-xs"
+                  placeholder="Your transfer reference (optional)"
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">Finstap checks the transfer and your balance goes up.</p>
+              </div>
+
+              {data.transfers?.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Bank transfers</p>
+                  <ul className="max-h-28 space-y-1.5 overflow-y-auto text-sm">
+                    {data.transfers.map((t) => (
+                      <li key={t.id} className="flex justify-between gap-3">
+                        <span className="min-w-0 truncate">
+                          <span className="text-muted-foreground">{shortDate(t.created_at)}</span> {money(t.approved_amount ?? t.amount)}
+                          {t.status === 'Rejected' && t.reason ? <span className="text-muted-foreground"> · {t.reason}</span> : null}
+                        </span>
+                        <span className={`shrink-0 text-xs font-semibold ${TRANSFER_TONE[t.status] || ''}`}>
+                          {t.status === 'Pending' ? 'Waiting for Finstap' : t.status}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {data.entries?.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Recent</p>
+                  <ul className="max-h-44 space-y-1.5 overflow-y-auto text-sm">
+                    {data.entries.map((e) => (
+                      <li key={e.id} className="flex justify-between gap-3">
+                        <span className="min-w-0 truncate">
+                          <span className="text-muted-foreground">{shortDate(e.created_at)}</span> {e.note || e.kind}
+                        </span>
+                        <span className={`shrink-0 tabular-nums ${e.amount < 0 ? '' : 'text-emerald-600'}`}>
+                          {e.amount < 0 ? '−' : '+'}
+                          {money(Math.abs(e.amount))}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
-
-          {data.transfers?.length > 0 && (
-            <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Bank transfers</p>
-              <ul className="max-h-28 space-y-1 overflow-y-auto text-sm">
-                {data.transfers.map((t) => (
-                  <li key={t.id} className="flex justify-between gap-3">
-                    <span className="min-w-0 truncate">
-                      <span className="text-muted-foreground">{shortDate(t.created_at)}</span> {money(t.approved_amount ?? t.amount)}
-                      {t.status === 'Rejected' && t.reason ? <span className="text-muted-foreground"> · {t.reason}</span> : null}
-                    </span>
-                    <span className={`shrink-0 text-xs font-semibold ${TRANSFER_TONE[t.status] || ''}`}>
-                      {t.status === 'Pending' ? 'Waiting for Finstap' : t.status}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {data.entries?.length > 0 && (
-            <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Recent</p>
-              <ul className="max-h-36 space-y-1 overflow-y-auto text-sm">
-                {data.entries.map((e) => (
-                  <li key={e.id} className="flex justify-between gap-3">
-                    <span className="min-w-0 truncate">
-                      <span className="text-muted-foreground">{shortDate(e.created_at)}</span> {e.note || e.kind}
-                    </span>
-                    <span className={`shrink-0 tabular-nums ${e.amount < 0 ? '' : 'text-emerald-600'}`}>
-                      {e.amount < 0 ? '−' : '+'}
-                      {money(Math.abs(e.amount))}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </DialogContent>
       </Dialog>
     </>
