@@ -54,17 +54,18 @@ export function FinstapMenuLogo() {
   const onCard = brand.logo && !brand.logoDark
   const src = brand.logoDark || brand.logo || finstapLogoLight
 
+  // Small, on the left of the menu's top row
   return (
-    <div className="flex w-full items-center justify-center px-1 pt-5 pb-4">
+    <div className="flex min-w-0 items-center">
       {onCard ? (
-        <span className="rounded-xl bg-white px-4 py-2.5 shadow-[0_6px_20px_rgba(0,0,0,0.28)] ring-1 ring-white/30">
-          <img src={src} alt="Company logo" className="block h-10 w-auto max-w-[180px] object-contain" />
+        <span className="rounded-lg bg-white px-2 py-1 ring-1 ring-white/20">
+          <img src={src} alt="Company logo" className="block h-6 w-auto max-w-[130px] object-contain" />
         </span>
       ) : (
         <img
           src={src}
           alt={brand.logoDark ? "Company logo" : "Finstap"}
-          className="h-12 w-auto max-w-[200px] object-contain drop-shadow-[0_3px_10px_rgba(0,0,0,0.35)]"
+          className="h-7 w-auto max-w-[150px] object-contain"
         />
       )}
     </div>

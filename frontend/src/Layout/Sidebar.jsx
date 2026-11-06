@@ -7,6 +7,7 @@ import { FINSTAP_NAV_GROUPS } from "@/lib/finstap-nav"
 import { apiRequest } from "@/lib/api"
 import { Link, useLocation } from "react-router-dom"
 import { NavMain } from "@/Layout/nav-main"
+import { FINSTAP_MENU } from "@/lib/finstap-menu"
 import { NavUser } from "@/Layout/nav-user"
 import {
   Sidebar,
@@ -14,7 +15,9 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import {
   IconDashboard,
@@ -36,7 +39,7 @@ import {
   IconTrophy,
 } from "@tabler/icons-react"
 import { CommandManyItems } from "@/components/ComboSearch"
-import { canOpenPath, homePath, isStaffRole, isManagerOrAbove } from "@/lib/permissions"
+import { canOpenPath, homePath, isAdminRole, isStaffRole, isManagerOrAbove } from "@/lib/permissions"
 
 const data = {
   user: {
@@ -84,6 +87,38 @@ function useNavCounts(enabled) {
   return counts
 }
 
+/** Finstap, admins only: while the free trial runs, how many days are left and a button to choose a plan. */
+function TrialCard() {
+  const [trial, setTrial] = React.useState(null)
+  React.useEffect(() => {
+    if (!isAdminRole()) return undefined
+    let alive = true
+    apiRequest("/admin/billing", { label: "Billing", silent: true }).then((res) => {
+      const d = res.ok ? res.data?.data : null
+      if (alive && d?.trial_active && d.trial_ends_at) setTrial(d.trial_ends_at)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+  if (!trial) return null
+  const ends = new Date(String(trial).replace(" ", "T"))
+  const days = Math.max(0, Math.ceil((ends.getTime() - Date.now()) / 86_400_000))
+  return (
+    <div className="relative mt-1 flex flex-col gap-2.5 border-t border-white/10 px-1.5 pt-3">
+      <p className="text-sm font-semibold text-sidebar-foreground">
+        {days === 0 ? "Trial ends today" : `Trial ends in ${days} day${days === 1 ? "" : "s"}`}
+      </p>
+      <Link
+        to="/admin/billing"
+        className="flex h-9 items-center justify-center rounded-full bg-white text-sm font-medium text-neutral-900 transition-colors hover:bg-white/90"
+      >
+        Choose a plan
+      </Link>
+    </div>
+  )
+}
+
 export function AppSidebar({
   ...props
 }) {
@@ -118,6 +153,62 @@ export function AppSidebar({
   const searchKey = /Mac|iPhone|iPad/i.test(typeof navigator === "undefined" ? "" : navigator.platform || navigator.userAgent)
     ? "⌘K"
     : "Ctrl K"
+
+  const location = useLocation()
+
+  // Finstap (Shopify-style): logo on the left with the hide-menu button, a quiet search box, one menu style,
+  // Settings, the person and the trial card at the bottom over a soft glow in the accent
+  if (IS_FINSTAP) {
+    return (
+      <Sidebar collapsible="offcanvas" className="group-data-[side=left]:border-r-0" {...props}>
+        <SidebarHeader className="gap-3 px-3 pt-4">
+          <div className="flex items-center justify-between gap-2 pl-1">
+            {/* The logo opens the dashboard */}
+            <Link to={homePath()} aria-label="Go to the dashboard" className="min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30">
+              <FinstapMenuLogo />
+            </Link>
+            <SidebarTrigger className="size-8 shrink-0 text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground" />
+          </div>
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            className="flex h-9 w-full cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-white/[0.08] px-2.5 text-sm text-sidebar-foreground/60 transition-colors hover:bg-white/[0.12] hover:text-sidebar-foreground/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+          >
+            <IconSearch className="size-4 shrink-0" />
+            <span className="flex-1 text-left">Search</span>
+            <kbd className="font-sans text-xs text-sidebar-foreground/50">{searchKey}</kbd>
+          </button>
+        </SidebarHeader>
+        <SidebarContent>
+          <NavMain groups={navGroups} badges={counts} variant="finstap" />
+        </SidebarContent>
+        <SidebarFooter className="relative gap-2 px-2 pb-3">
+          {/* A soft glow in the workspace's accent at the bottom of the menu */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 -z-0 h-48 bg-linear-to-t from-sidebar-primary/30 to-transparent"
+          />
+          <SidebarMenu className="relative">
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                render={<Link to="/admin/settings" />}
+                isActive={location.pathname.startsWith("/admin/settings")}
+                className={FINSTAP_MENU.button}
+              >
+                <IconSettings />
+                <span>Settings</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+          <div className="relative">
+            <NavUser user={data.user} />
+          </div>
+          <TrialCard />
+        </SidebarFooter>
+        <CommandManyItems open={searchOpen} onOpenChange={setSearchOpen} />
+      </Sidebar>
+    )
+  }
 
   return (
     <Sidebar collapsible="offcanvas" className="group-data-[side=left]:border-r-0" {...props}>
