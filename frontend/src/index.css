@@ -279,7 +279,7 @@ html.is-non-apple,
   background-color: var(--menu-surface);
   /* A soft accent glow rising from the bottom-left corner. Fixed to the window, so the menu and the frame
      around the page share one glow with no edge between them */
-  background-image: radial-gradient(42rem 22rem at 0% 100%, color-mix(in srgb, var(--sidebar-primary) 55%, transparent), transparent 75%);
+  background-image: radial-gradient(48rem 26rem at 0% 100%, color-mix(in srgb, var(--sidebar-primary) 28%, transparent), transparent 78%);
   background-attachment: fixed;
 }
 /* Phones: the menu slides over the page, so it blurs what is behind it */
@@ -418,22 +418,45 @@ html.is-non-apple,
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 4px 10px -3px rgba(95, 92, 255, 0.5);
 }
 
-/* Tabs (components/ui/tabs.jsx, default style): the chosen tab is a raised white key on the grey strip, like the
-   dropdowns' 3D look; no colour, no edge. Dark: a light grey key. */
+/* Tabs (components/ui/tabs.jsx, default style): the chosen tab sits on a raised white key on the grey strip, like the
+   dropdowns' 3D look (no colour, no edge). The key is one element (Base UI's Tabs.Indicator) that slides and
+   stretches to the next tab when the choice changes. Dark: a light grey key. */
 [data-slot="tabs-list"][data-variant="default"] [data-slot="tabs-trigger"][data-active] {
+  background: transparent;
+  box-shadow: none;
+}
+.fs-tab-indicator {
+  position: absolute;
+  z-index: 0;
+  left: var(--active-tab-left);
+  top: var(--active-tab-top);
+  width: var(--active-tab-width);
+  height: var(--active-tab-height);
+  /* The strip's own corners (a pill strip gives a pill key) */
+  border-radius: inherit;
   background: linear-gradient(180deg, #ffffff, #f7f7f9);
   box-shadow:
     inset 0 1px 0 #ffffff,
     0 0 0 1px rgba(15, 23, 42, 0.06),
     0 1px 2px rgba(15, 23, 42, 0.1),
     0 2px 6px -2px rgba(15, 23, 42, 0.12);
+  transition:
+    left 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+    width 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+    top 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+    height 0.32s cubic-bezier(0.32, 0.72, 0, 1);
 }
-.dark [data-slot="tabs-list"][data-variant="default"] [data-slot="tabs-trigger"][data-active] {
+.dark .fs-tab-indicator {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.09));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
     inset 0 -1px 0 rgba(0, 0, 0, 0.15),
     0 1px 2px rgba(0, 0, 0, 0.25);
+}
+@media (prefers-reduced-motion: reduce) {
+  .fs-tab-indicator {
+    transition: none;
+  }
 }
 
 /* Menu rows slide in one after another when the menu opens (--i = row number) */
