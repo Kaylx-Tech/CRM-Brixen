@@ -125,7 +125,7 @@ export function CommandManyItems({ open: controlledOpen, onOpenChange: setContro
   }
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
+    <CommandDialog open={open} onOpenChange={setOpen} className="fs-palette">
       <Command>
         <CommandInput placeholder="Type a command or search page..." />
         <CommandList>
