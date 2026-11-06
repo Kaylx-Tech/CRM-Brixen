@@ -172,7 +172,7 @@ export function AppSidebar({
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
-            className="flex h-9 w-full cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-white/[0.08] px-2.5 text-sm text-sidebar-foreground/60 transition-colors hover:bg-white/[0.12] hover:text-sidebar-foreground/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+            className="fs-raised flex h-8 w-full cursor-pointer items-center gap-2 rounded-[10px] px-2.5 text-[0.8125rem] text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
           >
             <IconSearch className="size-4 shrink-0" />
             <span className="flex-1 text-left">Search</span>

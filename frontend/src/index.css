@@ -281,6 +281,21 @@ html.is-non-apple,
   backdrop-filter: blur(18px) saturate(140%);
 }
 
+/* Finstap menu: the active page and the search box are raised, like a soft 3D key: a light top edge,
+   a darker bottom edge inside, a fine outline and a small shadow under it */
+.fs-raised,
+.fs-menu-btn[data-active]:not([data-active="false"]) {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.09));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 2px 4px rgba(0, 0, 0, 0.35);
+}
+.fs-raised:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.11));
+}
+
 /* Menu rows slide in one after another when the menu opens (--i = row number) */
 @keyframes fs-menu-in {
   from { opacity: 0; transform: translateX(-8px); }
