@@ -18,8 +18,11 @@ import { Spinner } from "@/components/ui/spinner"
 import {
   IconArrowBackUp,
   IconChevronDown,
+  IconCreditCard,
   IconDeviceDesktop,
+  IconHistory,
   IconLogout,
+  IconMail,
   IconMoon,
   IconSun,
   IconUser,
@@ -29,6 +32,7 @@ import { toast } from "sonner"
 import { apiRequest } from "@/lib/api"
 import { getCurrentUser, getRole, homePath, isAdminRole } from "@/lib/permissions"
 import { useTheme } from "@/hooks/theme-provider"
+import { IS_FINSTAP } from "@/lib/workspace"
 
 // Menu rows: compact, like the sidebar's account menu (small text, small outline icons)
 const ROW =
@@ -246,6 +250,25 @@ export default function TeamSwitcher() {
             <IconUser />
             Profile &amp; password
           </DropdownMenuItem>
+          {/* Admins: the logs and the plan (these were in the menu at the bottom of the sidebar) */}
+          {!isClient && isAdminRole(user) ? (
+            <>
+              <DropdownMenuItem className={ROW} onClick={() => navigate("/admin/logs")}>
+                <IconHistory />
+                System logs
+              </DropdownMenuItem>
+              <DropdownMenuItem className={ROW} onClick={() => navigate("/admin/email-log")}>
+                <IconMail />
+                Email log
+              </DropdownMenuItem>
+              {IS_FINSTAP ? (
+                <DropdownMenuItem className={ROW} onClick={() => navigate("/admin/billing")}>
+                  <IconCreditCard />
+                  Billing
+                </DropdownMenuItem>
+              ) : null}
+            </>
+          ) : null}
         </DropdownMenuGroup>
         <DropdownMenuSeparator className={SEP} />
 
