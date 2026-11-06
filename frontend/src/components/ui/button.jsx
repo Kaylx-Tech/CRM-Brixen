@@ -7,7 +7,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        // The coloured button feels pressed-in 3D: a light inner top edge, a darker inner bottom edge and a soft
+        // highlight from the top over the colour
+        default:
+          "bg-primary bg-linear-to-b from-white/14 to-white/0 text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.3),inset_0_-1px_0_rgba(0,0,0,0.2),0_1px_2px_rgba(15,23,42,0.18)] hover:bg-primary/85",
         outline:
           "border-primary/35 bg-primary/[0.07] text-primary hover:bg-primary/[0.13] hover:text-primary aria-expanded:bg-primary/[0.13] aria-expanded:text-primary dark:border-primary/45 dark:bg-primary/[0.12] dark:text-[color-mix(in_oklab,var(--primary),white_30%)] dark:hover:bg-primary/20",
         secondary:
