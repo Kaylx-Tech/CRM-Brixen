@@ -354,6 +354,41 @@ html.is-non-apple,
     0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
+/* Stat cards (Layout/StatsCard.jsx): no outline, a faint wash of the logo's blue to purple, and the 3D look of the
+   dropdowns: a light top edge and a soft shadow under the card. The chosen card (a filter) gets a thin accent edge. */
+.fs-stat {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, #297bff 7%, var(--card)) 0%,
+    var(--card) 48%,
+    color-mix(in srgb, #834aff 8%, var(--card)) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 12px 28px -14px rgba(15, 23, 42, 0.22);
+}
+.fs-stat[data-active="true"] {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 0 0 1.5px color-mix(in srgb, var(--primary) 45%, transparent),
+    0 12px 28px -14px rgba(15, 23, 42, 0.22);
+}
+.dark .fs-stat {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, #297bff 12%, var(--card)) 0%,
+    var(--card) 50%,
+    color-mix(in srgb, #834aff 14%, var(--card)) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 14px 30px -14px rgba(0, 0, 0, 0.7);
+}
+.dark .fs-stat[data-active="true"] {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 0 0 1.5px color-mix(in srgb, var(--primary) 55%, transparent),
+    0 14px 30px -14px rgba(0, 0, 0, 0.7);
+}
+
 /* Menu rows slide in one after another when the menu opens (--i = row number) */
 @keyframes fs-menu-in {
   from { opacity: 0; transform: translateX(-8px); }

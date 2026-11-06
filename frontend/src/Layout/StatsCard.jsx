@@ -103,10 +103,11 @@ export function StatCard({
       size={compact ? "sm" : "default"}
       className={cn(
         "@container/card relative overflow-hidden shadow-xs",
-        look === HERO ? cn("bg-linear-to-br", look.card) : "bg-card",
+        look === HERO ? cn("bg-linear-to-br", look.card) : "fs-stat",
         interactive && "cursor-pointer",
-        active && "ring-1 ring-primary/40 border-primary/30"
+        active && look === HERO && "ring-1 ring-primary/40 border-primary/30"
       )}
+      data-active={active ? "true" : undefined}
       onClick={interactive ? onClick : undefined}
       role={interactive ? "button" : undefined}
       tabIndex={interactive ? 0 : undefined}
