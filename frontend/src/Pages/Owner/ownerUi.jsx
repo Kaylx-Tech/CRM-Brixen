@@ -67,7 +67,8 @@ export function PageTitle({ title, description, children }) {
 
 export function Panel({ title, description, action, className, children }) {
   return (
-    <section className={cn("rounded-2xl border bg-card p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:p-6", className)}>
+    // Borderless card with the app's soft 3D look (fs-panel in index.css)
+    <section className={cn("fs-panel rounded-[20px] bg-card p-5 sm:p-6", className)}>
       {(title || action) && (
         <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -82,29 +83,25 @@ export function Panel({ title, description, action, className, children }) {
   )
 }
 
-// Soft colour behind each stat's icon, picked from the icon's text colour
-const STAT_BG = {
-  "text-primary": "bg-primary/10",
-  "text-emerald-600": "bg-emerald-500/10",
-  "text-sky-600": "bg-sky-500/10",
-  "text-amber-600": "bg-amber-500/15",
-  "text-violet-600": "bg-violet-500/10",
-  "text-destructive": "bg-destructive/10",
-  "text-muted-foreground": "bg-muted",
+// Warnings keep their colour on the icon; every other stat uses the logo's blue-purple chip
+const STAT_WARN = {
+  "text-amber-600": "bg-amber-500/15 text-amber-600",
+  "text-destructive": "bg-destructive/10 text-destructive",
 }
 
+/** A stat card in the app's style (fs-stat in index.css): no outline, a faint blue-purple wash, soft 3D. */
 export function Stat({ label, value, hint, icon: Icon, tone = "text-primary" }) {
+  const warn = STAT_WARN[tone]
   return (
-    <div className="group relative overflow-hidden rounded-2xl border bg-card p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition hover:shadow-md sm:p-5">
-      <span aria-hidden className="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full bg-primary/5 blur-2xl transition group-hover:bg-primary/10" />
+    <div className="fs-stat relative overflow-hidden rounded-[20px] p-4 transition-transform duration-200 hover:-translate-y-0.5 sm:p-5">
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[13px] font-medium text-muted-foreground">{label}</div>
           <div className="mt-2 text-xl font-bold leading-none tabular-nums tracking-tight sm:text-[26px]">{value}</div>
         </div>
         {Icon && (
-          <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-xl sm:size-10", STAT_BG[tone] || "bg-primary/10")}>
-            <Icon className={cn("size-4 sm:size-5", tone)} />
+          <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-xl sm:size-10", warn || "fs-stat-chip")}>
+            <Icon className="size-4 sm:size-5" />
           </span>
         )}
       </div>

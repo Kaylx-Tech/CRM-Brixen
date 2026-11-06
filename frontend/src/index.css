@@ -492,6 +492,21 @@ html.is-non-apple,
     0 24px 56px -16px rgba(0, 0, 0, 0.7);
 }
 
+/* Owner portal panels (Pages/Owner/ownerUi.jsx): borderless cards with the soft 3D look of the dropdowns */
+.fs-panel {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 0 0 1px rgba(15, 23, 42, 0.05),
+    0 1px 3px rgba(15, 23, 42, 0.05),
+    0 16px 36px -22px rgba(41, 64, 140, 0.28);
+}
+.dark .fs-panel {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 16px 36px -18px rgba(0, 0, 0, 0.65);
+}
+
 /* Menu rows slide in one after another when the menu opens (--i = row number) */
 @keyframes fs-menu-in {
   from { opacity: 0; transform: translateX(-8px); }
