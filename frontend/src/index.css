@@ -296,6 +296,37 @@ html.is-non-apple,
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.11));
 }
 
+/* Every popover, dropdown menu and select list floats like a 3D card: a light top edge, a fine outline and a
+   deep soft shadow behind it (light and dark themes). Overrides the shadow-md / ring-1 of components/ui. */
+[data-slot="popover-content"],
+[data-slot="dropdown-menu-content"],
+[data-slot="dropdown-menu-sub-content"],
+[data-slot="select-content"] {
+  border-radius: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 0 0 1px rgba(15, 23, 42, 0.08),
+    0 20px 44px -14px rgba(15, 23, 42, 0.3),
+    0 8px 16px -8px rgba(15, 23, 42, 0.14);
+}
+[data-slot="popover-content"] {
+  border-radius: 18px;
+}
+.dark [data-slot="popover-content"],
+.dark [data-slot="dropdown-menu-content"],
+.dark [data-slot="dropdown-menu-sub-content"],
+.dark [data-slot="select-content"],
+.dark[data-slot="popover-content"],
+.dark[data-slot="dropdown-menu-content"],
+.dark[data-slot="dropdown-menu-sub-content"],
+.dark[data-slot="select-content"] {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 24px 50px -12px rgba(0, 0, 0, 0.75),
+    0 8px 18px -8px rgba(0, 0, 0, 0.5);
+}
+
 /* Menu rows slide in one after another when the menu opens (--i = row number) */
 @keyframes fs-menu-in {
   from { opacity: 0; transform: translateX(-8px); }
