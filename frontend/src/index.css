@@ -304,12 +304,13 @@ html.is-non-apple,
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.11));
 }
 
-/* Every popover, dropdown menu and select list floats like a 3D card: a light top edge, a fine outline and a
+/* Every popover, dropdown menu, select list and modal floats like a 3D card: a light top edge, a fine outline and a
    deep soft shadow behind it (light and dark themes). Overrides the shadow-md / ring-1 of components/ui. */
 [data-slot="popover-content"],
 [data-slot="dropdown-menu-content"],
 [data-slot="dropdown-menu-sub-content"],
-[data-slot="select-content"] {
+[data-slot="select-content"],
+[data-slot="dialog-content"] {
   border-radius: 14px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
@@ -320,14 +321,20 @@ html.is-non-apple,
 [data-slot="popover-content"] {
   border-radius: 18px;
 }
+/* Modals (dialogs) float the same way, with rounder corners */
+[data-slot="dialog-content"] {
+  border-radius: 22px;
+}
 .dark [data-slot="popover-content"],
 .dark [data-slot="dropdown-menu-content"],
 .dark [data-slot="dropdown-menu-sub-content"],
 .dark [data-slot="select-content"],
+.dark [data-slot="dialog-content"],
 .dark[data-slot="popover-content"],
 .dark[data-slot="dropdown-menu-content"],
 .dark[data-slot="dropdown-menu-sub-content"],
-.dark[data-slot="select-content"] {
+.dark[data-slot="select-content"],
+.dark[data-slot="dialog-content"] {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
     0 0 0 1px rgba(255, 255, 255, 0.07),
