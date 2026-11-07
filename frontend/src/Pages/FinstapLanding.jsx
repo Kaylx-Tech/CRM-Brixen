@@ -38,18 +38,15 @@ import dashboardShot from "@/assets/finstap-dashboard.png"
 import { LegalLinks } from "@/Pages/Legal/LegalLayout"
 import FinstapPricing from "@/Pages/FinstapPricing"
 import { NewsletterSignup } from "@/Pages/Blog/Blog"
+import { BRAND_BUTTON, LIGHT_BUTTON } from "@/lib/finstap-buttons"
 
 // Finstap brand: blue → violet from the logo. The landing page is always light.
 const GRADIENT = "bg-linear-to-r from-[#297bff] to-[#834aff]"
 const GRADIENT_TEXT =
   "bg-linear-to-r from-[#297bff] via-[#5f5cff] to-[#834aff] bg-clip-text text-transparent"
-const CTA = cn(
-  GRADIENT,
-  "inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white",
-  "shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_30px_-10px_rgba(101,89,255,0.7)] transition hover:-translate-y-0.5 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_16px_36px_-12px_rgba(101,89,255,0.8)]",
-)
-const GHOST =
-  "inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-800 shadow-[0_0_0_1px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:text-[#5f5cff]"
+// 3D buttons with inset shadows (lib/finstap-buttons.js)
+const CTA = BRAND_BUTTON
+const GHOST = LIGHT_BUTTON
 // The white card used across the page: no border or edge, 20px corners and a very soft shadow
 const CARD = "rounded-[20px] bg-white shadow-[0_1px_20px_rgba(0,0,0,0.04)]"
 // Headings: medium weight, tight letter spacing, near black; body text medium grey
@@ -526,6 +523,55 @@ function Orbit() {
   )
 }
 
+/** Two thick ribbons in the logo gradient sweeping across the newsletter card's corners. */
+function Ribbons() {
+  return (
+    <svg aria-hidden className="pointer-events-none absolute inset-0 size-full" viewBox="0 0 1200 480" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="fs-ribbon" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#297bff" />
+          <stop offset="100%" stopColor="#834aff" />
+        </linearGradient>
+      </defs>
+      <path d="M-40 300 C 140 240, 250 140, 320 -40" fill="none" stroke="url(#fs-ribbon)" strokeWidth="46" strokeLinecap="round" />
+      <path d="M900 540 C 980 360, 1080 220, 1260 150" fill="none" stroke="url(#fs-ribbon)" strokeWidth="46" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+/** A soft white 3D envelope (drawn, no image), floating gently. */
+function Envelope({ className, delay = 0 }) {
+  return (
+    <motion.div
+      aria-hidden
+      className={className}
+      animate={{ y: [0, -8, 0] }}
+      transition={{ duration: 5, delay, repeat: Infinity, ease: "easeInOut" }}
+    >
+      <svg viewBox="0 0 200 140" className="w-full drop-shadow-[0_18px_30px_rgba(95,92,255,0.22)]">
+        <defs>
+          <linearGradient id="fs-env-body" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="100%" stopColor="#eef1fb" />
+          </linearGradient>
+          <linearGradient id="fs-env-flap" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#f7f8fe" />
+            <stop offset="100%" stopColor="#e3e8f8" />
+          </linearGradient>
+        </defs>
+        {/* body */}
+        <rect x="4" y="4" width="192" height="132" rx="14" fill="url(#fs-env-body)" stroke="#dfe5f7" strokeWidth="1.5" />
+        {/* bottom folds */}
+        <path d="M8 132 L86 74 Q100 64 114 74 L192 132" fill="none" stroke="#dfe5f7" strokeWidth="2" strokeLinejoin="round" />
+        {/* top flap */}
+        <path d="M6 10 Q6 6 12 8 L92 66 Q100 72 108 66 L188 8 Q194 6 194 10 L194 14 L110 74 Q100 82 90 74 L6 14 Z" fill="url(#fs-env-flap)" stroke="#d9e0f5" strokeWidth="1.5" strokeLinejoin="round" />
+        {/* light along the top edge */}
+        <rect x="10" y="6" width="180" height="2" rx="1" fill="#ffffff" opacity="0.9" />
+      </svg>
+    </motion.div>
+  )
+}
+
 function FaqItem({ q, a }) {
   const [open, setOpen] = useState(false)
   return (
@@ -846,7 +892,7 @@ export default function FinstapLanding() {
         </div>
       </section>
 
-      {/* Closing call to action with the newsletter */}
+      {/* Closing call to action */}
       <section className="pb-20 pt-8 sm:pb-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <FadeUp>
@@ -862,22 +908,40 @@ export default function FinstapLanding() {
               <div className="relative mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                 <Link
                   to="/signup"
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#5f5cff] shadow-lg transition hover:-translate-y-0.5"
+                  className={cn(LIGHT_BUTTON, "text-[#5f5cff]")}
                 >
                   Start free trial <IconArrowRight className="size-4" />
                 </Link>
                 <Link
                   to="/login"
-                  className="inline-flex items-center justify-center rounded-full bg-white/10 px-6 py-3 text-sm font-semibold text-white ring-1 ring-white/40 transition hover:bg-white/20"
+                  className="inline-flex items-center justify-center rounded-[14px] border border-white/30 bg-white/10 px-6 py-3 text-[15px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] transition hover:bg-white/20"
                 >
                   Log in to your workspace
                 </Link>
               </div>
-              {/* Newsletter sign-up (Content > Newsletter in the owner portal) */}
-              <div className="relative mx-auto mt-12 max-w-md border-t border-white/20 pt-8">
-                <p className="text-sm font-semibold">Get the Finstap newsletter</p>
-                <p className="mt-1 text-xs text-white/75">Product news and practical tips for UK practices.</p>
-                <NewsletterSignup source="landing" dark className="mx-auto mt-4" />
+            </div>
+          </FadeUp>
+        </div>
+      </section>
+
+      {/* Newsletter (Content > Newsletter in the owner portal): a white card with two envelopes on ribbons */}
+      <section className="pb-20 sm:pb-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <FadeUp>
+            <div className={cn(CARD, "relative overflow-hidden px-6 py-16 text-center sm:px-12 sm:py-24")}>
+              <Ribbons />
+              <Envelope className="absolute -left-4 top-[18%] hidden w-44 -rotate-6 md:block lg:left-[5%] lg:w-52" />
+              <Envelope className="absolute -right-4 bottom-[16%] hidden w-44 rotate-6 md:block lg:right-[5%] lg:w-52" delay={0.4} />
+              <div className="relative mx-auto max-w-lg">
+                <h2 className={H2}>
+                  Subscribe to the
+                  <br />
+                  Finstap newsletter!
+                </h2>
+                <p className={cn("mx-auto mt-4 max-w-md", BODY)}>
+                  Product news and practical tips for UK accountants and formation agents, about once a month.
+                </p>
+                <NewsletterSignup source="landing" className="mx-auto mt-8" />
               </div>
             </div>
           </FadeUp>

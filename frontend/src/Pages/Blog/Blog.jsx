@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useParams, useSearchParams } from "react-router-dom"
 import { IconArrowLeft, IconArrowRight, IconCircleCheck, IconLoader2 } from "@tabler/icons-react"
 import { cn } from "cn"
+import { BRAND_BUTTON } from "@/lib/finstap-buttons"
 import { getApiBase } from "@/lib/api"
 import { emailProblem } from "@/lib/validation"
 import { PlainText } from "@/lib/plainText"
@@ -61,14 +62,14 @@ export function NewsletterSignup({ source = "website", dark = false, className }
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className={cn(
-            "h-11 min-w-0 flex-1 rounded-full border px-4 text-sm outline-none focus:ring-2 focus:ring-[#6559ff]/30",
+            "h-12 min-w-0 flex-1 rounded-[14px] border px-4 text-[15px] outline-none transition-shadow focus:ring-2 focus:ring-[#6559ff]/30",
             dark ? "border-white/30 bg-white/10 text-white placeholder:text-white/60" : "border-slate-200 bg-white text-slate-900",
           )}
         />
         <button
           type="submit"
           disabled={state.busy}
-          className={cn("inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full px-5 text-sm font-semibold text-white", GRADIENT)}
+          className={cn(BRAND_BUTTON, "h-12 shrink-0 px-5 py-0")}
         >
           {state.busy ? <IconLoader2 className="size-4 animate-spin" /> : "Subscribe"}
         </button>
