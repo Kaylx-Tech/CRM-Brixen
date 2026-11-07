@@ -4,29 +4,40 @@ import { motion } from "motion/react"
 import { cn } from "cn"
 import {
   IconArrowRight,
+  IconBell,
+  IconBrandGoogleDrive,
+  IconBrandStripe,
   IconBuildingBank,
   IconBuildingSkyscraper,
+  IconCalendarDue,
   IconChartBar,
   IconCheck,
   IconChecklist,
+  IconCircleCheckFilled,
+  IconCrown,
   IconDeviceLaptop,
   IconFileCertificate,
   IconFileText,
   IconId,
+  IconLayoutDashboard,
+  IconLock,
   IconMapPin,
   IconMenu2,
   IconMinus,
   IconPalette,
   IconPlus,
   IconReceipt2,
+  IconSearch,
   IconShieldLock,
-  IconTrendingUp,
+  IconSparkles,
+  IconTable,
   IconUsers,
   IconUsersGroup,
   IconWorld,
   IconX,
 } from "@tabler/icons-react"
 import finstapLogo from "@/assets/finstap-logo.svg"
+import finstapMark from "@/assets/finstap-mark.svg"
 import { LegalLinks } from "@/Pages/Legal/LegalLayout"
 import FinstapPricing from "@/Pages/FinstapPricing"
 import { NewsletterSignup } from "@/Pages/Blog/Blog"
@@ -37,69 +48,62 @@ const GRADIENT_TEXT =
   "bg-linear-to-r from-[#297bff] via-[#5f5cff] to-[#834aff] bg-clip-text text-transparent"
 const CTA = cn(
   GRADIENT,
-  "inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(101,89,255,0.7)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_36px_-12px_rgba(101,89,255,0.8)]",
+  "inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white",
+  "shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_30px_-10px_rgba(101,89,255,0.7)] transition hover:-translate-y-0.5 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_16px_36px_-12px_rgba(101,89,255,0.8)]",
 )
 const GHOST =
-  "inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-800 transition hover:border-[#6559ff]/40 hover:text-[#5f5cff]"
+  "inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-800 shadow-[0_0_0_1px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:text-[#5f5cff]"
+// The floating white card used across the page: no hard border, a fine edge and a soft blue shadow
+const CARD =
+  "rounded-3xl bg-white shadow-[inset_0_1px_0_#fff,0_0_0_1px_rgba(15,23,42,0.06),0_18px_40px_-24px_rgba(41,64,140,0.35)]"
 
 const NAV = [
   ["Features", "#features"],
   ["Services", "#services"],
-  ["Pricing", "#pricing"],
   ["How it works", "#how"],
-  ["Why Finstap", "#why"],
+  ["Pricing", "#pricing"],
   ["FAQ", "#faq"],
   ["Blog", "/blog"],
 ]
 
-const FEATURES = [
-  [
-    IconUsers,
-    "Clients & companies",
-    "Every client, director and company in one place, with their orders, invoices and documents.",
-  ],
-  [
-    IconBuildingBank,
-    "Companies House sync",
-    "Pull company details, officers and filing dates straight from Companies House.",
-  ],
-  [
-    IconReceipt2,
-    "Orders & invoices",
-    "Take orders through your own forms, send invoices and see what is paid at a glance.",
-  ],
-  [
-    IconFileText,
-    "Documents",
-    "Store and share client documents securely, organised by client and company.",
-  ],
-  [
-    IconChecklist,
-    "Smart Operations",
-    "GOV forms, tasks and deadlines your team can work through without missing a date.",
-  ],
-  [
-    IconChartBar,
-    "Finance & revenue",
-    "Revenue over time, balance sheet and company expenses, ready when you need them.",
-  ],
-  [
-    IconUsersGroup,
-    "Team & roles",
-    "Admins, managers and staff each see only what their role needs, prices included.",
-  ],
-  [
-    IconPalette,
-    "Your brand",
-    "Your logo, your colours and your own address: yourcompany.finstap.com.",
-  ],
+// The four headline features, each shown with a small picture of the real screen
+const BENTO = [
+  {
+    key: "clients",
+    title: "Clients & companies in one place",
+    text: "Every client, director and company together, with their orders, invoices and documents.",
+  },
+  {
+    key: "ch",
+    title: "Companies House, built in",
+    text: "Type a company number and the details, officers and filing dates fill themselves in.",
+  },
+  {
+    key: "invoices",
+    title: "Orders & invoices",
+    text: "Take orders through your own forms, send invoices and see what is paid at a glance.",
+  },
+  {
+    key: "deadlines",
+    title: "Deadlines you won't miss",
+    text: "GOV forms, tasks and filing dates your team can work through, in order.",
+  },
+]
+
+const BENEFITS = [
+  [IconFileText, "Documents", "Store and share client documents securely, organised by client and company."],
+  [IconChartBar, "Finance & revenue", "Revenue over time, balance sheet and expenses, ready when you need them."],
+  [IconUsersGroup, "Team & roles", "Admins, managers and staff each see only what their role needs, prices included."],
+  [IconPalette, "Your brand", "Your logo, your colours and your own address: yourcompany.finstap.com."],
+  [IconDeviceLaptop, "Client portal", "Clients see their companies, orders, invoices and documents in one place."],
+  [IconShieldLock, "Secure by design", "Your own database, and a login code by email on every new browser."],
 ]
 
 // The company services a formation agent sells, each with what Finstap actually does for it
 const SERVICES = [
   [
     IconId,
-    "Director ID Verification, Tracked",
+    "Director ID verification, tracked",
     "Companies House now needs every director to verify their identity. Keep it under control for all your clients.",
     [
       "Take ID verification orders through your own forms",
@@ -114,7 +118,7 @@ const SERVICES = [
     [
       "Build micro-entity or dormant accounts from a bank statement",
       "Filing deadline and Corporation Tax estimate worked out for you",
-      "File with Companies House using your filing credentials, or download for GOV.UK",
+      "File with Companies House, or download for GOV.UK",
     ],
   ],
   [
@@ -140,35 +144,37 @@ const SERVICES = [
 ]
 
 const STEPS = [
-  ["Create your workspace", "Confirm your email, name your company and pick your Finstap address."],
-  ["Bring in your team", "Invite colleagues and give each one the right role."],
-  ["Run your practice", "Clients, orders, invoices and deadlines in one calm dashboard."],
+  ["Create your workspace", "Confirm your email, name your company and pick your Finstap address.", "workspace"],
+  ["Bring in your team", "Invite colleagues and give each one the right role.", "team"],
+  ["Run your practice", "Clients, orders, invoices and deadlines in one calm dashboard.", "run"],
 ]
 
-const WHY = [
-  "Your own workspace with its own database",
-  "Login codes by email on every new browser",
-  "Built for UK accountants and company formation firms",
-  "Works on phone, tablet and desktop",
+// Services Finstap works with (it uses them; no partnership is implied)
+const WORKS_WITH = [
+  [IconBuildingBank, "Companies House"],
+  [IconWorld, "GOV.UK"],
+  [IconBrandStripe, "Stripe"],
+  [IconBrandGoogleDrive, "Google Drive"],
+]
+
+const COMPARE = [
+  "Clients, companies and orders in one place",
+  "Company details straight from Companies House",
+  "Deadlines and GOV forms tracked for the whole team",
+  "Invoices with a clear paid / due view",
+  "A branded portal for your clients",
+  "Each role sees only what it needs",
 ]
 
 const FAQ = [
-  [
-    "Is there a free trial?",
-    "Yes. Every new workspace starts with a 14-day free trial, no card needed to begin.",
-  ],
+  ["Is there a free trial?", "Yes. Every new workspace starts with a 14-day free trial, no card needed to begin."],
   [
     "Who is Finstap for?",
     "Accounting practices, company formation agents and corporate service providers who manage many clients and companies.",
   ],
-  [
-    "Is my data kept separate?",
-    "Yes. Each company gets its own workspace and its own database, reached at its own address.",
-  ],
-  [
-    "Can my team use it?",
-    "Yes. Invite your team and choose a role for each person: admin, manager or staff.",
-  ],
+  ["Is my data kept separate?", "Yes. Each company gets its own workspace and its own database, reached at its own address."],
+  ["Can my team use it?", "Yes. Invite your team and choose a role for each person: admin, manager or staff."],
+  ["Can my clients log in?", "Yes. Clients get their own portal at your address, in your colours, to see their companies, orders and invoices."],
 ]
 
 function FadeUp({ children, delay = 0, className }) {
@@ -185,27 +191,48 @@ function FadeUp({ children, delay = 0, className }) {
   )
 }
 
+/** A small pill above each section's heading. */
+function Eyebrow({ children }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#5f5cff]/[0.07] px-3 py-1 text-xs font-semibold text-[#5f5cff] ring-1 ring-[#5f5cff]/15">
+      {children}
+    </span>
+  )
+}
+
+function SectionHead({ eyebrow, title, text, className }) {
+  return (
+    <FadeUp className={cn("mx-auto max-w-2xl text-center", className)}>
+      <Eyebrow>{eyebrow}</Eyebrow>
+      <h2 className="mt-4 text-[32px] font-semibold leading-[1.15] tracking-tight text-slate-900 sm:text-[42px]">
+        {title}
+      </h2>
+      {text && <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-slate-500">{text}</p>}
+    </FadeUp>
+  )
+}
+
 function Header() {
   const [open, setOpen] = useState(false)
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-white/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+    <header className="sticky top-3 z-40 px-3 sm:top-4 sm:px-6">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between rounded-full bg-white/80 px-3 pl-5 shadow-[0_0_0_1px_rgba(15,23,42,0.06),0_10px_30px_-18px_rgba(41,64,140,0.35)] backdrop-blur-xl">
         <a href="#top" className="flex items-center">
-          <img src={finstapLogo} alt="Finstap" className="h-8 w-auto" />
+          <img src={finstapLogo} alt="Finstap" className="h-7 w-auto" />
         </a>
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center gap-1 md:flex">
           {NAV.map(([label, href]) => (
             <a
               key={href}
               href={href}
-              className="text-sm font-medium text-slate-600 transition hover:text-[#5f5cff]"
+              className="rounded-full px-3.5 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
             >
               {label}
             </a>
           ))}
         </nav>
-        <div className="hidden items-center gap-3 md:flex">
-          <Link to="/login" className="text-sm font-semibold text-slate-700 hover:text-[#5f5cff]">
+        <div className="hidden items-center gap-2 md:flex">
+          <Link to="/login" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">
             Log in
           </Link>
           <Link to="/signup" className={cn(CTA, "px-5 py-2.5")}>
@@ -225,19 +252,19 @@ function Header() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="border-t border-slate-200/60 bg-white px-4 pb-5 pt-2 md:hidden"
+          className={cn(CARD, "mx-auto mt-2 max-w-6xl p-3 md:hidden")}
         >
           {NAV.map(([label, href]) => (
             <a
               key={href}
               href={href}
               onClick={() => setOpen(false)}
-              className="block rounded-lg px-2 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="block rounded-xl px-3 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               {label}
             </a>
           ))}
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="mt-2 grid grid-cols-2 gap-2">
             <Link to="/login" className={GHOST}>
               Log in
             </Link>
@@ -251,111 +278,322 @@ function Header() {
   )
 }
 
-/** The dashboard preview next to the hero text: a revenue card, a clients donut and two small figures. */
-function HeroVisual() {
-  const bars = [38, 52, 44, 66, 58, 82, 70]
+/** A feature icon floating beside the hero heading (big screens), drifting gently. */
+function FloatIcon({ icon: Icon, className, delay = 0 }) {
   return (
-    <div className="relative mx-auto w-full max-w-md lg:max-w-none">
-      <span
-        aria-hidden
-        className="absolute -top-10 right-0 size-72 rounded-full bg-[#834aff]/25 blur-3xl"
-      />
-      <span
-        aria-hidden
-        className="absolute -bottom-10 left-0 size-72 rounded-full bg-[#297bff]/25 blur-3xl"
-      />
+    <motion.span
+      aria-hidden
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1, y: [0, -10, 0] }}
+      transition={{
+        opacity: { duration: 0.6, delay },
+        scale: { duration: 0.6, delay },
+        y: { duration: 5, delay, repeat: Infinity, ease: "easeInOut" },
+      }}
+      className={cn(
+        "absolute hidden size-14 items-center justify-center rounded-2xl bg-white text-[#5f5cff] shadow-[inset_0_1px_0_#fff,0_0_0_1px_rgba(15,23,42,0.06),0_16px_32px_-14px_rgba(41,64,140,0.45)] lg:flex",
+        className,
+      )}
+    >
+      <Icon className="size-6" />
+    </motion.span>
+  )
+}
 
-      {/* Revenue overview */}
-      <motion.div
-        initial={{ opacity: 0, y: 30, rotate: -2 }}
-        animate={{ opacity: 1, y: 0, rotate: -2 }}
-        transition={{ duration: 0.7, delay: 0.2 }}
-        className="relative w-[78%] rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_30px_60px_-30px_rgba(41,64,140,0.35)] sm:p-5"
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold text-slate-900">Revenue</p>
-            <p className="text-xs text-slate-500">This month vs last month</p>
-          </div>
-          <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-600">
-            <IconTrendingUp className="size-3" /> 24%
-          </span>
-        </div>
-        <div className="mt-5 flex h-32 items-end gap-2 sm:h-36 sm:gap-3">
-          {bars.map((h, i) => (
-            <motion.div
-              key={i}
-              initial={{ height: 0 }}
-              animate={{ height: `${h}%` }}
-              transition={{ duration: 0.8, delay: 0.5 + i * 0.07, ease: [0.22, 1, 0.36, 1] }}
-              className={cn("flex-1 rounded-t-lg", i === 5 ? GRADIENT : "bg-slate-200")}
-            />
-          ))}
-        </div>
-        <div className="mt-2 flex justify-between text-[10px] text-slate-400">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-            <span key={d} className="flex-1 text-center">
-              {d}
+/** The product in a browser window under the hero: a small Finstap dashboard drawn in HTML. */
+function ProductShot() {
+  const bars = [34, 48, 40, 62, 55, 78, 66, 84, 72, 90, 80, 96]
+  const menu = [
+    [IconLayoutDashboard, "Dashboard", true],
+    [IconUsers, "Clients"],
+    [IconBuildingSkyscraper, "Companies"],
+    [IconReceipt2, "Orders"],
+    [IconId, "ID checks"],
+    [IconChecklist, "GOV forms"],
+  ]
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 50 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.9, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="relative mx-auto mt-16 max-w-5xl"
+    >
+      <span aria-hidden className="absolute -inset-x-10 -top-10 bottom-10 -z-10 rounded-[48px] bg-linear-to-b from-[#5f5cff]/15 to-transparent blur-3xl" />
+      <div className="rounded-[28px] bg-white/70 p-2 shadow-[0_0_0_1px_rgba(15,23,42,0.06),0_40px_80px_-40px_rgba(41,64,140,0.5)] backdrop-blur sm:p-3">
+        <div className="overflow-hidden rounded-[20px] bg-[#f7f7fb] ring-1 ring-slate-200/70">
+          {/* Window bar */}
+          <div className="flex items-center gap-2 border-b border-slate-200/70 bg-white px-4 py-2.5">
+            <span className="size-2.5 rounded-full bg-[#ff5f57]" />
+            <span className="size-2.5 rounded-full bg-[#febc2e]" />
+            <span className="size-2.5 rounded-full bg-[#28c840]" />
+            <span className="mx-auto flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-[11px] text-slate-500">
+              <IconLock className="size-3" /> yourcompany.finstap.com
             </span>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Clients donut */}
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, delay: 0.45 }}
-        className="relative -mt-16 ml-auto w-[62%] rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_30px_60px_-25px_rgba(101,89,255,0.45)] sm:-mt-20 sm:p-5"
-      >
-        <p className="text-center text-sm font-semibold text-slate-900">Clients</p>
-        <p className="text-center text-xs text-slate-500">Active this quarter</p>
-        <div className="relative mx-auto mt-3 size-32 sm:size-36">
-          <svg viewBox="0 0 120 120" className="size-full -rotate-90">
-            <defs>
-              <linearGradient id="fs-donut" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#297bff" />
-                <stop offset="100%" stopColor="#834aff" />
-              </linearGradient>
-            </defs>
-            <circle cx="60" cy="60" r="48" fill="none" stroke="#eef0f6" strokeWidth="14" />
-            <motion.circle
-              cx="60"
-              cy="60"
-              r="48"
-              fill="none"
-              stroke="url(#fs-donut)"
-              strokeWidth="14"
-              strokeLinecap="round"
-              initial={{ pathLength: 0 }}
-              animate={{ pathLength: 0.68 }}
-              transition={{ duration: 1.2, delay: 0.8, ease: "easeOut" }}
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-bold text-slate-900">68%</span>
-            <span className="text-[10px] text-slate-500">Returning clients</span>
+          </div>
+          <div className="flex min-h-[340px]">
+            {/* Menu */}
+            <aside className="hidden w-48 shrink-0 flex-col gap-1 bg-[#0b0919] p-3 sm:flex">
+              <img src={finstapMark} alt="" className="mb-3 ml-1 size-6" />
+              {menu.map(([Icon, label, active]) => (
+                <span
+                  key={label}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12px] font-medium",
+                    active ? "bg-white/[0.13] text-white" : "text-white/60",
+                  )}
+                >
+                  <Icon className="size-3.5" /> {label}
+                </span>
+              ))}
+            </aside>
+            {/* Page */}
+            <div className="flex-1 p-4 sm:p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-900">Good morning, Sarah 👋</p>
+                <span className="flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11px] text-slate-400 ring-1 ring-slate-200">
+                  <IconSearch className="size-3" /> Search
+                </span>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2.5 md:grid-cols-4">
+                {[
+                  ["Revenue", "£24.8K"],
+                  ["Active clients", "182"],
+                  ["Orders this month", "64"],
+                  ["Due this week", "9"],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="rounded-xl bg-linear-to-br from-[#297bff]/[0.06] via-white to-[#834aff]/[0.08] p-3 shadow-[inset_0_1px_0_#fff,0_0_0_1px_rgba(15,23,42,0.05)]"
+                  >
+                    <p className="text-[10px] text-slate-500">{label}</p>
+                    <p className="mt-1 text-base font-semibold text-slate-900">{value}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 grid gap-2.5 md:grid-cols-3">
+                <div className="rounded-xl bg-white p-3 shadow-[0_0_0_1px_rgba(15,23,42,0.05)] md:col-span-2">
+                  <p className="text-[11px] font-semibold text-slate-700">Revenue</p>
+                  <div className="mt-3 flex h-28 items-end gap-1.5">
+                    {bars.map((h, i) => (
+                      <motion.span
+                        key={i}
+                        initial={{ height: 0 }}
+                        animate={{ height: `${h}%` }}
+                        transition={{ duration: 0.8, delay: 0.7 + i * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                        className="flex-1 rounded-md bg-linear-to-t from-[#297bff] to-[#834aff] opacity-80"
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-white p-3 shadow-[0_0_0_1px_rgba(15,23,42,0.05)]">
+                  <p className="text-[11px] font-semibold text-slate-700">Deadlines</p>
+                  <ul className="mt-2 space-y-1.5">
+                    {[
+                      ["Confirmation statement", "3 days"],
+                      ["Annual accounts", "12 days"],
+                      ["ID verification", "Today"],
+                    ].map(([label, when]) => (
+                      <li key={label} className="flex items-center justify-between gap-2 text-[10px]">
+                        <span className="truncate text-slate-600">{label}</span>
+                        <span className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-px font-semibold text-amber-700">{when}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </motion.div>
+      </div>
+    </motion.div>
+  )
+}
 
-      {/* Small figures */}
+/** The small picture inside each bento card. */
+function BentoVisual({ kind }) {
+  if (kind === "clients") {
+    return (
+      <div className="space-y-2">
+        {[
+          ["AT", "Acme Trading Ltd", "3 companies"],
+          ["NW", "Northwind Logistics", "1 company"],
+          ["BO", "Blue Oak Consulting", "2 companies"],
+        ].map(([initials, name, sub], i) => (
+          <div key={name} className={cn("flex items-center gap-3 rounded-2xl bg-white p-2.5 shadow-[0_0_0_1px_rgba(15,23,42,0.05)]", i === 0 && "ml-6")}>
+            <span className={cn("flex size-8 items-center justify-center rounded-full text-[11px] font-semibold text-white", GRADIENT)}>{initials}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs font-semibold text-slate-800">{name}</span>
+              <span className="block text-[11px] text-slate-500">{sub}</span>
+            </span>
+            <IconCircleCheckFilled className="size-4 text-emerald-500" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+  if (kind === "ch") {
+    return (
+      <div className="rounded-2xl bg-white p-3 shadow-[0_0_0_1px_rgba(15,23,42,0.05)]">
+        <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700 ring-1 ring-[#5f5cff]/30">
+          <IconSearch className="size-3.5 text-slate-400" /> 14839201
+          <span className="ml-auto rounded-full bg-[#5f5cff]/10 px-2 py-0.5 text-[10px] font-semibold text-[#5f5cff]">Found</span>
+        </div>
+        <dl className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+          {[
+            ["Company", "ACME TRADING LTD"],
+            ["Status", "Active"],
+            ["Accounts due", "30 Sep 2027"],
+            ["Confirmation", "14 Mar 2027"],
+          ].map(([k, v]) => (
+            <div key={k} className="rounded-lg bg-slate-50 px-2.5 py-1.5">
+              <dt className="text-slate-400">{k}</dt>
+              <dd className="truncate font-semibold text-slate-800">{v}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    )
+  }
+  if (kind === "invoices") {
+    return (
+      <div className="relative rounded-2xl bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.05)]">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-semibold text-slate-800">Invoice INV-1042</span>
+          <span className="text-slate-400">Acme Trading</span>
+        </div>
+        {[
+          ["Company formation", "£79.00"],
+          ["Registered office (1 year)", "£49.00"],
+          ["Confirmation statement", "£45.00"],
+        ].map(([item, price]) => (
+          <div key={item} className="mt-2 flex justify-between text-[11px] text-slate-600">
+            <span>{item}</span>
+            <span className="tabular-nums">{price}</span>
+          </div>
+        ))}
+        <div className="mt-3 flex justify-between border-t border-slate-100 pt-2 text-xs font-semibold text-slate-900">
+          <span>Total</span>
+          <span>£173.00</span>
+        </div>
+        <motion.span
+          initial={{ opacity: 0, scale: 1.6, rotate: -18 }}
+          whileInView={{ opacity: 1, scale: 1, rotate: -12 }}
+          viewport={{ once: true }}
+          transition={{ type: "spring", stiffness: 260, damping: 14, delay: 0.3 }}
+          className="absolute right-4 top-10 rounded-lg border-2 border-emerald-500 px-2 py-0.5 text-sm font-bold uppercase tracking-wider text-emerald-600"
+        >
+          Paid
+        </motion.span>
+      </div>
+    )
+  }
+  return (
+    <div className="rounded-2xl bg-white p-3 shadow-[0_0_0_1px_rgba(15,23,42,0.05)]">
+      <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-slate-400">
+        {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+          <span key={i}>{d}</span>
+        ))}
+        {Array.from({ length: 21 }, (_, i) => {
+          const due = [4, 9, 16].includes(i)
+          return (
+            <span
+              key={i}
+              className={cn(
+                "flex aspect-square items-center justify-center rounded-lg text-[11px]",
+                due ? cn(GRADIENT, "font-semibold text-white") : "bg-slate-50 text-slate-600",
+              )}
+            >
+              {i + 1}
+            </span>
+          )
+        })}
+      </div>
+      <p className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
+        <IconCalendarDue className="size-3.5 text-[#5f5cff]" /> 3 filing dates this month
+      </p>
+    </div>
+  )
+}
+
+/** The small picture inside each "how it works" step. */
+function StepVisual({ kind }) {
+  if (kind === "workspace") {
+    return (
+      <div className="rounded-2xl bg-white p-3 text-xs shadow-[0_0_0_1px_rgba(15,23,42,0.05)]">
+        <p className="text-[11px] text-slate-400">Your Finstap address</p>
+        <p className="mt-1.5 flex items-center gap-1 rounded-xl bg-slate-50 px-3 py-2 font-medium text-slate-800 ring-1 ring-[#5f5cff]/30">
+          <IconWorld className="size-3.5 text-[#5f5cff]" /> acme<span className="text-slate-400">.finstap.com</span>
+        </p>
+      </div>
+    )
+  }
+  if (kind === "team") {
+    return (
+      <div className="space-y-1.5">
+        {[
+          ["Sarah", "Admin"],
+          ["James", "Manager"],
+          ["Aisha", "Staff"],
+        ].map(([name, role]) => (
+          <div key={name} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-xs shadow-[0_0_0_1px_rgba(15,23,42,0.05)]">
+            <span className="flex items-center gap-2 font-medium text-slate-800">
+              <span className={cn("flex size-6 items-center justify-center rounded-full text-[10px] font-semibold text-white", GRADIENT)}>
+                {name[0]}
+              </span>
+              {name}
+            </span>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{role}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+  return (
+    <div className="rounded-2xl bg-white p-3 shadow-[0_0_0_1px_rgba(15,23,42,0.05)]">
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-semibold text-slate-800">This month</span>
+        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">+18%</span>
+      </div>
+      <div className="mt-3 flex h-16 items-end gap-1.5">
+        {[40, 55, 48, 70, 62, 88].map((h, i) => (
+          <span key={i} className="flex-1 rounded-md bg-linear-to-t from-[#297bff] to-[#834aff] opacity-80" style={{ height: `${h}%` }} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** Finstap's mark in the middle with the work it brings together circling around it. */
+function Orbit() {
+  const ring = [IconUsers, IconBuildingBank, IconReceipt2, IconId, IconFileText, IconCalendarDue, IconMapPin, IconBell]
+  return (
+    <div className="relative mx-auto aspect-square w-full max-w-[380px]">
+      <span aria-hidden className="absolute inset-0 rounded-full border border-dashed border-[#5f5cff]/20" />
+      <span aria-hidden className="absolute inset-[18%] rounded-full border border-dashed border-[#5f5cff]/20" />
+      <span aria-hidden className="absolute inset-[30%] rounded-full bg-[#5f5cff]/10 blur-2xl" />
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, delay: 0.75 }}
-        className="absolute bottom-6 left-2 flex gap-5 rounded-2xl border border-slate-200/80 bg-white px-5 py-3 shadow-xl sm:left-6"
+        className="absolute inset-0"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
       >
-        <div>
-          <p className="text-[11px] font-medium text-slate-500">Paid</p>
-          <p className="text-lg font-bold text-slate-900">£8.2K</p>
-        </div>
-        <div className="w-px bg-slate-200" />
-        <div>
-          <p className="text-[11px] font-medium text-slate-500">Due</p>
-          <p className="text-lg font-bold text-slate-900">£2.2K</p>
-        </div>
+        {ring.map((Icon, i) => {
+          const angle = (i / ring.length) * Math.PI * 2
+          return (
+            <motion.span
+              key={i}
+              animate={{ rotate: -360 }}
+              transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+              className="absolute flex size-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl bg-white text-[#5f5cff] shadow-[0_0_0_1px_rgba(15,23,42,0.06),0_12px_24px_-12px_rgba(41,64,140,0.45)]"
+              style={{ left: `${50 + 50 * Math.cos(angle)}%`, top: `${50 + 50 * Math.sin(angle)}%` }}
+            >
+              <Icon className="size-5" />
+            </motion.span>
+          )
+        })}
       </motion.div>
+      <div className="absolute inset-[34%] flex items-center justify-center rounded-[28px] bg-white shadow-[inset_0_1px_0_#fff,0_0_0_1px_rgba(15,23,42,0.06),0_24px_48px_-20px_rgba(95,92,255,0.55)]">
+        <img src={finstapMark} alt="Finstap" className="size-1/2" />
+      </div>
     </div>
   )
 }
@@ -363,15 +601,20 @@ function HeroVisual() {
 function FaqItem({ q, a }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white">
+    <div className={cn(CARD, "rounded-2xl")}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
         aria-expanded={open}
       >
-        <span className="font-semibold text-slate-900">{q}</span>
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+        <span className="font-medium text-slate-900">{q}</span>
+        <span
+          className={cn(
+            "flex size-7 shrink-0 items-center justify-center rounded-full transition-colors",
+            open ? cn(GRADIENT, "text-white") : "bg-slate-100 text-slate-600",
+          )}
+        >
           {open ? <IconMinus className="size-4" /> : <IconPlus className="size-4" />}
         </span>
       </button>
@@ -381,7 +624,7 @@ function FaqItem({ q, a }) {
         transition={{ duration: 0.25 }}
         className="overflow-hidden"
       >
-        <p className="px-5 pb-5 text-sm leading-relaxed text-slate-600">{a}</p>
+        <p className="px-5 pb-5 text-sm leading-relaxed text-slate-500">{a}</p>
       </motion.div>
     </div>
   )
@@ -392,99 +635,153 @@ export default function FinstapLanding() {
   return (
     <div
       id="top"
-      className="min-h-screen scroll-smooth bg-white font-sans text-slate-900 antialiased [color-scheme:light]"
+      className="min-h-screen scroll-smooth bg-[#fbfbfe] font-sans text-slate-900 antialiased [color-scheme:light]"
     >
       <Header />
 
-      {/* Hero */}
-      <section className="relative overflow-hidden">
+      {/* Hero: the promise in the middle, feature icons floating around it, the product under it */}
+      <section className="relative overflow-hidden pb-16 sm:pb-24">
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(60%_60%_at_20%_0%,rgba(41,123,255,0.12),transparent),radial-gradient(50%_50%_at_90%_10%,rgba(131,74,255,0.14),transparent)]"
+          className="pointer-events-none absolute inset-x-0 -top-24 h-[640px] bg-[radial-gradient(50%_60%_at_50%_0%,rgba(95,92,255,0.16),transparent),radial-gradient(30%_40%_at_15%_20%,rgba(41,123,255,0.12),transparent),radial-gradient(30%_40%_at_85%_20%,rgba(131,74,255,0.12),transparent)]"
         />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 pb-20 pt-14 sm:px-6 lg:grid-cols-2 lg:gap-10 lg:pb-28 lg:pt-20">
-          <div>
-            <motion.span
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 rounded-full border border-[#6559ff]/20 bg-[#6559ff]/5 px-3 py-1 text-xs font-semibold text-[#5f5cff]"
-            >
-              <IconBuildingSkyscraper className="size-3.5" /> CRM for accountants & company
-              formation
-            </motion.span>
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.05 }}
-              className="mt-5 text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-[56px]"
-            >
-              Run your whole practice <span className={GRADIENT_TEXT}>in one calm place</span>
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.15 }}
-              className="mt-5 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg"
-            >
-              Finstap brings your clients, companies, orders, invoices and deadlines together, so
-              your team spends less time chasing and more time helping clients.
-            </motion.p>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.25 }}
-              className="mt-8 flex flex-col gap-3 sm:flex-row"
-            >
-              <Link to="/signup" className={CTA}>
-                Start free trial <IconArrowRight className="size-4" />
-              </Link>
-              <a href="#features" className={GHOST}>
-                See what's inside
-              </a>
-            </motion.div>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="mt-5 flex items-center gap-2 text-sm text-slate-500"
-            >
-              <IconCheck className="size-4 text-emerald-500" /> 14-day free trial
-              <span className="text-slate-300">·</span>
-              <IconCheck className="size-4 text-emerald-500" /> No card to start
-            </motion.p>
+        <div className="relative mx-auto max-w-6xl px-4 pt-16 text-center sm:px-6 sm:pt-24">
+          <FloatIcon icon={IconBuildingBank} className="left-[4%] top-[18%]" delay={0.3} />
+          <FloatIcon icon={IconReceipt2} className="left-[11%] top-[38%]" delay={0.6} />
+          <FloatIcon icon={IconId} className="right-[5%] top-[16%]" delay={0.45} />
+          <FloatIcon icon={IconCalendarDue} className="right-[11%] top-[36%]" delay={0.75} />
+
+          <motion.span
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex items-center gap-2 rounded-full bg-white px-1.5 py-1 pr-3 text-xs font-medium text-slate-600 shadow-[0_0_0_1px_rgba(15,23,42,0.06),0_4px_12px_-6px_rgba(41,64,140,0.3)]"
+          >
+            <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold text-white", GRADIENT)}>New</span>
+            Director ID verification, built in
+          </motion.span>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.05 }}
+            className="mx-auto mt-6 max-w-3xl text-[40px] font-semibold leading-[1.08] tracking-tight sm:text-6xl lg:text-[68px]"
+          >
+            Run your whole practice <span className={GRADIENT_TEXT}>in one calm place</span>
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.15 }}
+            className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-slate-500 sm:text-lg"
+          >
+            The CRM for UK accountants and company formation firms. Clients, companies, orders, invoices and
+            deadlines together, so your team spends less time chasing.
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.25 }}
+            className="mt-9 flex flex-col justify-center gap-3 sm:flex-row"
+          >
+            <Link to="/signup" className={CTA}>
+              Start free trial <IconArrowRight className="size-4" />
+            </Link>
+            <a href="#features" className={GHOST}>
+              See what's inside
+            </a>
+          </motion.div>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="mt-5 flex items-center justify-center gap-2 text-sm text-slate-500"
+          >
+            <IconCheck className="size-4 text-[#5f5cff]" /> 14-day free trial
+            <span className="text-slate-300">·</span>
+            <IconCheck className="size-4 text-[#5f5cff]" /> No card to start
+          </motion.p>
+
+          <ProductShot />
+        </div>
+
+        {/* Works with */}
+        <div className="mx-auto mt-14 max-w-4xl px-4 text-center sm:px-6">
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-400">Works with</p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
+            {WORKS_WITH.map(([Icon, name]) => (
+              <span key={name} className="flex items-center gap-2 text-base font-semibold text-slate-400">
+                <Icon className="size-5" /> {name}
+              </span>
+            ))}
           </div>
-          <HeroVisual />
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="scroll-mt-20 bg-slate-50/70 py-20 sm:py-24">
+      {/* Features as a bento grid, each with a picture of the screen */}
+      <section id="features" className="scroll-mt-24 py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <FadeUp className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">
-              Features
-            </p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-              Everything your practice runs on
-            </h2>
-            <p className="mt-4 text-slate-600">
-              One workspace for the work you do every day, from the first order to the final filing.
-            </p>
-          </FadeUp>
-          <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {FEATURES.map(([Icon, title, text], i) => (
-              <FadeUp key={title} delay={(i % 4) * 0.06}>
-                <div className="group h-full rounded-2xl border border-slate-200 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-[#6559ff]/30 hover:shadow-[0_20px_40px_-20px_rgba(101,89,255,0.35)]">
-                  <span
-                    className={cn(
-                      "flex size-11 items-center justify-center rounded-xl text-white",
-                      GRADIENT,
-                    )}
-                  >
+          <SectionHead
+            eyebrow={<><IconSparkles className="size-3.5" /> Features</>}
+            title={<>Make your practice<br className="hidden sm:block" /> work harder for you</>}
+            text="One workspace for the work you do every day, from the first order to the final filing."
+          />
+          <div className="mt-14 grid gap-4 md:grid-cols-2">
+            {BENTO.map((b, i) => (
+              <FadeUp key={b.key} delay={(i % 2) * 0.08}>
+                <div className={cn(CARD, "group flex h-full flex-col overflow-hidden p-2 transition duration-300 hover:-translate-y-1")}>
+                  <div className="rounded-[20px] bg-linear-to-br from-[#297bff]/[0.07] via-[#f7f7fb] to-[#834aff]/[0.09] p-6 sm:p-8">
+                    <BentoVisual kind={b.key} />
+                  </div>
+                  <div className="p-5 sm:p-6">
+                    <h3 className="text-lg font-semibold text-slate-900">{b.title}</h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{b.text}</p>
+                  </div>
+                </div>
+              </FadeUp>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Benefits */}
+      <section className="py-20 sm:py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <SectionHead
+            eyebrow="Benefits"
+            title={<>Everything that matters<br className="hidden sm:block" /> to a busy practice</>}
+            text="The everyday pieces, done properly, so nothing falls between spreadsheets and inboxes."
+          />
+          <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {BENEFITS.map(([Icon, title, text], i) => (
+              <FadeUp key={title} delay={(i % 3) * 0.06}>
+                <div className={cn(CARD, "h-full p-6 transition duration-300 hover:-translate-y-1")}>
+                  <span className="flex size-11 items-center justify-center rounded-xl bg-linear-to-br from-[#297bff]/12 to-[#834aff]/15 text-[#5f5cff] shadow-[inset_0_1px_0_#fff]">
                     <Icon className="size-5" />
                   </span>
                   <h3 className="mt-5 font-semibold text-slate-900">{title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600">{text}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-500">{text}</p>
+                </div>
+              </FadeUp>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section id="how" className="scroll-mt-24 py-20 sm:py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <SectionHead eyebrow="How it works" title={<>Up and running<br className="hidden sm:block" /> in 3 simple steps</>} />
+          <div className="mt-14 grid gap-4 md:grid-cols-3">
+            {STEPS.map(([title, text, kind], i) => (
+              <FadeUp key={title} delay={i * 0.1}>
+                <div className={cn(CARD, "h-full overflow-hidden p-2")}>
+                  <div className="rounded-[20px] bg-[#f4f4fa] p-5">
+                    <StepVisual kind={kind} />
+                  </div>
+                  <div className="p-5">
+                    <span className="text-xs font-semibold text-[#5f5cff]">Step {i + 1}</span>
+                    <h3 className="mt-1 text-lg font-semibold text-slate-900">{title}</h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{text}</p>
+                  </div>
                 </div>
               </FadeUp>
             ))}
@@ -493,48 +790,30 @@ export default function FinstapLanding() {
       </section>
 
       {/* Services: the company work formation agents sell, done inside Finstap */}
-      <section id="services" className="scroll-mt-20 py-20 sm:py-24">
+      <section id="services" className="scroll-mt-24 py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <FadeUp className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">
-              Why choose us
-            </p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-              Built for <span className={GRADIENT_TEXT}>UK company services</span>
-            </h2>
-            <p className="mt-4 text-slate-600">
-              The services your clients buy from you every day, handled in the same place as their
-              companies.
-            </p>
-          </FadeUp>
-          <div className="mt-14 grid gap-5 md:grid-cols-2">
+          <SectionHead
+            eyebrow="Services"
+            title={<>Built for <span className={GRADIENT_TEXT}>UK company services</span></>}
+            text="The services your clients buy from you every day, handled in the same place as their companies."
+          />
+          <div className="mt-14 grid gap-4 md:grid-cols-2">
             {SERVICES.map(([Icon, title, text, points], i) => (
               <FadeUp key={title} delay={(i % 2) * 0.08}>
-                <div className="group relative h-full overflow-hidden rounded-3xl border border-slate-200 bg-white p-7 transition duration-300 hover:-translate-y-1 hover:border-[#6559ff]/30 hover:shadow-[0_24px_48px_-24px_rgba(101,89,255,0.4)] sm:p-8">
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute -right-20 -top-20 size-56 rounded-full bg-[#834aff]/10 blur-3xl transition duration-500 group-hover:bg-[#834aff]/20"
-                  />
-                  <div className="relative flex items-start gap-4">
-                    <span
-                      className={cn(
-                        "flex size-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg shadow-[#6559ff]/25",
-                        GRADIENT,
-                      )}
-                    >
+                <div className={cn(CARD, "h-full p-7 transition duration-300 hover:-translate-y-1 sm:p-8")}>
+                  <div className="flex items-start gap-4">
+                    <span className={cn("flex size-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_-10px_rgba(95,92,255,0.6)]", GRADIENT)}>
                       <Icon className="size-6" />
                     </span>
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-900 capitalize">{title}</h3>
-                      <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{text}</p>
+                      <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+                      <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{text}</p>
                     </div>
                   </div>
-                  <ul className="relative mt-6 grid gap-2.5 border-t border-slate-100 pt-5">
+                  <ul className="mt-6 grid gap-2.5 border-t border-slate-100 pt-5">
                     {points.map((point) => (
                       <li key={point} className="flex items-start gap-2.5 text-sm text-slate-700">
-                        <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                          <IconCheck className="size-3.5" />
-                        </span>
+                        <IconCircleCheckFilled className="mt-0.5 size-4 shrink-0 text-[#5f5cff]" />
                         {point}
                       </li>
                     ))}
@@ -546,81 +825,37 @@ export default function FinstapLanding() {
         </div>
       </section>
 
-      {/* How it works */}
-      <section id="how" className="scroll-mt-20 py-20 sm:py-24">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <FadeUp className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">
-              How it works
-            </p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-              Up and running in minutes
-            </h2>
-          </FadeUp>
-          <div className="relative mt-14 grid gap-6 md:grid-cols-3">
-            <span
-              aria-hidden
-              className="absolute left-[16%] right-[16%] top-7 hidden h-px bg-linear-to-r from-[#297bff]/40 via-[#5f5cff]/40 to-[#834aff]/40 md:block"
-            />
-            {STEPS.map(([title, text], i) => (
-              <FadeUp key={title} delay={i * 0.1} className="relative text-center">
-                <span
-                  className={cn(
-                    "relative mx-auto flex size-14 items-center justify-center rounded-full text-lg font-bold text-white shadow-lg ring-8 ring-white",
-                    GRADIENT,
-                  )}
-                >
-                  {i + 1}
-                </span>
-                <h3 className="mt-5 text-lg font-semibold">{title}</h3>
-                <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-slate-600">
-                  {text}
-                </p>
-              </FadeUp>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Why Finstap */}
-      <section id="why" className="scroll-mt-20 pb-20 sm:pb-24">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+      {/* Your address, your data */}
+      <section id="why" className="scroll-mt-24 py-20 sm:py-24">
+        <div className="mx-auto grid max-w-6xl items-center gap-14 px-4 sm:px-6 lg:grid-cols-2">
           <FadeUp>
-            <div className="grid items-center gap-10 overflow-hidden rounded-3xl border border-slate-200 bg-linear-to-br from-[#297bff]/[0.06] via-white to-[#834aff]/[0.08] p-8 sm:p-12 lg:grid-cols-2">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">
-                  Why Finstap
-                </p>
-                <h2 className="mt-3 text-3xl font-bold tracking-tight">
-                  Your practice, your address, your data
-                </h2>
-                <p className="mt-4 text-slate-600">
-                  Each company gets its own Finstap workspace at its own address, with your logo and
-                  your colours.
-                </p>
-                <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm">
-                  <IconWorld className="size-4 text-[#5f5cff]" />
-                  yourcompany<span className="text-slate-400">.finstap.com</span>
-                </div>
-              </div>
-              <ul className="grid gap-3">
-                {WHY.map((item) => (
-                  <li
-                    key={item}
-                    className="flex items-center gap-3 rounded-2xl bg-white/80 px-4 py-3.5 text-sm font-medium text-slate-800 shadow-sm ring-1 ring-slate-200/70"
-                  >
-                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                      {item.startsWith("Login") ? (
-                        <IconShieldLock className="size-4" />
-                      ) : (
-                        <IconCheck className="size-4" />
-                      )}
-                    </span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
+            <Eyebrow>Why Finstap</Eyebrow>
+            <h2 className="mt-4 text-[32px] font-semibold leading-[1.15] tracking-tight sm:text-[42px]">
+              Your practice, your address, your data
+            </h2>
+            <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-slate-500">
+              Each company gets its own Finstap workspace at its own address, with your logo and your colours,
+              and its own database.
+            </p>
+            <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-[0_0_0_1px_rgba(15,23,42,0.06)]">
+              <IconWorld className="size-4 text-[#5f5cff]" />
+              yourcompany<span className="text-slate-400">.finstap.com</span>
             </div>
+            <ul className="mt-8 grid gap-3 sm:grid-cols-2">
+              {[
+                "Your own database",
+                "Login codes on new browsers",
+                "Built for UK firms",
+                "Phone, tablet and desktop",
+              ].map((item) => (
+                <li key={item} className="flex items-center gap-2.5 text-sm font-medium text-slate-700">
+                  <IconCircleCheckFilled className="size-4 text-[#5f5cff]" /> {item}
+                </li>
+              ))}
+            </ul>
+          </FadeUp>
+          <FadeUp delay={0.1}>
+            <Orbit />
           </FadeUp>
         </div>
       </section>
@@ -628,16 +863,56 @@ export default function FinstapLanding() {
       {/* Pricing (plans come from the server) */}
       <FinstapPricing />
 
+      {/* A smarter way: before and after */}
+      <section className="py-20 sm:py-24">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6">
+          <SectionHead eyebrow="Compare" title={<>A smarter way<br className="hidden sm:block" /> to run your practice</>} />
+          <div className="mt-14 grid gap-4 md:grid-cols-2">
+            <FadeUp>
+              <div className="h-full rounded-3xl bg-slate-100/70 p-7 sm:p-8">
+                <p className="flex items-center gap-2 font-semibold text-slate-700">
+                  <IconTable className="size-5 text-slate-400" /> Spreadsheets & email
+                </p>
+                <ul className="mt-6 grid gap-3">
+                  {COMPARE.map((item) => (
+                    <li key={item} className="flex items-start gap-2.5 text-sm text-slate-500">
+                      <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-slate-300 text-white">
+                        <IconX className="size-3" />
+                      </span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </FadeUp>
+            <FadeUp delay={0.08}>
+              <div className={cn(CARD, "relative h-full overflow-hidden p-7 ring-2 ring-[#5f5cff]/25 sm:p-8")}>
+                <span aria-hidden className="absolute -right-16 -top-16 size-48 rounded-full bg-[#834aff]/15 blur-3xl" />
+                <p className="relative flex items-center gap-2 font-semibold text-slate-900">
+                  <img src={finstapMark} alt="" className="size-5" /> Finstap
+                  <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-[#5f5cff]/10 px-2 py-0.5 text-[11px] font-semibold text-[#5f5cff]">
+                    <IconCrown className="size-3" /> Recommended
+                  </span>
+                </p>
+                <ul className="relative mt-6 grid gap-3">
+                  {COMPARE.map((item) => (
+                    <li key={item} className="flex items-start gap-2.5 text-sm text-slate-700">
+                      <IconCircleCheckFilled className="mt-0.5 size-4 shrink-0 text-[#5f5cff]" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </FadeUp>
+          </div>
+        </div>
+      </section>
+
       {/* FAQ */}
-      <section id="faq" className="scroll-mt-20 bg-slate-50/70 py-20 sm:py-24">
+      <section id="faq" className="scroll-mt-24 py-20 sm:py-24">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
-          <FadeUp className="text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">FAQ</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-              Questions, answered
-            </h2>
-          </FadeUp>
-          <div className="mt-10 grid gap-3">
+          <SectionHead eyebrow="FAQ" title={<>Common questions,<br className="hidden sm:block" /> clear answers</>} />
+          <div className="mt-12 grid gap-3">
             {FAQ.map(([q, a]) => (
               <FaqItem key={q} q={q} a={a} />
             ))}
@@ -645,25 +920,14 @@ export default function FinstapLanding() {
         </div>
       </section>
 
-      {/* Closing call to action */}
-      <section className="py-20 sm:py-24">
+      {/* Closing call to action with the newsletter */}
+      <section className="pb-20 pt-8 sm:pb-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <FadeUp>
-            <div
-              className={cn(
-                "relative overflow-hidden rounded-3xl px-6 py-14 text-center text-white sm:px-12 sm:py-16",
-                "bg-linear-to-br from-[#297bff] via-[#5f5cff] to-[#834aff]",
-              )}
-            >
-              <span
-                aria-hidden
-                className="absolute -right-16 -top-20 size-72 rounded-full bg-white/15 blur-3xl"
-              />
-              <span
-                aria-hidden
-                className="absolute -bottom-24 -left-10 size-72 rounded-full bg-[#297bff]/50 blur-3xl"
-              />
-              <h2 className="relative text-3xl font-bold tracking-tight sm:text-4xl">
+            <div className="relative overflow-hidden rounded-[32px] bg-linear-to-br from-[#297bff] via-[#5f5cff] to-[#834aff] px-6 py-14 text-center text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_30px_60px_-30px_rgba(95,92,255,0.7)] sm:px-12 sm:py-20">
+              <span aria-hidden className="absolute -right-16 -top-20 size-72 rounded-full bg-white/15 blur-3xl" />
+              <span aria-hidden className="absolute -bottom-24 -left-10 size-72 rounded-full bg-[#297bff]/50 blur-3xl" />
+              <h2 className="relative mx-auto max-w-2xl text-[32px] font-semibold leading-[1.15] tracking-tight sm:text-[44px]">
                 Ready to give your practice a calmer week?
               </h2>
               <p className="relative mx-auto mt-4 max-w-xl text-white/85">
@@ -678,10 +942,16 @@ export default function FinstapLanding() {
                 </Link>
                 <Link
                   to="/login"
-                  className="inline-flex items-center justify-center rounded-full border border-white/40 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                  className="inline-flex items-center justify-center rounded-full bg-white/10 px-6 py-3 text-sm font-semibold text-white ring-1 ring-white/40 transition hover:bg-white/20"
                 >
                   Log in to your workspace
                 </Link>
+              </div>
+              {/* Newsletter sign-up (Content > Newsletter in the owner portal) */}
+              <div className="relative mx-auto mt-12 max-w-md border-t border-white/20 pt-8">
+                <p className="text-sm font-semibold">Get the Finstap newsletter</p>
+                <p className="mt-1 text-xs text-white/75">Product news and practical tips for UK practices.</p>
+                <NewsletterSignup source="landing" dark className="mx-auto mt-4" />
               </div>
             </div>
           </FadeUp>
@@ -689,33 +959,47 @@ export default function FinstapLanding() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white">
-        {/* Newsletter sign-up (Content > Newsletter in the owner portal) */}
-        <div className="border-b border-slate-100 bg-[#f6f5ff]">
-          <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">Get the Finstap newsletter</h2>
-              <p className="mt-1 text-sm text-slate-600">Product news and practical tips for UK practices.</p>
-            </div>
-            <NewsletterSignup source="landing" />
-          </div>
-        </div>
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-4 py-10 sm:flex-row sm:px-6">
-          <img src={finstapLogo} alt="Finstap" className="h-7 w-auto" />
-          <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-slate-600">
-            {NAV.map(([label, href]) => (
-              <a key={href} href={href} className="hover:text-[#5f5cff]">
-                {label}
-              </a>
-            ))}
-            <Link to="/login" className="hover:text-[#5f5cff]">
-              Log in
+      <footer className="border-t border-slate-200/70 bg-white">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
+          <div>
+            <img src={finstapLogo} alt="Finstap" className="h-7 w-auto" />
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-500">
+              The CRM for UK accountants and company formation firms.
+            </p>
+            <Link to="/signup" className={cn(CTA, "mt-5 px-5 py-2.5")}>
+              Start free trial
             </Link>
-          </nav>
-          <p className="text-sm text-slate-500">© 2026 Finstap. All rights reserved.</p>
+          </div>
+          {[
+            ["Product", [["Features", "#features"], ["Services", "#services"], ["Pricing", "#pricing"], ["FAQ", "#faq"]]],
+            ["Company", [["Blog", "/blog"], ["How it works", "#how"], ["Why Finstap", "#why"]]],
+            ["Account", [["Log in", "/login"], ["Start free trial", "/signup"]]],
+          ].map(([heading, links]) => (
+            <div key={heading}>
+              <p className="text-sm font-semibold text-slate-900">{heading}</p>
+              <ul className="mt-4 grid gap-2.5 text-sm text-slate-500">
+                {links.map(([label, href]) => (
+                  <li key={label}>
+                    {href.startsWith("#") ? (
+                      <a href={href} className="hover:text-[#5f5cff]">
+                        {label}
+                      </a>
+                    ) : (
+                      <Link to={href} className="hover:text-[#5f5cff]">
+                        {label}
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-        <div className="border-t border-slate-100 py-4 text-sm text-slate-500">
-          <LegalLinks />
+        <div className="border-t border-slate-100">
+          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 py-6 text-sm text-slate-500 sm:flex-row sm:px-6">
+            <p>© 2026 Finstap. All rights reserved.</p>
+            <LegalLinks />
+          </div>
         </div>
       </footer>
     </div>
