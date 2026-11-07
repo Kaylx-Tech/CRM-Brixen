@@ -32,12 +32,16 @@ function newFeatures(data, index) {
   return plan.features.filter((f) => !before.includes(f)).map((f) => data.features[f])
 }
 
-/** What a plan includes, as one list: its limits, then what it adds to the plan before it. */
+// The two limits shown on each card (the full list is in Compare all features)
+const CARD_LIMITS = ["users", "customers"]
+
+/** A short list of what a plan includes (at most 6 lines): what it adds to the plan before it, then two limits. */
 function includedLines(data, index) {
   const plan = data.plans[data.order[index]]
   const previous = index ? data.plans[data.order[index - 1]].name : ""
-  const limits = Object.keys(LIMIT_LINE).map((k) => (plan.limits[k] === null ? UNLIMITED_LINE[k] : LIMIT_LINE[k](plan.limits[k])))
-  return [...(previous ? [`Everything in ${previous}`] : []), ...newFeatures(data, index), ...limits]
+  const added = newFeatures(data, index).slice(0, previous ? 3 : 4)
+  const limits = CARD_LIMITS.map((k) => (plan.limits[k] === null ? UNLIMITED_LINE[k] : LIMIT_LINE[k](plan.limits[k])))
+  return [...(previous ? [`Everything in ${previous}`] : []), ...added, ...limits]
 }
 
 function PlanCard({ data, index, yearly }) {
@@ -171,7 +175,8 @@ export default function FinstapPricing() {
   useEffect(() => {
     fetch(`${getApiBase()}/platform/plans`)
       .then((r) => r.json())
-      .then((json) => json.success && setData(json.data))
+      // Enterprise (a custom plan) is not shown on the landing page: three plans, like a simple price list
+      .then((json) => json.success && setData({ ...json.data, order: json.data.order.filter((k) => !json.data.plans[k].custom) }))
       .catch(() => {})
   }, [])
 
@@ -211,7 +216,7 @@ export default function FinstapPricing() {
 
         {data ? (
           <>
-            <div className="mt-24 grid items-stretch gap-5 md:grid-cols-2 lg:grid-cols-4">
+            <div className="mx-auto mt-24 grid max-w-5xl items-stretch gap-5 md:grid-cols-3">
               {data.order.map((key, i) => (
                 <PlanCard key={key} data={data} index={i} yearly={yearly} />
               ))}
@@ -234,9 +239,9 @@ export default function FinstapPricing() {
             )}
           </>
         ) : (
-          <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="h-[560px] animate-pulse rounded-[20px] bg-white shadow-[0_1px_20px_rgba(0,0,0,0.05)]" />
+          <div className="mx-auto mt-24 grid max-w-5xl gap-5 md:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-[480px] animate-pulse rounded-[20px] bg-white shadow-[0_1px_20px_rgba(0,0,0,0.05)]" />
             ))}
           </div>
         )}
