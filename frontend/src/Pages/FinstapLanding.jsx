@@ -8,18 +8,15 @@ import {
   IconBrandGoogleDrive,
   IconBrandStripe,
   IconBuildingBank,
-  IconBuildingSkyscraper,
   IconCalendarDue,
   IconChartBar,
   IconCheck,
-  IconChecklist,
   IconCircleCheckFilled,
   IconCrown,
   IconDeviceLaptop,
   IconFileCertificate,
   IconFileText,
   IconId,
-  IconLayoutDashboard,
   IconLock,
   IconMapPin,
   IconMenu2,
@@ -38,6 +35,7 @@ import {
 } from "@tabler/icons-react"
 import finstapLogo from "@/assets/finstap-logo.svg"
 import finstapMark from "@/assets/finstap-mark.svg"
+import dashboardShot from "@/assets/finstap-dashboard.png"
 import { LegalLinks } from "@/Pages/Legal/LegalLayout"
 import FinstapPricing from "@/Pages/FinstapPricing"
 import { NewsletterSignup } from "@/Pages/Blog/Blog"
@@ -301,27 +299,18 @@ function FloatIcon({ icon: Icon, className, delay = 0, tilt = 0 }) {
   )
 }
 
-/** The product in a browser window under the hero: a small Finstap dashboard drawn in HTML. */
+/** The product in a browser window under the hero: a real screenshot of a Finstap workspace's dashboard. */
 function ProductShot() {
-  const bars = [34, 48, 40, 62, 55, 78, 66, 84, 72, 90, 80, 96]
-  const menu = [
-    [IconLayoutDashboard, "Dashboard", true],
-    [IconUsers, "Clients"],
-    [IconBuildingSkyscraper, "Companies"],
-    [IconReceipt2, "Orders"],
-    [IconId, "ID checks"],
-    [IconChecklist, "GOV forms"],
-  ]
   return (
     <motion.div
       initial={{ opacity: 0, y: 50 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.9, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className="relative mx-auto mt-16 max-w-5xl"
+      className="relative mx-auto mt-16 max-w-6xl"
     >
       <span aria-hidden className="absolute -inset-x-10 -top-10 bottom-10 -z-10 rounded-[48px] bg-linear-to-b from-[#5f5cff]/15 to-transparent blur-3xl" />
       <div className="rounded-[28px] bg-white/70 p-2 shadow-[0_0_0_1px_rgba(95,92,255,0.18),0_0_40px_rgba(95,92,255,0.18),0_40px_80px_-40px_rgba(41,64,140,0.45)] backdrop-blur sm:p-3">
-        <div className="overflow-hidden rounded-[20px] bg-[#f7f7fb] ring-1 ring-slate-200/70">
+        <div className="overflow-hidden rounded-[20px] bg-white ring-1 ring-slate-200/70">
           {/* Window bar */}
           <div className="flex items-center gap-2 border-b border-slate-200/70 bg-white px-4 py-2.5">
             <span className="size-2.5 rounded-full bg-[#ff5f57]" />
@@ -331,79 +320,14 @@ function ProductShot() {
               <IconLock className="size-3" /> yourcompany.finstap.com
             </span>
           </div>
-          <div className="flex min-h-[340px]">
-            {/* Menu */}
-            <aside className="hidden w-48 shrink-0 flex-col gap-1 bg-[#0b0919] p-3 sm:flex">
-              <img src={finstapMark} alt="" className="mb-3 ml-1 size-6" />
-              {menu.map(([Icon, label, active]) => (
-                <span
-                  key={label}
-                  className={cn(
-                    "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12px] font-medium",
-                    active ? "bg-white/[0.13] text-white" : "text-white/60",
-                  )}
-                >
-                  <Icon className="size-3.5" /> {label}
-                </span>
-              ))}
-            </aside>
-            {/* Page */}
-            <div className="flex-1 p-4 sm:p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-slate-900">Good morning, Sarah 👋</p>
-                <span className="flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11px] text-slate-400 ring-1 ring-slate-200">
-                  <IconSearch className="size-3" /> Search
-                </span>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-2.5 md:grid-cols-4">
-                {[
-                  ["Revenue", "£24.8K"],
-                  ["Active clients", "182"],
-                  ["Orders this month", "64"],
-                  ["Due this week", "9"],
-                ].map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="rounded-xl bg-linear-to-br from-[#297bff]/[0.06] via-white to-[#834aff]/[0.08] p-3 shadow-[inset_0_1px_0_#fff,0_0_0_1px_rgba(15,23,42,0.05)]"
-                  >
-                    <p className="text-[10px] text-slate-500">{label}</p>
-                    <p className="mt-1 text-base font-semibold text-slate-900">{value}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 grid gap-2.5 md:grid-cols-3">
-                <div className="rounded-xl bg-white p-3 shadow-[0_0_0_1px_rgba(15,23,42,0.05)] md:col-span-2">
-                  <p className="text-[11px] font-semibold text-slate-700">Revenue</p>
-                  <div className="mt-3 flex h-28 items-end gap-1.5">
-                    {bars.map((h, i) => (
-                      <motion.span
-                        key={i}
-                        initial={{ height: 0 }}
-                        animate={{ height: `${h}%` }}
-                        transition={{ duration: 0.8, delay: 0.7 + i * 0.05, ease: [0.22, 1, 0.36, 1] }}
-                        className="flex-1 rounded-md bg-linear-to-t from-[#297bff] to-[#834aff] opacity-80"
-                      />
-                    ))}
-                  </div>
-                </div>
-                <div className="rounded-xl bg-white p-3 shadow-[0_0_0_1px_rgba(15,23,42,0.05)]">
-                  <p className="text-[11px] font-semibold text-slate-700">Deadlines</p>
-                  <ul className="mt-2 space-y-1.5">
-                    {[
-                      ["Confirmation statement", "3 days"],
-                      ["Annual accounts", "12 days"],
-                      ["ID verification", "Today"],
-                    ].map(([label, when]) => (
-                      <li key={label} className="flex items-center justify-between gap-2 text-[10px]">
-                        <span className="truncate text-slate-600">{label}</span>
-                        <span className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-px font-semibold text-amber-700">{when}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
+          <img
+            src={dashboardShot}
+            alt="The Finstap dashboard: sales, revenue, customers, orders, documents and a revenue chart"
+            width={1917}
+            height={911}
+            className="block h-auto w-full"
+            fetchPriority="high"
+          />
         </div>
       </div>
     </motion.div>
