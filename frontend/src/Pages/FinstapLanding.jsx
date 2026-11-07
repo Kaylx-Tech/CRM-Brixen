@@ -53,9 +53,11 @@ const CTA = cn(
 )
 const GHOST =
   "inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-800 shadow-[0_0_0_1px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:text-[#5f5cff]"
-// The floating white card used across the page: no hard border, a fine edge and a soft blue shadow
-const CARD =
-  "rounded-3xl bg-white shadow-[inset_0_1px_0_#fff,0_0_0_1px_rgba(15,23,42,0.06),0_18px_40px_-24px_rgba(41,64,140,0.35)]"
+// The white card used across the page: no border or edge, 20px corners and a very soft shadow
+const CARD = "rounded-[20px] bg-white shadow-[0_1px_20px_rgba(0,0,0,0.04)]"
+// Headings: medium weight, tight letter spacing, near black; body text medium grey
+const H2 = "text-[34px] font-medium leading-[1.2] tracking-[-0.05em] text-[#121212] sm:text-[48px]"
+const BODY = "text-base font-medium leading-[1.4] tracking-[-0.02em] text-[#575757]/80"
 
 const NAV = [
   ["Features", "#features"],
@@ -204,10 +206,8 @@ function SectionHead({ eyebrow, title, text, className }) {
   return (
     <FadeUp className={cn("mx-auto max-w-2xl text-center", className)}>
       <Eyebrow>{eyebrow}</Eyebrow>
-      <h2 className="mt-4 text-[32px] font-semibold leading-[1.15] tracking-tight text-slate-900 sm:text-[42px]">
-        {title}
-      </h2>
-      {text && <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-slate-500">{text}</p>}
+      <h2 className={cn("mt-4", H2)}>{title}</h2>
+      {text && <p className={cn("mx-auto mt-4 max-w-xl", BODY)}>{text}</p>}
     </FadeUp>
   )
 }
@@ -215,8 +215,8 @@ function SectionHead({ eyebrow, title, text, className }) {
 function Header() {
   const [open, setOpen] = useState(false)
   return (
-    <header className="sticky top-3 z-40 px-3 sm:top-4 sm:px-6">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between rounded-full bg-white/80 px-3 pl-5 shadow-[0_0_0_1px_rgba(15,23,42,0.06),0_10px_30px_-18px_rgba(41,64,140,0.35)] backdrop-blur-xl">
+    <header className="sticky top-0 z-40 bg-[#fcfcfc]/80 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <a href="#top" className="flex items-center">
           <img src={finstapLogo} alt="Finstap" className="h-7 w-auto" />
         </a>
@@ -225,7 +225,7 @@ function Header() {
             <a
               key={href}
               href={href}
-              className="rounded-full px-3.5 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+              className="rounded-full px-3.5 py-2 text-[15px] font-medium tracking-[-0.02em] text-[#575757] transition hover:text-[#121212]"
             >
               {label}
             </a>
@@ -279,23 +279,24 @@ function Header() {
 }
 
 /** A feature icon floating beside the hero heading (big screens), drifting gently. */
-function FloatIcon({ icon: Icon, className, delay = 0 }) {
+function FloatIcon({ icon: Icon, className, delay = 0, tilt = 0 }) {
   return (
     <motion.span
       aria-hidden
       initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1, y: [0, -10, 0] }}
+      animate={{ opacity: 1, scale: 1, rotate: tilt, y: [0, -10, 0] }}
       transition={{
         opacity: { duration: 0.6, delay },
         scale: { duration: 0.6, delay },
+        rotate: { duration: 0.6, delay },
         y: { duration: 5, delay, repeat: Infinity, ease: "easeInOut" },
       }}
       className={cn(
-        "absolute hidden size-14 items-center justify-center rounded-2xl bg-white text-[#5f5cff] shadow-[inset_0_1px_0_#fff,0_0_0_1px_rgba(15,23,42,0.06),0_16px_32px_-14px_rgba(41,64,140,0.45)] lg:flex",
+        "absolute hidden size-[72px] items-center justify-center rounded-[20px] bg-white text-[#5f5cff] shadow-[0_8px_30px_rgba(0,0,0,0.08)] lg:flex",
         className,
       )}
     >
-      <Icon className="size-6" />
+      <Icon className="size-8" stroke={1.6} />
     </motion.span>
   )
 }
@@ -319,7 +320,7 @@ function ProductShot() {
       className="relative mx-auto mt-16 max-w-5xl"
     >
       <span aria-hidden className="absolute -inset-x-10 -top-10 bottom-10 -z-10 rounded-[48px] bg-linear-to-b from-[#5f5cff]/15 to-transparent blur-3xl" />
-      <div className="rounded-[28px] bg-white/70 p-2 shadow-[0_0_0_1px_rgba(15,23,42,0.06),0_40px_80px_-40px_rgba(41,64,140,0.5)] backdrop-blur sm:p-3">
+      <div className="rounded-[28px] bg-white/70 p-2 shadow-[0_0_0_1px_rgba(95,92,255,0.18),0_0_40px_rgba(95,92,255,0.18),0_40px_80px_-40px_rgba(41,64,140,0.45)] backdrop-blur sm:p-3">
         <div className="overflow-hidden rounded-[20px] bg-[#f7f7fb] ring-1 ring-slate-200/70">
           {/* Window bar */}
           <div className="flex items-center gap-2 border-b border-slate-200/70 bg-white px-4 py-2.5">
@@ -635,7 +636,7 @@ export default function FinstapLanding() {
   return (
     <div
       id="top"
-      className="min-h-screen scroll-smooth bg-[#fbfbfe] font-sans text-slate-900 antialiased [color-scheme:light]"
+      className="min-h-screen scroll-smooth bg-[#fcfcfc] font-sans text-[#121212] antialiased [color-scheme:light]"
     >
       <Header />
 
@@ -646,10 +647,10 @@ export default function FinstapLanding() {
           className="pointer-events-none absolute inset-x-0 -top-24 h-[640px] bg-[radial-gradient(50%_60%_at_50%_0%,rgba(95,92,255,0.16),transparent),radial-gradient(30%_40%_at_15%_20%,rgba(41,123,255,0.12),transparent),radial-gradient(30%_40%_at_85%_20%,rgba(131,74,255,0.12),transparent)]"
         />
         <div className="relative mx-auto max-w-6xl px-4 pt-16 text-center sm:px-6 sm:pt-24">
-          <FloatIcon icon={IconBuildingBank} className="left-[4%] top-[18%]" delay={0.3} />
-          <FloatIcon icon={IconReceipt2} className="left-[11%] top-[38%]" delay={0.6} />
-          <FloatIcon icon={IconId} className="right-[5%] top-[16%]" delay={0.45} />
-          <FloatIcon icon={IconCalendarDue} className="right-[11%] top-[36%]" delay={0.75} />
+          <FloatIcon icon={IconBuildingBank} className="left-[4%] top-[14%]" delay={0.3} tilt={-8} />
+          <FloatIcon icon={IconReceipt2} className="left-[9%] top-[40%]" delay={0.6} tilt={6} />
+          <FloatIcon icon={IconId} className="right-[4%] top-[12%]" delay={0.45} tilt={8} />
+          <FloatIcon icon={IconCalendarDue} className="right-[9%] top-[38%]" delay={0.75} tilt={-6} />
 
           <motion.span
             initial={{ opacity: 0, y: 10 }}
@@ -663,7 +664,7 @@ export default function FinstapLanding() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.05 }}
-            className="mx-auto mt-6 max-w-3xl text-[40px] font-semibold leading-[1.08] tracking-tight sm:text-6xl lg:text-[68px]"
+            className="mx-auto mt-6 max-w-3xl text-[42px] font-medium leading-[1.2] tracking-[-0.05em] text-[#121212] sm:text-[56px] lg:text-[64px]"
           >
             Run your whole practice <span className={GRADIENT_TEXT}>in one calm place</span>
           </motion.h1>
@@ -671,7 +672,7 @@ export default function FinstapLanding() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.15 }}
-            className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-slate-500 sm:text-lg"
+            className={cn("mx-auto mt-6 max-w-xl", BODY)}
           >
             The CRM for UK accountants and company formation firms. Clients, companies, orders, invoices and
             deadlines together, so your team spends less time chasing.
@@ -717,7 +718,7 @@ export default function FinstapLanding() {
       </section>
 
       {/* Features as a bento grid, each with a picture of the screen */}
-      <section id="features" className="scroll-mt-24 py-20 sm:py-24">
+      <section id="features" className="scroll-mt-24 py-24 sm:py-32">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <SectionHead
             eyebrow={<><IconSparkles className="size-3.5" /> Features</>}
@@ -732,8 +733,8 @@ export default function FinstapLanding() {
                     <BentoVisual kind={b.key} />
                   </div>
                   <div className="p-5 sm:p-6">
-                    <h3 className="text-lg font-semibold text-slate-900">{b.title}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{b.text}</p>
+                    <h3 className="text-xl font-medium tracking-[-0.03em] text-[#121212]">{b.title}</h3>
+                    <p className={cn("mt-1.5 text-[15px]", BODY)}>{b.text}</p>
                   </div>
                 </div>
               </FadeUp>
@@ -743,7 +744,7 @@ export default function FinstapLanding() {
       </section>
 
       {/* Benefits */}
-      <section className="py-20 sm:py-24">
+      <section className="py-24 sm:py-32">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <SectionHead
             eyebrow="Benefits"
@@ -757,8 +758,8 @@ export default function FinstapLanding() {
                   <span className="flex size-11 items-center justify-center rounded-xl bg-linear-to-br from-[#297bff]/12 to-[#834aff]/15 text-[#5f5cff] shadow-[inset_0_1px_0_#fff]">
                     <Icon className="size-5" />
                   </span>
-                  <h3 className="mt-5 font-semibold text-slate-900">{title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-500">{text}</p>
+                  <h3 className="mt-5 text-lg font-medium tracking-[-0.03em] text-[#121212]">{title}</h3>
+                  <p className={cn("mt-2 text-[15px]", BODY)}>{text}</p>
                 </div>
               </FadeUp>
             ))}
@@ -767,7 +768,7 @@ export default function FinstapLanding() {
       </section>
 
       {/* How it works */}
-      <section id="how" className="scroll-mt-24 py-20 sm:py-24">
+      <section id="how" className="scroll-mt-24 py-24 sm:py-32">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <SectionHead eyebrow="How it works" title={<>Up and running<br className="hidden sm:block" /> in 3 simple steps</>} />
           <div className="mt-14 grid gap-4 md:grid-cols-3">
@@ -779,8 +780,8 @@ export default function FinstapLanding() {
                   </div>
                   <div className="p-5">
                     <span className="text-xs font-semibold text-[#5f5cff]">Step {i + 1}</span>
-                    <h3 className="mt-1 text-lg font-semibold text-slate-900">{title}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{text}</p>
+                    <h3 className="mt-1 text-xl font-medium tracking-[-0.03em] text-[#121212]">{title}</h3>
+                    <p className={cn("mt-1.5 text-[15px]", BODY)}>{text}</p>
                   </div>
                 </div>
               </FadeUp>
@@ -790,7 +791,7 @@ export default function FinstapLanding() {
       </section>
 
       {/* Services: the company work formation agents sell, done inside Finstap */}
-      <section id="services" className="scroll-mt-24 py-20 sm:py-24">
+      <section id="services" className="scroll-mt-24 py-24 sm:py-32">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <SectionHead
             eyebrow="Services"
@@ -806,8 +807,8 @@ export default function FinstapLanding() {
                       <Icon className="size-6" />
                     </span>
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-                      <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{text}</p>
+                      <h3 className="text-xl font-medium tracking-[-0.03em] text-[#121212]">{title}</h3>
+                      <p className={cn("mt-1.5 text-[15px]", BODY)}>{text}</p>
                     </div>
                   </div>
                   <ul className="mt-6 grid gap-2.5 border-t border-slate-100 pt-5">
@@ -826,14 +827,12 @@ export default function FinstapLanding() {
       </section>
 
       {/* Your address, your data */}
-      <section id="why" className="scroll-mt-24 py-20 sm:py-24">
+      <section id="why" className="scroll-mt-24 py-24 sm:py-32">
         <div className="mx-auto grid max-w-6xl items-center gap-14 px-4 sm:px-6 lg:grid-cols-2">
           <FadeUp>
             <Eyebrow>Why Finstap</Eyebrow>
-            <h2 className="mt-4 text-[32px] font-semibold leading-[1.15] tracking-tight sm:text-[42px]">
-              Your practice, your address, your data
-            </h2>
-            <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-slate-500">
+            <h2 className={cn("mt-4", H2)}>Your practice, your address, your data</h2>
+            <p className={cn("mt-4 max-w-lg", BODY)}>
               Each company gets its own Finstap workspace at its own address, with your logo and your colours,
               and its own database.
             </p>
@@ -864,7 +863,7 @@ export default function FinstapLanding() {
       <FinstapPricing />
 
       {/* A smarter way: before and after */}
-      <section className="py-20 sm:py-24">
+      <section className="py-24 sm:py-32">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
           <SectionHead eyebrow="Compare" title={<>A smarter way<br className="hidden sm:block" /> to run your practice</>} />
           <div className="mt-14 grid gap-4 md:grid-cols-2">
@@ -909,7 +908,7 @@ export default function FinstapLanding() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="scroll-mt-24 py-20 sm:py-24">
+      <section id="faq" className="scroll-mt-24 py-24 sm:py-32">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
           <SectionHead eyebrow="FAQ" title={<>Common questions,<br className="hidden sm:block" /> clear answers</>} />
           <div className="mt-12 grid gap-3">
@@ -927,7 +926,7 @@ export default function FinstapLanding() {
             <div className="relative overflow-hidden rounded-[32px] bg-linear-to-br from-[#297bff] via-[#5f5cff] to-[#834aff] px-6 py-14 text-center text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_30px_60px_-30px_rgba(95,92,255,0.7)] sm:px-12 sm:py-20">
               <span aria-hidden className="absolute -right-16 -top-20 size-72 rounded-full bg-white/15 blur-3xl" />
               <span aria-hidden className="absolute -bottom-24 -left-10 size-72 rounded-full bg-[#297bff]/50 blur-3xl" />
-              <h2 className="relative mx-auto max-w-2xl text-[32px] font-semibold leading-[1.15] tracking-tight sm:text-[44px]">
+              <h2 className="relative mx-auto max-w-2xl text-[34px] font-medium leading-[1.2] tracking-[-0.05em] sm:text-[48px]">
                 Ready to give your practice a calmer week?
               </h2>
               <p className="relative mx-auto mt-4 max-w-xl text-white/85">
