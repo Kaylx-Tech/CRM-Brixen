@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
-import { motion } from "motion/react"
+import { motion, useReducedMotion, useScroll, useTransform } from "motion/react"
 import { cn } from "cn"
 import {
   IconArrowRight,
@@ -17,7 +17,6 @@ import {
   IconFileCertificate,
   IconFileText,
   IconId,
-  IconLock,
   IconMapPin,
   IconMenu2,
   IconMinus,
@@ -299,37 +298,41 @@ function FloatIcon({ icon: Icon, className, delay = 0, tilt = 0 }) {
   )
 }
 
-/** The product in a browser window under the hero: a real screenshot of a Finstap workspace's dashboard. */
+/**
+ * The product under the hero: a real screenshot of a Finstap dashboard in a plain rounded frame with a soft
+ * blue glow behind it. At the top of the page it leans back in 3D; scrolling down brings it upright.
+ */
 function ProductShot() {
+  const reduceMotion = useReducedMotion()
+  const { scrollY } = useScroll()
+  // Leaning back (tilted on its X axis, a little smaller) at the top, upright after ~450px of scrolling
+  const rotateX = useTransform(scrollY, [0, 450], [reduceMotion ? 0 : 22, 0])
+  const scale = useTransform(scrollY, [0, 450], [reduceMotion ? 1 : 0.94, 1])
   return (
     <motion.div
       initial={{ opacity: 0, y: 50 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.9, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className="relative mx-auto mt-16 max-w-6xl"
+      className="relative mx-auto mt-16 max-w-6xl [perspective:1400px]"
     >
-      <span aria-hidden className="absolute -inset-x-10 -top-10 bottom-10 -z-10 rounded-[48px] bg-linear-to-b from-[#5f5cff]/15 to-transparent blur-3xl" />
-      <div className="rounded-[28px] bg-white/70 p-2 shadow-[0_0_0_1px_rgba(95,92,255,0.18),0_0_40px_rgba(95,92,255,0.18),0_40px_80px_-40px_rgba(41,64,140,0.45)] backdrop-blur sm:p-3">
-        <div className="overflow-hidden rounded-[20px] bg-white ring-1 ring-slate-200/70">
-          {/* Window bar */}
-          <div className="flex items-center gap-2 border-b border-slate-200/70 bg-white px-4 py-2.5">
-            <span className="size-2.5 rounded-full bg-[#ff5f57]" />
-            <span className="size-2.5 rounded-full bg-[#febc2e]" />
-            <span className="size-2.5 rounded-full bg-[#28c840]" />
-            <span className="mx-auto flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-[11px] text-slate-500">
-              <IconLock className="size-3" /> yourcompany.finstap.com
-            </span>
-          </div>
+      <motion.div style={{ rotateX, scale, transformOrigin: "50% 0%" }} className="relative">
+        {/* Blue glow behind the frame */}
+        <span
+          aria-hidden
+          className="absolute -inset-6 -z-10 rounded-[56px] bg-linear-to-br from-[#297bff]/35 via-[#5f5cff]/30 to-[#834aff]/35 blur-3xl"
+        />
+        {/* The rounded box right behind the picture */}
+        <div className="rounded-[28px] bg-white/70 p-2 shadow-[0_0_0_1px_rgba(95,92,255,0.18),0_30px_70px_-30px_rgba(41,64,140,0.5)] backdrop-blur sm:p-3">
           <img
             src={dashboardShot}
             alt="The Finstap dashboard: sales, revenue, customers, orders, documents and a revenue chart"
             width={1917}
             height={911}
-            className="block h-auto w-full"
+            className="block h-auto w-full rounded-[20px] ring-1 ring-slate-200/70"
             fetchPriority="high"
           />
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   )
 }
