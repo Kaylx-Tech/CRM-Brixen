@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { IconAlertCircle, IconArrowRight, IconBuildingStore, IconCircleCheck } from "@tabler/icons-react"
 import { AuthLayout } from "@/components/auth-layout"
-import { FINSTAP_CTA } from "@/components/finstap-auth-layout"
+import { useAuthBrand } from "@/components/finstap-auth-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
@@ -40,6 +40,7 @@ import {
  */
 export function FinstapLoginForm() {
   const navigate = useNavigate()
+  const { cta, link } = useAuthBrand()
   const [params] = useSearchParams()
   const fixedWorkspace = subdomainWorkspace()
   const findMode = onSharedHost()
@@ -162,7 +163,7 @@ export function FinstapLoginForm() {
   const slug = normalizeSlug(workspace)
 
   // Signup lives on the shared address; from a company subdomain it is a full page link
-  const linkClass = "font-semibold text-[#5f5cff] underline-offset-4 hover:underline dark:text-[#8b8aff]"
+  const linkClass = `font-semibold underline-offset-4 hover:underline ${link}`
   const signupLink = fixedWorkspace ? (
     <a href={sharedUrl("/signup")} className={linkClass}>
       Sign up
@@ -178,7 +179,7 @@ export function FinstapLoginForm() {
     return (
       <AuthLayout title="Workspace not found" subtitle={`There is no Finstap workspace called "${fixedWorkspace}".`}>
         <FieldGroup>
-          <Button className={FINSTAP_CTA} onClick={() => window.location.assign(sharedUrl("/login"))}>
+          <Button className={cta} onClick={() => window.location.assign(sharedUrl("/login"))}>
             Find your workspace
           </Button>
           <p className="text-center text-sm text-muted-foreground">Don&apos;t have an account? {signupLink}</p>
@@ -282,7 +283,7 @@ export function FinstapLoginForm() {
           )}
           {askWorkspace ? (
             <Field>
-              <Button type="submit" className={FINSTAP_CTA} disabled={!workspaceName}>
+              <Button type="submit" className={cta} disabled={!workspaceName}>
                 Continue <IconArrowRight className="size-4" />
               </Button>
             </Field>
@@ -324,7 +325,7 @@ export function FinstapLoginForm() {
             <FieldMessage id="password-error" message={errors.password} />
           </Field>
           <Field>
-            <Button type="submit" disabled={isLoading} className={FINSTAP_CTA}>
+            <Button type="submit" disabled={isLoading} className={cta}>
               {isLoading ? "Logging in..." : "Login"}
               {!isLoading && <IconArrowRight className="size-4" />}
             </Button>

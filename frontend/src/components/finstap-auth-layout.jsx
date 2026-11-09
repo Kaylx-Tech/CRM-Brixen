@@ -1,5 +1,6 @@
 import { FinstapLogo } from "@/components/finstap-brand"
 import { subdomainWorkspace } from "@/lib/workspace"
+import { useBranding } from "@/lib/branding"
 import { LegalLinks } from "@/Pages/Legal/LegalLayout"
 
 /**
@@ -37,3 +38,18 @@ export function FinstapAuthLayout({ title, subtitle, children, footer }) {
 /** The brand gradient for the main button on Finstap sign-in pages. */
 export const FINSTAP_CTA =
   "border-0 bg-linear-to-r from-[#297bff] to-[#834aff] text-white hover:opacity-90"
+
+/**
+ * Colours of the sign-in button and links. On a company's own address with an accent colour saved they match the
+ * company's logo (Settings → Branding: the normal primary button); otherwise Finstap's own gradient and violet.
+ */
+export function useAuthBrand() {
+  const { accent } = useBranding()
+  const own = Boolean(accent && subdomainWorkspace())
+  return {
+    cta: own ? "" : FINSTAP_CTA,
+    link: own
+      ? "text-primary dark:text-[color-mix(in_oklab,var(--primary),white_30%)]"
+      : "text-[#5f5cff] dark:text-[#8b8aff]",
+  }
+}
