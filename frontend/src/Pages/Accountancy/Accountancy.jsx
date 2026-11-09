@@ -860,7 +860,7 @@ const Accountancy = () => {
         ════════════════════════════════════════════════════════════ */}
         <TabsContent value="filing-status" className="space-y-6 m-0">
           {/* Top 5 KPI SectionCards */}
-          <SectionCards stats={stats} isLoading={isLoading} />
+          <SectionCards stats={stats} isLoading={isLoading} compact />
 
           {/* TanStack DataTable */}
           <DataTable
