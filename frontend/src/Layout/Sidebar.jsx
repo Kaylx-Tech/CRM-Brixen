@@ -161,7 +161,7 @@ export function AppSidebar({
     return (
       <Sidebar collapsible="offcanvas" className="group-data-[side=left]:border-r-0" {...props}>
         <SidebarHeader className="gap-3 px-3 pt-4">
-          <div className="flex items-center justify-between gap-2 pl-1">
+          <div className="flex items-center justify-center gap-2">
             {/* The logo opens the dashboard */}
             <Link to={homePath()} aria-label="Go to the dashboard" className="min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30">
               <FinstapMenuLogo />
