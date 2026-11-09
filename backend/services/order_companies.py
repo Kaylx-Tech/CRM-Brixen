@@ -327,6 +327,42 @@ def backfill_formation_companies():
     return done
 
 
+MISSED_FORMATION_DAYS = 3
+
+
+def create_missed_formation_companies():
+    """A recent formation order placed without its Pending company gets it now (the 5-minute check).
+
+    Orders under 2 minutes old are still being saved. An order that ever had a company listed is left alone,
+    so a Pending company the team removed does not come back. Returns the ids of the companies created."""
+    from services.error_tracking import report_problem
+    rows = query_db("""
+        SELECT id, order_number, order_form_values_json FROM orders
+        WHERE company_id IS NULL AND COALESCE(is_draft, 0) = 0 AND status NOT IN ('Cancelled', 'Refunded')
+          AND datetime(created_at) <= datetime('now', '-2 minutes')
+          AND datetime(created_at) >= datetime('now', ?)
+        ORDER BY id;
+    """, (f'-{MISSED_FORMATION_DAYS} days',)) or []
+    created = []
+    for row in rows:
+        try:
+            values = json.loads(row.get('order_form_values_json') or '{}')
+        except (TypeError, ValueError):
+            values = {}
+        if isinstance(values, dict) and values.get('linked_companies'):
+            continue
+        try:
+            company_id = ensure_formation_company(row['id'])
+        except Exception as exc:
+            report_problem('formation_company', exc, level='error', order_id=row['id'])
+            continue
+        if company_id:
+            created.append(company_id)
+            report_problem('formation_company', 'Order was placed without its Pending company; the 5-minute check added it',
+                           order_number=row.get('order_number'), company_id=company_id)
+    return created
+
+
 def register_pending_company(company_id, number):
     """Turn a Pending company card into the registered company from Companies House.
 
@@ -499,10 +535,11 @@ def start_pending_registration_worker(run=None):
 
     def _loop():
         while True:
-            try:
-                (run or (lambda job: job()))(auto_register_pending_companies)
-            except Exception as exc:
-                print(f"[Pending companies] Worker error: {exc}")
+            for job in (create_missed_formation_companies, auto_register_pending_companies):
+                try:
+                    (run or (lambda task: task()))(job)
+                except Exception as exc:
+                    print(f"[Pending companies] Worker error: {exc}")
             time.sleep(PENDING_SYNC_INTERVAL_SECONDS)
 
     threading.Thread(target=_loop, name='pending-companies', daemon=True).start()

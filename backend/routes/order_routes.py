@@ -249,6 +249,8 @@ def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False, own_orders_
             ensure_formation_company(order_id)
         except Exception as exc:
             print(f"[formation company] order {order_id}: {exc}")
+            from services.error_tracking import report_problem
+            report_problem('formation_company', exc, level='error', order_id=order_id)
 
     # Codes typed on the form (authentication code, personal code) go to the company's compliance record
     if not as_draft:

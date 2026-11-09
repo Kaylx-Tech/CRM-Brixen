@@ -224,6 +224,8 @@ def process_woocommerce_order(payload):
         ensure_formation_company(order_id, website_company_name(payload))
     except Exception as e:
         print(f"[Webhook] formation company error: {e}")
+        from services.error_tracking import report_problem
+        report_problem('formation_company', e, level='error', order_id=order_id)
 
     # 6. Invoice (app.py): a website order paid at checkout (WooCommerce processing / completed, or a payment
     #    date) gets a Paid invoice; otherwise a Pending one
