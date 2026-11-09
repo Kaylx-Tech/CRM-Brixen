@@ -19,8 +19,7 @@ The full chat that this came from (2026-11-04 to 2026-11-07) is exported at
 | Branch | What | Live |
 |---|---|---|
 | `master` | Brixen Consultants' own CRM (one company) | brixenconsultants.com (portal., admin.) |
-| `finstap` | Finstap: the same CRM as a multi-tenant SaaS (one SQLite DB per workspace, `backend/tenancy.py`) | was live until 2026-11-06 |
-| **`finstap-ui-redesign`** | `finstap` (eab46e1) + the whole UI redesign below | **live now**: Coolify deploys Finstap from this branch |
+| **`finstap`** | Finstap: the same CRM as a multi-tenant SaaS (one SQLite DB per workspace, `backend/tenancy.py`), with the UI redesign below merged in | **live now**: Coolify deploys Finstap from this branch |
 
 - Finstap addresses: `finstap.com` (landing, signup, find workspace), `acme.finstap.com` (a company's CRM and
   client portal), `admin.finstap.com` (owner portal, `Pages/Owner/*`), `kyc.finstap.com` (KYC team desk).
@@ -31,7 +30,7 @@ The full chat that this came from (2026-11-04 to 2026-11-07) is exported at
 
 ## How we work (important)
 
-- **Work on `finstap-ui-redesign`.** Commit locally after each change. **Do not push** and do not keep asking
+- **Work on `finstap`.** Commit locally after each change. **Do not push** and do not keep asking
   "push karun?". Push only when the user says "push" / "push krdo". A push to this branch goes live in 3-5 min.
 - Git identity in this repo: `mudassirsaleem47 <mudassirsaleem230@gmail.com>` (set with `git config`, repo only).
 - Restore point for the old look: tag `dashboard-ui-backup-2026-11-06` (= eab46e1, before the redesign).
@@ -51,7 +50,7 @@ The full chat that this came from (2026-11-04 to 2026-11-07) is exported at
   API calls the page makes, then `history.pushState` to the page.
 - Files are CRLF. When editing with scripts, keep CRLF.
 
-## The redesign so far (finstap-ui-redesign)
+## The redesign so far (merged into `finstap`; its own branch was deleted on 2026-11-09)
 
 Style: Shopify-admin feel, Finstap's blue → purple (#297bff → #5f5cff → #834aff), soft "3D" surfaces.
 
