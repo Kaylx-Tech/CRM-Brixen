@@ -46,7 +46,7 @@ export const NAV_GROUPS = [
     label: "Business",
     items: [
       { title: "Finance", url: "/admin/payments", icon: IconFileInvoice },
-      // Team members list: admins and managers (staff's tasks are GOV Forms in Smart Operations)
+      // Team members list: admins and managers (staff's tasks are UK Gov Checks in Smart Operations)
       { title: "Team", url: "/admin/tasks", icon: IconUsersGroup, managerOnly: true },
       { title: "Performance", url: "/admin/performance", icon: IconTrophy },
       { title: "Support", url: "/admin/tickets", icon: IconHeadset, badge: "tickets" },

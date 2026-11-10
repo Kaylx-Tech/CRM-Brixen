@@ -56,7 +56,7 @@ export function resolveAdminLink(link) {
     if (cleaned.startsWith("admin-")) return `/admin/${cleaned.replace(/^admin-/, "")}`
     return null
   })()
-  // Tasks are GOV Forms in Smart Operations (Team is only the members list)
-  if (route && route.split("?")[0] === "/admin/tasks") return "/admin/smart-operations?tab=gov-forms"
+  // Tasks are UK Gov Checks in Smart Operations (Team is only the members list)
+  if (route && route.split("?")[0] === "/admin/tasks") return "/admin/smart-operations?tab=uk-gov-checks"
   return route
 }

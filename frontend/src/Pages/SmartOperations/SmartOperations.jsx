@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
+  IconBuildingPlus,
   IconCheck,
   IconCopy,
   IconExternalLink,
@@ -31,6 +32,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Tasks from '@/Pages/Tasks/Tasks'
 import IdVerification from './IdVerification'
+import CompanyFormation from './CompanyFormation'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
 import { m, spring } from '@/lib/motion'
 import { apiRequest } from '@/lib/api'
@@ -116,11 +118,12 @@ function LinkRow({ link, canManage, onEdit, onDelete }) {
 }
 
 export default function SmartOperations() {
-  // ID Verification (KYC orders) is the first, default tab; ?tab=links opens the links and
-  // ?tab=gov-forms GOV Forms (the team's tasks)
+  // ID Verification (KYC orders) is the first, default tab; ?tab=company-formation opens the formation orders,
+  // ?tab=links the links and ?tab=uk-gov-checks UK Gov Checks (the team's tasks; old ?tab=gov-forms links still work)
   const [searchParams, setSearchParams] = useSearchParams()
-  const tab = ['links', 'gov-forms'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'id-verification'
-  const govForms = tab === 'gov-forms'
+  const rawTab = searchParams.get('tab') === 'gov-forms' ? 'uk-gov-checks' : searchParams.get('tab')
+  const tab = ['company-formation', 'links', 'uk-gov-checks'].includes(rawTab) ? rawTab : 'id-verification'
+  const govForms = tab === 'uk-gov-checks'
   const linksTab = tab === 'links'
   const setTab = (value) => setSearchParams(value === 'id-verification' ? {} : { tab: value }, { replace: true })
   const [links, setLinks] = useState([])
@@ -242,6 +245,11 @@ export default function SmartOperations() {
               Every order with a KYC product, for verifying the client's identity.
             </p>
           )}
+          {tab === 'company-formation' && (
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Every order with a company formation product and the company being formed.
+            </p>
+          )}
         </div>
         <div className={`flex items-center gap-2 ${linksTab ? '' : 'hidden'}`}>
           {canManage && (
@@ -253,28 +261,34 @@ export default function SmartOperations() {
         </div>
       </div>
 
-      {/* KYC orders first, then the links, then the team's tasks as GOV Forms */}
+      {/* KYC orders first, then formation orders, the links, then the team's tasks as UK Gov Checks */}
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="id-verification">
             <IconId className="size-4" />
             ID Verification
           </TabsTrigger>
+          <TabsTrigger value="company-formation">
+            <IconBuildingPlus className="size-4" />
+            Company Formation
+          </TabsTrigger>
           <TabsTrigger value="links">
             <IconLink className="size-4" />
             Links
           </TabsTrigger>
-          <TabsTrigger value="gov-forms">
+          <TabsTrigger value="uk-gov-checks">
             <IconFileText className="size-4" />
-            GOV Forms
+            UK Gov Checks
           </TabsTrigger>
         </TabsList>
       </Tabs>
 
       {tab === 'id-verification' ? (
         <IdVerification />
+      ) : tab === 'company-formation' ? (
+        <CompanyFormation />
       ) : govForms ? (
-        <Tasks view="gov-forms" />
+        <Tasks view="uk-gov-checks" />
       ) : (
       <>
       <div className="relative w-full md:max-w-sm">

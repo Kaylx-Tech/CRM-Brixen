@@ -219,16 +219,16 @@ function extractList(payload, keys = []) {
 }
 
 /**
- * Tasks & Team. `view` splits it for Finstap: "team" is the Team page (members only) and "gov-forms"
- * is the tasks list shown as GOV Forms inside Smart Operations (no page heading of its own).
+ * Tasks & Team. `view` splits it for Finstap: "team" is the Team page (members only) and "uk-gov-checks"
+ * is the tasks list shown as UK Gov Checks inside Smart Operations (no page heading of its own).
  * Without `view` (Brixen) both stay on one page with Tasks / Team tabs.
  */
 const Tasks = ({ view } = {}) => {
   const [tabChoice, setActiveTab] = useState('Tasks')
-  const activeTab = view === 'team' ? 'Team' : view === 'gov-forms' ? 'Tasks' : tabChoice
-  const govForms = view === 'gov-forms'
-  const taskWord = govForms ? 'GOV form' : 'task'
-  const listName = govForms ? 'GOV Forms' : 'Tasks'
+  const activeTab = view === 'team' ? 'Team' : view === 'uk-gov-checks' ? 'Tasks' : tabChoice
+  const govForms = view === 'uk-gov-checks'
+  const taskWord = govForms ? 'UK Gov check' : 'task'
+  const listName = govForms ? 'UK Gov Checks' : 'Tasks'
   const [statusFilter, setStatusFilter] = useState('All')
   const [tasks, setTasks] = useState([])
   const [staff, setStaff] = useState([])
@@ -340,7 +340,7 @@ const Tasks = ({ view } = {}) => {
   }, [])
   useRefreshOnReturn(() => (activeTab === 'Tasks' ? loadTasks() : loadStaff()))
 
-  // The Team page needs no tasks; GOV Forms still loads the team (for "assign to")
+  // The Team page needs no tasks; UK Gov Checks still loads the team (for "assign to")
   useEffect(() => {
     if (view !== 'team') loadTasks()
   }, [loadTasks, view])
@@ -575,7 +575,7 @@ const Tasks = ({ view } = {}) => {
   const taskColumns = useMemo(
     () => [
       columnHelper.accessor('title', {
-        header: govForms ? 'GOV form' : 'Task',
+        header: govForms ? 'UK Gov check' : 'Task',
       cell: ({ row }) => (
           <div className="flex flex-col gap-0.5 min-w-0 max-w-[280px]">
             <OverflowTooltip
@@ -786,7 +786,7 @@ const Tasks = ({ view } = {}) => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           {govForms ? (
-            <p className="text-sm text-muted-foreground">Government forms the team is working on, who has each one and when it is due.</p>
+            <p className="text-sm text-muted-foreground">UK government checks and forms the team is working on, who has each one and when it is due.</p>
           ) : (
             <h2 className="text-2xl font-bold tracking-tight">{view === 'team' ? 'Team' : 'Tasks & Team'}</h2>
           )}
