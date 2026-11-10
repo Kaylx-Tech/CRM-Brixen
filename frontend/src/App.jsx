@@ -66,10 +66,10 @@ function HomeRedirect() {
   return <Navigate to={homePath()} replace />
 }
 
-// Finstap: Team is the members list (admins and managers); tasks moved to Smart Operations → GOV Forms,
+// Finstap: Team is the members list (admins and managers); tasks moved to Smart Operations → UK Gov Checks,
 // so staff (and old task links) land there
 function FinstapTeam() {
-  return isManagerOrAbove() ? <Tasks view="team" /> : <Navigate to="/admin/smart-operations?tab=gov-forms" replace />
+  return isManagerOrAbove() ? <Tasks view="team" /> : <Navigate to="/admin/smart-operations?tab=uk-gov-checks" replace />
 }
 
 // Staff land on their own work; admins and managers get the company overview (money stays admin-only)

@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
+  IconBuildingPlus,
   IconCheck,
   IconCopy,
   IconDownload,
@@ -38,6 +39,7 @@ import { isManagerOrAbove } from '@/lib/permissions'
 import Tasks from '@/Pages/Tasks/Tasks'
 import IdVerification from './IdVerification'
 import RegisteredOffice from './RegisteredOffice'
+import CompanyFormation from './CompanyFormation'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
 import { m, spring } from '@/lib/motion'
 import { apiRequest } from '@/lib/api'
@@ -191,14 +193,17 @@ function LinkRow({ link, canManage, onEdit, onDelete }) {
 }
 
 export default function SmartOperations() {
-  // ID Verification (KYC orders) is the first, default tab; ?tab=links opens the links and
-  // ?tab=gov-forms GOV Forms (Finstap, the team's tasks)
+  // ID Verification (KYC orders) is the first, default tab; ?tab=company-formation opens the formation orders,
+  // ?tab=links the links and ?tab=uk-gov-checks UK Gov Checks (Finstap, the team's tasks; old ?tab=gov-forms links
+  // still work)
   const [searchParams, setSearchParams] = useSearchParams()
   // Finstap: admins and managers can also ask Finstap for a registered office
   const canOrderServices = IS_FINSTAP && isManagerOrAbove()
-  const tabs = IS_FINSTAP ? ['links', 'gov-forms', ...(canOrderServices ? ['registered-office'] : [])] : ['links']
-  const tab = tabs.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'id-verification'
-  const govForms = tab === 'gov-forms'
+  const tabs = ['company-formation', 'links',
+    ...(IS_FINSTAP ? ['uk-gov-checks', ...(canOrderServices ? ['registered-office'] : [])] : [])]
+  const rawTab = searchParams.get('tab') === 'gov-forms' ? 'uk-gov-checks' : searchParams.get('tab')
+  const tab = tabs.includes(rawTab) ? rawTab : 'id-verification'
+  const govForms = tab === 'uk-gov-checks'
   const linksTab = tab === 'links'
   const setTab = (value) => setSearchParams(value === 'id-verification' ? {} : { tab: value }, { replace: true })
   const [links, setLinks] = useState([])
@@ -217,7 +222,7 @@ export default function SmartOperations() {
     setIsLoading(true)
     try {
       const res = await apiRequest('/admin/smart-links', { label: 'Smart Operations', silent: true })
-      // Finstap Starter: Partner Perks and GOV Forms are in Pro (ID Verification and Registered Office are not)
+      // Finstap Starter: Partner Perks, Company Formation and UK Gov Checks are in Pro (ID Verification and Registered Office are not)
       if (isPlanLocked(res)) {
         setPlanLock(res.reason || 'This is part of the Pro plan.')
         return
@@ -352,6 +357,11 @@ export default function SmartOperations() {
               Finstap's office address for your clients' companies, given after an ID check.
             </p>
           )}
+          {tab === 'company-formation' && (
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Every order with a company formation product and the company being formed.
+            </p>
+          )}
         </div>
         <div className={`flex items-center gap-2 ${linksTab ? '' : 'hidden'}`}>
           {canManage && (
@@ -369,21 +379,25 @@ export default function SmartOperations() {
         </div>
       </div>
 
-      {/* KYC orders first, then the links, then (Finstap) the team's tasks as GOV Forms */}
+      {/* KYC orders first, then formation orders, the links, then (Finstap) the team's tasks as UK Gov Checks */}
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="id-verification">
             <IconId className="size-4" />
             ID Verification
           </TabsTrigger>
+          <TabsTrigger value="company-formation">
+            <IconBuildingPlus className="size-4" />
+            Company Formation
+          </TabsTrigger>
           <TabsTrigger value="links">
             {IS_FINSTAP ? <IconGift className="size-4" /> : <IconLink className="size-4" />}
             {IS_FINSTAP ? 'Partner Perks' : 'Links'}
           </TabsTrigger>
           {IS_FINSTAP && (
-            <TabsTrigger value="gov-forms">
+            <TabsTrigger value="uk-gov-checks">
               <IconFileText className="size-4" />
-              GOV Forms
+              UK Gov Checks
             </TabsTrigger>
           )}
           {canOrderServices && (
@@ -401,8 +415,10 @@ export default function SmartOperations() {
         <RegisteredOffice />
       ) : planLock ? (
         <PlanLocked message={planLock} />
+      ) : tab === 'company-formation' ? (
+        <CompanyFormation />
       ) : govForms ? (
-        <Tasks view="gov-forms" />
+        <Tasks view="uk-gov-checks" />
       ) : (
       <>
       {IS_FINSTAP && <PerksBanner />}

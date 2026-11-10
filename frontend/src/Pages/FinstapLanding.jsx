@@ -80,7 +80,7 @@ const BENTO = [
   {
     key: "deadlines",
     title: "Deadlines You Won't Miss",
-    text: "GOV forms, tasks and filing dates your team can work through, in order.",
+    text: "UK Gov checks, tasks and filing dates your team can work through, in order.",
   },
 ]
 
@@ -146,7 +146,7 @@ const STEPS = [
 const COMPARE = [
   "Clients, companies and orders in one place",
   "Company details straight from Companies House",
-  "Deadlines and GOV forms tracked for the whole team",
+  "Deadlines and UK Gov checks tracked for the whole team",
   "Invoices with a clear paid / due view",
   "A branded portal for your clients",
   "Each role sees only what it needs",

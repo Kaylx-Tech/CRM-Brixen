@@ -213,8 +213,10 @@ def email_team(subject, message, link_path='/admin', order_id=None):
     return sent
 
 
-def email_staff_member(user_id, title, message, link_path='/admin/tasks', triggered_by=None):
-    """Email one team member (task assigned / completed). Skips customers and the person who did it."""
+def email_staff_member(user_id, title, message, link_path='/admin/smart-operations?tab=uk-gov-checks',
+                       triggered_by=None):
+    """Email one team member (task assigned / completed). Skips customers and the person who did it.
+    Tasks are UK Gov Checks in Smart Operations, so the button opens that tab."""
     try:
         if not user_id or (triggered_by is not None and str(user_id) == str(triggered_by)):
             return False

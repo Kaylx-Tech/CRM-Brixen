@@ -7,6 +7,7 @@ POST   /api/admin/smart-links            {category, title, url, note}
 PUT    /api/admin/smart-links/<id>       any of {category, title, url, note, sort_order}
 DELETE /api/admin/smart-links/<id>
 GET    /api/admin/smart-links/id-verification   orders with a KYC product (ID Verification tab)
+GET    /api/admin/smart-links/company-formation formation orders and their companies (Company Formation tab)
 """
 import json
 import re
@@ -104,6 +105,77 @@ def _kyc_orders(user):
     return orders
 
 
+def _formation_orders(user):
+    """Company Formation: every placed order with an incorporation / formation product (service name or a
+    line item), newest first, with the companies being formed (the order's Pending company and any linked
+    new company). STAFF only see the orders they added, as on the Orders page; no money is returned."""
+    from services.order_companies import FORMATION_HINTS, proposed_company_name
+    from services.order_applicant import applicant
+    likes = ' OR '.join(['LOWER(o.service_name) LIKE ?'] * len(FORMATION_HINTS))
+    item_likes = ' OR '.join(["LOWER(COALESCE(li.product_name, '') || ' ' || COALESCE(li.category_name, '')) LIKE ?"]
+                             * len(FORMATION_HINTS))
+    clauses = ["COALESCE(o.is_draft, 0) = 0",
+               f"(({likes}) OR EXISTS (SELECT 1 FROM order_line_items li WHERE li.order_id = o.id AND ({item_likes})))"]
+    params = [f"%{h}%" for h in FORMATION_HINTS] * 2
+    if user.get('role') == 'STAFF':
+        clauses.append("o.created_by_id = ?")
+        params.append(user.get('id'))
+    rows = query_db(f"""
+        SELECT o.id, o.order_number, o.service_name, o.status, o.created_at, o.owner_name, o.owner_form_email,
+               o.company_id, o.order_form_values_json, o.checkout_form_json,
+               u.full_name AS customer_name, u.email AS customer_email, cb.full_name AS created_by_name,
+               (SELECT GROUP_CONCAT(li.product_name, ', ') FROM order_line_items li
+                 WHERE li.order_id = o.id) AS products
+        FROM orders o
+        LEFT JOIN users u ON u.id = o.user_id
+        LEFT JOIN users cb ON cb.id = o.created_by_id
+        WHERE {' AND '.join(clauses)}
+        ORDER BY o.created_at DESC, o.id DESC
+        LIMIT 500;
+    """, tuple(params)) or []
+    orders = [dict(r) for r in rows]  # the SQL matched a formation hint on the service or a line item
+
+    # The companies on each order: its own company plus the "Linked companies" of the order form
+    values_by_order, company_ids = {}, set()
+    for o in orders:
+        try:
+            values = json.loads(o.pop('order_form_values_json', None) or '{}')
+        except (TypeError, ValueError):
+            values = {}
+        values = values if isinstance(values, dict) else {}
+        values_by_order[o['id']] = values
+        ids = [o.get('company_id')] + [c.get('company_id') for c in (values.get('linked_companies') or [])
+                                       if isinstance(c, dict)]
+        o['_company_ids'] = [i for i in dict.fromkeys(ids) if isinstance(i, int)]
+        company_ids.update(o['_company_ids'])
+    companies = {}
+    if company_ids:
+        marks = ','.join('?' * len(company_ids))
+        for c in query_db(f"""SELECT id, name, company_number, status, inc_date FROM companies
+                              WHERE id IN ({marks});""", tuple(company_ids)) or []:
+            number = str(c.get('company_number') or '').upper()
+            pending = not number or number.startswith(('REG-', 'PENDING'))
+            companies[c['id']] = {'id': c['id'], 'name': c.get('name'), 'registered': not pending,
+                                  'company_number': None if pending else c.get('company_number'),
+                                  'status': c.get('status'), 'inc_date': None if pending else c.get('inc_date')}
+
+    for o in orders:
+        listed = [companies[i] for i in o.pop('_company_ids') if i in companies]
+        # A registered company picked for another service on the same order is not being formed
+        forming = [c for c in listed if not c['registered']]
+        formed = [c for c in listed if c['registered'] and c['id'] != o.get('company_id')]
+        if not forming and not formed and listed:
+            formed = listed  # the order's own company, already registered (formation done)
+        o['companies'] = forming + formed
+        o['proposed_name'] = proposed_company_name(values_by_order[o['id']]) or None
+        o['formation_status'] = ('Registered' if o['companies'] and all(c['registered'] for c in o['companies'])
+                                 else 'Pending' if o['companies'] else 'No company')
+        o['applicant_name'], o['applicant_email'] = applicant(
+            {**o, 'full_name': o.get('customer_name'), 'email': o.get('customer_email')})
+        o.pop('checkout_form_json', None)
+    return orders
+
+
 def handle_smart_link_routes(environ, start_response, path, method, user, body, query):
     if not path.startswith('/api/admin/smart-links'):
         return None
@@ -155,6 +227,9 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
         return success_response(start_response, data={'orders': _kyc_orders(user),
                                                       'didit_configured': not kyc_off_reason(), 'credits': credits,
                                                       'link_checks': link_checks, 'kyc_link': kyc_link})
+
+    if path == '/api/admin/smart-links/company-formation' and method == 'GET':
+        return success_response(start_response, data={'orders': _formation_orders(user)})
 
     if role not in MANAGE_ROLES:
         return error_response(start_response, "Only admins and managers can change Smart Operations links.",

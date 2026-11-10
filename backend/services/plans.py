@@ -34,7 +34,7 @@ FEATURES = {
     'director_id':'Director ID verification tracking',
     'accounts': 'Company accounts and Companies House filing',
     'registered_office': 'Registered office and mail forwarding services',
-    'smart_operations': 'Smart Operations (GOV forms) and compliance alerts',
+    'smart_operations': 'Smart Operations (UK Gov Checks, Company Formation) and compliance alerts',
     'website': 'Website (WordPress) connection',
     'own_email': 'Your own email sender',
     'price_privacy': 'Hide prices from operations staff',
