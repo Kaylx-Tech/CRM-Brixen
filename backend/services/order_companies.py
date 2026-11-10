@@ -327,6 +327,80 @@ def backfill_formation_companies():
     return done
 
 
+def _is_registered_number(number):
+    number = str(number or '').strip().upper()
+    return bool(number) and not number.startswith(('REG-', 'PENDING'))
+
+
+def refresh_linked_companies(values):
+    """The order's linked companies with their current CRM name and number (renamed, or registered since)."""
+    linked = values.get('linked_companies') if isinstance(values, dict) else None
+    if not isinstance(linked, list):
+        return values
+    ids = [int(c['company_id']) for c in linked if isinstance(c, dict) and str(c.get('company_id') or '').isdigit()]
+    if not ids:
+        return values
+    rows = query_db(f"SELECT id, name, company_number FROM companies WHERE id IN ({','.join('?' * len(ids))});",
+                    tuple(ids)) or []
+    current = {r['id']: r for r in rows}
+    for c in linked:
+        row = current.get(int(c['company_id'])) if isinstance(c, dict) and str(c.get('company_id') or '').isdigit() else None
+        if row:
+            c['name'] = row.get('name') or c.get('name')
+            c['number'] = row['company_number'] if _is_registered_number(row.get('company_number')) else ''
+    return values
+
+
+def rename_linked_companies(values, changes):
+    """Rename the order's not-registered linked companies: [{company_id, name}].
+
+    The Pending company in the CRM takes the new name, and so do the order's linked list and the form's
+    proposed-name answer (its availability is no longer known). Registered companies keep their Companies
+    House name. Returns (values, errors) with errors as {f"linked_company_{id}": message}."""
+    values = values if isinstance(values, dict) else {}
+    linked = values.get('linked_companies') if isinstance(values.get('linked_companies'), list) else []
+    on_order = {int(c['company_id']): c for c in linked
+                if isinstance(c, dict) and str(c.get('company_id') or '').isdigit()}
+    errors, renames = {}, []
+    for change in changes if isinstance(changes, list) else []:
+        try:
+            company_id = int((change or {}).get('company_id'))
+        except (TypeError, ValueError):
+            continue
+        key = f"linked_company_{company_id}"
+        name = re.sub(r'\s+', ' ', str((change or {}).get('name') or '')).strip()
+        if company_id not in on_order:
+            errors[key] = 'This company is not linked to the order.'
+        elif not name:
+            errors[key] = 'Company name is required.'
+        elif len(name) > 160:
+            errors[key] = 'Company name must be 160 characters or fewer.'
+        else:
+            row = query_db("SELECT name, company_number FROM companies WHERE id = ?;", (company_id,), one=True)
+            if not row:
+                errors[key] = 'This company is no longer in the CRM.'
+            elif _is_registered_number(row.get('company_number')):
+                errors[key] = 'A registered company keeps its Companies House name.'
+            elif name != (row.get('name') or ''):
+                renames.append((company_id, row.get('name') or '', name))
+    if errors:
+        return values, errors
+
+    fields = values.get('service_fields') if isinstance(values.get('service_fields'), list) else []
+    for company_id, old, new in renames:
+        execute_db("UPDATE companies SET name = ? WHERE id = ?;", (new, company_id))
+        on_order[company_id]['name'] = new
+        old_key = old.strip().lower()
+        for item in fields:
+            check = item.get('name_check') if isinstance(item, dict) else None
+            if isinstance(check, dict) and str(check.get('name') or '').strip().lower() == old_key:
+                item['name_check'] = {'name': new, 'available': False, 'checked': False}
+                item['value'] = f"{new} · Availability not checked"
+        if str(values.get('company_name') or '').strip().lower() == old_key:
+            values['company_name'] = new
+    return values, {}
+
+
 MISSED_FORMATION_DAYS = 3
 
 
