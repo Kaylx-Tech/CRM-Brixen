@@ -439,6 +439,9 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
                 data['order_form_values'] = json.loads(data['order_form_values_json'])
             except Exception:
                 data['order_form_values'] = {}
+            # Linked companies as they are now in the CRM (renamed, or registered since the order)
+            from services.order_companies import refresh_linked_companies
+            refresh_linked_companies(data['order_form_values'])
 
         return success_response(start_response, data=data)
 
@@ -753,23 +756,32 @@ def handle_order_routes(environ, start_response, path, method, user, body, query
                     return error_response(start_response, "Company not found", status_code=400)
                 updates.append("company_id = ?")
                 params.append(int(cid))
-        # Answers to the services' own form: [{index, value}] replaces those answers' values
-        if isinstance(body.get('service_fields'), list) and 'order_form_values_json' not in body:
+        # Answers to the services' own form: [{index, value}] replaces those answers' values;
+        # linked_company_names: [{company_id, name}] renames the order's not-registered companies
+        edits_answers = isinstance(body.get('service_fields'), list)
+        edits_names = isinstance(body.get('linked_company_names'), list) and body['linked_company_names']
+        if (edits_answers or edits_names) and 'order_form_values_json' not in body:
             row = query_db("SELECT order_form_values_json FROM orders WHERE id = ?;", (order_id,), one=True) or {}
             try:
                 values = json.loads(row.get('order_form_values_json') or '{}')
             except (TypeError, ValueError):
                 values = {}
             values = values if isinstance(values, dict) else {}
-            fields = values.get('service_fields') if isinstance(values.get('service_fields'), list) else []
-            for change in body['service_fields']:
-                try:
-                    idx = int((change or {}).get('index'))
-                except (TypeError, ValueError):
-                    continue
-                if 0 <= idx < len(fields) and isinstance(fields[idx], dict) and not fields[idx].get('company'):
-                    fields[idx]['value'] = str((change or {}).get('value') or '')[:5000]
-            values['service_fields'] = fields
+            if edits_answers:
+                fields = values.get('service_fields') if isinstance(values.get('service_fields'), list) else []
+                for change in body['service_fields']:
+                    try:
+                        idx = int((change or {}).get('index'))
+                    except (TypeError, ValueError):
+                        continue
+                    if 0 <= idx < len(fields) and isinstance(fields[idx], dict) and not fields[idx].get('company'):
+                        fields[idx]['value'] = str((change or {}).get('value') or '')[:5000]
+                values['service_fields'] = fields
+            if edits_names:
+                from services.order_companies import rename_linked_companies
+                values, name_errors = rename_linked_companies(values, body['linked_company_names'])
+                if name_errors:
+                    return validation_error(start_response, name_errors)
             updates.append("order_form_values_json = ?")
             params.append(json.dumps(values))
 

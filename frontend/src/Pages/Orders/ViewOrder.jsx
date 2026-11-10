@@ -239,6 +239,8 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
   const [orderInfo, setOrderInfo] = useState({ owner_name: '', owner_form_email: '', service_name: '', order_date: '', company_id: '' })
   const [editableAnswers, setEditableAnswers] = useState([])
   const [answerEdits, setAnswerEdits] = useState({})
+  // Names of the order's not-registered linked companies ({company_id: name}); registered ones keep the CH name
+  const [linkedNames, setLinkedNames] = useState({})
   const [companyOptions, setCompanyOptions] = useState([])
 
   // Edit credentials mode
@@ -454,9 +456,11 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
       company_id: o.company_id ? String(o.company_id) : '',
     })
     const uploaded = checkout.uploaded_docs && typeof checkout.uploaded_docs === 'object' ? checkout.uploaded_docs : {}
+    const linked = Array.isArray(ofv.linked_companies) ? ofv.linked_companies.filter((c) => c && c.company_id) : []
+    setLinkedNames(Object.fromEntries(linked.filter((c) => !c.number).map((c) => [c.company_id, c.name || ''])))
     setServiceForm({
       answers,
-      linked: Array.isArray(ofv.linked_companies) ? ofv.linked_companies.filter((c) => c && c.company_id) : [],
+      linked,
       // Only the form's own upload fields, not the wizard's standard document checklist
       uploads: Object.entries(uploaded).filter(([label]) => !['passport', 'proof_of_address', 'other'].includes(label)),
     })
@@ -516,6 +520,14 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
   const handleSaveDetails = async () => {
     if (!orderId) return
     if (!detailErrors.check(orderInfo)) return
+    const renamed = serviceForm.linked
+      .filter((c) => c.company_id in linkedNames && linkedNames[c.company_id].trim() !== (c.name || ''))
+      .map((c) => ({ company_id: c.company_id, name: linkedNames[c.company_id].trim() }))
+    const blank = renamed.find((c) => !c.name)
+    if (blank) {
+      detailErrors.setErrors({ [`linked_company_${blank.company_id}`]: 'Company name is required.' })
+      return
+    }
     setIsSavingDetails(true)
     const toastId = toastProcessing('Saving order details…')
     try {
@@ -529,6 +541,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
           ...(orderInfo.order_date ? { order_date: orderInfo.order_date } : {}),
           company_id: orderInfo.company_id || null,
           service_fields: editableAnswers.map((f) => ({ index: f._index, value: answerEdits[f._index] ?? '' })),
+          ...(renamed.length ? { linked_company_names: renamed } : {}),
         }),
         label: 'Save order details',
         silent: true,
@@ -1060,6 +1073,38 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               </div>
                             )
                           })}
+
+                          {/* Not-registered companies on the order: the name changes in the CRM too */}
+                          {Object.keys(linkedNames).length > 0 && (
+                            <>
+                              <p className="text-sm font-semibold pt-1">Linked companies</p>
+                              {serviceForm.linked.filter((c) => c.company_id in linkedNames).map((c) => {
+                                const key = `linked_company_${c.company_id}`
+                                return (
+                                  <div key={c.company_id} className="space-y-1.5 p-3 rounded-lg border bg-muted/20">
+                                    <Label htmlFor={`order-${key}`} className="text-sm font-semibold text-foreground">
+                                      Company name <span className="font-normal text-muted-foreground">· not registered</span>
+                                    </Label>
+                                    <Input
+                                      id={`order-${key}`}
+                                      value={linkedNames[c.company_id] ?? ''}
+                                      maxLength={160}
+                                      onChange={(e) => {
+                                        const v = e.target.value
+                                        setLinkedNames((p) => ({ ...p, [c.company_id]: v }))
+                                        if (detailErrors.errors[key] && v.trim()) {
+                                          detailErrors.setErrors((p) => { const n = { ...p }; delete n[key]; return n })
+                                        }
+                                      }}
+                                      className="text-sm bg-background"
+                                      {...invalidProps(detailErrors.errors, key, 'order-')}
+                                    />
+                                    <FieldMessage id={`order-${key}-error`} message={detailErrors.errors[key]} />
+                                  </div>
+                                )
+                              })}
+                            </>
+                          )}
 
                           {/* The services' own form answers (company lookups stay as picked) */}
                           {editableAnswers.length > 0 && (
