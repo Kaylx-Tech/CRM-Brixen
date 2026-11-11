@@ -609,7 +609,7 @@ export default function FinstapLanding() {
   return (
     <div
       id="top"
-      className="min-h-screen scroll-smooth bg-[#fcfcfc] font-sans text-[#121212] antialiased [color-scheme:light]"
+      className="min-h-screen scroll-smooth overflow-x-clip bg-[#fcfcfc] font-sans text-[#121212] antialiased [color-scheme:light]"
     >
       <Header />
 
