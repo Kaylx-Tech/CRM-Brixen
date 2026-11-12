@@ -48,13 +48,13 @@ const GHOST = LIGHT_BUTTON
 // The white card used across the page: no border or edge, 20px corners and a very soft shadow
 const CARD = "rounded-[20px] bg-white shadow-[0_1px_20px_rgba(0,0,0,0.04)]"
 // Headings: medium weight, tight letter spacing, near black; body text medium grey
-const H2 = "text-[34px] font-medium leading-[1.2] tracking-[-0.05em] text-[#121212] sm:text-[48px]"
-const BODY = "text-base font-medium leading-[1.4] tracking-[-0.02em] text-[#575757]/80"
+const H2 = "text-[34px] font-semibold leading-[1.2] tracking-[-0.05em] text-[#121212] sm:text-[48px]"
+const BODY = "text-[15px] font-medium leading-[1.4] tracking-[-0.02em] text-[#575757]/80"
 
 const NAV = [
   ["Features", "#features"],
   ["Services", "#services"],
-  ["How it works", "#how"],
+  ["How It Works", "#how"],
   ["Pricing", "#pricing"],
   ["FAQ", "#faq"],
   ["Blog", "/blog"],
@@ -627,7 +627,7 @@ export default function FinstapLanding() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.05 }}
-            className="mx-auto mt-6 max-w-3xl text-[42px] font-medium leading-[1.2] tracking-[-0.05em] text-[#121212] sm:text-[56px] lg:text-[64px]"
+            className="mx-auto mt-6 max-w-3xl text-[42px] font-semibold leading-[1.2] tracking-[-0.05em] text-[#121212] sm:text-[56px] lg:text-[64px]"
           >
             Run Your Whole Practice <span className={GRADIENT_TEXT}>in One Calm Place</span>
           </motion.h1>
@@ -684,7 +684,7 @@ export default function FinstapLanding() {
                     <BentoVisual kind={b.key} />
                   </div>
                   <div className="p-5 sm:p-6">
-                    <h3 className="text-xl font-medium tracking-[-0.03em] text-[#121212]">{b.title}</h3>
+                    <h3 className="text-xl font-semibold tracking-[-0.03em] text-[#121212]">{b.title}</h3>
                     <p className={cn("mt-1.5 text-[15px]", BODY)}>{b.text}</p>
                   </div>
                 </div>
@@ -709,7 +709,7 @@ export default function FinstapLanding() {
                   <span className="flex size-11 items-center justify-center rounded-xl bg-linear-to-br from-[#297bff]/12 to-[#834aff]/15 text-[#5f5cff] shadow-[inset_0_1px_0_#fff]">
                     <Icon className="size-5" />
                   </span>
-                  <h3 className="mt-5 text-lg font-medium tracking-[-0.03em] text-[#121212]">{title}</h3>
+                  <h3 className="mt-5 text-lg font-semibold tracking-[-0.03em] text-[#121212]">{title}</h3>
                   <p className={cn("mt-2 text-[15px]", BODY)}>{text}</p>
                 </div>
               </FadeUp>
@@ -731,7 +731,7 @@ export default function FinstapLanding() {
                   </div>
                   <div className="p-5">
                     <span className="text-xs font-semibold text-[#5f5cff]">Step {i + 1}</span>
-                    <h3 className="mt-1 text-xl font-medium tracking-[-0.03em] text-[#121212]">{title}</h3>
+                    <h3 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#121212]">{title}</h3>
                     <p className={cn("mt-1.5 text-[15px]", BODY)}>{text}</p>
                   </div>
                 </div>
@@ -758,7 +758,7 @@ export default function FinstapLanding() {
                       <Icon className="size-6" />
                     </span>
                     <div>
-                      <h3 className="text-xl font-medium tracking-[-0.03em] text-[#121212]">{title}</h3>
+                      <h3 className="text-xl font-semibold tracking-[-0.03em] text-[#121212]">{title}</h3>
                       <p className={cn("mt-1.5 text-[15px]", BODY)}>{text}</p>
                     </div>
                   </div>
@@ -877,7 +877,7 @@ export default function FinstapLanding() {
             <div className="relative overflow-hidden rounded-[32px] bg-linear-to-br from-[#297bff] via-[#5f5cff] to-[#834aff] px-6 py-14 text-center text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_30px_60px_-30px_rgba(95,92,255,0.7)] sm:px-12 sm:py-20">
               <span aria-hidden className="absolute -right-16 -top-20 size-72 rounded-full bg-white/15 blur-3xl" />
               <span aria-hidden className="absolute -bottom-24 -left-10 size-72 rounded-full bg-[#297bff]/50 blur-3xl" />
-              <h2 className="relative mx-auto max-w-2xl text-[34px] font-medium leading-[1.2] tracking-[-0.05em] sm:text-[48px]">
+              <h2 className="relative mx-auto max-w-2xl text-[34px] font-semibold leading-[1.2] tracking-[-0.05em] sm:text-[48px]">
                 Ready to Give Your Practice a Calmer Week?
               </h2>
               <p className="relative mx-auto mt-4 max-w-xl text-white/85">
@@ -940,8 +940,8 @@ export default function FinstapLanding() {
           </div>
           {[
             ["Product", [["Features", "#features"], ["Services", "#services"], ["Pricing", "#pricing"], ["FAQ", "#faq"]]],
-            ["Company", [["Blog", "/blog"], ["How it works", "#how"], ["Why Finstap", "#why"]]],
-            ["Account", [["Log in", "/login"], ["Start free trial", "/signup"]]],
+            ["Company", [["Blog", "/blog"], ["How It Works", "#how"], ["Why Finstap", "#why"]]],
+            ["Account", [["Log In", "/login"], ["Start Free Trial", "/signup"]]],
           ].map(([heading, links]) => (
             <div key={heading}>
               <p className="text-sm font-semibold text-slate-900">{heading}</p>

@@ -53,7 +53,7 @@ function PlanCard({ data, index, yearly }) {
 
   const card = (
     <div className={cn("flex h-full flex-col rounded-[20px] bg-white p-7", !popular && "shadow-[0_1px_20px_rgba(0,0,0,0.05)]")}>
-      <h3 className="text-[17px] font-medium tracking-[-0.02em] text-[#121212]">{plan.name}</h3>
+      <h3 className="text-[17px] font-semibold tracking-[-0.02em] text-[#121212]">{plan.name}</h3>
 
       <div className="mt-6 flex items-baseline gap-1">
         {custom ? (
@@ -185,8 +185,8 @@ export default function FinstapPricing() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
           <span className="inline-flex items-center rounded-full bg-[#5f5cff]/[0.07] px-3 py-1 text-xs font-semibold text-[#5f5cff] ring-1 ring-[#5f5cff]/15">Pricing</span>
-          <h2 className="mt-4 text-[34px] font-medium leading-[1.2] tracking-[-0.05em] text-[#121212] sm:text-[48px]">Simple Plans That Grow with You</h2>
-          <p className="mt-4 text-base font-medium tracking-[-0.02em] text-[#575757]/80">
+          <h2 className="mt-4 text-[34px] font-semibold leading-[1.2] tracking-[-0.05em] text-[#121212] sm:text-[48px]">Simple Plans That Grow with You</h2>
+          <p className="mt-4 text-[15px] font-medium tracking-[-0.02em] text-[#575757]/80">
             One price for your whole workspace. Every plan starts with a 14-day free trial, no card needed.
           </p>
           <div className="mt-8 inline-flex items-center gap-1 rounded-[16px] bg-white p-1.5 shadow-[0_1px_20px_rgba(0,0,0,0.05)]">
