@@ -204,6 +204,8 @@ def build_admin_order_list(user, query):
             COALESCE(SUM(CASE WHEN o.status != 'Cancelled' THEN o.total ELSE 0 END), 0) as revenue
     """ + from_sql + stats_where_sql, stats_params, one=True) or {}
 
+    # Newest first, with the id breaking ties: orders made in the same second always keep the same
+    # sequence, so paging never shows one order twice and skips another
     rows = query_db("""
         SELECT o.id, o.order_number, o.user_id, o.company_id, o.service_id, o.service_name,
                o.price, o.vat, o.total, o.cost_price, o.status, o.progress_percent, o.payment_mode,
@@ -228,7 +230,7 @@ def build_admin_order_list(user, query):
                 AND li.fulfillment_status = 'Completed') as line_items_completed,
                (SELECT inv.status FROM invoices inv WHERE inv.order_id = o.id
                 ORDER BY inv.id DESC LIMIT 1) as payment_status
-    """ + from_sql + where_sql + " ORDER BY o.created_at DESC LIMIT ? OFFSET ?;", params + [limit, offset]) or []
+    """ + from_sql + where_sql + " ORDER BY o.created_at DESC, o.id DESC LIMIT ? OFFSET ?;", params + [limit, offset]) or []
 
     # Company not registered yet: the desired name from the order form stands in, marked as not registered;
     # the form answers themselves are not sent
