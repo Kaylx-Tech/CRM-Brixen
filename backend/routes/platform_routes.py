@@ -149,6 +149,7 @@ def handle_platform_routes(environ, start_response, path, method, body, query=No
         errors = validate(body, {
             'company_name': {'label': 'Company name', 'required': True, 'max_length': 120},
             'full_name': {'label': 'Your name', 'required': True, 'max_length': 120},
+            'phone': {'label': 'Mobile number', 'required': True, 'type': 'phone', 'max_length': 30},
             'password': {'label': 'Password', 'required': True, 'min_length': 8},
         })
         if errors:
@@ -160,6 +161,7 @@ def handle_platform_routes(environ, start_response, path, method, body, query=No
             tenant, admin_id = create_tenant(
                 body.get('company_name'), body.get('slug'),
                 body.get('full_name'), verified, body.get('password'),
+                owner_phone=str(body.get('phone') or ''),
             )
         except TenantError as exc:
             msg = str(exc)

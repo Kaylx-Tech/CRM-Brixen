@@ -41,7 +41,7 @@ export default function OwnerWorkspaces() {
       (w) =>
         (!plan || w.plan === plan) &&
         (!status || w.status === status) &&
-        (!q || [w.name, w.slug, w.owner_name, w.owner_email].join(" ").toLowerCase().includes(q)),
+        (!q || [w.name, w.slug, w.owner_name, w.owner_email, w.owner_phone].join(" ").toLowerCase().includes(q)),
     )
   }, [rows, search, plan, status])
 
@@ -53,7 +53,7 @@ export default function OwnerWorkspaces() {
         <div className="relative">
           <IconSearch className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by company, address or owner"
+            placeholder="Search by company, address, owner or number"
             className="pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -123,6 +123,9 @@ export default function OwnerWorkspaces() {
                 <td className="px-4 py-3">
                   <div className="max-w-[200px] truncate">{w.owner_name}</div>
                   <div className="max-w-[200px] truncate text-xs text-muted-foreground">{w.owner_email}</div>
+                  <div className="max-w-[200px] truncate text-xs tabular-nums text-muted-foreground">
+                    {w.owner_phone || <span className="italic">No number yet</span>}
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <PlanBadge plan={w.plan} />

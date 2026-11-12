@@ -16,6 +16,7 @@ import { FINSTAP_CTA } from "@/components/finstap-auth-layout"
 import { LoginCodeStep } from "@/components/login-code-step"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PhoneInput } from "@/components/ui/phone-input"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
@@ -38,6 +39,7 @@ const SIGNUP_SCHEMA = {
   email: { label: "Work email", required: true, type: "email" },
   company_name: { label: "Company name", required: true, maxLength: 120 },
   full_name: { label: "Your name", required: true, maxLength: 120 },
+  phone: { label: "Mobile number", required: true, type: "phone", maxLength: 30 },
   password: { label: "Password", required: true, minLength: MIN_PASSWORD_LEN },
 }
 
@@ -102,6 +104,7 @@ export default function FinstapSignup() {
   const [slugEdited, setSlugEdited] = useState(false)
   const [slugState, setSlugState] = useState({ status: "idle", error: "" })
   const [fullName, setFullName] = useState("")
+  const [phone, setPhone] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -210,7 +213,7 @@ export default function FinstapSignup() {
       return
     }
     setError("")
-    if (!check({ full_name: fullName, password }, null, ["full_name", "password"])) return
+    if (!check({ full_name: fullName, phone, password }, null, ["full_name", "phone", "password"])) return
     if (slugState.status === "taken") {
       setError(slugState.error)
       return
@@ -226,6 +229,7 @@ export default function FinstapSignup() {
           company_name: companyName,
           slug: toWorkspaceName(slug),
           full_name: fullName,
+          phone,
           email,
           email_token: emailToken,
           password,
@@ -464,6 +468,19 @@ export default function FinstapSignup() {
                   disabled={isLoading}
                 />
                 <FieldMessage id="full_name-error" message={errors.full_name} />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="phone">Mobile number</FieldLabel>
+                <PhoneInput
+                  id="phone"
+                  {...invalidProps(errors, 'phone', '')}
+                  value={phone}
+                  onChange={(e) => { setPhone(e.target.value); recheck('phone', e.target.value) }}
+                  placeholder="7700 900123"
+                  disabled={isLoading}
+                />
+                <FieldMessage id="phone-error" message={errors.phone} />
+                <FieldDescription>An active number, so the Finstap team can reach you.</FieldDescription>
               </Field>
               {/* The email confirmed on step 1; changing it means confirming the new one */}
               <Field>

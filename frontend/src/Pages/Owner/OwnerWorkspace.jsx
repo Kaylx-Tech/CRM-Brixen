@@ -356,7 +356,7 @@ export default function OwnerWorkspace() {
             <StatusBadge workspace={data} />
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            {data.owner_name} · {data.owner_email} · created {shortDate(data.created_at)}
+            {data.owner_name} · {data.owner_email} · {data.owner_phone || "no number yet"} · created {shortDate(data.created_at)}
           </p>
         </div>
         {data.url && (

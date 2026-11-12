@@ -360,6 +360,7 @@ TENANT_COLUMNS = (
     ('kyc_free', "INTEGER"),
     ('kyc_api_key_hash', "TEXT"),
     ('kyc_price', "REAL"),                    # this workspace's price per ID check; empty: the general price
+    ('owner_phone', "TEXT"),                  # the owner's active mobile number (signup; older workspaces are asked once)
 )
 
 HANDOFF_SECONDS = 120
@@ -724,11 +725,18 @@ def seed_workspace_settings(tenant):
     return filled
 
 
-def create_tenant(company_name, slug, owner_name, owner_email, password):
+def set_owner_phone(slug, phone):
+    """Save the owner's active mobile number on a workspace (checked by the caller)."""
+    _platform_execute("UPDATE tenants SET owner_phone = ?, updated_at = datetime('now') WHERE slug = ?;",
+                      ((phone or '').strip(), slug))
+
+
+def create_tenant(company_name, slug, owner_name, owner_email, password, owner_phone=''):
     """Create a workspace database with its first Super Admin. Returns (tenant, admin_user_id)."""
     company_name = (company_name or '').strip()
     owner_name = (owner_name or '').strip()
     owner_email = (owner_email or '').strip().lower()
+    owner_phone = (owner_phone or '').strip()
     slug = normalize_slug(slug or company_name)
     if not company_name:
         raise TenantError("Company name is required")
@@ -749,9 +757,9 @@ def create_tenant(company_name, slug, owner_name, owner_email, password):
 
     try:
         tenant_id = _platform_execute("""
-            INSERT INTO tenants (slug, name, db_path, status, plan, trial_ends_at, owner_name, owner_email)
-            VALUES (?, ?, ?, 'Provisioning', 'trial', datetime('now', ?), ?, ?);
-        """, (slug, company_name, db_path, f'+{TRIAL_DAYS} days', owner_name, owner_email))
+            INSERT INTO tenants (slug, name, db_path, status, plan, trial_ends_at, owner_name, owner_email, owner_phone)
+            VALUES (?, ?, ?, 'Provisioning', 'trial', datetime('now', ?), ?, ?, ?);
+        """, (slug, company_name, db_path, f'+{TRIAL_DAYS} days', owner_name, owner_email, owner_phone or None))
     except sqlite3.IntegrityError:
         raise TenantError("This workspace URL is already taken")
 

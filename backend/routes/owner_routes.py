@@ -275,7 +275,7 @@ def _all_tenants():
 def _row(tenant, with_usage=True):
     plan = plans.effective(tenant)
     out = {k: tenant.get(k) for k in (
-        'slug', 'name', 'status', 'plan', 'trial_ends_at', 'owner_name', 'owner_email', 'created_at',
+        'slug', 'name', 'status', 'plan', 'trial_ends_at', 'owner_name', 'owner_email', 'owner_phone', 'created_at',
         'billing_cycle', 'subscription_status', 'current_period_end', 'price_override', 'owner_notes',
         'suspended_reason')}
     out.update({
@@ -603,7 +603,7 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
                 continue
             if status_filter and tenant['status'] != status_filter:
                 continue
-            haystack = ' '.join(str(tenant.get(k) or '') for k in ('slug', 'name', 'owner_name', 'owner_email')).lower()
+            haystack = ' '.join(str(tenant.get(k) or '') for k in ('slug', 'name', 'owner_name', 'owner_email', 'owner_phone')).lower()
             if search and search not in haystack:
                 continue
             rows.append(_row(tenant))

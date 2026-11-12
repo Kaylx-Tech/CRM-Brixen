@@ -10,6 +10,7 @@ import { apiRequest, authHeaders } from "@/lib/api"
 import { PageTransition } from "@/lib/motion"
 import { IS_FINSTAP } from "@/lib/workspace"
 import { LockedScreen } from "@/Pages/Billing/Billing"
+import WorkspacePhonePrompt from "@/components/WorkspacePhonePrompt"
 
 /** Finstap: is the workspace locked until it pays? Checked on load and whenever billing changes. */
 function useBillingLock() {
@@ -103,6 +104,8 @@ const AdminLayout = () => {
           loading={aiLoading}
           onSubmit={handleSendAi}
         />
+        {/* Finstap: admins of a workspace without an owner number are asked for one */}
+        {IS_FINSTAP && <WorkspacePhonePrompt />}
       </SidebarInset>
     </SidebarProvider>
   )
