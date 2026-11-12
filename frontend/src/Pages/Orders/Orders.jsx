@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -14,6 +14,8 @@ import {
   IconTrash,
   IconDotsVertical,
   IconNote,
+  IconChevronLeft,
+  IconChevronRight,
 } from "@tabler/icons-react"
 import { formatGBP } from "@/lib/money"
 import { canCancelOrder, cancelOrder, cancelOrderMessage } from "@/lib/orders"
@@ -245,51 +247,101 @@ export default function Orders() {
     setViewOrderOpen(true)
   }, [])
 
+  // No status picked: the list is split like an inbox, open orders (Pending / In Progress) on top
+  // and everything else below, each section with its own pages
+  const inboxMode = statusFilter === 'all' && statusGroup === 'all'
+  const [sectionPaging, setSectionPaging] = useState({
+    open: { page: 1, limit: 25, total: 0, total_pages: 1 },
+    closed: { page: 1, limit: 25, total: 0, total_pages: 1 },
+  })
+  const sectionPagesRef = useRef({ open: 1, closed: 1 })
+  const pageRef = useRef(1)
+
+  const buildOrderQuery = useCallback((page, section) => {
+    const qs = new URLSearchParams({ page: String(page), limit: '25' })
+    if (search.trim()) qs.set('search', search.trim())
+    if (section) qs.set('status_group', section)
+    else if (statusFilter !== 'all') qs.set('status', statusFilter)
+    else if (statusGroup !== 'all') qs.set('status_group', statusGroup)
+    if (productFilter !== 'all') qs.set('product', productFilter)
+    if (companyFilter !== 'all') qs.set('company_id', companyFilter)
+    if (paymentFilter !== 'all') qs.set('payment_status', paymentFilter)
+    if (datePreset !== 'all') qs.set('date_preset', datePreset)
+    if (addedByFilter !== 'all') qs.set('created_by', addedByFilter)
+    if (clientType === 'B2B') {
+      qs.set('client_type', 'B2B')
+      if (b2bClientId !== 'all') qs.set('customer_id', b2bClientId)
+    } else if (clientType === 'Customer') {
+      qs.set('client_type', 'Customer')
+    } else if (clientType === 'Business') {
+      qs.set('client_type', 'Business')
+    }
+    return qs
+  }, [search, statusFilter, statusGroup, productFilter, companyFilter, paymentFilter, datePreset, addedByFilter, clientType, b2bClientId])
+
+  // One page of orders (admin list, with /orders as the fallback); throws the reason when both fail
+  const loadOrderPage = useCallback(async (qs) => {
+    const res = await apiRequest(`/admin/orders?${qs.toString()}`, { label: 'Orders' })
+    if (res.ok) return res.data?.data || res.data || {}
+    const res2 = await apiRequest(`/orders?${qs.toString()}`, { label: 'Orders' })
+    if (res2.ok) return res2.data?.data || res2.data || {}
+    throw new Error(res2.reason || res.reason || 'Could not load orders')
+  }, [])
+
+  const applySections = useCallback((openData, closedData) => {
+    const tag = (list, section) => (list || []).map((o) => ({ ...o, __section: section }))
+    const list = [...tag(openData.orders, 'open'), ...tag(closedData.orders, 'closed')]
+    setOrders(list)
+    if (openData.stats) setStats(openData.stats)
+    if (openData.facets) setFacets(openData.facets)
+    setSectionPaging((prev) => ({
+      open: openData.pagination || prev.open,
+      closed: closedData.pagination || prev.closed,
+    }))
+    return list
+  }, [])
+
+  // Turns one section's page (the other section stays where it is)
+  const fetchSectionPage = useCallback(async (section, page) => {
+    sectionPagesRef.current = { ...sectionPagesRef.current, [section]: page }
+    try {
+      const pages = sectionPagesRef.current
+      const [openData, closedData] = await Promise.all(
+        ['open', 'closed'].map((key) => loadOrderPage(buildOrderQuery(pages[key], key)))
+      )
+      applySections(openData, closedData)
+    } catch (err) {
+      toast.error(err?.message || 'Could not load orders')
+    }
+  }, [buildOrderQuery, loadOrderPage, applySections])
+
+  // page = 1 starts again from the first page; page = null reloads the page(s) on screen
   const fetchOrders = useCallback(async (page = 1) => {
     setIsLoading(true)
     setLoadError(null)
     try {
-      const qs = new URLSearchParams({ page: String(page), limit: '25' })
-      if (search.trim()) qs.set('search', search.trim())
-      if (statusFilter !== 'all') qs.set('status', statusFilter)
-      else if (statusGroup !== 'all') qs.set('status_group', statusGroup)
-      if (productFilter !== 'all') qs.set('product', productFilter)
-      if (companyFilter !== 'all') qs.set('company_id', companyFilter)
-      if (paymentFilter !== 'all') qs.set('payment_status', paymentFilter)
-      if (datePreset !== 'all') qs.set('date_preset', datePreset)
-      if (addedByFilter !== 'all') qs.set('created_by', addedByFilter)
-      if (clientType === 'B2B') {
-        qs.set('client_type', 'B2B')
-        if (b2bClientId !== 'all') qs.set('customer_id', b2bClientId)
-      } else if (clientType === 'Customer') {
-        qs.set('client_type', 'Customer')
-      } else if (clientType === 'Business') {
-        qs.set('client_type', 'Business')
-      }
-
-      const res = await apiRequest(`/admin/orders?${qs.toString()}`, { label: 'Orders' })
-      if (!res.ok) {
-        // Fallback to /orders if admin alias fails
-        const res2 = await apiRequest(`/orders?${qs.toString()}`, { label: 'Orders' })
-        if (!res2.ok) {
-          setOrders([])
-          setLoadError(res2.reason || res.reason)
-          return
-        }
-        const data = res2.data?.data || res2.data || {}
-        applyPayload(data, page)
+      if (inboxMode) {
+        if (page != null) sectionPagesRef.current = { open: page, closed: page }
+        const pages = sectionPagesRef.current
+        const [openData, closedData] = await Promise.all(
+          ['open', 'closed'].map((key) => loadOrderPage(buildOrderQuery(pages[key], key)))
+        )
+        const list = applySections(openData, closedData)
+        if (list.length === 0) toastApiEmpty('Orders', getApiBase())
         return
       }
-      const data = res.data?.data || res.data || {}
-      applyPayload(data, page)
+      const currentPage = page ?? pageRef.current
+      pageRef.current = currentPage
+      const data = await loadOrderPage(buildOrderQuery(currentPage, null))
+      applyPayload(data, currentPage)
     } catch (err) {
       setOrders([])
       setLoadError(err?.message || 'Unexpected error')
     } finally {
       setIsLoading(false)
     }
-  }, [search, statusFilter, statusGroup, productFilter, companyFilter, paymentFilter, datePreset, addedByFilter, clientType, b2bClientId])
-  useRefreshOnReturn(() => fetchOrders(pagination.page || 1))
+  }, [inboxMode, buildOrderQuery, loadOrderPage, applySections])
+  useRefreshOnReturn(() => fetchOrders(null))
 
   function applyPayload(data, page) {
     const list = data.orders || []
@@ -330,7 +382,7 @@ export default function Orders() {
           silent: true,
         })
         if (!res.ok) throw new Error(res.reason || 'Failed to delete order')
-        fetchOrders(pagination.page || 1)
+        fetchOrders(null)
       },
     })
   }
@@ -350,6 +402,48 @@ export default function Orders() {
       { title: 'Completed', value: String(stats.completed ?? 0), group: 'completed' },
     ].map(({ group, ...card }) => ({ ...card, onClick: () => pickGroup(group), active: current === group }))
   }, [stats, statusFilter, statusGroup, pickGroup])
+
+  // Inbox sections: "1–25 of 80" and page arrows on the right of each heading, like Gmail
+  const orderSections = useMemo(() => {
+    const pager = (key) => {
+      const p = sectionPaging[key] || {}
+      const page = p.page || 1
+      const limit = p.limit || 25
+      const total = p.total || 0
+      const totalPages = p.total_pages || 1
+      const from = total ? (page - 1) * limit + 1 : 0
+      const to = Math.min(page * limit, total)
+      return (
+        <>
+          <span className="tabular-nums">{total ? `${from}–${to} of ${total}` : '0'}</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            aria-label="Newer orders"
+            disabled={page <= 1}
+            onClick={() => fetchSectionPage(key, page - 1)}
+          >
+            <IconChevronLeft className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            aria-label="Older orders"
+            disabled={page >= totalPages}
+            onClick={() => fetchSectionPage(key, page + 1)}
+          >
+            <IconChevronRight className="size-4" />
+          </Button>
+        </>
+      )
+    }
+    return [
+      { key: 'open', title: 'Pending & In Progress', extra: pager('open') },
+      { key: 'closed', title: 'Everything else', extra: pager('closed') },
+    ]
+  }, [sectionPaging, fetchSectionPage])
 
   const columns = useMemo(() => [
     columnHelper.display({
@@ -756,8 +850,11 @@ export default function Orders() {
         searchPlaceholder="Search orders…"
         onClearFilters={clearFilters}
         renderMobileCard={renderOrderCard}
+        sections={inboxMode ? orderSections : undefined}
+        sectionOf={(o) => o.__section}
       />
 
+      {!inboxMode && (
       <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
         <span>
           {pagination.total || 0} orders · page {pagination.page || 1} of {pagination.total_pages || 1}
@@ -781,6 +878,7 @@ export default function Orders() {
           </Button>
         </div>
       </div>
+      )}
 
       <CreateOrderWizard
         open={createOpen}
@@ -799,7 +897,7 @@ export default function Orders() {
           setViewOrderOpen(false)
           setSelectedOrderId(null)
         }}
-        onOrderUpdated={() => fetchOrders(pagination.page || 1)}
+        onOrderUpdated={() => fetchOrders(null)}
       />
       <DeleteConfirmation
         isOpen={Boolean(cancelTarget)}
@@ -816,7 +914,7 @@ export default function Orders() {
         onConfirm={async () => {
           const target = cancelOrderTarget
           setCancelOrderTarget(null)
-          if (target && (await cancelOrder(target))) fetchOrders(pagination.page || 1)
+          if (target && (await cancelOrder(target))) fetchOrders(null)
         }}
         title="Cancel order"
         description={cancelOrderMessage(cancelOrderTarget)}
