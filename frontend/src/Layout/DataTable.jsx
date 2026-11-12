@@ -29,6 +29,9 @@ import { m, spring } from "@/lib/motion";
 
 const MotionRow = m.create(TableRow);
 const ROW_STAGGER_LIMIT = 14;
+// Filter options: compact text, and a long name wraps instead of running out of the menu
+const FILTER_ITEM_CLASS =
+  "text-[13px] leading-snug *:first:min-w-0 *:first:shrink *:first:whitespace-normal *:first:break-words";
 import {
   IconAdjustmentsHorizontal,
   IconChevronDown,
@@ -278,16 +281,19 @@ export const DataTable = ({
                   <SelectTrigger className={cn("text-sm max-sm:w-[calc(50%-0.25rem)]", config.triggerClassName || "w-35")}>
                     <SelectValue placeholder={config.placeholder} />
                   </SelectTrigger>
+                  {/* As wide as the longest option (at least the button, at most 18rem and the screen);
+                      a name longer than that wraps onto a second line instead of being cut off */}
                   <SelectContent
+                    align="start"
                     className={cn(
-                      "min-w-[var(--radix-select-trigger-width)]",
+                      "w-auto min-w-(--anchor-width) max-w-[min(18rem,calc(100vw-2rem))]",
                       config.contentClassName,
                     )}
                   >
                     <SelectGroup>
-                      <SelectItem value="all">{config.allLabel || "All"}</SelectItem>
+                      <SelectItem value="all" className={FILTER_ITEM_CLASS}>{config.allLabel || "All"}</SelectItem>
                       {config.options.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value} className="text-sm">
+                        <SelectItem key={opt.value} value={opt.value} className={FILTER_ITEM_CLASS}>
                           {opt.label}
                         </SelectItem>
                       ))}
