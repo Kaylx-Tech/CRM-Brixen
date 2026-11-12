@@ -109,7 +109,7 @@ function PublicShell({ children }) {
       <section className="border-t border-slate-200 bg-[#f6f5ff]">
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-4 py-12 sm:px-6 md:flex-row md:items-center">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Get the Finstap newsletter</h2>
+            <h2 className="text-xl font-bold text-slate-900">Get the Finstap Newsletter</h2>
             <p className="mt-1 text-sm text-slate-600">Product news and practical tips, straight to your inbox.</p>
           </div>
           <NewsletterSignup source="blog" />
@@ -139,7 +139,7 @@ export default function BlogList() {
       <div className="bg-linear-to-b from-[#f4f3ff] to-white">
         <div className="mx-auto max-w-6xl px-4 pb-10 pt-14 sm:px-6">
           <p className="text-sm font-semibold uppercase tracking-wider text-[#5f5cff]">Blog</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">News and guides from Finstap</h1>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">News and Guides from Finstap</h1>
           <p className="mt-3 max-w-2xl text-slate-600">For accountants and company formation agents in the UK.</p>
         </div>
       </div>
@@ -260,7 +260,7 @@ export function Unsubscribe() {
   return (
     <PublicShell>
       <main className="mx-auto max-w-lg px-4 py-20 text-center sm:px-6">
-        <h1 className="text-2xl font-bold text-slate-900">Unsubscribe from the Finstap newsletter</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Unsubscribe from the Finstap Newsletter</h1>
         {state.done ? (
           <p className="mt-6 inline-flex items-center gap-2 text-emerald-700">
             <IconCircleCheck className="size-5" /> {state.done}

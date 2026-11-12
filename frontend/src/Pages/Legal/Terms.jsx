@@ -6,7 +6,7 @@ const A = "font-medium text-[#5f5cff] underline-offset-4 hover:underline"
 const SECTIONS = [
   {
     id: "about",
-    title: "About these terms",
+    title: "About These Terms",
     body: [
       "These terms are the agreement between Finstap (\"we\", \"us\") and the business that creates or uses a Finstap workspace (\"you\"). By creating a workspace or using Finstap you accept them.",
       "Finstap is for business use only. If you accept these terms for a company or firm, you confirm that you are allowed to do so on its behalf and that you are 18 or over.",
@@ -25,7 +25,7 @@ const SECTIONS = [
   },
   {
     id: "accounts",
-    title: "Your workspace and accounts",
+    title: "Your Workspace and Accounts",
     body: [
       {
         list: [
@@ -39,14 +39,14 @@ const SECTIONS = [
   },
   {
     id: "trial",
-    title: "Free trial",
+    title: "Free Trial",
     body: [
       "New workspaces get a 14-day free trial with no card needed. At the end of the trial you need a paid plan to keep using the workspace. If you do not choose one, we may limit or suspend the workspace; your data stays available for export as explained in section 13.",
     ],
   },
   {
     id: "fees",
-    title: "Plans, fees and payment",
+    title: "Plans, Fees and Payment",
     body: [
       {
         list: [
@@ -61,7 +61,7 @@ const SECTIONS = [
   },
   {
     id: "acceptable-use",
-    title: "Acceptable use",
+    title: "Acceptable Use",
     body: [
       "You must not, and must not let anyone else:",
       {
@@ -78,7 +78,7 @@ const SECTIONS = [
   },
   {
     id: "your-data",
-    title: "Your data",
+    title: "Your Data",
     body: [
       "You own the data you and your team put into Finstap (\"Customer Data\"). You give us permission to host, copy, process and display it only as needed to provide, secure and support the service.",
       "You are the controller of personal information in your Customer Data. You are responsible for having a lawful basis to hold it, for telling your clients how you use it (your own privacy notice), and for the accuracy of what you enter.",
@@ -86,7 +86,7 @@ const SECTIONS = [
   },
   {
     id: "data-processing",
-    title: "Data processing terms",
+    title: "Data Processing Terms",
     body: [
       "This section is our data processing agreement under Article 28 of the UK GDPR. When we process personal information in your Customer Data we act as your processor and we will:",
       {
@@ -108,28 +108,28 @@ const SECTIONS = [
   },
   {
     id: "third-party",
-    title: "Third-party services",
+    title: "Third-Party Services",
     body: [
       "Some features connect to other services, such as Companies House, your website or Google's Gemini API for the AI assistant. Their own terms apply to them, and we are not responsible for their availability or for information they provide. Public records such as Companies House data may be out of date, so check anything important.",
     ],
   },
   {
     id: "ai",
-    title: "AI assistant",
+    title: "AI Assistant",
     body: [
       "The AI assistant is optional and only reads your workspace data. Its answers are generated automatically and can be incomplete or wrong. You are responsible for checking them before relying on them, especially for filings, deadlines or advice to clients.",
     ],
   },
   {
     id: "professional",
-    title: "Your professional responsibilities",
+    title: "Your Professional Responsibilities",
     body: [
       "Finstap is software that helps you organise your work. It does not give legal, tax, accounting or compliance advice, and it does not file anything for you unless you do so. You remain responsible for your work for clients, your filings and deadlines, and your own legal duties, including anti-money laundering checks.",
     ],
   },
   {
     id: "availability",
-    title: "Availability and changes to Finstap",
+    title: "Availability and Changes to Finstap",
     body: [
       "We work hard to keep Finstap available and secure, but we cannot promise it will always be uninterrupted or free of errors. We may need to carry out maintenance, which we try to do at quiet times.",
       "We improve Finstap over time and may change or remove features. If we remove a major feature you pay for, we will tell you in advance and you may cancel and get a pro-rata refund of prepaid fees.",
@@ -137,14 +137,14 @@ const SECTIONS = [
   },
   {
     id: "ip",
-    title: "Intellectual property",
+    title: "Intellectual Property",
     body: [
       "Finstap, its software, design and brand belong to us. You get a non-exclusive, non-transferable right to use it for your business during your subscription. If you send us feedback or ideas, we may use them freely.",
     ],
   },
   {
     id: "ending",
-    title: "Suspension and ending",
+    title: "Suspension and Ending",
     body: [
       {
         list: [
@@ -167,7 +167,7 @@ const SECTIONS = [
   },
   {
     id: "changes",
-    title: "Changes to these terms",
+    title: "Changes to These Terms",
     body: [
       "We may update these terms. For important changes we will tell workspace owners at least 30 days in advance by email or in Finstap. If you do not agree, you can cancel before they take effect; continuing to use Finstap after that means you accept them.",
     ],

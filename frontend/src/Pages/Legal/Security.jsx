@@ -13,7 +13,7 @@ const SECTIONS = [
   },
   {
     id: "separation",
-    title: "Each workspace kept apart",
+    title: "Each Workspace Kept Apart",
     body: [
       {
         list: [
@@ -26,7 +26,7 @@ const SECTIONS = [
   },
   {
     id: "sign-in",
-    title: "Sign-in protection",
+    title: "Sign-In Protection",
     body: [
       {
         list: [
@@ -41,7 +41,7 @@ const SECTIONS = [
   },
   {
     id: "access",
-    title: "Access control and records",
+    title: "Access Control and Records",
     body: [
       {
         list: [
@@ -55,7 +55,7 @@ const SECTIONS = [
   },
   {
     id: "encryption",
-    title: "Encryption and storage",
+    title: "Encryption and Storage",
     body: [
       {
         list: [
@@ -69,7 +69,7 @@ const SECTIONS = [
   },
   {
     id: "law",
-    title: "Compliance with UK data protection law",
+    title: "Compliance with UK Data Protection Law",
     body: [
       "Finstap is designed for UK businesses and follows:",
       {
@@ -96,7 +96,7 @@ const SECTIONS = [
   },
   {
     id: "sub-processors",
-    title: "Sub-processors",
+    title: "Sub-Processors",
     body: [
       "These providers help us run Finstap and may process Customer Data. We will give at least 30 days' notice before adding a new one.",
       {
@@ -112,7 +112,7 @@ const SECTIONS = [
   },
   {
     id: "incidents",
-    title: "If something goes wrong",
+    title: "If Something Goes Wrong",
     body: [
       {
         list: [
@@ -125,7 +125,7 @@ const SECTIONS = [
   },
   {
     id: "your-part",
-    title: "Your part",
+    title: "Your Part",
     body: [
       "Security works best together. We recommend that you:",
       {
@@ -140,7 +140,7 @@ const SECTIONS = [
   },
   {
     id: "report",
-    title: "Report a security issue",
+    title: "Report a Security Issue",
     body: [
       <>
         If you think you have found a security problem in Finstap, please email <Mail /> with the details. Please do

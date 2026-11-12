@@ -6,7 +6,7 @@ const A = "font-medium text-[#5f5cff] underline-offset-4 hover:underline"
 const SECTIONS = [
   {
     id: "who-we-are",
-    title: "Who we are",
+    title: "Who We Are",
     body: [
       "Finstap is an online CRM for accounting practices, company formation agents and corporate service providers, available at finstap.com and at each customer's own address (for example yourcompany.finstap.com). In this policy \"Finstap\", \"we\", \"us\" and \"our\" mean the operator of Finstap.",
       <>
@@ -17,7 +17,7 @@ const SECTIONS = [
   },
   {
     id: "two-roles",
-    title: "Our two roles",
+    title: "Our Two Roles",
     body: [
       "Data protection law gives us a different role depending on whose information it is:",
       {
@@ -31,7 +31,7 @@ const SECTIONS = [
   },
   {
     id: "what-we-collect",
-    title: "Information we collect",
+    title: "Information We Collect",
     body: [
       {
         head: ["Type", "What it includes", "Where it comes from"],
@@ -49,7 +49,7 @@ const SECTIONS = [
   },
   {
     id: "why",
-    title: "Why we use it and our lawful basis",
+    title: "Why We Use It and Our Lawful Basis",
     body: [
       {
         head: ["Purpose", "Lawful basis (UK GDPR Article 6)"],
@@ -68,7 +68,7 @@ const SECTIONS = [
   },
   {
     id: "workspace-data",
-    title: "Information our customers store",
+    title: "Information Our Customers Store",
     body: [
       "Workspaces can hold information about our customers' own clients: names, contact details, dates of birth, addresses, company and director details, identity and company documents, orders and invoices. As a processor we:",
       {
@@ -83,7 +83,7 @@ const SECTIONS = [
   },
   {
     id: "ai",
-    title: "The AI assistant",
+    title: "The AI Assistant",
     body: [
       "Finstap includes an optional AI assistant for workspace teams. When a team member asks it a question, the question and the workspace information needed to answer it are sent to Google's Gemini API. We use Google's paid service: under Google's terms, Google does not use these prompts or answers to improve its products, and keeps them only for a limited time to detect abuse and meet legal requirements.",
       "The assistant only reads information; it does not change records. Its answers can be wrong, so please check anything important.",
@@ -91,7 +91,7 @@ const SECTIONS = [
   },
   {
     id: "sharing",
-    title: "Who we share information with",
+    title: "Who We Share Information With",
     body: [
       "We use a small number of trusted service providers (sub-processors) to run Finstap. Each one only gets what it needs for its job and is bound by a contract to protect it:",
       {
@@ -115,14 +115,14 @@ const SECTIONS = [
   },
   {
     id: "transfers",
-    title: "Transfers outside the UK",
+    title: "Transfers Outside the UK",
     body: [
       "Some of our providers are based in, or can access information from, countries outside the UK, such as the United States. When this happens we make sure the transfer is protected by one of the measures UK law allows: UK adequacy regulations (including the UK-US data bridge for organisations certified to it), or the ICO's International Data Transfer Agreement or Addendum, with a transfer risk assessment where needed.",
     ],
   },
   {
     id: "retention",
-    title: "How long we keep information",
+    title: "How Long We Keep Information",
     body: [
       {
         list: [
@@ -139,7 +139,7 @@ const SECTIONS = [
   },
   {
     id: "cookies",
-    title: "Cookies and browser storage",
+    title: "Cookies and Browser Storage",
     body: [
       "Finstap only uses cookies and browser storage that are strictly necessary to provide the service you ask for, so no consent banner is needed:",
       {
@@ -155,7 +155,7 @@ const SECTIONS = [
   },
   {
     id: "security",
-    title: "How we protect information",
+    title: "How We Protect Information",
     body: [
       <>
         We use measures such as encrypted connections, separate databases per workspace, hashed passwords, email
@@ -169,7 +169,7 @@ const SECTIONS = [
   },
   {
     id: "rights",
-    title: "Your rights",
+    title: "Your Rights",
     body: [
       "Under UK data protection law you have the right to:",
       {
@@ -212,7 +212,7 @@ const SECTIONS = [
   },
   {
     id: "changes",
-    title: "Changes to this policy",
+    title: "Changes to This Policy",
     body: [
       "We may update this policy when our service or the law changes. The date at the top shows the latest version. If a change is important, we will tell workspace owners by email or in Finstap before it takes effect.",
     ],

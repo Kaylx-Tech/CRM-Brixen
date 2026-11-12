@@ -66,40 +66,40 @@ const NAV = [
 const BENTO = [
   {
     key: "clients",
-    title: "Clients & companies in one place",
+    title: "Clients & Companies in One Place",
     text: "Every client, director and company together, with their orders, invoices and documents.",
   },
   {
     key: "ch",
-    title: "Companies House, built in",
+    title: "Companies House, Built In",
     text: "Type a company number and the details, officers and filing dates fill themselves in.",
   },
   {
     key: "invoices",
-    title: "Orders & invoices",
+    title: "Orders & Invoices",
     text: "Take orders through your own forms, send invoices and see what is paid at a glance.",
   },
   {
     key: "deadlines",
-    title: "Deadlines you won't miss",
+    title: "Deadlines You Won't Miss",
     text: "GOV forms, tasks and filing dates your team can work through, in order.",
   },
 ]
 
 const BENEFITS = [
   [IconFileText, "Documents", "Store and share client documents securely, organised by client and company."],
-  [IconChartBar, "Finance & revenue", "Revenue over time, balance sheet and expenses, ready when you need them."],
-  [IconUsersGroup, "Team & roles", "Admins, managers and staff each see only what their role needs, prices included."],
-  [IconPalette, "Your brand", "Your logo, your colours and your own address: yourcompany.finstap.com."],
-  [IconDeviceLaptop, "Client portal", "Clients see their companies, orders, invoices and documents in one place."],
-  [IconShieldLock, "Secure by design", "Your own database, and a login code by email on every new browser."],
+  [IconChartBar, "Finance & Revenue", "Revenue over time, balance sheet and expenses, ready when you need them."],
+  [IconUsersGroup, "Team & Roles", "Admins, managers and staff each see only what their role needs, prices included."],
+  [IconPalette, "Your Brand", "Your logo, your colours and your own address: yourcompany.finstap.com."],
+  [IconDeviceLaptop, "Client Portal", "Clients see their companies, orders, invoices and documents in one place."],
+  [IconShieldLock, "Secure by Design", "Your own database, and a login code by email on every new browser."],
 ]
 
 // The company services a formation agent sells, each with what Finstap actually does for it
 const SERVICES = [
   [
     IconId,
-    "Director ID verification, tracked",
+    "Director ID Verification, Tracked",
     "Companies House now needs every director to verify their identity. Keep it under control for all your clients.",
     [
       "Take ID verification orders through your own forms",
@@ -109,7 +109,7 @@ const SERVICES = [
   ],
   [
     IconFileCertificate,
-    "Company accounts in one flow",
+    "Company Accounts in One Flow",
     "From bank statement to filed accounts without leaving Finstap.",
     [
       "Build micro-entity or dormant accounts from a bank statement",
@@ -119,7 +119,7 @@ const SERVICES = [
   ],
   [
     IconMapPin,
-    "Your own registered office service",
+    "Your Own Registered Office Service",
     "Sell registered office and mail forwarding addresses under your own name.",
     [
       "Add registered office and mail forwarding to your price list",
@@ -129,7 +129,7 @@ const SERVICES = [
   ],
   [
     IconDeviceLaptop,
-    "A portal for your clients",
+    "A Portal for Your Clients",
     "Give clients one place to see their work, at your own address and in your colours.",
     [
       "Companies, orders, invoices and documents in one view",
@@ -140,9 +140,9 @@ const SERVICES = [
 ]
 
 const STEPS = [
-  ["Create your workspace", "Confirm your email, name your company and pick your Finstap address.", "workspace"],
-  ["Bring in your team", "Invite colleagues and give each one the right role.", "team"],
-  ["Run your practice", "Clients, orders, invoices and deadlines in one calm dashboard.", "run"],
+  ["Create Your Workspace", "Confirm your email, name your company and pick your Finstap address.", "workspace"],
+  ["Bring In Your Team", "Invite colleagues and give each one the right role.", "team"],
+  ["Run Your Practice", "Clients, orders, invoices and deadlines in one calm dashboard.", "run"],
 ]
 
 // Services Finstap works with (it uses them; no partnership is implied)
@@ -639,7 +639,7 @@ export default function FinstapLanding() {
             transition={{ duration: 0.6, delay: 0.05 }}
             className="mx-auto mt-6 max-w-3xl text-[42px] font-medium leading-[1.2] tracking-[-0.05em] text-[#121212] sm:text-[56px] lg:text-[64px]"
           >
-            Run your whole practice <span className={GRADIENT_TEXT}>in one calm place</span>
+            Run Your Whole Practice <span className={GRADIENT_TEXT}>in One Calm Place</span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -695,7 +695,7 @@ export default function FinstapLanding() {
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <SectionHead
             eyebrow={<><IconSparkles className="size-3.5" /> Features</>}
-            title={<>Make your practice<br className="hidden sm:block" /> work harder for you</>}
+            title={<>Make Your Practice<br className="hidden sm:block" /> Work Harder for You</>}
             text="One workspace for the work you do every day, from the first order to the final filing."
           />
           <div className="mt-14 grid gap-4 md:grid-cols-2">
@@ -721,7 +721,7 @@ export default function FinstapLanding() {
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <SectionHead
             eyebrow="Benefits"
-            title={<>Everything that matters<br className="hidden sm:block" /> to a busy practice</>}
+            title={<>Everything That Matters<br className="hidden sm:block" /> to a Busy Practice</>}
             text="The everyday pieces, done properly, so nothing falls between spreadsheets and inboxes."
           />
           <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -743,7 +743,7 @@ export default function FinstapLanding() {
       {/* How it works */}
       <section id="how" className="scroll-mt-24 py-24 sm:py-32">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <SectionHead eyebrow="How it works" title={<>Up and running<br className="hidden sm:block" /> in 3 simple steps</>} />
+          <SectionHead eyebrow="How It Works" title={<>Up and Running<br className="hidden sm:block" /> in 3 Simple Steps</>} />
           <div className="mt-14 grid gap-4 md:grid-cols-3">
             {STEPS.map(([title, text, kind], i) => (
               <FadeUp key={title} delay={i * 0.1}>
@@ -768,7 +768,7 @@ export default function FinstapLanding() {
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <SectionHead
             eyebrow="Services"
-            title={<>Built for <span className={GRADIENT_TEXT}>UK company services</span></>}
+            title={<>Built for <span className={GRADIENT_TEXT}>UK Company Services</span></>}
             text="The services your clients buy from you every day, handled in the same place as their companies."
           />
           <div className="mt-14 grid gap-4 md:grid-cols-2">
@@ -804,7 +804,7 @@ export default function FinstapLanding() {
         <div className="mx-auto grid max-w-6xl items-center gap-14 px-4 sm:px-6 lg:grid-cols-2">
           <FadeUp>
             <Eyebrow>Why Finstap</Eyebrow>
-            <h2 className={cn("mt-4", H2)}>Your practice, your address, your data</h2>
+            <h2 className={cn("mt-4", H2)}>Your Practice, Your Address, Your Data</h2>
             <p className={cn("mt-4 max-w-lg", BODY)}>
               Each company gets its own Finstap workspace at its own address, with your logo and your colours,
               and its own database.
@@ -838,12 +838,12 @@ export default function FinstapLanding() {
       {/* A smarter way: before and after */}
       <section className="py-24 sm:py-32">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          <SectionHead eyebrow="Compare" title={<>A smarter way<br className="hidden sm:block" /> to run your practice</>} />
+          <SectionHead eyebrow="Compare" title={<>A Smarter Way<br className="hidden sm:block" /> to Run Your Practice</>} />
           <div className="mt-14 grid gap-4 md:grid-cols-2">
             <FadeUp>
               <div className="h-full rounded-3xl bg-slate-100/70 p-7 sm:p-8">
                 <p className="flex items-center gap-2 font-semibold text-slate-700">
-                  <IconTable className="size-5 text-slate-400" /> Spreadsheets & email
+                  <IconTable className="size-5 text-slate-400" /> Spreadsheets & Email
                 </p>
                 <ul className="mt-6 grid gap-3">
                   {COMPARE.map((item) => (
@@ -883,7 +883,7 @@ export default function FinstapLanding() {
       {/* FAQ */}
       <section id="faq" className="scroll-mt-24 py-24 sm:py-32">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
-          <SectionHead eyebrow="FAQ" title={<>Common questions,<br className="hidden sm:block" /> clear answers</>} />
+          <SectionHead eyebrow="FAQ" title={<>Common Questions,<br className="hidden sm:block" /> Clear Answers</>} />
           <div className="mt-12 grid gap-3">
             {FAQ.map(([q, a]) => (
               <FaqItem key={q} q={q} a={a} />
@@ -900,7 +900,7 @@ export default function FinstapLanding() {
               <span aria-hidden className="absolute -right-16 -top-20 size-72 rounded-full bg-white/15 blur-3xl" />
               <span aria-hidden className="absolute -bottom-24 -left-10 size-72 rounded-full bg-[#297bff]/50 blur-3xl" />
               <h2 className="relative mx-auto max-w-2xl text-[34px] font-medium leading-[1.2] tracking-[-0.05em] sm:text-[48px]">
-                Ready to give your practice a calmer week?
+                Ready to Give Your Practice a Calmer Week?
               </h2>
               <p className="relative mx-auto mt-4 max-w-xl text-white/85">
                 Create your workspace in a few minutes and try everything free for 14 days.
@@ -936,7 +936,7 @@ export default function FinstapLanding() {
                 <h2 className={H2}>
                   Subscribe to the
                   <br />
-                  Finstap newsletter!
+                  Finstap Newsletter!
                 </h2>
                 <p className={cn("mx-auto mt-4 max-w-md", BODY)}>
                   Product news and practical tips for UK accountants and formation agents, about once a month.
