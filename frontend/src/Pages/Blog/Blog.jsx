@@ -100,7 +100,7 @@ function PublicShell({ children }) {
               Blog
             </Link>
             <Link to="/signup" className={cn("rounded-full px-4 py-2 font-semibold text-white", GRADIENT)}>
-              Start free trial
+              Start Free Trial
             </Link>
           </nav>
         </div>

@@ -217,10 +217,10 @@ function Header() {
         </nav>
         <div className="hidden items-center gap-2 md:flex">
           <Link to="/login" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">
-            Log in
+            Log In
           </Link>
           <Link to="/signup" className={cn(CTA, "px-5 py-2.5")}>
-            Start free trial
+            Start Free Trial
           </Link>
         </div>
         <button
@@ -250,10 +250,10 @@ function Header() {
           ))}
           <div className="mt-2 grid grid-cols-2 gap-2">
             <Link to="/login" className={GHOST}>
-              Log in
+              Log In
             </Link>
             <Link to="/signup" className={CTA}>
-              Start free trial
+              Start Free Trial
             </Link>
           </div>
         </motion.div>
@@ -647,10 +647,10 @@ export default function FinstapLanding() {
             className="mt-9 flex flex-col justify-center gap-3 sm:flex-row"
           >
             <Link to="/signup" className={CTA}>
-              Start free trial <IconArrowRight className="size-4" />
+              Start Free Trial <IconArrowRight className="size-4" />
             </Link>
             <a href="#features" className={GHOST}>
-              See what's inside
+              See What's Inside
             </a>
           </motion.div>
           <motion.p
@@ -888,13 +888,13 @@ export default function FinstapLanding() {
                   to="/signup"
                   className={cn(LIGHT_BUTTON, "text-[#5f5cff]")}
                 >
-                  Start free trial <IconArrowRight className="size-4" />
+                  Start Free Trial <IconArrowRight className="size-4" />
                 </Link>
                 <Link
                   to="/login"
                   className="inline-flex items-center justify-center rounded-[14px] border border-white/30 bg-white/10 px-6 py-3 text-[15px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] transition hover:bg-white/20"
                 >
-                  Log in to your workspace
+                  Log In to Your Workspace
                 </Link>
               </div>
             </div>
@@ -935,7 +935,7 @@ export default function FinstapLanding() {
               The CRM for UK accountants and company formation firms.
             </p>
             <Link to="/signup" className={cn(CTA, "mt-5 px-5 py-2.5")}>
-              Start free trial
+              Start Free Trial
             </Link>
           </div>
           {[

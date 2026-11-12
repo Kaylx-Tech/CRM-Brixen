@@ -74,11 +74,11 @@ function PlanCard({ data, index, yearly }) {
 
       {custom ? (
         <a href="mailto:contact@finstap.com?subject=Finstap%20Enterprise" className={cn(BRAND_BUTTON, "mt-6 w-full")}>
-          Contact us
+          Contact Us
         </a>
       ) : (
         <Link to="/signup" className={cn(BRAND_BUTTON, "mt-6 w-full")}>
-          Start free trial
+          Start Free Trial
         </Link>
       )}
 
@@ -228,7 +228,7 @@ export default function FinstapPricing() {
                 className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#5f5cff] hover:underline"
                 aria-expanded={compare}
               >
-                {compare ? "Hide" : "Compare all features"}
+                {compare ? "Hide" : "Compare All Features"}
                 <IconChevronDown className={cn("size-4 transition", compare && "rotate-180")} />
               </button>
             </div>
