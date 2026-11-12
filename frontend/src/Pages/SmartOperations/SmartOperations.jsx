@@ -30,7 +30,9 @@ import {
   IconPlus,
   IconSearch,
   IconTrash,
+  IconTrophy,
 } from '@tabler/icons-react'
+import { PERKS_TERMS, PERKS_TERMS_UPDATED } from './perksTerms'
 import { toast } from 'sonner'
 import { useSearchParams } from 'react-router-dom'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -113,6 +115,33 @@ function PerksBanner() {
           <p className="mt-0.5 text-sm text-muted-foreground">
             Open a business account, send money abroad or buy a domain through these partner links, and the Finstap
             team helps you and your clients get started at no cost.
+          </p>
+        </div>
+      </div>
+    </m.div>
+  )
+}
+
+// Partner Perks: signing up through a partner link earns the workspace a reward from Finstap (terms in the footer popup)
+function RewardsBanner({ onTerms }) {
+  return (
+    <m.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...spring, delay: 0.05 }}
+      className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-linear-to-r from-amber-500/15 via-amber-500/5 to-card p-4"
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm">
+          <IconTrophy className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold">Earn rewards with Partner Perks</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Sign up for a partner service through these links and Finstap rewards your workspace.{' '}
+            <button type="button" onClick={onTerms} className="font-medium text-amber-700 underline-offset-2 hover:underline dark:text-amber-400">
+              Terms apply
+            </button>
           </p>
         </div>
       </div>
@@ -217,6 +246,7 @@ export default function SmartOperations() {
   const [toDelete, setToDelete] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [planLock, setPlanLock] = useState('')
+  const [termsOpen, setTermsOpen] = useState(false)
 
   const load = useCallback(async () => {
     setIsLoading(true)
@@ -422,6 +452,7 @@ export default function SmartOperations() {
       ) : (
       <>
       {IS_FINSTAP && <PerksBanner />}
+      {IS_FINSTAP && <RewardsBanner onTerms={() => setTermsOpen(true)} />}
       <div className="relative w-full md:max-w-sm">
         <IconSearch className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input className="pl-9" placeholder="Search company, link or note…" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -497,8 +528,34 @@ export default function SmartOperations() {
           })}
         </div>
       )}
+      {IS_FINSTAP && (
+        // Page footer: the rewards' terms and conditions open in a popup
+        <footer className="mt-2 border-t pt-4 text-center text-xs text-muted-foreground">
+          Partner Perks rewards are subject to the{' '}
+          <button type="button" onClick={() => setTermsOpen(true)} className="font-medium text-primary underline-offset-2 hover:underline">
+            Terms and conditions
+          </button>
+          .
+        </footer>
+      )}
       </>
       )}
+
+      {/* Partner Perks: terms and conditions of the rewards (text in perksTerms.js) */}
+      <Dialog open={termsOpen} onOpenChange={setTermsOpen}>
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>Partner Perks: terms and conditions</DialogTitle>
+            {PERKS_TERMS_UPDATED && <DialogDescription>Last updated {PERKS_TERMS_UPDATED}</DialogDescription>}
+          </DialogHeader>
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1 text-sm leading-relaxed text-muted-foreground">
+            {PERKS_TERMS.map((paragraph, i) => <p key={i}>{paragraph}</p>)}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setTermsOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add / edit a link */}
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
