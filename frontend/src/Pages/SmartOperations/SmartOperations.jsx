@@ -33,6 +33,8 @@ import {
   IconTrophy,
 } from '@tabler/icons-react'
 import { PERKS_TERMS, PERKS_TERMS_UPDATED } from './perksTerms'
+import { formatGBP } from '@/lib/money'
+import AppliedAccounts, { ApplyDialog } from './AppliedAccounts'
 import { toast } from 'sonner'
 import { useSearchParams } from 'react-router-dom'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -128,7 +130,7 @@ function PerksBanner({ onTerms }) {
   )
 }
 
-function LinkRow({ link, canManage, onEdit, onDelete }) {
+function LinkRow({ link, canManage, onEdit, onDelete, onApply }) {
   const [copied, setCopied] = useState(false)
   const copy = async () => {
     try {
@@ -142,7 +144,8 @@ function LinkRow({ link, canManage, onEdit, onDelete }) {
   }
   return (
     <div className="group flex flex-wrap items-start gap-x-3 gap-y-2 rounded-xl border bg-background/60 p-3 transition-colors hover:border-primary/30">
-      <div className="min-w-0 flex-1">
+      {/* The name keeps at least 9rem; in a narrow card the buttons drop to the next line instead */}
+      <div className="min-w-[9rem] flex-1">
         <p className="flex items-center gap-1.5 truncate text-sm font-semibold" title={link.title}>
           <span className="truncate">{link.title}</span>
           {link.from_finstap && (
@@ -164,6 +167,12 @@ function LinkRow({ link, canManage, onEdit, onDelete }) {
         ) : null}
       </div>
       <div className="flex shrink-0 items-center gap-1">
+        {IS_FINSTAP && link.from_finstap && onApply && (
+          // Opens the partner's link and records the account it is for (Applied accounts)
+          <Button size="xs" className="h-7 gap-1" onClick={(e) => onApply(e, link)} title="Apply through this link">
+            Apply
+          </Button>
+        )}
         <Button variant="outline" size="xs" className="h-7 gap-1" onClick={copy} title="Copy link">
           {copied ? <IconCheck className="size-3.5 text-emerald-600" /> : <IconCopy className="size-3.5" />}
           Copy
@@ -189,18 +198,18 @@ function LinkRow({ link, canManage, onEdit, onDelete }) {
           </>
         )}
       </div>
-      {IS_FINSTAP && link.reward && (
-        // Partner Perks: this service's own reward from Finstap (set in the owner portal)
+      {IS_FINSTAP && link.from_finstap && Number(link.reward_amount) > 0 && (
+        // Partner Perks: this workspace's reward from Finstap for an eligible account (set in the owner portal)
         <p className="flex basis-full items-center gap-1.5 rounded-md bg-amber-500/15 px-2 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
           <IconTrophy className="size-3.5 shrink-0" />
-          <span className="min-w-0 truncate">{link.reward}</span>
+          <span className="min-w-0 truncate">{formatGBP(link.reward_amount)} reward for each account opened</span>
         </p>
       )}
       {IS_FINSTAP && (
-        // Partner Perks: the note is the partner's offer; without one, the help Finstap gives with every partner
+        // The help Finstap gives with every partner; the workspace's own links keep their own note
         <p className="flex basis-full items-start gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
           <IconSparkles className="mt-px size-3.5 shrink-0" />
-          <span className="min-w-0 whitespace-pre-line line-clamp-3">{link.note || PERK_OFFER}</span>
+          <span className="min-w-0 whitespace-pre-line line-clamp-3">{(!link.from_finstap && link.note) || PERK_OFFER}</span>
         </p>
       )}
     </div>
@@ -233,6 +242,14 @@ export default function SmartOperations() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [planLock, setPlanLock] = useState('')
   const [termsOpen, setTermsOpen] = useState(false)
+  // Partner Perks: the perks, or the accounts applied through them (Finstap)
+  const [perksView, setPerksView] = useState('perks')
+  const [applyFor, setApplyFor] = useState(null)
+  const [appliedKey, setAppliedKey] = useState(0)
+  const startApply = (event, link) => {
+    openInPopup(event, link.url)
+    setApplyFor(link)
+  }
 
   const load = useCallback(async () => {
     setIsLoading(true)
@@ -438,6 +455,24 @@ export default function SmartOperations() {
       ) : (
       <>
       {IS_FINSTAP && <PerksBanner onTerms={() => setTermsOpen(true)} />}
+      {IS_FINSTAP && (
+        <div className="flex w-fit gap-1 rounded-full border bg-muted/50 p-1">
+          {[['perks', 'Perks'], ['applied', 'Applied accounts']].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setPerksView(value)}
+              className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${perksView === value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {IS_FINSTAP && perksView === 'applied' ? (
+        <AppliedAccounts refreshKey={appliedKey} />
+      ) : (
+      <>
       <div className="relative w-full md:max-w-sm">
         <IconSearch className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input className="pl-9" placeholder="Search company, link or note…" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -504,7 +539,7 @@ export default function SmartOperations() {
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {items.map((link) => (
-                      <LinkRow key={link.id} link={link} canManage={canManage} onEdit={openEdit} onDelete={setToDelete} />
+                      <LinkRow key={link.id} link={link} canManage={canManage} onEdit={openEdit} onDelete={setToDelete} onApply={startApply} />
                     ))}
                   </CardContent>
                 </Card>
@@ -512,6 +547,8 @@ export default function SmartOperations() {
             )
           })}
         </div>
+      )}
+      </>
       )}
       {IS_FINSTAP && (
         // Page footer: the rewards' terms and conditions open in a popup
@@ -524,6 +561,18 @@ export default function SmartOperations() {
         </footer>
       )}
       </>
+      )}
+
+      {IS_FINSTAP && (
+        <ApplyDialog
+          perk={applyFor}
+          onClose={() => setApplyFor(null)}
+          onDone={() => {
+            setApplyFor(null)
+            setAppliedKey((k) => k + 1)
+            setPerksView('applied')
+          }}
+        />
       )}
 
       {/* Partner Perks: terms and conditions of the rewards (text in perksTerms.js) */}

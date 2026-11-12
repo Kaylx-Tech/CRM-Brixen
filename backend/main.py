@@ -247,6 +247,10 @@ def run_server():
     from services.order_companies import start_pending_registration_worker
     start_pending_registration_worker(lambda job: for_each_tenant(lambda _tenant: job()))
 
+    # Partner Perks rewards: from the 5th of each month, what is left of the rewards becomes a payout
+    from services.partner_rewards import start_payout_worker
+    start_payout_worker()
+
     print("=" * 60)
     print("Brixen CRM Modular API Server Started")
     print(f"Listening on http://{HOST}:{PORT}")

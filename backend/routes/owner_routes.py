@@ -26,6 +26,11 @@
   POST /kyc/billing {slug, period, status: invoiced|paid|''}
   POST /kyc/service {slug, enabled} → switch a workspace's paid KYC service on or off
   POST /kyc/<slug>/<id>/reject {reason} | resubmit {reason?} → new Didit link emailed to the client
+  GET  /perk-applications?status=&search= → accounts applied through Partner Perks, every workspace
+  POST /perk-applications/<id>/eligible {amount?} | not-eligible {reason} → reward into the workspace's balance
+  GET  /reward-payouts?status=            → the monthly reward payouts (made from the 5th)
+  POST /reward-payouts/<id>/paid {note}  → Finstap paid it; it leaves the workspace's balance
+  GET/POST /workspaces/<slug>/perk-rewards {perk_id, amount} → this workspace's own reward for a perk
   GET  /smart-operations/company-formation → every workspace's formation orders (read only)
   GET  /smart-operations/uk-gov-checks    → every workspace's UK Gov Checks (their tasks; read only)
   GET  /registered-office?status=        → every workspace's registered office requests
@@ -605,6 +610,45 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
                 return success_response(start_response, data={'perks': perks}, message="Removed from every workspace.")
         except partner_perks.PerkError as exc:
             return error_response(start_response, str(exc), status_code=400)
+
+    # Partner Perks rewards (services/partner_rewards.py): applied accounts, monthly payouts, a workspace's rewards
+    from services import partner_rewards
+    try:
+        if sub == '/perk-applications' and method == 'GET':
+            return success_response(start_response, data={'applications': partner_rewards.applications(
+                None, _q(query, 'status') or None, _q(query, 'search'))})
+        decide = re.match(r'^/perk-applications/(\d+)/(eligible|not-eligible)$', sub)
+        if decide and method == 'POST':
+            eligible = decide.group(2) == 'eligible'
+            row = partner_rewards.decide(decide.group(1), admin, eligible, body.get('amount'), body.get('reason'))
+            audit(admin, 'PERK_ELIGIBLE' if eligible else 'PERK_NOT_ELIGIBLE', row['tenant_slug'],
+                  f"{row['partner']} for {row['client_name']}"
+                  + (f": {partner_rewards.pounds(row['reward_amount'])}" if eligible else ''))
+            return success_response(start_response, data=row, message=(
+                f"Eligible: {partner_rewards.pounds(row['reward_amount'])} added to the workspace's balance." if eligible
+                else "Marked not eligible."))
+        if sub == '/reward-payouts' and method == 'GET':
+            return success_response(start_response, data={'payouts': partner_rewards.payouts(_q(query, 'status') or None),
+                                                          'payout_day': partner_rewards.PAYOUT_DAY})
+        paid = re.match(r'^/reward-payouts/(\d+)/paid$', sub)
+        if paid and method == 'POST':
+            row = partner_rewards.mark_paid(paid.group(1), admin, body.get('note'))
+            audit(admin, 'REWARD_PAYOUT_PAID', row['tenant_slug'],
+                  f"{row['period']}: {partner_rewards.pounds(row['paid_amount'])}")
+            return success_response(start_response, data=row, message="Marked paid.")
+        ws_rewards = re.match(r'^/workspaces/([a-z0-9-]+)/perk-rewards$', sub)
+        if ws_rewards:
+            from services import partner_perks
+            slug = ws_rewards.group(1)
+            if method == 'GET':
+                return success_response(start_response, data={'perks': partner_perks.perks_for_owner_workspace(slug)})
+            if method == 'POST':
+                perks = partner_perks.set_workspace_reward(body.get('perk_id'), slug, body.get('amount'),
+                                                           admin.get('email'))
+                audit(admin, 'PERK_REWARD_SET', slug, f"perk {body.get('perk_id')}: {body.get('amount') or 'general reward'}")
+                return success_response(start_response, data={'perks': perks}, message="Reward saved.")
+    except (partner_rewards.RewardError, ValueError) as exc:
+        return error_response(start_response, str(exc), status_code=400)
 
     # Smart Operations across every workspace (read only; services/owner_smart_ops.py)
     if sub == '/smart-operations/company-formation' and method == 'GET':

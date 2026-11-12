@@ -4,6 +4,8 @@ import { cn } from "cn"
 import {
   IconActivity,
   IconBuildingPlus,
+  IconCash,
+  IconClipboardList,
   IconFileText,
   IconGift,
   IconBuildingSkyscraper,
@@ -31,6 +33,8 @@ import KycCheck from "../Kyc/KycCheck"
 import OwnerPartnerPerks from "./OwnerPartnerPerks"
 import OwnerCompanyFormation from "./OwnerCompanyFormation"
 import OwnerUkGovChecks from "./OwnerUkGovChecks"
+import OwnerPerkApplications from "./OwnerPerkApplications"
+import OwnerRewardPayouts from "./OwnerRewardPayouts"
 import finstapLogo from "@/assets/finstap-logo.svg"
 import finstapLogoLight from "@/assets/finstap-logo-light.svg"
 import { OwnerForgot, OwnerLogin, OwnerSetPassword } from "./OwnerAuth"
@@ -60,6 +64,7 @@ const NAV = [
       ["ID Verification", "/owner/kyc", IconId],
       ["Company Formation", "/owner/company-formation", IconBuildingPlus],
       ["Partner Perks", "/owner/perks", IconGift],
+      ["Applied Accounts", "/owner/applied-accounts", IconClipboardList],
       ["UK Gov Checks", "/owner/uk-gov-checks", IconFileText],
       ["Registered Office", "/owner/registered-office", IconMapPin],
     ],
@@ -74,6 +79,7 @@ const NAV = [
     items: [
       ["Integrations", "/owner/integrations", IconPlugConnected],
       ["Billing", "/owner/billing", IconReceipt2],
+      ["Reward payouts", "/owner/reward-payouts", IconCash],
       ["Settings", "/owner/settings", IconSettings],
     ],
   },
@@ -94,7 +100,9 @@ const MORE = [
   ["ID Verification", "/owner/kyc", IconId],
   ["Company Formation", "/owner/company-formation", IconBuildingPlus],
   ["Partner Perks", "/owner/perks", IconGift],
+  ["Applied Accounts", "/owner/applied-accounts", IconClipboardList],
   ["UK Gov Checks", "/owner/uk-gov-checks", IconFileText],
+  ["Reward payouts", "/owner/reward-payouts", IconCash],
   ["Integrations", "/owner/integrations", IconPlugConnected],
   ["Settings", "/owner/settings", IconSettings],
 ]
@@ -313,6 +321,8 @@ export default function OwnerPortal() {
         <Route path="perks" element={<OwnerPartnerPerks />} />
         <Route path="company-formation" element={<OwnerCompanyFormation />} />
         <Route path="uk-gov-checks" element={<OwnerUkGovChecks />} />
+        <Route path="applied-accounts" element={<OwnerPerkApplications />} />
+        <Route path="reward-payouts" element={<OwnerRewardPayouts />} />
         <Route path="content/blog" element={<OwnerBlog />} />
         <Route path="content/blog/:id" element={<OwnerBlogEditor />} />
         <Route path="content/newsletter" element={<OwnerNewsletter />} />

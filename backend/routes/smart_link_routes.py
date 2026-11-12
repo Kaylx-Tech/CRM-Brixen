@@ -231,6 +231,30 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
     if path == '/api/admin/smart-links/company-formation' and method == 'GET':
         return success_response(start_response, data={'orders': _formation_orders(user)})
 
+    # Partner Perks › Applied accounts (Finstap): any team member applies through a perk for a client;
+    # Finstap checks it and the reward goes into the workspace's balance (services/partner_rewards.py)
+    if path == '/api/admin/smart-links/perk-applications':
+        try:
+            from tenancy import current_tenant
+            from services import partner_rewards
+        except ImportError:
+            return error_response(start_response, "Not found", status_code=404)
+        slug = (current_tenant() or {}).get('slug')
+        if not slug:
+            return error_response(start_response, "Not found", status_code=404)
+        if method == 'GET':
+            return success_response(start_response, data={
+                'applications': partner_rewards.applications(slug, search=(query.get('search') or [''])[0]),
+                'summary': partner_rewards.workspace_summary(slug),
+            })
+        if method == 'POST':
+            try:
+                row = partner_rewards.apply(slug, user, (body or {}).get('perk_id'), body)
+            except partner_rewards.RewardError as exc:
+                return error_response(start_response, str(exc), status_code=400)
+            return success_response(start_response, data=row, status_code=201,
+                                    message="Added to Applied accounts. Finstap checks it with the partner.")
+
     if role not in MANAGE_ROLES:
         return error_response(start_response, "Only admins and managers can change Smart Operations links.",
                               status_code=403)

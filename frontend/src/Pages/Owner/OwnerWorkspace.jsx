@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { PlanUsage } from "@/components/plan-usage"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { money, ownerApi, shortDate } from "@/lib/owner"
+import { formatGBP, plainAmount } from "@/lib/money"
 import { Button, LoadError, Panel, PlanBadge, SELECT, StatusBadge } from "./ownerUi"
 
 const LIMIT_LABELS = {
@@ -22,6 +23,63 @@ function Label({ children, htmlFor }) {
     <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium">
       {children}
     </label>
+  )
+}
+
+/** This workspace's own Partner Perks rewards: empty = the perk's general reward, 0 = no reward here. */
+function PerkRewards({ slug }) {
+  const [perks, setPerks] = useState(null)
+  const [values, setValues] = useState({})
+  const [saving, setSaving] = useState(null)
+
+  useEffect(() => {
+    ownerApi(`/workspaces/${slug}/perk-rewards`).then((res) => {
+      if (!res.ok) return
+      setPerks(res.data.perks)
+      setValues(Object.fromEntries(res.data.perks.map((p) => [p.id, p.workspace_amount == null ? "" : plainAmount(p.workspace_amount)])))
+    })
+  }, [slug])
+
+  const save = async (perk) => {
+    setSaving(perk.id)
+    const id = toastProcessing("Saving…")
+    const res = await ownerApi(`/workspaces/${slug}/perk-rewards`, { method: "POST", body: { perk_id: perk.id, amount: values[perk.id] } })
+    setSaving(null)
+    if (res.ok) {
+      toastDone(id, res.message)
+      setPerks(res.data.perks)
+    } else {
+      toastFail(id, res.error)
+    }
+  }
+
+  if (!perks) return <p className="text-sm text-muted-foreground">Loading…</p>
+  if (!perks.length) return <p className="text-sm text-muted-foreground">No Partner Perks yet (Smart Operations › Partner Perks).</p>
+  return (
+    <ul className="divide-y text-sm">
+      {perks.map((p) => (
+        <li key={p.id} className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="truncate font-medium">{p.category} · {p.title}</div>
+            <div className="text-xs text-muted-foreground">
+              General reward {p.reward_amount == null ? "none" : formatGBP(p.reward_amount)} · this workspace gets{" "}
+              <span className="font-medium text-foreground">{!Number(p.effective_amount) ? "no reward" : formatGBP(p.effective_amount)}</span>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Input
+              className="h-8 w-28"
+              inputMode="decimal"
+              placeholder={p.reward_amount == null ? "£" : `£${plainAmount(p.reward_amount)}`}
+              value={values[p.id] ?? ""}
+              onChange={(e) => setValues((v) => ({ ...v, [p.id]: e.target.value }))}
+              aria-label={`${p.category} reward for this workspace`}
+            />
+            <Button size="sm" variant="outline" disabled={saving === p.id} onClick={() => save(p)}>Save</Button>
+          </div>
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -376,6 +434,12 @@ export default function OwnerWorkspace() {
           </Panel>
           <Panel title="Subscription" description="Set by hand until online payment is switched on.">
             <SubscriptionForm key={version} workspace={data} onSaved={load} />
+          </Panel>
+          <Panel
+            title="Partner Perks rewards"
+            description="What this workspace earns for each eligible account. Leave empty for the perk's general reward; 0 means no reward here."
+          >
+            <PerkRewards slug={data.slug} />
           </Panel>
         </div>
         <div className="space-y-4">
