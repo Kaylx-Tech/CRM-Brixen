@@ -48,7 +48,9 @@ The full chat that this came from (2026-11-04 to 2026-11-07) is exported at
 
 ## This computer
 
-- **No Python** installed: the backend cannot run here, so nothing that needs the API can be checked locally.
+- Python 3.15 is installed as `py` (not `python`), but the backend's libraries are not (argon2, requests, ...):
+  `py -m py_compile` checks backend files, and small tests can run against a throwaway `FINSTAP_DATA_DIR`
+  with missing libraries stubbed. The full backend server still cannot run here.
 - Node 26 is installed (it has `node:sqlite`, handy to test SQL).
 - Dev server: `.claude/launch.json` → `finstap-web` (port 5180, `VITE_PRODUCT=finstap`). Pages are checked in the
   browser with fake data: set `localStorage.user` / `token` (or `owner_token`) and replace `window.fetch` for the
