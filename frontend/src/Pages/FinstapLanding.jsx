@@ -5,8 +5,6 @@ import { cn } from "cn"
 import {
   IconArrowRight,
   IconBell,
-  IconBrandGoogleDrive,
-  IconBrandStripe,
   IconBuildingBank,
   IconCalendarDue,
   IconChartBar,
@@ -143,14 +141,6 @@ const STEPS = [
   ["Create Your Workspace", "Confirm your email, name your company and pick your Finstap address.", "workspace"],
   ["Bring In Your Team", "Invite colleagues and give each one the right role.", "team"],
   ["Run Your Practice", "Clients, orders, invoices and deadlines in one calm dashboard.", "run"],
-]
-
-// Services Finstap works with (it uses them; no partnership is implied)
-const WORKS_WITH = [
-  [IconBuildingBank, "Companies House"],
-  [IconWorld, "GOV.UK"],
-  [IconBrandStripe, "Stripe"],
-  [IconBrandGoogleDrive, "Google Drive"],
 ]
 
 const COMPARE = [
@@ -614,7 +604,7 @@ export default function FinstapLanding() {
       <Header />
 
       {/* Hero: the promise in the middle, feature icons floating around it, the product under it */}
-      <section className="relative overflow-hidden pb-16 sm:pb-24">
+      <section className="relative overflow-hidden pb-8 sm:pb-12">
         <span
           aria-hidden
           className="pointer-events-none absolute inset-x-0 -top-24 h-[640px] bg-[radial-gradient(50%_60%_at_50%_0%,rgba(95,92,255,0.16),transparent),radial-gradient(30%_40%_at_15%_20%,rgba(41,123,255,0.12),transparent),radial-gradient(30%_40%_at_85%_20%,rgba(131,74,255,0.12),transparent)]"
@@ -676,22 +666,10 @@ export default function FinstapLanding() {
 
           <ProductShot />
         </div>
-
-        {/* Works with */}
-        <div className="mx-auto mt-14 max-w-4xl px-4 text-center sm:px-6">
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-400">Works with</p>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
-            {WORKS_WITH.map(([Icon, name]) => (
-              <span key={name} className="flex items-center gap-2 text-base font-semibold text-slate-400">
-                <Icon className="size-5" /> {name}
-              </span>
-            ))}
-          </div>
-        </div>
       </section>
 
       {/* Features as a bento grid, each with a picture of the screen */}
-      <section id="features" className="scroll-mt-24 py-24 sm:py-32">
+      <section id="features" className="scroll-mt-24 pt-10 pb-24 sm:pt-14 sm:pb-32">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <SectionHead
             eyebrow={<><IconSparkles className="size-3.5" /> Features</>}
