@@ -4,7 +4,7 @@ import { defineConfig, loadEnv } from "vite"
 import tailwindcss from '@tailwindcss/vite'
 import { jsxcanvas } from '@jsxcanvas/vite'
 
-const FINSTAP_TITLE = 'Finstap — Corporate management CRM'
+const FINSTAP_TITLE = 'Finstap · Corporate management CRM'
 const FINSTAP_DESCRIPTION = 'Corporate management CRM for accountants: customers, UK companies, orders, invoices and compliance deadlines in one place.'
 
 /** schema.org data so Google knows finstap.com is the Finstap company and its web app (name, logo, what it does). */
