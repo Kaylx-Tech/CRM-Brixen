@@ -31,6 +31,7 @@ const MotionRow = m.create(TableRow);
 const ROW_STAGGER_LIMIT = 14;
 import {
   IconAdjustmentsHorizontal,
+  IconChevronDown,
   IconSearch,
   IconX,
   IconMoodEmpty,
@@ -96,8 +97,15 @@ export const DataTable = ({
   // Column ids hidden at first on screens narrower than 1536px, so the table fits without sideways
   // scrolling; the Columns menu shows them again
   hideOnSmallerScreens,
+  // Inbox-style groups (like Gmail's "Unread" / "Everything else"): sections = [{ key, title, extra }]
+  // in display order, sectionOf(rowData) = the row's section key. Each section has a heading that
+  // folds it; `extra` sits on the right of the heading (e.g. "1–25 of 80" and page arrows).
+  sections,
+  sectionOf,
 }) => {
   const isSearchControlled = typeof onSearchChange === "function";
+  const [collapsed, setCollapsed] = React.useState({});
+  const toggleSection = (key) => setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
   const [sorting, setSorting] = React.useState([]);
   const [columnFilters, setColumnFilters] = React.useState([]);
   const [globalFilter, setGlobalFilter] = React.useState("");
@@ -139,6 +147,64 @@ export const DataTable = ({
       pagination,
     },
   });
+
+  const useSections = Array.isArray(sections) && sections.length > 0 && typeof sectionOf === "function";
+  const visibleRows = table.getRowModel().rows;
+  const groupedRows = useSections
+    ? sections.map((section) => ({
+        ...section,
+        rows: visibleRows.filter((row) => sectionOf(row.original) === section.key),
+      }))
+    : null;
+
+  const renderDesktopRow = (row, index) => (
+    <MotionRow
+      key={row.id}
+      // Rows slide in one after another (first rows only, so big pages never lag);
+      // a row that is already on screen does not animate again
+      initial={index < ROW_STAGGER_LIMIT ? { opacity: 0, y: 8 } : false}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...spring, delay: Math.min(index, ROW_STAGGER_LIMIT) * 0.025 }}
+      data-state={row.getIsSelected() && "selected"}
+      className="min-h-[52px] h-auto"
+    >
+      {row.getVisibleCells().map((cell) => (
+        // meta.cellClassName / meta.headClassName on a column: e.g. right-aligned amounts
+        <TableCell key={cell.id} className={cell.column.columnDef.meta?.cellClassName}>
+          <table.FlexRender cell={cell} />
+        </TableCell>
+      ))}
+    </MotionRow>
+  );
+
+  const renderMobileRow = (row) => (
+    <React.Fragment key={row.id}>
+      {renderMobileCard ? renderMobileCard(row.original, row) : <StackedRowCard row={row} table={table} />}
+    </React.Fragment>
+  );
+
+  const sectionHeading = (section) => {
+    const isOpen = !collapsed[section.key];
+    return (
+      // Pinned to the left so the title and its pager stay in view when a wide table scrolls sideways
+      <div className="sticky left-0 flex w-max max-w-full items-center gap-3 px-2 py-2">
+        <button
+          type="button"
+          onClick={() => toggleSection(section.key)}
+          aria-expanded={isOpen}
+          className="flex min-w-0 items-center gap-2 rounded-md text-left text-[15px] font-semibold text-foreground"
+        >
+          <IconChevronDown
+            className={cn("size-4 shrink-0 text-muted-foreground transition-transform duration-200", !isOpen && "-rotate-90")}
+          />
+          <span className="truncate">{section.title}</span>
+        </button>
+        {section.extra ? <div className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground">{section.extra}</div> : null}
+      </div>
+    );
+  };
+
+  const emptySectionText = "Nothing here.";
 
   const [filterResetKey, setFilterResetKey] = React.useState(0);
 
@@ -268,12 +334,20 @@ export const DataTable = ({
         <div className="space-y-2 md:hidden">
           {isLoading ? (
             Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)
-          ) : table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row) => (
-              <React.Fragment key={row.id}>
-                {renderMobileCard ? renderMobileCard(row.original, row) : <StackedRowCard row={row} table={table} />}
-              </React.Fragment>
+          ) : groupedRows ? (
+            groupedRows.map((section) => (
+              <div key={section.key} className="space-y-2">
+                <div className="rounded-xl border bg-muted/40">{sectionHeading(section)}</div>
+                {!collapsed[section.key] &&
+                  (section.rows.length ? (
+                    section.rows.map(renderMobileRow)
+                  ) : (
+                    <div className="px-3 py-3 text-sm text-muted-foreground">{emptySectionText}</div>
+                  ))}
+              </div>
             ))
+          ) : table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map(renderMobileRow)
           ) : (
             <div className="rounded-xl border bg-card py-10 text-center text-sm text-muted-foreground">
               <IconMoodEmpty className="mx-auto mb-3 size-10" />
@@ -364,26 +438,28 @@ export const DataTable = ({
                   ))}
                 </TableRow>
               ))
-            ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row, index) => (
-                <MotionRow
-                  key={row.id}
-                  // Rows slide in one after another (first rows only, so big pages never lag);
-                  // a row that is already on screen does not animate again
-                  initial={index < ROW_STAGGER_LIMIT ? { opacity: 0, y: 8 } : false}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ ...spring, delay: Math.min(index, ROW_STAGGER_LIMIT) * 0.025 }}
-                  data-state={row.getIsSelected() && "selected"}
-                  className="min-h-[52px] h-auto"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    // meta.cellClassName / meta.headClassName on a column: e.g. right-aligned amounts
-                    <TableCell key={cell.id} className={cell.column.columnDef.meta?.cellClassName}>
-                      <table.FlexRender cell={cell} />
+            ) : groupedRows ? (
+              groupedRows.map((section) => (
+                <React.Fragment key={section.key}>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40">
+                    <TableCell colSpan={table.getVisibleLeafColumns().length} className="p-0">
+                      {sectionHeading(section)}
                     </TableCell>
-                  ))}
-                </MotionRow>
+                  </TableRow>
+                  {!collapsed[section.key] &&
+                    (section.rows.length ? (
+                      section.rows.map(renderDesktopRow)
+                    ) : (
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={table.getVisibleLeafColumns().length} className="py-4 text-center text-sm text-muted-foreground">
+                          {emptySectionText}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </React.Fragment>
               ))
+            ) : table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map(renderDesktopRow)
             ) : (
               <TableRow>
                 <TableCell

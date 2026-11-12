@@ -135,6 +135,11 @@ def build_admin_order_list(user, query):
         status_clause = "o.status IN ('Processing', 'In Progress')"
     elif status_group == 'completed':
         status_clause = "o.status = 'Completed'"
+    # The Orders board's two sections (like an inbox): open work on top, finished orders below
+    elif status_group == 'open':
+        status_clause = "COALESCE(o.status, 'Pending') NOT IN ('Completed', 'Cancelled', 'Refunded')"
+    elif status_group == 'closed':
+        status_clause = "o.status IN ('Completed', 'Cancelled', 'Refunded')"
 
     product = _qs_first(query, 'product')
     if product:
