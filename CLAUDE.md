@@ -33,6 +33,11 @@ The full chat that this came from (2026-11-04 to 2026-11-07) is exported at
 - **Work on `finstap`.** Commit locally after each change. **Do not push** and do not keep asking
   "push karun?". Push only when the user says "push" / "push krdo". A push to this branch goes live in 3-5 min.
 - Git identity in this repo: `mudassirsaleem47 <mudassirsaleem230@gmail.com>` (set with `git config`, repo only).
+- **Never merge `master` and `finstap` into each other** (in either direction, not even through a pull request):
+  they are two separate products and differ a lot (a test merge on 2026-11-12 gave conflicts in 68 files).
+  A fix needed on both goes in as its own commit on one branch and is copied to the other with `git cherry-pick`
+  (or written again there if it does not fit), with the same commit message. If a cherry-pick conflicts, stop and
+  tell the user before resolving it.
 - Restore point for the old look: tag `dashboard-ui-backup-2026-11-06` (= eab46e1, before the redesign).
   To undo a piece, check out only those files from the tag and commit. Never reset or force-push.
 - Never mass-replace colours or styles across the app (e.g. turning every emerald/amber into tokens): the user
