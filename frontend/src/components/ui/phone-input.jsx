@@ -1,9 +1,17 @@
 import * as React from "react"
 import { getCountries, getCountryCallingCode } from "libphonenumber-js/min"
 import metadata from "libphonenumber-js/min/metadata"
-import { IconChevronDown } from "@tabler/icons-react"
 import { cn } from "cn"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+} from "@/components/ui/select"
 
 // Every country with its calling code, named in English, A–Z
 const NAMES = typeof Intl !== "undefined" && Intl.DisplayNames ? new Intl.DisplayNames(["en"], { type: "region" }) : null
@@ -13,6 +21,7 @@ const COUNTRIES = getCountries()
 const BY_ISO = Object.fromEntries(COUNTRIES.map((c) => [c.iso, c]))
 // Shown first in the list: the countries Brixen and Finstap customers use most
 const TOP = ["GB", "PK"]
+const REST = COUNTRIES.filter((c) => !TOP.includes(c.iso))
 // The main country for each calling code (+44: United Kingdom, +1: United States, +92: Pakistan)
 const MAIN = Object.fromEntries(Object.entries(metadata.country_calling_codes).map(([code, list]) => [code, list[0]]))
 
@@ -39,10 +48,21 @@ function splitNumber(value) {
   return { code: "", rest: text.slice(1) }
 }
 
+/** One row of the country list: flag, name and calling code; typing a letter jumps to the name. */
+function CountryItem({ country }) {
+  return (
+    <SelectItem value={country.iso} label={country.name}>
+      <span className="text-base leading-none">{flag(country.iso)}</span>
+      <span className="truncate">{country.name}</span>
+      <span className="ml-auto pl-2 tabular-nums text-muted-foreground">+{country.code}</span>
+    </SelectItem>
+  )
+}
+
 /**
- * A phone field with the country in front (flag and calling code). Typing or pasting "+92…" picks Pakistan by
- * itself; picking a country puts its code in front. The value stays one string like "+92 300 1234567", and
- * onChange gets { target: { value, name } }, so it drops in where an <Input> was.
+ * A phone field with the country in front: a Select (flag and calling code) joined to the number box. Typing or
+ * pasting "+92…" picks Pakistan by itself; picking a country puts its code in front. The value stays one string like
+ * "+92 300 1234567", and onChange gets { target: { value, name } }, so it drops in where an <Input> was.
  */
 function PhoneInput({ value, onChange, defaultCountry = "GB", className, name, id, placeholder, ...props }) {
   const { code, rest } = splitNumber(value)
@@ -65,49 +85,42 @@ function PhoneInput({ value, onChange, defaultCountry = "GB", className, name, i
     emit(typed.trim() ? `+${current.code} ${typed.replace(/^\s+/, "")}` : "")
   }
 
-  const pickCountry = (e) => {
-    const next = BY_ISO[e.target.value]
+  const pickCountry = (iso) => {
+    const next = BY_ISO[iso]
     if (!next) return
     setChosen(next.iso)
     emit(rest ? `+${next.code} ${rest}` : "")
   }
 
   return (
-    <div className={cn("relative w-full", className)}>
-      <div className="absolute inset-y-0 left-0 flex items-center">
-        <span
-          aria-hidden
-          className="pointer-events-none flex h-full items-center gap-1 border-r border-input pr-2 pl-3 text-[13px] tabular-nums text-foreground"
+    <div className={cn("flex w-full", className)}>
+      <Select value={current.iso} onValueChange={pickCountry} disabled={props.disabled}>
+        <SelectTrigger
+          aria-label={`Country code: ${current.name} (+${current.code})`}
+          aria-invalid={props["aria-invalid"]}
+          className="h-auto shrink-0 self-stretch rounded-r-none border-r-0 pl-3 tabular-nums focus-visible:z-10"
         >
-          <span className="text-base leading-none">{flag(current.iso)}</span>
-          <span>+{current.code}</span>
-          <IconChevronDown className="size-3 text-muted-foreground" />
-        </span>
-        <select
-          value={current.iso}
-          onChange={pickCountry}
-          disabled={props.disabled}
-          aria-label="Country code"
-          title={`${current.name} (+${current.code})`}
-          className="absolute inset-0 cursor-pointer opacity-0"
-        >
-          {/* The two used most first; names lead, so pressing P in the open list jumps to Pakistan */}
-          <optgroup label="Most used">
+          <span className="flex items-center gap-1.5">
+            <span className="text-base leading-none">{flag(current.iso)}</span>
+            <span>+{current.code}</span>
+          </span>
+        </SelectTrigger>
+        <SelectContent align="start" className="max-h-80 w-72">
+          <SelectGroup>
+            <SelectLabel>Most used</SelectLabel>
             {TOP.map((iso) => (
-              <option key={`top-${iso}`} value={iso}>
-                {BY_ISO[iso].name} (+{BY_ISO[iso].code})
-              </option>
+              <CountryItem key={`top-${iso}`} country={BY_ISO[iso]} />
             ))}
-          </optgroup>
-          <optgroup label="All countries">
-            {COUNTRIES.filter((c) => !TOP.includes(c.iso)).map((c) => (
-              <option key={c.iso} value={c.iso}>
-                {c.name} (+{c.code})
-              </option>
+          </SelectGroup>
+          <SelectSeparator />
+          <SelectGroup>
+            <SelectLabel>All countries</SelectLabel>
+            {REST.map((c) => (
+              <CountryItem key={c.iso} country={c} />
             ))}
-          </optgroup>
-        </select>
-      </div>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
       <Input
         {...props}
         id={id}
@@ -118,7 +131,7 @@ function PhoneInput({ value, onChange, defaultCountry = "GB", className, name, i
         value={rest}
         onChange={typeNumber}
         placeholder={placeholder ? String(placeholder).replace(/^\+\d+\s*/, "") : "Phone number"}
-        style={{ paddingLeft: `${4.1 + current.code.length * 0.5}rem`, ...props.style }}
+        className="min-w-0 flex-1 rounded-l-none"
       />
     </div>
   )
