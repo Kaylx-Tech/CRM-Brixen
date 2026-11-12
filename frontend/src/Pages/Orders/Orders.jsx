@@ -441,7 +441,7 @@ export default function Orders() {
     }
     return [
       { key: 'open', title: 'Pending & In Progress', extra: pager('open') },
-      { key: 'closed', title: 'Everything else', extra: pager('closed') },
+      { key: 'closed', title: 'Completed', extra: pager('closed') },
     ]
   }, [sectionPaging, fetchSectionPage])
 
