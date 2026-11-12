@@ -23,6 +23,10 @@ def _ensure():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
+    # Each perk's own reward from Finstap (e.g. "£50 reward"), shown as a badge on the workspace's card
+    cols = {r['name'] for r in (_platform_query("PRAGMA table_info(partner_perks);") or [])}
+    if 'reward' not in cols:
+        _platform_execute("ALTER TABLE partner_perks ADD COLUMN reward TEXT;")
 
 
 def all_perks():
@@ -33,7 +37,7 @@ def all_perks():
 def _clean(body):
     body = body if isinstance(body, dict) else {}
     out = {k: str(body.get(k) or '').strip()[:n] for k, n in (('category', 80), ('title', 160), ('url', 2000),
-                                                             ('note', 1000))}
+                                                             ('note', 1000), ('reward', 120))}
     for key in ('category', 'title', 'url'):
         if not out[key]:
             raise PerkError(f"{key.capitalize()} is required")
@@ -53,12 +57,15 @@ def save(body, perk_id=None):
     f = _clean(body)
     if perk_id:
         _platform_execute("""
-            UPDATE partner_perks SET category = ?, title = ?, url = ?, note = ?, sort_order = ?,
+            UPDATE partner_perks SET category = ?, title = ?, url = ?, note = ?, reward = ?, sort_order = ?,
                    updated_at = datetime('now') WHERE id = ?;
-        """, (f['category'], f['title'], f['url'], f['note'] or None, f['sort_order'], int(perk_id)))
+        """, (f['category'], f['title'], f['url'], f['note'] or None, f['reward'] or None, f['sort_order'],
+              int(perk_id)))
     else:
-        _platform_execute("INSERT INTO partner_perks (category, title, url, note, sort_order) VALUES (?, ?, ?, ?, ?);",
-                          (f['category'], f['title'], f['url'], f['note'] or None, f['sort_order']))
+        _platform_execute("""INSERT INTO partner_perks (category, title, url, note, reward, sort_order)
+                             VALUES (?, ?, ?, ?, ?, ?);""",
+                          (f['category'], f['title'], f['url'], f['note'] or None, f['reward'] or None,
+                           f['sort_order']))
     return all_perks()
 
 

@@ -3,6 +3,8 @@ import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "reac
 import { cn } from "cn"
 import {
   IconActivity,
+  IconBuildingPlus,
+  IconFileText,
   IconGift,
   IconBuildingSkyscraper,
   IconId,
@@ -27,6 +29,8 @@ import { PageTransition } from "@/lib/motion"
 import { getOwnerToken, ownerApi, setOwnerToken } from "@/lib/owner"
 import KycCheck from "../Kyc/KycCheck"
 import OwnerPartnerPerks from "./OwnerPartnerPerks"
+import OwnerCompanyFormation from "./OwnerCompanyFormation"
+import OwnerUkGovChecks from "./OwnerUkGovChecks"
 import finstapLogo from "@/assets/finstap-logo.svg"
 import finstapLogoLight from "@/assets/finstap-logo-light.svg"
 import { OwnerForgot, OwnerLogin, OwnerSetPassword } from "./OwnerAuth"
@@ -49,14 +53,20 @@ const NAV = [
   ["Overview", "/owner/overview", IconLayoutDashboard],
   ["Workspaces", "/owner/workspaces", IconBuildingSkyscraper],
   ["Plans", "/owner/plans", IconTags],
+  // The same tabs as a workspace's Smart Operations, across every workspace
+  {
+    label: "Smart Operations",
+    items: [
+      ["ID Verification", "/owner/kyc", IconId],
+      ["Company Formation", "/owner/company-formation", IconBuildingPlus],
+      ["Partner Perks", "/owner/perks", IconGift],
+      ["UK Gov Checks", "/owner/uk-gov-checks", IconFileText],
+      ["Registered Office", "/owner/registered-office", IconMapPin],
+    ],
+  },
   {
     label: "Activity",
-    items: [
-      ["Activity log", "/owner/activity", IconActivity],
-      ["KYC", "/owner/kyc", IconId],
-      ["Registered office", "/owner/registered-office", IconMapPin],
-      ["Partner Perks", "/owner/perks", IconGift],
-    ],
+    items: [["Activity log", "/owner/activity", IconActivity]],
   },
   // Content (Blogs, Newsletter) is off the menu for now (user, 2026-10-28); its pages stay at /owner/content/…
   {
@@ -81,8 +91,10 @@ const TAB_BAR = [
 const MORE = [
   ["Plans", "/owner/plans", IconTags],
   ["Activity log", "/owner/activity", IconActivity],
-  ["KYC", "/owner/kyc", IconId],
+  ["ID Verification", "/owner/kyc", IconId],
+  ["Company Formation", "/owner/company-formation", IconBuildingPlus],
   ["Partner Perks", "/owner/perks", IconGift],
+  ["UK Gov Checks", "/owner/uk-gov-checks", IconFileText],
   ["Integrations", "/owner/integrations", IconPlugConnected],
   ["Settings", "/owner/settings", IconSettings],
 ]
@@ -299,6 +311,8 @@ export default function OwnerPortal() {
         <Route path="activity" element={<OwnerActivity />} />
         <Route path="billing" element={<OwnerBilling />} />
         <Route path="perks" element={<OwnerPartnerPerks />} />
+        <Route path="company-formation" element={<OwnerCompanyFormation />} />
+        <Route path="uk-gov-checks" element={<OwnerUkGovChecks />} />
         <Route path="content/blog" element={<OwnerBlog />} />
         <Route path="content/blog/:id" element={<OwnerBlogEditor />} />
         <Route path="content/newsletter" element={<OwnerNewsletter />} />

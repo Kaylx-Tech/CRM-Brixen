@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react"
-import { IconExternalLink, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react"
+import { IconExternalLink, IconPencil, IconPlus, IconTrash, IconTrophy } from "@tabler/icons-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toastDone, toastFail, toastProcessing } from "@/lib/toastActions"
 import { ownerApi } from "@/lib/owner"
 import { Button, LoadError, PageTitle, Panel } from "./ownerUi"
 
-const EMPTY = { category: "", title: "", url: "", note: "" }
+const EMPTY = { category: "", title: "", url: "", note: "", reward: "" }
 
 /** Partner Perks: partner links every workspace sees in Smart Operations › Partner Perks (they cannot change them). */
 export default function OwnerPartnerPerks() {
@@ -80,8 +80,13 @@ export default function OwnerPartnerPerks() {
               <Input id="perk-url" placeholder="https://…" value={form.url} onChange={set("url")} required />
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium" htmlFor="perk-note">Offer (optional)</label>
-              <Textarea id="perk-note" rows={2} placeholder="e.g. £75 cashback when the account is opened" value={form.note || ""} onChange={set("note")} />
+              <label className="mb-1 block text-sm font-medium" htmlFor="perk-reward">Reward from Finstap (optional)</label>
+              <Input id="perk-reward" maxLength={120} placeholder="e.g. £50 reward" value={form.reward || ""} onChange={set("reward")} />
+              <p className="mt-1 text-xs text-muted-foreground">Shown as a gold badge on this perk in every workspace.</p>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-sm font-medium" htmlFor="perk-note">Partner's offer (optional)</label>
+              <Textarea id="perk-note" rows={2} placeholder="e.g. £75 cashback from Tide when the account is opened" value={form.note || ""} onChange={set("note")} />
             </div>
             <div className="flex gap-2 sm:col-span-2">
               <Button type="submit" disabled={busy}>{form.id ? "Save" : "Add to every workspace"}</Button>
@@ -106,6 +111,11 @@ export default function OwnerPartnerPerks() {
                     <a href={p.url} target="_blank" rel="noopener noreferrer" className="block truncate text-xs text-primary hover:underline">
                       {p.url}
                     </a>
+                    {p.reward && (
+                      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                        <IconTrophy className="size-3.5" /> {p.reward}
+                      </span>
+                    )}
                     {p.note && <p className="text-xs text-muted-foreground">{p.note}</p>}
                   </div>
                   <div className="flex items-center gap-1">

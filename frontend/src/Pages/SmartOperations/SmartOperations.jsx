@@ -98,7 +98,9 @@ function openInPopup(event, url) {
 // helps the workspace set the service up for free
 const PERK_OFFER = 'Free setup help from Finstap'
 
-function PerksBanner() {
+// One banner: each partner service has its own reward from Finstap (the gold badge on its card), and Finstap helps
+// set it up for free; the rewards' terms open in the popup
+function PerksBanner({ onTerms }) {
   return (
     <m.div
       initial={{ opacity: 0, y: 8 }}
@@ -111,35 +113,12 @@ function PerksBanner() {
           <IconGift className="size-5" />
         </span>
         <div className="min-w-0">
-          <p className="font-semibold">Perks from our partners, set up free by Finstap</p>
+          <p className="font-semibold">Partner Perks: rewards and free setup</p>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Open a business account, send money abroad or buy a domain through these partner links, and the Finstap
-            team helps you and your clients get started at no cost.
-          </p>
-        </div>
-      </div>
-    </m.div>
-  )
-}
-
-// Partner Perks: signing up through a partner link earns the workspace a reward from Finstap (terms in the footer popup)
-function RewardsBanner({ onTerms }) {
-  return (
-    <m.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ ...spring, delay: 0.05 }}
-      className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-linear-to-r from-amber-500/15 via-amber-500/5 to-card p-4"
-    >
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm">
-          <IconTrophy className="size-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold">Earn rewards with Partner Perks</p>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Sign up for a partner service through these links and Finstap rewards your workspace.{' '}
-            <button type="button" onClick={onTerms} className="font-medium text-amber-700 underline-offset-2 hover:underline dark:text-amber-400">
+            Sign up through these partner links: each service has its own reward from Finstap
+            <IconTrophy className="mx-1 inline size-3.5 -translate-y-px text-amber-500" />
+            and the Finstap team helps you and your clients get started at no cost.{' '}
+            <button type="button" onClick={onTerms} className="font-medium text-primary underline-offset-2 hover:underline">
               Terms apply
             </button>
           </p>
@@ -210,8 +189,15 @@ function LinkRow({ link, canManage, onEdit, onDelete }) {
           </>
         )}
       </div>
+      {IS_FINSTAP && link.reward && (
+        // Partner Perks: this service's own reward from Finstap (set in the owner portal)
+        <p className="flex basis-full items-center gap-1.5 rounded-md bg-amber-500/15 px-2 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
+          <IconTrophy className="size-3.5 shrink-0" />
+          <span className="min-w-0 truncate">{link.reward}</span>
+        </p>
+      )}
       {IS_FINSTAP && (
-        // Partner Perks: the note is the offer; without one, the help Finstap gives with every partner
+        // Partner Perks: the note is the partner's offer; without one, the help Finstap gives with every partner
         <p className="flex basis-full items-start gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
           <IconSparkles className="mt-px size-3.5 shrink-0" />
           <span className="min-w-0 whitespace-pre-line line-clamp-3">{link.note || PERK_OFFER}</span>
@@ -451,8 +437,7 @@ export default function SmartOperations() {
         <Tasks view="uk-gov-checks" />
       ) : (
       <>
-      {IS_FINSTAP && <PerksBanner />}
-      {IS_FINSTAP && <RewardsBanner onTerms={() => setTermsOpen(true)} />}
+      {IS_FINSTAP && <PerksBanner onTerms={() => setTermsOpen(true)} />}
       <div className="relative w-full md:max-w-sm">
         <IconSearch className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input className="pl-9" placeholder="Search company, link or note…" value={search} onChange={(e) => setSearch(e.target.value)} />

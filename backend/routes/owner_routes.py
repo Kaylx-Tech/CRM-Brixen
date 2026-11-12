@@ -26,6 +26,8 @@
   POST /kyc/billing {slug, period, status: invoiced|paid|''}
   POST /kyc/service {slug, enabled} → switch a workspace's paid KYC service on or off
   POST /kyc/<slug>/<id>/reject {reason} | resubmit {reason?} → new Didit link emailed to the client
+  GET  /smart-operations/company-formation → every workspace's formation orders (read only)
+  GET  /smart-operations/uk-gov-checks    → every workspace's UK Gov Checks (their tasks; read only)
   GET  /registered-office?status=        → every workspace's registered office requests
   POST /registered-office/<id>/confirm {address_index, start_date, months, price} | reject {reason}
        | renew {months, price} | end {reason} | paid {paid}
@@ -603,6 +605,14 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
                 return success_response(start_response, data={'perks': perks}, message="Removed from every workspace.")
         except partner_perks.PerkError as exc:
             return error_response(start_response, str(exc), status_code=400)
+
+    # Smart Operations across every workspace (read only; services/owner_smart_ops.py)
+    if sub == '/smart-operations/company-formation' and method == 'GET':
+        from services import owner_smart_ops
+        return success_response(start_response, data=owner_smart_ops.company_formation())
+    if sub == '/smart-operations/uk-gov-checks' and method == 'GET':
+        from services import owner_smart_ops
+        return success_response(start_response, data=owner_smart_ops.uk_gov_checks())
 
     if sub == '/workspaces' and method == 'GET':
         search = _q(query, 'search').lower()
