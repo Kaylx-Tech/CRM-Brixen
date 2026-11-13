@@ -6,7 +6,6 @@ import {
   IconArrowRight,
   IconBell,
   IconBuildingBank,
-  IconBuildingSkyscraper,
   IconCalendarDue,
   IconChartBar,
   IconCheck,
@@ -22,7 +21,6 @@ import {
   IconPalette,
   IconPlus,
   IconReceipt2,
-  IconScan,
   IconSearch,
   IconShieldLock,
   IconSparkles,
@@ -88,33 +86,33 @@ const BENTO = [
   },
 ]
 
-// More of what Finstap does, as smaller cards under the four above
+// More of what Finstap does: smaller cards under the four above, each with its own small picture
 const FEATURE_CARDS = [
-  [
-    IconId,
-    "Director ID Verification",
-    "Send each director a secure link to verify their identity online, and see who is verified at a glance.",
-  ],
-  [
-    IconBuildingSkyscraper,
-    "One-Click Company Formation",
-    "Take formation orders through your own form. Finstap checks Companies House and adds each new company once it is registered.",
-  ],
-  [
-    IconMapPin,
-    "Instant Registered Office Address",
-    "Give clients a registered office address as soon as their ID check passes, with mail forwarding on your price list.",
-  ],
-  [
-    IconScan,
-    "Smart Intake",
-    "Drop in letters and documents. Finstap reads each one, works out what it is and files it under the right client and company.",
-  ],
-  [
-    IconChartBar,
-    "Finance Management",
-    "Revenue, expenses and a balance sheet for your practice, with paid and due invoices always up to date.",
-  ],
+  {
+    key: "idv",
+    title: "Director ID Verification",
+    text: "Send each director a secure link to verify their identity online, and see who is verified at a glance.",
+  },
+  {
+    key: "formation",
+    title: "One-Click Company Formation",
+    text: "Take formation orders through your own form. Finstap checks Companies House and adds each new company once it is registered.",
+  },
+  {
+    key: "office",
+    title: "Instant Registered Office Address",
+    text: "Give clients a registered office address as soon as their ID check passes, with mail forwarding on your price list.",
+  },
+  {
+    key: "intake",
+    title: "Smart Intake",
+    text: "Drop in letters and documents. Finstap reads each one, works out what it is and files it under the right client and company.",
+  },
+  {
+    key: "finance",
+    title: "Finance Management",
+    text: "Revenue, expenses and a balance sheet for your practice, with paid and due invoices always up to date.",
+  },
 ]
 
 const BENEFITS = [
@@ -521,6 +519,126 @@ function BentoVisual({ kind }) {
   )
 }
 
+/** The small picture inside each of the smaller feature cards (FEATURE_CARDS). */
+function MiniVisual({ kind }) {
+  const panel = "rounded-2xl bg-white p-3 shadow-[0_0_0_1px_rgba(15,23,42,0.05)]"
+  if (kind === "idv") {
+    return (
+      <div className="space-y-1.5">
+        {[
+          ["SK", "Sarah Khan", "Verified", "bg-emerald-50 text-emerald-700"],
+          ["JL", "James Lee", "In progress", "bg-amber-50 text-amber-700"],
+          ["OA", "Omar Ali", "Link sent", "bg-[#5f5cff]/10 text-[#5f5cff]"],
+        ].map(([initials, name, status, tone]) => (
+          <div
+            key={name}
+            className="flex items-center gap-2.5 rounded-xl bg-white p-2 shadow-[0_0_0_1px_rgba(15,23,42,0.05)]"
+          >
+            <span
+              className={cn(
+                "flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white",
+                GRADIENT,
+              )}
+            >
+              {initials}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-800">{name}</span>
+            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", tone)}>{status}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+  if (kind === "formation") {
+    return (
+      <div className={panel}>
+        {[
+          ["Order received", "Acme Trading Ltd", true],
+          ["Sent to Companies House", "Waiting for approval", true],
+          ["Registered", "Company number 15234567", false],
+        ].map(([step, sub, done], i) => (
+          <div key={step} className={cn("flex items-start gap-2.5", i > 0 && "mt-2.5")}>
+            {done ? (
+              <IconCircleCheckFilled className="mt-px size-4 shrink-0 text-emerald-500" />
+            ) : (
+              <span className={cn("mt-0.5 size-3.5 shrink-0 rounded-full ring-4 ring-[#5f5cff]/15", GRADIENT)} />
+            )}
+            <span className="min-w-0">
+              <span className="block text-xs font-semibold text-slate-800">{step}</span>
+              <span className="block truncate text-[11px] text-slate-500">{sub}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+  if (kind === "office") {
+    return (
+      <div className={panel}>
+        <div className="flex items-center gap-2.5">
+          <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-xl text-white", GRADIENT)}>
+            <IconMapPin className="size-4" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-xs font-semibold text-slate-800">Office 1004</span>
+            <span className="block text-[11px] text-slate-500">Registered office, London</span>
+          </span>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-1.5 text-[11px]">
+          <span className="flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1.5 text-slate-600">
+            <IconCircleCheckFilled className="size-3.5 text-emerald-500" /> ID check passed
+          </span>
+          <span className="rounded-lg bg-[#5f5cff]/10 px-2 py-1.5 text-center font-semibold text-[#5f5cff]">
+            Allotted
+          </span>
+        </div>
+      </div>
+    )
+  }
+  if (kind === "intake") {
+    return (
+      <div className={cn(panel, "space-y-2")}>
+        {[
+          ["HMRC letter.pdf", "Acme Trading Ltd"],
+          ["Bank statement.pdf", "Blue Oak Consulting"],
+        ].map(([doc, client]) => (
+          <div key={doc} className="flex items-center gap-2 text-[11px]">
+            <span className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg bg-slate-50 px-2 py-1.5 text-slate-700">
+              <IconFileText className="size-3.5 shrink-0 text-slate-400" />
+              <span className="truncate">{doc}</span>
+            </span>
+            <IconArrowRight className="size-3.5 shrink-0 text-[#5f5cff]" />
+            <span className="min-w-0 flex-1 truncate font-semibold text-slate-800">{client}</span>
+          </div>
+        ))}
+        <p className="flex items-center gap-1.5 text-[11px] text-slate-500">
+          <IconCircleCheckFilled className="size-3.5 text-emerald-500" /> Filed automatically
+        </p>
+      </div>
+    )
+  }
+  // finance
+  return (
+    <div className={panel}>
+      <div className="flex items-end justify-between">
+        <span>
+          <span className="block text-[11px] text-slate-500">Revenue this month</span>
+          <span className="block text-base font-semibold tabular-nums text-slate-900">£12,480</span>
+        </span>
+        <div className="flex h-10 items-end gap-1">
+          {[40, 65, 50, 80, 60, 95].map((h, i) => (
+            <span key={i} className={cn("w-2 rounded-sm opacity-80", GRADIENT)} style={{ height: `${h}%` }} />
+          ))}
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-1.5 text-[11px]">
+        <span className="rounded-lg bg-emerald-50 px-2 py-1.5 font-semibold text-emerald-700">18 paid</span>
+        <span className="rounded-lg bg-amber-50 px-2 py-1.5 font-semibold text-amber-700">4 due</span>
+      </div>
+    </div>
+  )
+}
+
 /** The small picture inside each "how it works" step. */
 function StepVisual({ kind }) {
   if (kind === "workspace") {
@@ -889,18 +1007,26 @@ export default function FinstapLanding() {
             ))}
           </div>
           <div className="mt-4 flex flex-wrap justify-center gap-4">
-            {FEATURE_CARDS.map(([Icon, title, text], i) => (
+            {FEATURE_CARDS.map((c, i) => (
               <FadeUp
-                key={title}
+                key={c.key}
                 delay={(i % 3) * 0.06}
                 className="w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc((100%-2rem)/3)]"
               >
-                <div className={cn(CARD, "h-full p-6 transition duration-300 hover:-translate-y-1")}>
-                  <span className="flex size-11 items-center justify-center rounded-xl bg-linear-to-br from-[#297bff]/12 to-[#834aff]/15 text-[#5f5cff] shadow-[inset_0_1px_0_#fff]">
-                    <Icon className="size-5" />
-                  </span>
-                  <h3 className="mt-5 text-lg font-semibold tracking-[-0.03em] text-[#121212]">{title}</h3>
-                  <p className={cn("mt-2", BODY)}>{text}</p>
+                <div
+                  className={cn(
+                    CARD,
+                    "group flex h-full flex-col overflow-hidden p-2 transition duration-300 hover:-translate-y-1",
+                  )}
+                >
+                  {/* One height for every picture, so the titles line up across a row */}
+                  <div className="flex min-h-[188px] flex-col justify-center rounded-[16px] bg-linear-to-br from-[#297bff]/[0.07] via-[#f7f7fb] to-[#834aff]/[0.09] p-4 sm:p-5">
+                    <MiniVisual kind={c.key} />
+                  </div>
+                  <div className="p-4 sm:p-5">
+                    <h3 className="text-lg font-semibold tracking-[-0.03em] text-[#121212]">{c.title}</h3>
+                    <p className={cn("mt-1.5", BODY)}>{c.text}</p>
+                  </div>
                 </div>
               </FadeUp>
             ))}
