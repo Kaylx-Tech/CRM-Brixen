@@ -67,7 +67,7 @@ function PlanCard({ data, index, yearly }) {
           </>
         )}
       </div>
-      <p className="mt-3 min-h-[44px] text-[15px] font-medium leading-snug tracking-[-0.02em] text-[#575757]/80">{plan.tagline}</p>
+      <p className="mt-3 min-h-[44px] text-[14px] font-medium leading-snug tracking-[-0.02em] text-[#575757]/80">{plan.tagline}</p>
       <p className="h-4 text-xs text-slate-400">
         {custom ? "Custom software, limits and support" : yearly ? `${money(price)} billed yearly, excl. VAT` : "Billed monthly, excl. VAT"}
       </p>
@@ -181,12 +181,12 @@ export default function FinstapPricing() {
   }, [])
 
   return (
-    <section id="pricing" className="scroll-mt-24 py-24 sm:py-32">
+    <section id="pricing" className="scroll-mt-24 py-16">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
           <span className="inline-flex items-center rounded-full bg-[#5f5cff]/[0.07] px-3 py-1 text-xs font-semibold text-[#5f5cff] ring-1 ring-[#5f5cff]/15">Pricing</span>
           <h2 className="mt-4 text-[34px] font-semibold leading-[1.2] tracking-[-0.05em] text-[#121212] sm:text-[48px]">Simple Plans That Grow with You</h2>
-          <p className="mt-4 text-[15px] font-medium tracking-[-0.02em] text-[#575757]/80">
+          <p className="mt-4 text-[14px] font-medium tracking-[-0.02em] text-[#575757]/80">
             One price for your whole workspace. Every plan starts with a 14-day free trial, no card needed.
           </p>
           <div className="mt-8 inline-flex items-center gap-1 rounded-[16px] bg-white p-1.5 shadow-[0_1px_20px_rgba(0,0,0,0.05)]">
