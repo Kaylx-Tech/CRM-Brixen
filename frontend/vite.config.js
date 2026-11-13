@@ -83,6 +83,18 @@ export default defineConfig(({ mode }) => ({
       transform: { define: { define: 'undefined' } },
     },
   },
+  build: {
+    rolldownOptions: {
+      // Built files get new names ("-b2-" before the hash). On 2026-11-13 Cloudflare kept a 404 for the old script
+      // (index-u2evpumU.js) during a deploy and the app loaded blank; new names are never in that cache. Change the
+      // tag again if a stale cached file ever has to be skipped without purging Cloudflare.
+      output: {
+        entryFileNames: 'assets/[name]-b2-[hash].js',
+        chunkFileNames: 'assets/[name]-b2-[hash].js',
+        assetFileNames: 'assets/[name]-b2-[hash][extname]',
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL('./src', import.meta.url)),
