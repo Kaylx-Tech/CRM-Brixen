@@ -251,7 +251,7 @@ export const DataTable = ({
                   if (isSearchControlled) onSearchChange(event.target.value);
                   else setGlobalFilter(event.target.value);
                 }}
-                disabled={isLoading}
+                // Never disabled while the list loads: a disabled box loses the cursor after the first letter
               />
             </div>
           )}
