@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react"
 import { cn } from "cn"
@@ -268,8 +268,23 @@ function SectionHead({ eyebrow, title, text, className }) {
 
 function Header() {
   const [open, setOpen] = useState(false)
+  // A soft shadow under the header once the page is scrolled, so it separates from what passes under it
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    onScroll()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
   return (
-    <header className="sticky top-0 z-40 bg-[#fcfcfc]/80 backdrop-blur-xl">
+    <header
+      className={cn(
+        "sticky top-0 z-40 backdrop-blur-xl transition-[background-color,box-shadow] duration-300",
+        scrolled
+          ? "bg-[#fcfcfc]/90 shadow-[0_1px_0_rgba(15,23,42,0.06),0_10px_30px_-20px_rgba(15,23,42,0.35)]"
+          : "bg-[#fcfcfc]/80",
+      )}
+    >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <a href="#top" className="flex items-center">
           <img src={finstapLogo} alt="Finstap" className="h-7 w-auto" />
@@ -397,6 +412,21 @@ function ProductShot() {
   )
 }
 
+/** A row inside a small card picture: rises in after the row before it, once, when it comes into view. */
+function Rise({ i = 0, className, children }) {
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 8 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.45, delay: 0.15 + i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
 /** The small picture inside each bento card. */
 function BentoVisual({ kind }) {
   if (kind === "clients") {
@@ -407,8 +437,9 @@ function BentoVisual({ kind }) {
           ["NW", "Northwind Logistics", "1 company"],
           ["BO", "Blue Oak Consulting", "2 companies"],
         ].map(([initials, name, sub], i) => (
-          <div
+          <Rise
             key={name}
+            i={i}
             className={cn(
               "flex items-center gap-3 rounded-2xl bg-white p-2.5 shadow-[0_0_0_1px_rgba(15,23,42,0.05)]",
               i === 0 && "ml-6",
@@ -427,7 +458,7 @@ function BentoVisual({ kind }) {
               <span className="block text-[11px] text-slate-500">{sub}</span>
             </span>
             <IconCircleCheckFilled className="size-4 text-emerald-500" />
-          </div>
+          </Rise>
         ))}
       </div>
     )
@@ -528,9 +559,10 @@ function MiniVisual({ kind }) {
           ["SK", "Sarah Khan", "Verified", "bg-emerald-50 text-emerald-700"],
           ["JL", "James Lee", "In progress", "bg-amber-50 text-amber-700"],
           ["OA", "Omar Ali", "Link sent", "bg-[#5f5cff]/10 text-[#5f5cff]"],
-        ].map(([initials, name, status, tone]) => (
-          <div
+        ].map(([initials, name, status, tone], i) => (
+          <Rise
             key={name}
+            i={i}
             className="flex items-center gap-2.5 rounded-xl bg-white p-2 shadow-[0_0_0_1px_rgba(15,23,42,0.05)]"
           >
             <span
@@ -543,7 +575,7 @@ function MiniVisual({ kind }) {
             </span>
             <span className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-800">{name}</span>
             <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", tone)}>{status}</span>
-          </div>
+          </Rise>
         ))}
       </div>
     )
@@ -556,7 +588,7 @@ function MiniVisual({ kind }) {
           ["Sent to Companies House", "Waiting for approval", true],
           ["Registered", "Company number 15234567", false],
         ].map(([step, sub, done], i) => (
-          <div key={step} className={cn("flex items-start gap-2.5", i > 0 && "mt-2.5")}>
+          <Rise key={step} i={i} className={cn("flex items-start gap-2.5", i > 0 && "mt-2.5")}>
             {done ? (
               <IconCircleCheckFilled className="mt-px size-4 shrink-0 text-emerald-500" />
             ) : (
@@ -566,7 +598,7 @@ function MiniVisual({ kind }) {
               <span className="block text-xs font-semibold text-slate-800">{step}</span>
               <span className="block truncate text-[11px] text-slate-500">{sub}</span>
             </span>
-          </div>
+          </Rise>
         ))}
       </div>
     )
@@ -600,15 +632,15 @@ function MiniVisual({ kind }) {
         {[
           ["HMRC letter.pdf", "Acme Trading Ltd"],
           ["Bank statement.pdf", "Blue Oak Consulting"],
-        ].map(([doc, client]) => (
-          <div key={doc} className="flex items-center gap-2 text-[11px]">
+        ].map(([doc, client], i) => (
+          <Rise key={doc} i={i} className="flex items-center gap-2 text-[11px]">
             <span className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg bg-slate-50 px-2 py-1.5 text-slate-700">
               <IconFileText className="size-3.5 shrink-0 text-slate-400" />
               <span className="truncate">{doc}</span>
             </span>
             <IconArrowRight className="size-3.5 shrink-0 text-[#5f5cff]" />
             <span className="min-w-0 flex-1 truncate font-semibold text-slate-800">{client}</span>
-          </div>
+          </Rise>
         ))}
         <p className="flex items-center gap-1.5 text-[11px] text-slate-500">
           <IconCircleCheckFilled className="size-3.5 text-emerald-500" /> Filed automatically
@@ -626,7 +658,15 @@ function MiniVisual({ kind }) {
         </span>
         <div className="flex h-10 items-end gap-1">
           {[40, 65, 50, 80, 60, 95].map((h, i) => (
-            <span key={i} className={cn("w-2 rounded-sm opacity-80", GRADIENT)} style={{ height: `${h}%` }} />
+            <motion.span
+              key={i}
+              className={cn("w-2 rounded-sm opacity-80", GRADIENT)}
+              style={{ height: `${h}%`, transformOrigin: "bottom" }}
+              initial={{ scaleY: 0 }}
+              whileInView={{ scaleY: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 + i * 0.07, ease: [0.22, 1, 0.36, 1] }}
+            />
           ))}
         </div>
       </div>
@@ -944,8 +984,9 @@ export default function FinstapLanding() {
             transition={{ duration: 0.6, delay: 0.25 }}
             className="mt-9 flex flex-col justify-center gap-3 sm:flex-row"
           >
-            <Link to="/signup" className={CTA}>
-              Start Free Trial <IconArrowRight className="size-4" />
+            <Link to="/signup" className={cn(CTA, "group")}>
+              Start Free Trial{" "}
+              <IconArrowRight className="size-4 transition-transform duration-200 motion-safe:group-hover:translate-x-1" />
             </Link>
             <a href="#features" className={GHOST}>
               See What's Inside
@@ -994,7 +1035,7 @@ export default function FinstapLanding() {
                   )}
                 >
                   {/* One height for every picture, so the titles line up across a row */}
-                  <div className="flex min-h-[224px] flex-col justify-center rounded-[16px] bg-linear-to-br from-[#297bff]/[0.07] via-[#f7f7fb] to-[#834aff]/[0.09] p-4 sm:p-5">
+                  <div className="flex min-h-[224px] flex-col justify-center rounded-[16px] transition-transform duration-500 motion-safe:group-hover:scale-[1.015] bg-linear-to-br from-[#297bff]/[0.07] via-[#f7f7fb] to-[#834aff]/[0.09] p-4 sm:p-5">
                     {i < BENTO.length ? <BentoVisual kind={c.key} /> : <MiniVisual kind={c.key} />}
                   </div>
                   <div className="p-4 sm:p-5">
@@ -1025,9 +1066,9 @@ export default function FinstapLanding() {
             {BENEFITS.map(([Icon, title, text], i) => (
               <FadeUp key={title} delay={(i % 3) * 0.06}>
                 <div
-                  className={cn(CARD, "h-full p-6 transition duration-300 hover:-translate-y-1")}
+                  className={cn(CARD, "group h-full p-6 transition duration-300 hover:-translate-y-1")}
                 >
-                  <span className="flex size-11 items-center justify-center rounded-xl bg-linear-to-br from-[#297bff]/12 to-[#834aff]/15 text-[#5f5cff] shadow-[inset_0_1px_0_#fff]">
+                  <span className="flex size-11 items-center justify-center rounded-xl bg-linear-to-br from-[#297bff]/12 to-[#834aff]/15 text-[#5f5cff] shadow-[inset_0_1px_0_#fff] transition-transform duration-300 motion-safe:group-hover:-rotate-6 motion-safe:group-hover:scale-110">
                     <Icon className="size-5" />
                   </span>
                   <h3 className="mt-5 text-lg font-semibold tracking-[-0.03em] text-[#121212]">
@@ -1092,13 +1133,13 @@ export default function FinstapLanding() {
                 <div
                   className={cn(
                     CARD,
-                    "h-full p-7 transition duration-300 hover:-translate-y-1 sm:p-8",
+                    "group h-full p-7 transition duration-300 hover:-translate-y-1 sm:p-8",
                   )}
                 >
                   <div className="flex items-start gap-4">
                     <span
                       className={cn(
-                        "flex size-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_-10px_rgba(95,92,255,0.6)]",
+                        "flex size-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_10px_20px_-10px_rgba(95,92,255,0.6)] transition-transform duration-300 motion-safe:group-hover:-rotate-6 motion-safe:group-hover:scale-110",
                         GRADIENT,
                       )}
                     >
