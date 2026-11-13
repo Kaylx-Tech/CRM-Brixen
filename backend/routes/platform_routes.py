@@ -170,6 +170,12 @@ def handle_platform_routes(environ, start_response, path, method, body, query=No
                 return validation_error(start_response, {'slug': msg})
             return error_response(start_response, msg, status_code=400)
         signup_email.use_token(email_token)
+        # The owner portal's bell: a new company signed up
+        from services.owner_notifications import notify
+        notify('signup', f"New workspace: {tenant['name']}",
+               f"{tenant.get('owner_name') or ''} ({verified}) started a free trial at {tenant['slug']}"
+               f"{', mobile ' + tenant['owner_phone'] if tenant.get('owner_phone') else ''}.",
+               f"/owner/workspaces/{tenant['slug']}", tenant['slug'])
 
         # Sign the owner straight into the new workspace
         with use_tenant(tenant):

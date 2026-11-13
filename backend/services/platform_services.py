@@ -438,6 +438,11 @@ def request_ro(tenant, user, company_id, notes=''):
     """, (tenant['slug'], company['id'], company['name'], company.get('company_number'), company.get('user_id'),
           company.get('full_name'), company.get('email'), (notes or '').strip()[:1000] or None,
           settings()['ro_price_year'], user.get('email')))
+    from services.owner_notifications import notify
+    notify('registered_office', f"Registered office request: {company['name']}",
+           f"{tenant['name']} asked for a registered office for {company['name']}"
+           f"{' (' + company['company_number'] + ')' if company.get('company_number') else ''}. Confirm or reject it.",
+           '/owner/registered-office', tenant['slug'])
     _tell_owners(tenant, company)
     return _ro_row(_ro(request_id))
 

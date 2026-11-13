@@ -136,6 +136,9 @@ def credit_card_topup(slug, amount, stripe_ref):
             INSERT INTO wallet_entries (tenant_slug, amount, kind, ref, note, created_by)
             VALUES (?, ?, 'topup', ?, 'Card top-up', 'Stripe');
         """, (slug, amount, f"stripe:{stripe_ref}"))
+        from services.owner_notifications import notify
+        notify('payment', f"Balance top-up by card: £{float(amount):,.2f}",
+               f"Workspace {slug} added £{float(amount):,.2f} to its balance by card.", '/owner/billing', slug)
     except Exception as exc:
         if 'unique' not in str(exc).lower():
             raise
@@ -148,6 +151,10 @@ def request_transfer(slug, user, amount, reference):
     request_id = _platform_execute("""
         INSERT INTO wallet_topup_requests (tenant_slug, amount, reference, requested_by) VALUES (?, ?, ?, ?);
     """, (slug, amount, (str(reference or '').strip() or f"FINSTAP-{slug.upper()}")[:120], (user or {}).get('email')))
+    from services.owner_notifications import notify
+    notify('topup', f"Bank transfer to approve: £{amount:,.2f}",
+           f"Workspace {slug} says it sent £{amount:,.2f}. Approve it in Billing when the money arrives.",
+           '/owner/billing', slug)
     _tell_owners(slug, amount)
     return _platform_query("SELECT * FROM wallet_topup_requests WHERE id = ?;", (request_id,), one=True)
 

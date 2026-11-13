@@ -312,6 +312,11 @@ def start(tenant, user, order_number, kind='registered_office'):
           order.get('owner_name') or order.get('full_name'), order.get('owner_form_email') or order.get('email'),
           f"AutoAllot from order {order['order_number']}", VERIFYING, settings()['ro_price_year'], user.get('email'),
           SOURCE, order['id'], order['order_number'], verification['id']))
+    from services.owner_notifications import notify
+    notify('registered_office', f"AutoAllot: {order['company_name']}",
+           f"{tenant['name']} started AutoAllot for {order['company_name']} (order {order['order_number']}). "
+           "The address is allotted by itself once the ID check passes.",
+           '/owner/registered-office', tenant['slug'])
     if verification['status'] == 'Approved':
         return allot(request_id), "Identity already verified: the address was allotted."
     hours = KINDS[kind]['hold_hours']

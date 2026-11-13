@@ -307,6 +307,15 @@ def _save_payment(slug, amount, kind, ref, receipt_url=None, note=None, period=(
     """, (slug, amount, tenant.get('plan') if kind == 'subscription' else None,
           tenant.get('billing_cycle') if kind == 'subscription' else None,
           (period[0] or '')[:10] or None, (period[1] or '')[:10] or None, CARD, note, kind, ref, receipt_url))
+    from services.owner_notifications import notify
+    try:
+        shown = f"£{float(amount):,.2f}"
+    except (TypeError, ValueError):
+        shown = str(amount)
+    notify('payment', f"Card payment: {shown} from {tenant.get('name') or slug}",
+           f"{tenant.get('name') or slug} paid {shown} by card"
+           f"{' for its subscription' if kind == 'subscription' else ' for services' if kind == 'services' else ''}.",
+           f"/owner/workspaces/{slug}", slug)
     return True
 
 

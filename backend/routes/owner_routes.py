@@ -18,6 +18,9 @@
   POST /workspaces/<slug>/code {action: suspend|delete}  emails the signed-in owner a 6-digit code
   POST /workspaces/<slug>/delete {reason, challenge, code}  hidden, nobody signs in, database kept
   GET  /activity                         → what owners changed, newest first
+  GET  /notifications                    → {notifications, unread}: the bell (new signups, transfers to approve,
+                                           registered office requests, card payments), with this owner's read state
+  POST /notifications/read {ids?}        → marks those read (no ids: all of them) for this owner
   GET/POST /services/settings            → KYC price per check, registered office price a year, office addresses
   GET  /kyc?period=YYYY-MM               → KYC checks per workspace that month and what to charge
   POST /kyc/billing {slug, period, status: invoiced|paid|''}
@@ -471,6 +474,16 @@ def handle_owner_routes(environ, start_response, path, method, body, query):
         return _desk(environ, start_response, sub, method, admin, body, query)
     if admin.get('role') != 'owner':
         return error_response(start_response, "This is for the Finstap owner only.", status_code=403)
+
+    # ── the bell: notifications for the owners (services/owner_notifications.py) ──
+    if sub == '/notifications' and method == 'GET':
+        from services import owner_notifications
+        return success_response(start_response, data=owner_notifications.for_admin(admin['id']))
+    if sub == '/notifications/read' and method == 'POST':
+        from services import owner_notifications
+        ids = body.get('ids')
+        owner_notifications.mark_read(admin['id'], ids if isinstance(ids, list) else None)
+        return success_response(start_response, data=owner_notifications.for_admin(admin['id']))
 
     if sub == '/kyc-users' and method == 'GET':
         from services import kyc_payouts

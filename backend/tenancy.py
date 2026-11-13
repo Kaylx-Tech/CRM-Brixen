@@ -247,6 +247,22 @@ CREATE TABLE IF NOT EXISTS platform_password_links (
     ip TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+-- Owner portal notifications (services/owner_notifications.py): one row per event, and which owner has read it
+CREATE TABLE IF NOT EXISTS owner_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT,
+    link TEXT,
+    tenant_slug TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS owner_notification_reads (
+    notification_id INTEGER NOT NULL,
+    admin_id INTEGER NOT NULL,
+    read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (notification_id, admin_id)
+);
 -- Stripe webhook events already handled (Stripe can send one more than once)
 CREATE TABLE IF NOT EXISTS stripe_events (
     event_id TEXT PRIMARY KEY,

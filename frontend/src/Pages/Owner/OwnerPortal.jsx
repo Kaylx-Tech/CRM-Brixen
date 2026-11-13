@@ -42,6 +42,7 @@ import OwnerBilling from "./OwnerBilling"
 import OwnerBlog, { OwnerBlogEditor } from "./OwnerBlog"
 import OwnerNewsletter from "./OwnerNewsletter"
 import OwnerIntegrations from "./OwnerIntegrations"
+import { OwnerNotificationBell, useOwnerNotifications } from "./OwnerNotifications"
 
 // The owner menu in the sidebar. A plain entry is [label, path, icon]; a group is a small heading with its pages.
 const NAV = [
@@ -155,11 +156,12 @@ function Logo({ className }) {
 }
 
 /** Tablets and computers: a fixed sidebar on the left with the whole menu, the owner's name and Sign out. */
-function OwnerSidebar({ admin, onSignOut }) {
+function OwnerSidebar({ admin, onSignOut, notifications }) {
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r bg-background md:flex">
-      <div className="flex h-16 items-center px-5">
+      <div className="flex h-16 items-center justify-between gap-2 pr-3 pl-5">
         <Logo />
+        <OwnerNotificationBell state={notifications} align="start" />
       </div>
       <nav aria-label="Owner menu" className="flex-1 overflow-y-auto px-3 py-2">
         <div className="flex flex-col gap-0.5">
@@ -194,14 +196,17 @@ function OwnerSidebar({ admin, onSignOut }) {
 }
 
 function OwnerShell({ admin, onSignOut, children }) {
+  // One list for both bells (sidebar on computers, header on phones), so it is loaded once
+  const notifications = useOwnerNotifications()
   return (
     <div className="min-h-screen bg-muted/30">
-      <OwnerSidebar admin={admin} onSignOut={onSignOut} />
+      <OwnerSidebar admin={admin} onSignOut={onSignOut} notifications={notifications} />
       {/* Phones: a slim header with the logo; the menu is the tab bar at the bottom */}
       <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur-xl md:hidden">
         <div className="flex h-14 items-center justify-between gap-4 px-4">
           <Logo />
           <div className="flex shrink-0 items-center gap-2">
+            <OwnerNotificationBell state={notifications} />
             <ModeToggle />
             <Button variant="outline" size="lg" onClick={onSignOut} aria-label="Sign out">
               <IconLogout className="size-4" />
