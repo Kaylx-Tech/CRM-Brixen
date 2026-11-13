@@ -984,35 +984,10 @@ export default function FinstapLanding() {
             }
             text="One workspace for the work you do every day, from the first order to the final filing."
           />
-          <div className="mt-14 grid gap-4 md:grid-cols-2">
-            {BENTO.map((b, i) => (
-              <FadeUp key={b.key} delay={(i % 2) * 0.08}>
-                <div
-                  className={cn(
-                    CARD,
-                    "group flex h-full flex-col overflow-hidden p-2 transition duration-300 hover:-translate-y-1",
-                  )}
-                >
-                  <div className="rounded-[20px] bg-linear-to-br from-[#297bff]/[0.07] via-[#f7f7fb] to-[#834aff]/[0.09] p-6 sm:p-8">
-                    <BentoVisual kind={b.key} />
-                  </div>
-                  <div className="p-5 sm:p-6">
-                    <h3 className="text-xl font-semibold tracking-[-0.03em] text-[#121212]">
-                      {b.title}
-                    </h3>
-                    <p className={cn("mt-1.5", BODY)}>{b.text}</p>
-                  </div>
-                </div>
-              </FadeUp>
-            ))}
-          </div>
-          <div className="mt-4 flex flex-wrap justify-center gap-4">
-            {FEATURE_CARDS.map((c, i) => (
-              <FadeUp
-                key={c.key}
-                delay={(i % 3) * 0.06}
-                className="w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc((100%-2rem)/3)]"
-              >
+          {/* All nine feature cards in one grid, every card the same size (3 x 3 on big screens) */}
+          <div className="mt-14 grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[...BENTO, ...FEATURE_CARDS].map((c, i) => (
+              <FadeUp key={c.key} delay={(i % 3) * 0.06} className="h-full">
                 <div
                   className={cn(
                     CARD,
@@ -1020,8 +995,8 @@ export default function FinstapLanding() {
                   )}
                 >
                   {/* One height for every picture, so the titles line up across a row */}
-                  <div className="flex min-h-[188px] flex-col justify-center rounded-[16px] bg-linear-to-br from-[#297bff]/[0.07] via-[#f7f7fb] to-[#834aff]/[0.09] p-4 sm:p-5">
-                    <MiniVisual kind={c.key} />
+                  <div className="flex min-h-[224px] flex-col justify-center rounded-[16px] bg-linear-to-br from-[#297bff]/[0.07] via-[#f7f7fb] to-[#834aff]/[0.09] p-4 sm:p-5">
+                    {i < BENTO.length ? <BentoVisual kind={c.key} /> : <MiniVisual kind={c.key} />}
                   </div>
                   <div className="p-4 sm:p-5">
                     <h3 className="text-lg font-semibold tracking-[-0.03em] text-[#121212]">{c.title}</h3>
