@@ -52,7 +52,8 @@ function PlanCard({ data, index, yearly }) {
   const price = yearly ? plan.price_year : plan.price_month
 
   const card = (
-    <div className={cn("flex h-full flex-col rounded-[20px] bg-white p-7", !popular && "shadow-[0_1px_20px_rgba(0,0,0,0.05)]")}>
+    // The popular card fills what is left of its frame under "Most popular" (h-full would push it out of the frame)
+    <div className={cn("flex flex-col rounded-[20px] bg-white p-7", popular ? "flex-1" : "h-full shadow-[0_1px_20px_rgba(0,0,0,0.05)]")}>
       <h3 className="text-[17px] font-semibold tracking-[-0.02em] text-[#121212]">{plan.name}</h3>
 
       <div className="mt-6 flex items-baseline gap-1">
@@ -94,13 +95,14 @@ function PlanCard({ data, index, yearly }) {
     </div>
   )
 
+  // The popular plan is raised 3rem above the others and is 3rem taller, so its bottom still lines up with theirs
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.5, delay: index * 0.07, ease: [0.22, 1, 0.36, 1] }}
-      className={cn("h-full", popular && "lg:-mt-12")}
+      className={cn("h-full", popular && "lg:-mt-12 lg:h-[calc(100%+3rem)]")}
     >
       {popular ? (
         // The popular plan sits in a thick frame of the logo gradient with "Most popular" on its top band
