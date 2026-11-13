@@ -31,7 +31,6 @@ import {
   IconX,
 } from "@tabler/icons-react"
 import finstapLogo from "@/assets/finstap-logo.svg"
-import finstapLogoLight from "@/assets/finstap-logo-light.svg"
 import finstapMark from "@/assets/finstap-mark.svg"
 import dashboardShot from "@/assets/finstap-dashboard.png"
 import { LegalLinks } from "@/Pages/Legal/LegalLayout"
@@ -1281,16 +1280,14 @@ export default function FinstapLanding() {
       </section>
 
       {/* Footer */}
-      <footer className="relative overflow-hidden bg-linear-to-br from-[#297bff] via-[#5f5cff] to-[#834aff] text-white">
-        <span aria-hidden className="pointer-events-none absolute -right-16 -top-20 size-72 rounded-full bg-white/15 blur-3xl" />
-        <span aria-hidden className="pointer-events-none absolute -bottom-24 -left-10 size-72 rounded-full bg-[#297bff]/50 blur-3xl" />
-        <div className="relative mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
+      <footer className="border-t border-slate-200/70 bg-white">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
           <div>
-            <img src={finstapLogoLight} alt="Finstap" className="h-7 w-auto" />
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/80">
+            <img src={finstapLogo} alt="Finstap" className="h-7 w-auto" />
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-500">
               The CRM for UK accountants and company formation firms.
             </p>
-            <Link to="/signup" className={cn(LIGHT_BUTTON, "mt-5 px-5 py-2.5 text-[#5f5cff]")}>
+            <Link to="/signup" className={cn(CTA, "mt-5 px-5 py-2.5")}>
               Start Free Trial
             </Link>
           </div>
@@ -1321,16 +1318,16 @@ export default function FinstapLanding() {
             ],
           ].map(([heading, links]) => (
             <div key={heading}>
-              <p className="text-sm font-semibold text-white">{heading}</p>
-              <ul className="mt-4 grid gap-2.5 text-sm text-white/75">
+              <p className="text-sm font-semibold text-slate-900">{heading}</p>
+              <ul className="mt-4 grid gap-2.5 text-sm text-slate-500">
                 {links.map(([label, href]) => (
                   <li key={label}>
                     {href.startsWith("#") ? (
-                      <a href={href} className="hover:text-white">
+                      <a href={href} className="hover:text-[#5f5cff]">
                         {label}
                       </a>
                     ) : (
-                      <Link to={href} className="hover:text-white">
+                      <Link to={href} className="hover:text-[#5f5cff]">
                         {label}
                       </Link>
                     )}
@@ -1340,10 +1337,10 @@ export default function FinstapLanding() {
             </div>
           ))}
         </div>
-        <div className="relative border-t border-white/15">
-          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 py-6 text-sm text-white/75 sm:flex-row sm:px-6">
+        <div className="border-t border-slate-100">
+          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 py-6 text-sm text-slate-500 sm:flex-row sm:px-6">
             <p>© 2026 Finstap. All rights reserved.</p>
-            <LegalLinks linkClassName="hover:text-white" />
+            <LegalLinks />
           </div>
         </div>
       </footer>
