@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
-import { useNavigate } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import { apiRequest, getApiBase, toastApiEmpty } from "@/lib/api"
 import { toastUndoableDelete } from "@/lib/toastActions"
 
@@ -109,6 +109,17 @@ const Customers = () => {
   useEffect(() => {
     loadCustomers()
   }, [])
+
+  // Ctrl K search opens one customer here: /admin/customers?open=<id> (the address is cleaned up after)
+  const location = useLocation()
+  const openId = Number(new URLSearchParams(location.search).get('open')) || null
+  useEffect(() => {
+    if (!openId || isLoading) return
+    const found = customers.find((c) => c.id === openId)
+    if (found) setViewCustomer(found)
+    navigate(location.pathname, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openId, isLoading, customers])
 
   // Headline numbers; the type cards switch the tab below
   const customerStats = useMemo(() => {

@@ -28,6 +28,7 @@ from .finance_routes import handle_finance_routes
 from .plan_routes import handle_plan_routes
 from .platform_service_routes import handle_platform_service_routes
 from .billing_routes import handle_billing_routes
+from .search_routes import handle_search_routes
 
 
 # Accounts file integration
@@ -61,6 +62,11 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
 
     # 1b4. The workspace's billing: plan and services paid by card through Stripe (admins)
     res = handle_billing_routes(environ, start_response, path, method, user, body, query)
+    if res is not None:
+        return res
+
+    # 1b5. Ctrl K search across clients, companies, orders and invoices (team only)
+    res = handle_search_routes(environ, start_response, path, method, user, body, query)
     if res is not None:
         return res
 

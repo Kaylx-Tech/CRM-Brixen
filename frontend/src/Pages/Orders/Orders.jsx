@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -246,6 +247,13 @@ export default function Orders() {
     setSelectedOrderId(orderId)
     setViewOrderOpen(true)
   }, [])
+
+  // The same deep link while this page is already open (Ctrl K search picks another order)
+  const location = useLocation()
+  useEffect(() => {
+    const id = Number(new URLSearchParams(location.search).get('open'))
+    if (id) handleOpenOrder(id)
+  }, [location.search, handleOpenOrder])
 
   // No status picked: the list is split like an inbox, open orders (Pending / In Progress) on top
   // and everything else below, each section with its own pages

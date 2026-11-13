@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -70,6 +71,7 @@ const monthLabel = (key) => {
 }
 import { SectionCards } from '../../Layout/StatsCard'
 import CompanyCard from './CompanyCard'
+import ViewCompany from './ViewCompany'
 import AddCompany from './AddCompany'
 import ImportWebfilingModal from './ImportWebfilingModal'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -94,6 +96,21 @@ const Companies = () => {
   const [activeTab, setActiveTab] = useState('all')
   const [pageOpenedAt] = useState(() => Date.now())
   const [isBackfilling, setIsBackfilling] = useState(false)
+
+  // Ctrl K search opens one company here: /admin/companies?open=<id> (the address is cleaned up after)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [openCompany, setOpenCompany] = useState(null)
+  const openId = Number(new URLSearchParams(location.search).get('open')) || null
+  useEffect(() => {
+    if (!openId || isLoading) return
+    const hit = location.state?.company
+    const found = companies.find((c) => c.id === openId) ||
+      (hit && { id: hit.id, name: hit.name, number: hit.company_number, status: hit.status, raw: hit })
+    if (found) setOpenCompany(found)
+    navigate(location.pathname, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openId, isLoading, companies])
 
   const backfillFormations = async () => {
     setIsBackfilling(true)
@@ -680,6 +697,14 @@ const Companies = () => {
         onImportSuccess={() => {
           fetchCompanies()
         }}
+      />
+
+      {/* A company opened from the Ctrl K search */}
+      <ViewCompany
+        isOpen={Boolean(openCompany)}
+        onClose={() => setOpenCompany(null)}
+        company={openCompany}
+        onUpdate={fetchCompanies}
       />
     </div>
   )
