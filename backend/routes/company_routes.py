@@ -252,6 +252,67 @@ COMPANY_STAFF_SELECT = (
     "u.full_name as client_name, u.email as client_email"
 )
 
+_NAME_ENDINGS = r'(public limited company|limited liability partnership|limited|ltd|plc|llp|company|co|cyf|cyfyngedig|ccc)'
+_SENSITIVE_WORDS = ('bank', 'royal', 'british', 'england', 'national', 'international', 'police', 'charity',
+                    'university', 'trust', 'insurance', 'chartered', 'institute', 'government', 'council')
+
+
+def name_availability(name):
+    """Can this new company name be registered? Returns (data, error, status_code).
+
+    Applies the Companies House "same as" comparison: case, punctuation, spaces, "&"/"and", a leading "The" and
+    endings like Ltd / Limited / PLC are ignored. Names of dissolved companies can be reused, so only live companies
+    block a name. Used by the order form (signed in) and the public website name search.
+    """
+    name = str(name or '').strip()[:160]
+    if len(name) < 3:
+        return None, "Type at least 3 characters", 400
+    if not get_ch_api_key():
+        return None, "Companies House API key is not set (Settings > Integrations).", 503
+    endings = _NAME_ENDINGS
+
+    def _same_as(text):
+        t = str(text or '').lower().replace('&', ' and ').replace('+', ' plus ')
+        t = re.sub(r"[^a-z0-9 ]+", ' ', t)
+        t = re.sub(r'\s+', ' ', t).strip()
+        t = re.sub(r'^the ', '', t)
+        t = re.sub(rf'(\s+{endings})+$', '', t)
+        return t.replace(' ', '')
+
+    wanted = _same_as(name)
+    if not wanted:
+        return None, "Type the name you want to register", 400
+    # Search with the same core words the comparison uses (no leading "The", no Ltd/Limited ending)
+    core = re.sub(r'^\s*the\s+', '', name, flags=re.I)
+    core = re.sub(rf'(\s+{endings}\.?)+\s*$', '', core, flags=re.I).strip() or name
+    res = search_companies_house(core)
+    if not res.get('success'):
+        return None, res.get('error') or 'Companies House search failed', 502
+
+    conflicts, similar = [], []
+    for item in res.get('results') or []:
+        entry = {
+            "name": item.get('title') or item.get('company_name') or '',
+            "number": item.get('company_number') or '',
+            "status": (item.get('company_status') or '').replace('-', ' ').capitalize(),
+        }
+        live = str(item.get('company_status') or '').lower() not in ('dissolved', 'converted-closed', 'removed')
+        if _same_as(entry['name']) == wanted and live:
+            conflicts.append(entry)
+        elif len(similar) < 5:
+            similar.append(entry)
+
+    warnings = []
+    if not re.search(rf'\b{endings}\.?\s*$', name, flags=re.I):
+        warnings.append('A private company name must end with "Ltd" or "Limited".')
+    found = [w for w in _SENSITIVE_WORDS if re.search(rf'\b{w}\b', name, flags=re.I)]
+    if found:
+        warnings.append(f"Contains sensitive word(s) needing approval: {', '.join(found)}.")
+
+    return {"name": name, "available": not conflicts, "conflicts": conflicts, "similar": similar,
+            "warnings": warnings}, None, 200
+
+
 def handle_company_routes(environ, start_response, path, method, user, body, query):
     valid_prefixes = ('/api/companies', '/api/admin/companies', '/api/companies-house')
     if not any(path.startswith(prefix) for prefix in valid_prefixes):
@@ -367,62 +428,10 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
     # case, punctuation, spaces, "&"/"and", a leading "The" and endings like Ltd / Limited / PLC are ignored.
     # Names of dissolved companies can be reused, so only live companies block a name.
     if path in ('/api/companies/name-availability', '/api/admin/companies/name-availability') and method == 'GET':
-        name = (query.get('name') or [''])[0].strip()[:160]
-        if len(name) < 3:
-            return error_response(start_response, "Type at least 3 characters", status_code=400)
-        if not get_ch_api_key():
-            return error_response(start_response, "Companies House API key is not set (Settings > Integrations).",
-                                  status_code=503)
-
-        endings = r'(public limited company|limited liability partnership|limited|ltd|plc|llp|company|co|cyf|cyfyngedig|ccc)'
-
-        def _same_as(text):
-            t = str(text or '').lower().replace('&', ' and ').replace('+', ' plus ')
-            t = re.sub(r"[^a-z0-9 ]+", ' ', t)
-            t = re.sub(r'\s+', ' ', t).strip()
-            t = re.sub(r'^the ', '', t)
-            t = re.sub(rf'(\s+{endings})+$', '', t)
-            return t.replace(' ', '')
-
-        wanted = _same_as(name)
-        if not wanted:
-            return error_response(start_response, "Type the name you want to register", status_code=400)
-        # Search with the same core words the comparison uses (no leading "The", no Ltd/Limited ending)
-        core = re.sub(r'^\s*the\s+', '', name, flags=re.I)
-        core = re.sub(rf'(\s+{endings}\.?)+\s*$', '', core, flags=re.I).strip() or name
-        res = search_companies_house(core)
-        if not res.get('success'):
-            return error_response(start_response, res.get('error') or 'Companies House search failed', status_code=502)
-
-        conflicts, similar = [], []
-        for item in res.get('results') or []:
-            entry = {
-                "name": item.get('title') or item.get('company_name') or '',
-                "number": item.get('company_number') or '',
-                "status": (item.get('company_status') or '').replace('-', ' ').capitalize(),
-            }
-            live = str(item.get('company_status') or '').lower() not in ('dissolved', 'converted-closed', 'removed')
-            if _same_as(entry['name']) == wanted and live:
-                conflicts.append(entry)
-            elif len(similar) < 5:
-                similar.append(entry)
-
-        warnings = []
-        if not re.search(rf'\b{endings}\.?\s*$', name, flags=re.I):
-            warnings.append('A private company name must end with "Ltd" or "Limited".')
-        sensitive = ('bank', 'royal', 'british', 'england', 'national', 'international', 'police', 'charity',
-                     'university', 'trust', 'insurance', 'chartered', 'institute', 'government', 'council')
-        found = [w for w in sensitive if re.search(rf'\b{w}\b', name, flags=re.I)]
-        if found:
-            warnings.append(f"Contains sensitive word(s) needing approval: {', '.join(found)}.")
-
-        return success_response(start_response, data={
-            "name": name,
-            "available": not conflicts,
-            "conflicts": conflicts,
-            "similar": similar,
-            "warnings": warnings,
-        })
+        data, err, status = name_availability((query.get('name') or [''])[0])
+        if err:
+            return error_response(start_response, err, status_code=status)
+        return success_response(start_response, data=data)
 
     # ── GET /api/companies/lookup-ch (Companies House Search & Auto-fill) ─
     if path in ('/api/companies/lookup-ch', '/api/admin/companies/lookup-ch', '/api/admin/companies/search', '/api/companies-house/search', '/api/admin/companies/ch-live', '/api/companies-house/company') and method == 'GET':

@@ -8,10 +8,14 @@ GET      /api/v1/wordpress/documents                 documents shared with the c
 GET      /api/v1/wordpress/documents/<id>/download    the file itself
 GET/POST /api/v1/auth/sso                             website -> CRM portal sign-in (B2B accounts only; others
                                                       are sent back to the website)
+GET      /api/public/name-availability?name=         Next.js website name search: can this company name be
+                                                      registered? No sign-in; limited per visitor (IP).
 """
 import datetime
 import hashlib
 import hmac
+import threading
+import time
 import urllib.parse
 import uuid
 
@@ -19,6 +23,34 @@ from db import query_db, execute_db
 from utils.response import json_response
 from services.portal_access import client_can_use_crm_portal, website_login_url
 from routes.webhook_routes import _webhook_secret
+from routes.company_routes import name_availability
+
+# Public name search: at most this many checks per visitor inside the window (each one calls Companies House)
+NAME_CHECK_LIMIT = 20
+NAME_CHECK_WINDOW_SECONDS = 10 * 60
+_name_checks = {}
+_name_checks_lock = threading.Lock()
+
+
+def _visitor_ip(environ):
+    ip = (environ.get('HTTP_CF_CONNECTING_IP') or environ.get('HTTP_X_REAL_IP')
+          or (environ.get('HTTP_X_FORWARDED_FOR') or '').split(',')[0] or environ.get('REMOTE_ADDR') or '')
+    return ip.strip() or 'unknown'
+
+
+def _name_check_allowed(ip):
+    now = time.time()
+    with _name_checks_lock:
+        if len(_name_checks) > 5000:  # forget old visitors so the table stays small
+            for key in [k for k, v in _name_checks.items() if not v or now - v[-1] > NAME_CHECK_WINDOW_SECONDS]:
+                _name_checks.pop(key, None)
+        recent = [t for t in _name_checks.get(ip, []) if now - t < NAME_CHECK_WINDOW_SECONDS]
+        if len(recent) >= NAME_CHECK_LIMIT:
+            _name_checks[ip] = recent
+            return False
+        recent.append(now)
+        _name_checks[ip] = recent
+        return True
 
 
 def _verify_signature(wp_id, email, timestamp, signature, max_age_seconds=900):
@@ -76,6 +108,23 @@ def _client_can_open(doc):
 
 
 def handle_website_routes(environ, start_response, path, method, user, body, query):
+    if path == '/api/public/name-availability' and method == 'GET':
+        if not _name_check_allowed(_visitor_ip(environ)):
+            return json_response(start_response, {'status': 'error', 'message':
+                                 'Too many name checks. Please wait a few minutes or contact us.'}, status_code=429)
+        data, err, status = name_availability(((query or {}).get('name') or [''])[0])
+        if err:
+            if status >= 500:  # never show the visitor our setup or Companies House errors
+                err = 'Name check is not available right now. Please try again or contact us.'
+            return json_response(start_response, {'status': 'error', 'message': err}, status_code=status)
+        return json_response(start_response, {
+            'status': 'success',
+            'name': data['name'],
+            'available': data['available'],
+            'warnings': data['warnings'],
+            'similar': [i['name'] for i in data['similar'] if i.get('name')][:5],
+        })
+
     if not (path.startswith('/api/v1/wordpress/documents') or path == '/api/v1/auth/sso'):
         return None
 
