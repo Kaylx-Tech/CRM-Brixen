@@ -146,19 +146,32 @@ export function OrderSteps({ active = 0 }) {
   )
 }
 
+/** The banks we open business accounts with: app icons and names, as on the WordPress site. */
 export function BankPartners() {
   return (
-    <section className="border-y border-slate-100 bg-white">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-        <p className="text-center text-sm font-bold uppercase tracking-widest text-brand-teal">Banking Partners & Affiliates</p>
-        <p className="mt-2 text-center font-semibold text-brand-slate">We help you open business accounts with leading UK banks</p>
-        <div className="mt-8 grid grid-cols-3 items-center gap-6 sm:grid-cols-4 lg:grid-cols-7">
+    <section className="bg-white">
+      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
+        <h2 className="text-center text-3xl font-bold text-black sm:text-[40px]">
+          Banking <span className="text-brand-navy">Partners</span> &amp; <span className="text-brand-blue">Affiliates</span>
+        </h2>
+        <p className="mt-3 text-center text-slate-800">We help you open business accounts with leading UK banks</p>
+        <ul className="mx-auto mt-10 flex max-w-6xl flex-wrap justify-center gap-x-4 gap-y-8 sm:gap-x-12 xl:justify-between">
           {BANKS.map(([name, logo, href]) => (
-            <Link key={name} href={href} className="flex h-14 items-center justify-center opacity-80 grayscale transition hover:opacity-100 hover:grayscale-0" title={`${name} business account`}>
-              <Image src={logo} alt={name} width={130} height={48} className="max-h-12 w-auto object-contain" />
-            </Link>
+            <li key={name} className="w-22 sm:w-28">
+              <Link href={href} className="group flex flex-col items-center gap-2.5" title={`${name} business account`}>
+                <Image
+                  src={logo}
+                  alt=""
+                  width={500}
+                  height={500}
+                  sizes="72px"
+                  className="size-16 rounded-xl transition duration-200 group-hover:-translate-y-1 group-hover:shadow-lg sm:size-[72px]"
+                />
+                <span className="font-display text-lg font-medium text-black sm:text-xl">{name}</span>
+              </Link>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
     </section>
   )

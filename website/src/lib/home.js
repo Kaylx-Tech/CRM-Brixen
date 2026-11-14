@@ -14,13 +14,13 @@ export const MARQUEE = [
 ]
 
 export const BANKS = [
-  ["Ifast", "/home/ifast.webp", "/ifast-business-bank/"],
-  ["Zempler", "/home/zampler.webp", "/zempler-business-bank/"],
-  ["CountingUp", "/home/counting.webp", "/countingup-business-bank/"],
-  ["Tide", "/home/tide.webp", "/tide-business-bank/"],
-  ["Monzo", "/home/monzo.webp", "/monzo-business-bank/"],
-  ["Transwap", "/home/transwap.webp", "/transwap-business-bank/"],
-  ["Wise", "/home/wise.webp", "/wise-business-bank/"],
+  ["Ifast", "/home/banks/ifast.png", "/ifast-business-bank/"],
+  ["Zempler", "/home/banks/zempler.png", "/zempler-business-bank/"],
+  ["CountingUp", "/home/banks/countingup.png", "/countingup-business-bank/"],
+  ["Tide", "/home/banks/tide.png", "/tide-business-bank/"],
+  ["Monzo", "/home/banks/monzo.png", "/monzo-business-bank/"],
+  ["Transwap", "/home/banks/transwap.png", "/transwap-business-bank/"],
+  ["Wise", "/home/banks/wise.png", "/wise-business-bank/"],
 ]
 
 export const SERVICES = [
