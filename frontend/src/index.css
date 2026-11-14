@@ -7,10 +7,23 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Numbers in an Apple (SF Pro) style on every device, the workspaces and the owner portal alike: only the
+   digits and number signs (0-9 £ $ € % + , - . / :) come from Inter with its optical-size axis, which narrows
+   at big sizes like SF Pro Display; every letter stays Geist. (Apple's own SF Pro may only be used on Apple
+   devices, and Geist is used on them too, so the same numbers show everywhere.) */
+@font-face {
+  font-family: 'Apple Numerals';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('./assets/fonts/inter-numerals-opsz.woff2') format('woff2-variations');
+  unicode-range: U+0024-0025, U+002B-002F, U+0030-003A, U+00A3, U+20AC;
+}
+
 :root {
   --font-apple: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-inter: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-geist: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-geist: 'Apple Numerals', 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
   /* Geist Sans everywhere, on every device (the whole app reads one type family) */
   --font-sans: var(--font-geist);
