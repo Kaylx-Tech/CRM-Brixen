@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+/* Brixen's colours, from the WordPress site's Elementor kit: deep navy (also the CRM's Brixen colour), bright blue,
+   teal and a slate grey for body text */
+@theme {
+  --color-brand-navy: #003971;
+  --color-brand-blue: #1776d4;
+  --color-brand-teal: #008075;
+  --color-brand-slate: #626a84;
+  --color-brand-mist: #f3f7fb;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-nunito), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #ffffff;
+  color: #1c2434;
+  font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+}
