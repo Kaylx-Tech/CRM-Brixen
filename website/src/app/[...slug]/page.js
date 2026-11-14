@@ -6,8 +6,11 @@ import { PAGES, SITE, pageByPath } from "@/lib/site"
 // its own folder, which then takes over from this one), the address shows a short holding page.
 export const dynamicParams = false
 
+// Pages that have their own folder now (Next.js uses that folder; this list keeps them out of the holding pages)
+const BUILT = new Set(["/packages/"])
+
 export function generateStaticParams() {
-  return PAGES.map((p) => ({ slug: p.path.split("/").filter(Boolean) }))
+  return PAGES.filter((p) => !BUILT.has(p.path)).map((p) => ({ slug: p.path.split("/").filter(Boolean) }))
 }
 
 const pathOf = (slug) => `/${slug.join("/")}/`

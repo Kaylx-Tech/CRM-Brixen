@@ -8,7 +8,8 @@ export default function SiteFooter() {
     <footer className="mt-auto bg-brand-navy text-white">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.4fr_repeat(5,1fr)]">
         <div>
-          <Image src="/brand/brixen-logo.png" alt="Brixen Consultants" width={64} height={64} />
+          {/* The navy wordmark, turned white on the navy footer */}
+          <Image src="/brand/brixen-wordmark.webp" alt="Brixen Consultants" width={790} height={316} className="h-12 w-auto brightness-0 invert" />
           <p className="mt-4 font-semibold">{SITE.legalName}</p>
           <p className="mt-1 text-sm text-white/70">Company Number: {SITE.companyNumber}</p>
           <p className="text-sm text-white/70">ICO Registration Number: {SITE.icoNumber}</p>

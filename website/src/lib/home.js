@@ -71,7 +71,8 @@ export const SERVICES = [
   },
 ]
 
-const FEATURES = [
+// The three formation packages, as on the WordPress /packages/ page (true = included)
+const COMMON = [
   "LTD Company",
   "Online formation within 24-48 hrs.",
   "Digital Certificate of Incorporation",
@@ -80,46 +81,42 @@ const FEATURES = [
   "Online Company Manager",
   "£100 Companies House fee paid by us",
   "KYC Verification",
-  "Registered office address",
-  "Directors office address",
-  "Tide Business Bank Account",
-  "PayPal & Stripe Business Account",
-  "HMRC UTR Number",
-  ".co.uk or .com domain name",
-  "Web Filing Account Activation",
-  "Logo Design",
-  "Website Design",
-]
-
-const included = (missing) => FEATURES.map((f) => [f, !missing.includes(f)])
+].map((f) => [f, true])
 
 export const PACKAGES = [
   {
     name: "Digital",
     price: "£170",
     text: "Cheap and cheerful: just the basics to get you up and running.",
-    features: included([
-      "Tide Business Bank Account",
-      "PayPal & Stripe Business Account",
-      "HMRC UTR Number",
-      ".co.uk or .com domain name",
-      "Web Filing Account Activation",
-      "Logo Design",
-      "Website Design",
-    ]),
+    features: [
+      ...COMMON,
+      ["Registered office address", true],
+      ["Directors office address", true],
+      ["TapTap Business Bank Account (free)", true],
+      ["Tide Business Bank Account (£50 at checkout)", false],
+      [".co.uk or .com domain name", false],
+      ["Web Filing Account Activation", false],
+      ["HMRC UTR Number", false],
+      ["Logo Design", false],
+      ["Website Design", false],
+    ],
     href: "/digital-package-name-search/",
   },
   {
     name: "Professional",
     price: "£300",
     text: "Protect your privacy and professional image with our address services.",
-    features: included([
-      "PayPal & Stripe Business Account",
-      ".co.uk or .com domain name",
-      "Web Filing Account Activation",
-      "Logo Design",
-      "Website Design",
-    ]),
+    features: [
+      ...COMMON,
+      ["Tide Business Bank Account", true],
+      ["Registered office address", true],
+      ["Directors office address", true],
+      ["HMRC UTR Number", true],
+      [".co.uk or .com domain name", false],
+      ["Web Filing Account Activation", false],
+      ["Logo Design", false],
+      ["Website Design", false],
+    ],
     href: "/professional-package-name-search/",
     popular: true,
   },
@@ -127,7 +124,18 @@ export const PACKAGES = [
     name: "All Inclusive",
     price: "£450",
     text: "For entrepreneurs who want to focus on growth.",
-    features: included([]),
+    features: [
+      ...COMMON,
+      ["Tide Business Bank Account", true],
+      ["PayPal & Stripe Business Account", true],
+      ["Registered office address", true],
+      ["Directors office address", true],
+      [".co.uk or .com domain name", true],
+      ["Web Filing Account Activation", true],
+      ["HMRC UTR Number", true],
+      ["Logo Design", true],
+      ["Website Design", true],
+    ],
     href: "/all-inclusive-name-search/",
   },
 ]

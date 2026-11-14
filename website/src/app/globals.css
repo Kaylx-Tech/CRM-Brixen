@@ -10,7 +10,7 @@
   --color-brand-mist: #f3f7fb;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-nunito), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-heading), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 html {
