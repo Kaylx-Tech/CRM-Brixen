@@ -192,10 +192,13 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
             ORDER BY LOWER(l.category), l.sort_order, LOWER(l.title);
         """) or []
         links = [dict(r) for r in rows]
-        # Finstap's Partner Perks (set in admin.finstap.com) for every workspace, read only
+        # Finstap's Partner Perks (set in admin.finstap.com) for every workspace, read only. A workspace's own
+        # copy of the same link (the old "Add default links") is hidden, not deleted, so it never shows twice.
         try:
             from services.partner_perks import for_workspace
-            links = for_workspace() + links
+            perks = for_workspace()
+            perk_urls = {str(p.get('url') or '').strip().lower() for p in perks}
+            links = perks + [l for l in links if str(l.get('url') or '').strip().lower() not in perk_urls]
         except ImportError:
             pass
         categories = sorted({l['category'] for l in links}, key=str.lower)
@@ -258,13 +261,6 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
     if role not in MANAGE_ROLES:
         return error_response(start_response, "Only admins and managers can change Smart Operations links.",
                               status_code=403)
-
-    # The default partner and referral links (the ones a new workspace starts with)
-    if path == '/api/admin/smart-links/import-starter' and method == 'POST':
-        from services.starter_links import import_starter_links
-        added, skipped = import_starter_links(user.get('id'))
-        message = f"Added {added} default link(s)." if added else "You already have every default link."
-        return success_response(start_response, data={'added': added, 'skipped': skipped}, message=message)
 
     if path == '/api/admin/smart-links' and method == 'POST':
         fields, err = _clean(body)

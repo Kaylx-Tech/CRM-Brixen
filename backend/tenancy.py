@@ -795,12 +795,8 @@ def create_tenant(company_name, slug, owner_name, owner_email, password, owner_p
             except Exception as exc:
                 # The workspace still works without it; the admin can import it from Services
                 print(f"[Tenancy] Starter catalog for '{slug}' was not added: {exc}")
-            try:
-                from services.starter_links import import_starter_links
-                import_starter_links(admin_id)
-            except Exception as exc:
-                # The admin can add them from Smart Operations
-                print(f"[Tenancy] Default Smart Operations links for '{slug}' were not added: {exc}")
+            # The default partner links are not copied in: they are Finstap's Partner Perks, shown in every
+            # workspace (services/partner_perks.py)
     except Exception as exc:
         # Keep the file for inspection; the workspace just never goes Active
         _platform_execute("UPDATE tenants SET status = 'Failed', updated_at = datetime('now') WHERE id = ?;",

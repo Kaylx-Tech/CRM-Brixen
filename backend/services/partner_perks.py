@@ -41,6 +41,24 @@ def _ensure():
             PRIMARY KEY (perk_id, tenant_slug)
         );
     """)
+    _seed_defaults()
+
+
+def _seed_defaults():
+    """The default partner links (services/starter_links.py) become Finstap's perks, each one once: a default
+    the owner removed or changed is never added back (partner_perk_seeds keeps the links already given)."""
+    _platform_execute("CREATE TABLE IF NOT EXISTS partner_perk_seeds (url TEXT PRIMARY KEY);")
+    from services.starter_links import STARTER_LINKS
+    seeded = {r['url'] for r in (_platform_query("SELECT url FROM partner_perk_seeds;") or [])}
+    todo = [link for link in STARTER_LINKS if link['url'] not in seeded]
+    if not todo:
+        return
+    have = {str(r['url']).strip().lower() for r in (_platform_query("SELECT url FROM partner_perks;") or [])}
+    for i, link in enumerate(todo):
+        if link['url'].lower() not in have:
+            _platform_execute("INSERT INTO partner_perks (category, title, url, sort_order) VALUES (?, ?, ?, ?);",
+                              (link['category'], link['title'], link['url'], i))
+        _platform_execute("INSERT OR IGNORE INTO partner_perk_seeds (url) VALUES (?);", (link['url'],))
 
 
 def _public(p):

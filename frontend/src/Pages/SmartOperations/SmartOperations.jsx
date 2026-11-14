@@ -17,7 +17,6 @@ import {
   IconBuildingPlus,
   IconCheck,
   IconCopy,
-  IconDownload,
   IconExternalLink,
   IconFileText,
   IconGift,
@@ -333,22 +332,7 @@ export default function SmartOperations() {
     }
   }
 
-  // The default partner and referral links (new workspaces start with them); skips ones already here
-  const [isImporting, setIsImporting] = useState(false)
-  const importDefaults = async () => {
-    setIsImporting(true)
-    try {
-      const res = await apiRequest('/admin/smart-links/import-starter', { method: 'POST', label: 'Add default links', silent: true })
-      if (!res.ok) {
-        toast.error(res.reason || 'Could not add the default links')
-        return
-      }
-      toast.success(res.data?.message || 'Default links added')
-      load()
-    } finally {
-      setIsImporting(false)
-    }
-  }
+  // The default partner links are Finstap's Partner Perks now (admin.finstap.com), shown here by themselves
 
   const confirmDelete = async () => {
     if (!toDelete) return
@@ -399,10 +383,6 @@ export default function SmartOperations() {
         <div className={`flex items-center gap-2 ${linksTab ? '' : 'hidden'}`}>
           {canManage && (
             <>
-              <Button variant="outline" onClick={importDefaults} disabled={isImporting}>
-                {isImporting ? <IconLoader2 className="h-4 w-4 animate-spin" /> : <IconDownload className="h-4 w-4" />}
-                Add default links
-              </Button>
               <Button onClick={() => openNew()}>
                 <IconPlus className="h-4 w-4" />
                 Add link
@@ -497,10 +477,6 @@ export default function SmartOperations() {
           </p>
           {canManage && !search.trim() && (
             <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <Button variant="outline" onClick={importDefaults} disabled={isImporting}>
-                {isImporting ? <IconLoader2 className="h-4 w-4 animate-spin" /> : <IconDownload className="h-4 w-4" />}
-                Add default links
-              </Button>
               <Button onClick={() => openNew()}>
                 <IconPlus className="h-4 w-4" />
                 Add the first link

@@ -1,6 +1,6 @@
-"""Default Smart Operations links for a workspace: the partner and referral links from Brixen's own
-Smart Operations. A new workspace gets them at signup; an existing one adds them with "Add default links".
-The company edits or removes them and adds its own like any other link.
+"""The default partner and referral links. They are Finstap's Partner Perks now (services/partner_perks.py adds
+each one once to admin.finstap.com › Partner Perks), shown in every workspace; workspaces no longer get their
+own copies. import_starter_links is kept for reference and is not called any more.
 """
 from db import query_db, execute_db
 
