@@ -17,6 +17,24 @@ html {
   scroll-behavior: smooth;
 }
 
+/* The services strip under the header scrolls along slowly (it holds the list twice, so it loops without a jump) */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee {
+  animation: marquee 40s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    animation: none;
+  }
+}
+
 body {
   background: #ffffff;
   color: #1c2434;
