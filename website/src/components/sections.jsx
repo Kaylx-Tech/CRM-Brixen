@@ -61,15 +61,10 @@ export function RatingBoxes() {
   )
 }
 
-/** The three formation packages; `name` (from the name search) is carried into the chosen package's next step. */
-export function PackageCards({ name = "" }) {
-  const suffix = name ? `?name=${encodeURIComponent(name)}` : ""
+/** One formation package: price, what is in it and what is not, and its button. */
+export function PackageCard({ p, href, cta = "Launch Now" }) {
   return (
-    <>
-      <div className="grid gap-6 lg:grid-cols-3">
-        {PACKAGES.map((p) => (
           <div
-            key={p.name}
             className={`relative flex flex-col overflow-hidden rounded-3xl bg-white p-8 ${
               p.popular ? "shadow-[0_30px_60px_-30px_rgba(0,57,113,0.6)] ring-2 ring-brand-blue" : "shadow-[0_20px_40px_-30px_rgba(0,57,113,0.45)] ring-1 ring-slate-100"
             }`}
@@ -90,12 +85,23 @@ export function PackageCards({ name = "" }) {
               ))}
             </ul>
             <Link
-              href={`${p.href}${suffix}`}
+              href={href}
               className="mt-8 inline-flex justify-center rounded-md bg-linear-to-br from-brand-navy from-20% to-brand-blue px-6 py-3.5 font-semibold text-white transition hover:brightness-110"
             >
-              Launch Now
+              {cta}
             </Link>
           </div>
+  )
+}
+
+/** The three formation packages; `name` (from the name search) is carried into the chosen package's next step. */
+export function PackageCards({ name = "" }) {
+  const suffix = name ? `?name=${encodeURIComponent(name)}` : ""
+  return (
+    <>
+      <div className="grid gap-6 lg:grid-cols-3">
+        {PACKAGES.map((p) => (
+          <PackageCard key={p.name} p={p} href={`${p.href}${suffix}`} />
         ))}
       </div>
       <div className="mt-10 flex flex-col items-center gap-3">
@@ -103,6 +109,40 @@ export function PackageCards({ name = "" }) {
         <Image src="/home/all-card.png" alt="Mastercard, American Express, Maestro, Visa, JCB, Diners Club, Discover" width={808} height={86} className="h-auto w-full max-w-md" />
       </div>
     </>
+  )
+}
+
+const STEPS = [
+  ["Select Pack", "/home/selection-1.png"],
+  ["Name Check", "/home/search.png"],
+  ["File Details", "/home/search-1.png"],
+  ["Checkout", "/home/security.png"],
+]
+
+/** Order steps 1 to 4; `active` is the step this page is (0 = Select Pack). Steps before it show as done. */
+export function OrderSteps({ active = 0 }) {
+  return (
+    <ol className="mx-auto mt-10 grid max-w-3xl grid-cols-4 gap-2 sm:gap-6">
+      {STEPS.map(([label, icon], i) => (
+        <li key={label} className="relative flex flex-col items-center" aria-current={i === active ? "step" : undefined}>
+          {i > 0 && <span className={`absolute right-1/2 top-7 -z-10 h-0.5 w-full ${i <= active ? "bg-brand-blue" : "bg-white/25"}`} aria-hidden />}
+          <span
+            className={`flex size-14 items-center justify-center rounded-full ${
+              i === active
+                ? "bg-linear-to-br from-brand-navy from-20% to-brand-blue ring-4 ring-brand-blue/30"
+                : i < active
+                  ? "bg-brand-blue"
+                  : "bg-white/15"
+            }`}
+          >
+            <Image src={icon} alt="" width={512} height={512} className={`size-7 brightness-0 invert ${i > active ? "opacity-70" : ""}`} />
+          </span>
+          <span className={`mt-3 text-xs font-semibold sm:text-sm ${i <= active ? "text-white" : "text-white/60"}`}>
+            {i + 1}. {label}
+          </span>
+        </li>
+      ))}
+    </ol>
   )
 }
 

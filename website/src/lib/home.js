@@ -101,6 +101,9 @@ export const PACKAGES = [
       ["Website Design", false],
     ],
     href: "/digital-package-name-search/",
+    slug: "digital",
+    next: "/digital-package-company-registration/",
+    button: "Continue with Digital Package",
   },
   {
     name: "Professional",
@@ -118,6 +121,9 @@ export const PACKAGES = [
       ["Website Design", false],
     ],
     href: "/professional-package-name-search/",
+    slug: "professional",
+    next: "/professional-package-company-registration/",
+    button: "Continue with Pro Package",
     popular: true,
   },
   {
@@ -137,6 +143,9 @@ export const PACKAGES = [
       ["Website Design", true],
     ],
     href: "/all-inclusive-name-search/",
+    slug: "all-inclusive",
+    next: "/all-inclusive-package-company-registration/",
+    button: "Continue with Inclusive Package",
   },
 ]
 
