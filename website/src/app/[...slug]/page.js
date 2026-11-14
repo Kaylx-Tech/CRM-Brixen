@@ -7,7 +7,9 @@ import { PAGES, SITE, pageByPath } from "@/lib/site"
 export const dynamicParams = false
 
 // Pages that have their own folder now (Next.js uses that folder; this list keeps them out of the holding pages)
-const BUILT = new Set(["/packages/", "/digital-package-name-search/", "/professional-package-name-search/", "/all-inclusive-name-search/"])
+const BUILT = new Set(["/packages/", "/digital-package-name-search/", "/professional-package-name-search/", "/all-inclusive-name-search/",
+  "/digital-package-company-registration/", "/professional-package-company-registration/", "/all-inclusive-package-company-registration/",
+])
 
 export function generateStaticParams() {
   return PAGES.filter((p) => !BUILT.has(p.path)).map((p) => ({ slug: p.path.split("/").filter(Boolean) }))
