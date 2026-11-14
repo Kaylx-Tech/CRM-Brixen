@@ -14,6 +14,8 @@ const ACCOUNT_PAGES = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Docker (website/Dockerfile): a small server with only the files it needs
+  output: "standalone",
   // The same addresses as WordPress (/about/, /contact/ …), ending in a slash
   trailingSlash: true,
   turbopack: {
