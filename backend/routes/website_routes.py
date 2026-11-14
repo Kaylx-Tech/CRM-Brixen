@@ -10,10 +10,14 @@ GET/POST /api/v1/auth/sso                             website -> CRM portal sign
                                                       are sent back to the website)
 GET      /api/public/name-availability?name=         Next.js website name search: can this company name be
                                                       registered? No sign-in; limited per visitor (IP).
+POST     /api/public/formation-orders                 Next.js website "File Details" form (multipart: fields +
+                                                      ID / proof of address files): draft order + Stripe
+                                                      Checkout link (services/website_orders.py). Limited per IP.
 """
 import datetime
 import hashlib
 import hmac
+import os
 import threading
 import time
 import urllib.parse
@@ -24,12 +28,18 @@ from utils.response import json_response
 from services.portal_access import client_can_use_crm_portal, website_login_url
 from routes.webhook_routes import _webhook_secret
 from routes.company_routes import name_availability
+from config import ALLOWED_CORS_ORIGINS
 
 # Public name search: at most this many checks per visitor inside the window (each one calls Companies House)
 NAME_CHECK_LIMIT = 20
 NAME_CHECK_WINDOW_SECONDS = 10 * 60
 _name_checks = {}
 _name_checks_lock = threading.Lock()
+# Website orders: at most this many order forms per visitor per hour
+ORDER_FORM_LIMIT = 6
+ORDER_FORM_WINDOW_SECONDS = 60 * 60
+_order_forms = {}
+WEBSITE_URL = (os.environ.get('WEBSITE_URL') or 'https://brixenconsultants.com').rstrip('/')
 
 
 def _visitor_ip(environ):
@@ -38,19 +48,31 @@ def _visitor_ip(environ):
     return ip.strip() or 'unknown'
 
 
-def _name_check_allowed(ip):
+def _allowed(table, ip, limit, window):
+    """True and counted when this visitor is under `limit` requests inside `window` seconds."""
     now = time.time()
     with _name_checks_lock:
-        if len(_name_checks) > 5000:  # forget old visitors so the table stays small
-            for key in [k for k, v in _name_checks.items() if not v or now - v[-1] > NAME_CHECK_WINDOW_SECONDS]:
-                _name_checks.pop(key, None)
-        recent = [t for t in _name_checks.get(ip, []) if now - t < NAME_CHECK_WINDOW_SECONDS]
-        if len(recent) >= NAME_CHECK_LIMIT:
-            _name_checks[ip] = recent
+        if len(table) > 5000:  # forget old visitors so the table stays small
+            for key in [k for k, v in table.items() if not v or now - v[-1] > window]:
+                table.pop(key, None)
+        recent = [t for t in table.get(ip, []) if now - t < window]
+        if len(recent) >= limit:
+            table[ip] = recent
             return False
         recent.append(now)
-        _name_checks[ip] = recent
+        table[ip] = recent
         return True
+
+
+def _name_check_allowed(ip):
+    return _allowed(_name_checks, ip, NAME_CHECK_LIMIT, NAME_CHECK_WINDOW_SECONDS)
+
+
+def _website_url(environ):
+    """Where Stripe sends the customer back: the website the form came from when it is one of ours."""
+    origin = str(environ.get('HTTP_ORIGIN') or '').strip().rstrip('/')
+    return origin if origin in ALLOWED_CORS_ORIGINS and 'admin.' not in origin and 'portal.' not in origin \
+        else WEBSITE_URL
 
 
 def _verify_signature(wp_id, email, timestamp, signature, max_age_seconds=900):
@@ -124,6 +146,27 @@ def handle_website_routes(environ, start_response, path, method, user, body, que
             'warnings': data['warnings'],
             'similar': [i['name'] for i in data['similar'] if i.get('name')][:5],
         })
+
+    if path == '/api/public/formation-orders' and method == 'POST':
+        from services.website_orders import OrderError, create_formation_order
+        if not _allowed(_order_forms, _visitor_ip(environ), ORDER_FORM_LIMIT, ORDER_FORM_WINDOW_SECONDS):
+            return json_response(start_response, {'status': 'error', 'message':
+                                 'Too many order forms from your connection. Please wait a while or contact us.'},
+                                 status_code=429)
+        body = body if isinstance(body, dict) else {}
+        files = body.get('_files') or {}
+        fields = {k: v for k, v in body.items() if k != '_files'}
+        try:
+            result = create_formation_order(fields, files, _website_url(environ))
+        except OrderError as exc:
+            return json_response(start_response, {'status': 'error', 'message': str(exc)}, status_code=400)
+        except Exception as exc:
+            from services.error_tracking import report_problem
+            report_problem('website_order', exc, level='error')
+            return json_response(start_response, {'status': 'error', 'message':
+                                 'Your order could not be sent. Please try again in a minute or contact us.'},
+                                 status_code=500)
+        return json_response(start_response, {'status': 'success', **result}, status_code=201)
 
     if not (path.startswith('/api/v1/wordpress/documents') or path == '/api/v1/auth/sso'):
         return None
