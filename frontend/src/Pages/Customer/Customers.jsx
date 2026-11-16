@@ -177,12 +177,16 @@ const Customers = () => {
               : "Recent",
             ageDays,
             isNew: ageDays !== null && ageDays <= 7,
+            // Individuals sign in on the website: only a real WordPress user id means the account exists there
+            // (it is made by "Set password"; a customer added in the CRM or by an order has none yet)
             access:
               type === "B2B" || type === "Business"
                 ? c.portal_login_ready === false
                   ? "Needs portal password"
                   : "Portal login"
-                : "Website account",
+                : /^\d+$/.test(String(c.wordpress_user_id || ""))
+                  ? "Website account"
+                  : "No website account",
             source: c.wordpress_user_id ? "Website signup" : "CRM",
             companies: c.companies_count ?? 0,
             orders: c.orders_count ?? 0,
@@ -237,7 +241,10 @@ const Customers = () => {
         tone: "violet",
         icon: IconUser,
         value: String(count("Individual")),
-        footerSubText: "Website accounts",
+        footerSubText: (() => {
+          const missing = customers.filter((c) => c.access === "No website account").length
+          return missing ? `${missing} without a website account` : "Website accounts"
+        })(),
         ...tab("Individual"),
       },
       {
@@ -245,7 +252,7 @@ const Customers = () => {
         tone: "orange",
         icon: IconBriefcase,
         value: String(count("Business")),
-        footerSubText: "Website accounts",
+        footerSubText: "Portal logins",
         ...tab("Business"),
       },
       {
@@ -483,7 +490,10 @@ const Customers = () => {
         cell: ({ row }) => {
           const access = row.getValue("access");
           return (
-            <Badge className={access === "Needs portal password" ? "badge-amber" : "badge-green"}>
+            <Badge
+              className={access === "Needs portal password" || access === "No website account" ? "badge-amber" : "badge-green"}
+              title={access === "No website account" ? "Not on the website yet: use Set password to create the website login" : undefined}
+            >
               {access}
             </Badge>
           );
@@ -566,6 +576,7 @@ const Customers = () => {
       placeholder: "Access",
       options: [
         { label: "Website account", value: "Website account" },
+        { label: "No website account", value: "No website account" },
         { label: "Portal login", value: "Portal login" },
         { label: "Needs portal password", value: "Needs portal password" },
       ],
