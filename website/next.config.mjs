@@ -12,6 +12,46 @@ const ACCOUNT_PAGES = [
   "/client-panel/", "/user/", "/lost-password/", "/password-reset/", "/logout/",
 ]
 
+// WooCommerce product pages (/product/<slug>/) -> the page that sells it now. Products with no page of their own
+// (add-ons and offers) go to the services list.
+const PRODUCTS = {
+  "digital-package": "/digital-package-name-search/",
+  "professional-package": "/professional-package-name-search/",
+  "all-inclusive": "/all-inclusive-name-search/",
+  "digital-package-2": "/packages/",
+  "same-day-incorporation": "/packages/",
+  "identity-verification": "/companies-house-id-verification/",
+  "kyc-verification": "/kyc-identity-verification/",
+  "confirmation-statement-service": "/confirmation-statement-service/",
+  "company-dissolution-service": "/company-dissolution-2/",
+  "company-name-change-service": "/company-name-change-service/",
+  "dormant-company-accounts-service": "/dormant-company-accounts-service/",
+  "directors-appointment-or-resignation": "/directors-appointment-or-resignation/",
+  "company-secretary-service": "/company-secretary-services/",
+  "certification-of-good-standing-service": "/certification-of-good-standing/",
+  "apostilled-documents-service": "/apostilled-documents-service/",
+  "apostilled-documents-service-2": "/apostilled-documents-service/",
+  "business-website": "/business-website/",
+  "business-email-and-website": "/business-website/",
+  "vat-registration": "/vat-registration/",
+  "vat-registration-2": "/vat-registration/",
+  "registered-office-address": "/registered-office-address-service/",
+  "business-mail-forwarding-address": "/business-mail-forwarding-address/",
+  "directors-service-address-1": "/directors-services-address/",
+  "tide-business-bank": "/tide-business-bank/",
+  "zempler-business-bank": "/zempler-business-bank/",
+  "wise-business-bank": "/wise-business-bank/",
+  "countingup-business-bank": "/countingup-business-bank/",
+  "ifast-business-bank": "/ifast-business-bank/",
+  "monzo-business-bank": "/monzo-business-bank/",
+  "transwap-business-bank": "/transwap-business-bank/",
+  "taptap-business-bank": "/business-bank-accounts/",
+  "accountancy-services": "/services/",
+  "business-telephone-services": "/services/",
+  "company-seal": "/services/",
+  "xero-100-off-for-6-months": "/services/",
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Docker (website/Dockerfile): a small server with only the files it needs
@@ -37,6 +77,14 @@ const nextConfig = {
       { source: "/registered-office-address/", destination: "/registered-office-address-service/", permanent: true },
       { source: "/directors-service-address/", destination: "/directors-services-address/", permanent: true },
       { source: "/thankyou/", destination: "/order-complete/", permanent: true },
+      ...Object.entries(PRODUCTS).map(([slug, destination]) => ({ source: `/product/${slug}/`, destination, permanent: true })),
+      // Any other product, category or tag page, and WooCommerce's own cart / checkout pages
+      { source: "/product/:path*", destination: "/services/", permanent: true },
+      { source: "/product-category/:path*", destination: "/services/", permanent: true },
+      { source: "/product-tag/:path*", destination: "/services/", permanent: true },
+      { source: "/cart-2/", destination: "/packages/", permanent: true },
+      { source: "/checkout-2/:path*", destination: "/packages/", permanent: true },
+      { source: "/checkout/:path*", destination: "/packages/", permanent: true },
       ...DEMO_PAGES.map((source) => ({ source, destination: "/", permanent: true })),
       { source: "/customer-area/:path*", destination: `${PORTAL}/`, permanent: true },
       ...ACCOUNT_PAGES.map((source) => ({ source, destination: `${PORTAL}/`, permanent: false })),
