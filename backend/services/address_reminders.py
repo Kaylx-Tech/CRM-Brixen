@@ -236,8 +236,7 @@ def compose(company, owner, service):
                {'title': 'Bank transfer · Pakistan (PKR)', 'rows': [(k, v) for k, v in pkr_rows if v]}],
         footnote=footnote, category='ORDER',
         # One short red line: what happens if it is not paid
-        alert=("If this fee is not paid, your company's registered address will be defaulted at Companies House "
-               "and the company can be struck off (closed)."))
+        alert="Unpaid: your address will be defaulted and the company can be struck off.")
     return subject, text, html, cta_url
 
 
