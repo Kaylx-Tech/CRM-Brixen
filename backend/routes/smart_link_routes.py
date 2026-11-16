@@ -263,7 +263,36 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
         return success_response(start_response, data={'orders': _formation_orders(user)})
 
     if path == '/api/admin/smart-links/registered-addresses' and method == 'GET':
-        return success_response(start_response, data={'addresses': _registered_addresses(user)})
+        from services import address_reminders
+        rows = _registered_addresses(user)
+        last = address_reminders.last_reminders()
+        for r in rows:
+            r['last_reminder'] = last.get(r.get('company_id')) if r.get('company_id') else None
+        return success_response(start_response, data={
+            'addresses': rows, 'auto_reminders': address_reminders.auto_enabled(),
+            'auto_days': address_reminders.AUTO_DAYS_BEFORE, 'can_manage': role in MANAGE_ROLES})
+
+    # Reminder button: email the customer to renew now (any team member)
+    remind = re.match(r'^/api/admin/smart-links/registered-addresses/(\d+)/remind$', path)
+    if remind and method == 'POST':
+        from services import address_reminders
+        try:
+            sent = address_reminders.send(int(remind.group(1)), 'manual', user.get('full_name') or user.get('email'))
+        except address_reminders.ReminderError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        message = (f"Reminder emailed to {sent['sent_to']}." if sent['emailed']
+                   else f"Reminder saved, but the email to {sent['sent_to']} could not be sent (check the email settings).")
+        return success_response(start_response, data=sent, message=message)
+
+    # Auto reminders on / off (admins and managers)
+    if path == '/api/admin/smart-links/registered-addresses/auto-reminders' and method == 'POST':
+        if role not in MANAGE_ROLES:
+            return error_response(start_response, "Only admins and managers can change auto reminders.", status_code=403)
+        from services import address_reminders
+        on = address_reminders.set_auto(bool((body or {}).get('enabled')))
+        return success_response(start_response, data={'auto_reminders': on}, message=(
+            f"Auto reminders are on: one email a day in the last {address_reminders.AUTO_DAYS_BEFORE} days."
+            if on else "Auto reminders are off."))
 
     if role not in MANAGE_ROLES:
         return error_response(start_response, "Only admins and managers can change Smart Operations links.",

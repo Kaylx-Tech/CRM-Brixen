@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { IconMapPin, IconRefresh, IconSearch } from '@tabler/icons-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { IconBell, IconLoader2, IconMapPin, IconRefresh, IconSearch } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { apiRequest } from '@/lib/api'
 import { useRefreshOnReturn } from '@/lib/useRefreshOnReturn'
@@ -37,6 +38,8 @@ export default function RegisteredAddresses() {
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('Needs action')
+  const [auto, setAuto] = useState({ on: false, days: 7, canManage: false })
+  const [sending, setSending] = useState(null)
 
   const load = useCallback(async () => {
     setIsLoading(true)
@@ -46,11 +49,45 @@ export default function RegisteredAddresses() {
         toast.error(res.reason || 'Registered addresses failed to load')
         return
       }
-      setRows(res.data?.data?.addresses || [])
+      const d = res.data?.data || {}
+      setRows(d.addresses || [])
+      setAuto({ on: !!d.auto_reminders, days: d.auto_days || 7, canManage: !!d.can_manage })
     } finally {
       setIsLoading(false)
     }
   }, [])
+
+  // Reminder button: the customer gets the renewal email now
+  const remind = async (r) => {
+    setSending(r.id)
+    try {
+      const res = await apiRequest(`/admin/smart-links/registered-addresses/${r.company_id}/remind`, {
+        method: 'POST', label: 'Reminder', silent: true,
+      })
+      if (!res.ok) {
+        toast.error(res.reason || 'The reminder could not be sent')
+        return
+      }
+      const sent = res.data?.data
+      if (sent?.emailed) toast.success(res.data?.message || 'Reminder sent')
+      else toast.warning(res.data?.message || 'The email could not be sent')
+      setRows((list) => list.map((x) => (x.id === r.id ? { ...x, last_reminder: { sent_on: sent?.sent_on, kind: 'manual', emailed: !!sent?.emailed } } : x)))
+    } finally {
+      setSending(null)
+    }
+  }
+
+  const toggleAuto = async (enabled) => {
+    const res = await apiRequest('/admin/smart-links/registered-addresses/auto-reminders', {
+      method: 'POST', body: { enabled }, label: 'Auto reminders', silent: true,
+    })
+    if (!res.ok) {
+      toast.error(res.reason || 'Could not change auto reminders')
+      return
+    }
+    setAuto((a) => ({ ...a, on: !!res.data?.data?.auto_reminders }))
+    toast.success(res.data?.message || 'Saved')
+  }
   useRefreshOnReturn(load)
   useEffect(() => {
     load()
@@ -89,9 +126,19 @@ export default function RegisteredAddresses() {
             ))}
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={isLoading}>
-          <IconRefresh className={`size-4 ${isLoading ? 'animate-spin' : ''}`} /> Refresh
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <label
+            className="flex items-center gap-2 text-sm"
+            title={`One renewal email a day to the customer in the last ${auto.days} days before the renewal date`}
+          >
+            <Checkbox checked={auto.on} onCheckedChange={(v) => toggleAuto(Boolean(v))} disabled={!auto.canManage} />
+            <span>Daily reminders, last {auto.days} days</span>
+            <span className={auto.on ? 'text-emerald-600' : 'text-muted-foreground'}>{auto.on ? 'On' : 'Off'}</span>
+          </label>
+          <Button variant="outline" size="sm" onClick={load} disabled={isLoading}>
+            <IconRefresh className={`size-4 ${isLoading ? 'animate-spin' : ''}`} /> Refresh
+          </Button>
+        </div>
       </div>
 
       {isLoading && rows.length === 0 ? (
@@ -140,6 +187,19 @@ export default function RegisteredAddresses() {
                   )}
                   {r.source === 'Added by hand' && <span className="text-muted-foreground">Added by hand</span>}
                 </div>
+                {NEEDS_ACTION.includes(r.status) && r.company_id && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-2">
+                    <span className="text-xs text-muted-foreground">
+                      {r.last_reminder
+                        ? `Last reminder ${shortDate(r.last_reminder.sent_on)}${r.last_reminder.kind === 'auto' ? ' (auto)' : ''}${r.last_reminder.emailed ? '' : ' · not delivered'}`
+                        : 'No reminder sent yet'}
+                    </span>
+                    <Button size="xs" className="h-7 gap-1" onClick={() => remind(r)} disabled={sending === r.id}>
+                      {sending === r.id ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconBell className="size-3.5" />}
+                      Reminder
+                    </Button>
+                  </div>
+                )}
               </Card>
             )
           })}

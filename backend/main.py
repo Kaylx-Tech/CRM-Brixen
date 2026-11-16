@@ -198,6 +198,10 @@ def run_server():
     from services.address_expiry import start_address_expiry_worker
     start_address_expiry_worker()
 
+    # Registered office renewal reminders: one a day in the last 7 days (only while switched on in Smart Operations)
+    from services.address_reminders import start_worker as start_address_reminder_worker
+    start_address_reminder_worker()
+
     print("=" * 60)
     print("Brixen CRM Modular API Server Started")
     print(f"Listening on http://{HOST}:{PORT}")
