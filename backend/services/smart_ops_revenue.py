@@ -1,9 +1,11 @@
 """Revenue, cost and profit of each Smart Operations area (the tabs), for Smart Operations and Finance › Revenue.
 
 An order's money is split over its products: each product line counts for its area (ID Verification, Company
-Formation, Registered Address, UK Gov filings) with its share of the order total, and the order's cost (the cost
-typed on Finance › Revenue, else the catalogue cost) is split the same way. Cancelled, refunded and draft orders
-do not count. The month or year is the order's date, as on Finance › Revenue.
+Formation, Registered Address, UK Gov filings) with its share of the order total. The order's cost (the cost
+typed on Finance › Revenue, else the catalogue cost) is split by each product's own catalogue cost (Services),
+so a KYC line costs what KYC costs, not a price share of the whole order's cost; when no product of the order
+has a catalogue cost, by price share. Cancelled, refunded and draft orders do not count. The month or year is the
+order's date, as on Finance › Revenue.
 """
 import re
 
@@ -62,6 +64,10 @@ def summary(period=None):
                                tuple(part)) or []:
                 items.setdefault(it['order_id'], []).append(it)
 
+    # Each product's own cost (Services), by name as on the order lines
+    unit_cost = {str(s.get('name') or '').strip().lower(): _money(s.get('cost_price'))
+                 for s in (query_db("SELECT name, cost_price FROM services;") or [])}
+
     acc = {key: {'key': key, 'label': label, 'orders': set(), 'revenue': 0.0, 'cost': 0.0}
            for key, label, _p in AREAS}
     for o in orders:
@@ -75,14 +81,18 @@ def summary(period=None):
         if not any(areas):
             continue
         cost = _money(resolve_order_cost(o)['cost'])
-        for area, amount in zip(areas, amounts):
+        line_costs = [unit_cost.get(str(l.get('product_name') or '').strip().lower(), 0.0) * int(l.get('quantity') or 1)
+                      for l in lines]
+        costs_sum = sum(line_costs)
+        for area, amount, line_cost in zip(areas, amounts, line_costs):
             if not area:
                 continue
             share = (amount / lines_sum) if lines_sum > 0 else 1 / len(lines)
+            cost_share = (line_cost / costs_sum) if costs_sum > 0 else share
             a = acc[area]
             a['orders'].add(o['id'])
             a['revenue'] += total * share
-            a['cost'] += cost * share
+            a['cost'] += cost * cost_share
 
     out = []
     for key, _label, _p in AREAS:
