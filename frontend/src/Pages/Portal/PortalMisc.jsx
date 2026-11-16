@@ -77,8 +77,8 @@ export function PortalServices() {
   )
 }
 
-/** How to pay an address renewal invoice: Tide pay link, bank transfer details, the invoice PDF. */
-function RenewalPayDialog({ open, onOpenChange, address, pay }) {
+/** How to pay an address renewal invoice: by card (Stripe) or bank transfer, and the invoice PDF. */
+function RenewalPayDialog({ open, onOpenChange, address, pay, onCard, cardBusy }) {
   const invoice = address?.renewal_invoice
   if (!invoice) return null
   return (
@@ -91,7 +91,13 @@ function RenewalPayDialog({ open, onOpenChange, address, pay }) {
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3 text-sm">
-          {pay?.pay_url ? (
+          {onCard ? (
+            // Stripe Checkout for this invoice; the address renews as soon as Stripe confirms the payment
+            <Button onClick={onCard} disabled={cardBusy}>
+              {cardBusy ? <IconLoader2 className="size-4 animate-spin" /> : <IconCreditCard className="size-4" />}
+              Pay {money(invoice.total)} by card
+            </Button>
+          ) : pay?.pay_url ? (
             <a href={pay.pay_url} target="_blank" rel="noopener noreferrer" className={buttonVariants()}>
               <IconCreditCard className="size-4" /> Pay by card <IconExternalLink className="size-3.5" />
             </a>
@@ -155,9 +161,11 @@ export function PortalAddresses() {
   const [searchParams, setSearchParams] = useSearchParams()
   const returnHandled = useRef(false)
   useEffect(() => {
-    if (!searchParams.get("auto_renew") || returnHandled.current) return
+    const autoRenew = searchParams.get("auto_renew")
+    if ((!autoRenew && !searchParams.get("paid")) || returnHandled.current) return
     returnHandled.current = true
-    toast.success("Auto-renew is on", { description: "Your card is charged on the renewal date." })
+    if (autoRenew) toast.success("Auto-renew is on", { description: "Your card is charged on the renewal date." })
+    else toast.success("Payment received", { description: "Your address renews for another year in a moment." })
     // Not cleared on purpose: clearing the ?auto_renew=1 below re-runs this effect
     setTimeout(reload, 4000)
     setSearchParams({}, { replace: true })
@@ -232,7 +240,16 @@ export function PortalAddresses() {
           </Table>
         </div>
       </PageState>
-      <RenewalPayDialog open={!!payFor} onOpenChange={(open) => !open && setPayFor(null)} address={payFor} pay={data?.pay} />
+      <RenewalPayDialog
+        open={!!payFor}
+        onOpenChange={(open) => !open && setPayFor(null)}
+        address={payFor}
+        pay={data?.pay}
+        cardBusy={renewing === "pay-card"}
+        onCard={data?.auto_renew_available && String(payFor?.id || "").startsWith("company-")
+          ? () => goToStripe("pay-card", `/client/addresses/${payFor.id}/pay-card`, "Could not open the card payment")
+          : null}
+      />
     </div>
   )
 }

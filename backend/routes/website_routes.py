@@ -17,11 +17,14 @@ POST     /api/public/service-orders                   Next.js website order form
                                                       (services/website_service_orders.py). Limited per IP.
 POST     /api/public/enquiries                        Next.js website contact form: a support ticket for the
                                                       team (services/website_enquiries.py). Limited per IP.
+GET      /api/public/address-renewal/<token>          the card link in a registered address reminder email:
+                                                      Stripe Checkout for this year's renewal (…/done: thank you)
 """
 import datetime
 import hashlib
 import hmac
 import os
+import re
 import threading
 import time
 import urllib.parse
@@ -137,7 +140,55 @@ def _client_can_open(doc):
     return str(doc.get('uploaded_by') or '') == 'Customer Upload' or str(doc.get('category') or '') == 'Checkout Upload'
 
 
+def _plain_page(start_response, title, message, status='200 OK'):
+    """A small page for a visitor who came from an email link (no website around it)."""
+    import html
+    page = (f"<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,"
+            f"initial-scale=1'><title>{html.escape(title)}</title></head><body style=\"font-family:-apple-system,"
+            f"system-ui,sans-serif;max-width:480px;margin:15vh auto;padding:0 20px;color:#111;line-height:1.5\">"
+            f"<h1 style='font-size:22px'>{html.escape(title)}</h1><p>{html.escape(message)}</p>"
+            f"<p><a href='{WEBSITE_URL}'>Brixen Consultants</a></p></body></html>").encode()
+    start_response(status, [('Content-Type', 'text/html; charset=utf-8'), ('Content-Length', str(len(page))),
+                            ('Cache-Control', 'no-store')])
+    return [page]
+
+
+def _address_card_payment(environ, start_response, token, done):
+    """The card link in an address reminder email: Stripe Checkout for this year's renewal, then a thank-you page."""
+    from routes.client_portal_routes import ADDRESS_SERVICE_PRICE, _company_address_service, _is_brixen_address
+    from services import address_billing
+    company = address_billing.company_for_link(token)
+    if not company or not _is_brixen_address(company.get('reg_office')):
+        return _plain_page(start_response, 'Link not found', 'This payment link is not valid. Please contact us.',
+                           '404 Not Found')
+    if done:
+        return _plain_page(start_response, 'Thank you',
+                           f"Your payment for the registered office address of {company.get('name')} was received. "
+                           "We will email you a receipt shortly.")
+    service = _company_address_service(company)
+    if service['status'] in ('Paid', 'Auto-renew') and not service['renewal_invoice']:
+        return _plain_page(start_response, 'Nothing to pay',
+                           f"The registered office address of {company.get('name')} is paid until "
+                           f"{service.get('expiry_date') or 'the renewal date'}. Thank you.")
+    owner = query_db("SELECT email FROM users WHERE id = ?;", (company.get('user_id'),), one=True) or {}
+    open_total = float((service['renewal_invoice'] or {}).get('total') or 0)
+    here = f"{_api_base(environ)}/api/public/address-renewal/{token}"
+    try:
+        url = address_billing.pay_once(company, open_total or ADDRESS_SERVICE_PRICE, f"{here}/done", WEBSITE_URL,
+                                       late_fee=0 if open_total else service['late_fee'], email=owner.get('email'))
+    except address_billing.StripeError as exc:
+        return _plain_page(start_response, 'Card payment not available', f"{exc} You can pay by bank transfer "
+                           "with the details in our email.", '400 Bad Request')
+    start_response('302 Found', [('Location', url), ('Cache-Control', 'no-store'), ('Content-Length', '0')])
+    return [b'']
+
+
 def handle_website_routes(environ, start_response, path, method, user, body, query):
+    # Address renewal by card from the reminder email (website customers)
+    pay = re.match(r'^/api/public/address-renewal/([A-Za-z0-9_-]{16,64})(/done)?$', path)
+    if pay and method == 'GET':
+        return _address_card_payment(environ, start_response, pay.group(1), bool(pay.group(2)))
+
     if path == '/api/public/name-availability' and method == 'GET':
         if not _name_check_allowed(_visitor_ip(environ)):
             return json_response(start_response, {'status': 'error', 'message':

@@ -142,6 +142,69 @@ def start_auto_renew(user, company, expiry_date, price, return_url, late_fee=0):
     return _api('POST', '/checkout/sessions', data)['url']
 
 
+def pay_once(company, price, success_url, cancel_url, late_fee=0, user=None, email=None):
+    """Stripe Checkout for one renewal year paid by card now (no auto-renew). Returns the page URL. When Stripe
+    reports the payment, the open renewal invoice is marked paid, or a paid renewal order is placed
+    (handle_event → _record_paid_year), and the address moves a year further."""
+    if subscription_for(company['id']):
+        raise StripeError("Auto-renew is on for this address: the card is charged on the renewal date.")
+    meta = {'kind': 'address_payment', 'company_id': company['id']}
+    data = {
+        'mode': 'payment',
+        'line_items': [{'quantity': 1, 'price_data': {
+            'currency': CURRENCY, 'unit_amount': int(round(float(price) * 100)),
+            'product_data': {'name': f"Registered Office Address renewal · {company.get('name') or 'company'}"}}}],
+        'success_url': success_url, 'cancel_url': cancel_url,
+        'metadata': meta, 'payment_intent_data': {'metadata': meta},
+    }
+    if late_fee:
+        data['line_items'].append({'quantity': 1, 'price_data': {
+            'currency': CURRENCY, 'unit_amount': int(round(float(late_fee) * 100)),
+            'product_data': {'name': 'Late renewal fee (address had expired)'}}})
+    if user:
+        data['customer'] = _customer(user)
+    elif email:
+        data['customer_email'] = email
+    return _api('POST', '/checkout/sessions', data)['url']
+
+
+# ── card link in the reminder email (website customers cannot open the CRM portal) ──────────
+
+def _ensure_pay_links():
+    execute_db("""
+        CREATE TABLE IF NOT EXISTS address_pay_links (
+            token TEXT PRIMARY KEY,
+            company_id INTEGER NOT NULL UNIQUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+
+
+def pay_link(company_id):
+    """The company's own card payment link (one per company, kept), or None when Stripe is not set up."""
+    if not configured():
+        return None
+    import secrets
+    from config import API_PUBLIC_URL
+    _ensure_pay_links()
+    row = query_db("SELECT token FROM address_pay_links WHERE company_id = ?;", (int(company_id),), one=True)
+    token = (row or {}).get('token')
+    if not token:
+        token = secrets.token_urlsafe(24)
+        execute_db("INSERT INTO address_pay_links (token, company_id) VALUES (?, ?);", (token, int(company_id)))
+    base = API_PUBLIC_URL or 'https://api.brixenconsultants.com'
+    return f"{base}/api/public/address-renewal/{token}"
+
+
+def company_for_link(token):
+    _ensure_pay_links()
+    row = query_db("SELECT company_id FROM address_pay_links WHERE token = ?;", (str(token or ''),), one=True)
+    if not row:
+        return None
+    return query_db("SELECT id, name, user_id, reg_office, inc_date, created_at FROM companies WHERE id = ?;",
+                    (row['company_id'],), one=True)
+
+
 def portal(user, return_url):
     """Stripe's Customer Portal: change the card, see receipts, cancel auto-renew."""
     row = query_db("SELECT stripe_customer_id FROM users WHERE id = ?;", (user['id'],), one=True) or {}
@@ -215,8 +278,9 @@ def apply_subscription(sub):
     return company['id']
 
 
-def _record_paid_year(company, stripe_invoice):
-    """A paid Stripe invoice is one more paid year: pay the open renewal invoice, or place a paid renewal order."""
+def _record_paid_year(company, stripe_invoice, note=None):
+    """A paid Stripe invoice (or a paid one-off Checkout) is one more paid year: pay the open renewal invoice, or
+    place a paid renewal order."""
     ref = stripe_invoice['id']
     if query_db("SELECT 1 FROM address_renewal_payments WHERE stripe_invoice_id = ?;", (ref,), one=True):
         return False
@@ -242,14 +306,14 @@ def _record_paid_year(company, stripe_invoice):
                 owner_name, owner_form_email, is_draft, current_step, created_at
             ) VALUES (?, ?, ?, ?, ?, 0, ?, 'Completed', ?, ?, ?, ?, 0, 5, datetime('now'));
         """, (order_number, company['user_id'], company['id'], ADDRESS_RENEWAL_SERVICE, amount, amount,
-              f"Auto-renewed by card (Stripe invoice {stripe_invoice.get('number') or ref})", CARD,
+              f"{note or 'Auto-renewed by card'} (Stripe {stripe_invoice.get('number') or ref})", CARD,
               owner.get('full_name'), owner.get('email')))
         invoice_id = ensure_invoice_for_order(order_id, paid=True)
     execute_db("""
         INSERT INTO address_renewal_payments (stripe_invoice_id, company_id, order_id, invoice_id, amount, receipt_url)
         VALUES (?, ?, ?, ?, ?, ?);
     """, (ref, company['id'], order_id, invoice_id, amount, stripe_invoice.get('hosted_invoice_url')))
-    notify_staff('Address auto-renewed',
+    notify_staff('Address renewed by card' if note else 'Address auto-renewed',
                  f"{company.get('name')}: registered office renewed by card (£{amount:.2f}).",
                  'payment_received', '/admin/payments')
     notify_user(company['user_id'], 'Address renewed',
@@ -269,6 +333,17 @@ def handle_event(event):
             and (obj.get('metadata') or {}).get('kind') in ('formation', 'website_order'):
         from services.website_orders import handle_paid_session
         return handle_paid_session(obj)
+
+    # One renewal year paid by card now (pay_once): from the portal or the reminder email's card link
+    if kind in ('checkout.session.completed', 'checkout.session.async_payment_succeeded') \
+            and (obj.get('metadata') or {}).get('kind') == 'address_payment':
+        if obj.get('payment_status') != 'paid':
+            return 'waiting for the payment'
+        company = _company_for(obj.get('metadata'))
+        if not company:
+            return 'unknown company'
+        paid = {'id': obj['id'], 'amount_paid': obj.get('amount_total'), 'number': None, 'hosted_invoice_url': None}
+        return 'renewal paid' if _record_paid_year(company, paid, note="Renewed by card") else 'already saved'
 
     if kind == 'checkout.session.completed':
         if (obj.get('metadata') or {}).get('kind') != 'address' or not obj.get('subscription'):

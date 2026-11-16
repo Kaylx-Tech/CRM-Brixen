@@ -392,6 +392,28 @@ def handle_client_portal_routes(environ, start_response, path, method, user, bod
             return error_response(start_response, str(exc), status_code=400)
         return success_response(start_response, data={'url': url})
 
+    # Pay this year's renewal by card now (Stripe Checkout); bank transfer stays on the same dialog
+    m = re.match(r'^/api/client/addresses/company-(\d+)/pay-card$', path)
+    if m and method == 'POST':
+        from services import address_billing
+        company = query_db("SELECT id, name, reg_office, inc_date, created_at FROM companies WHERE id = ? AND user_id = ?;",
+                           (int(m.group(1)), uid), one=True)
+        if not company or not _is_brixen_address(company.get('reg_office')):
+            return error_response(start_response, "Address service not found", status_code=404)
+        service = _company_address_service(company)
+        if not service['renewal_invoice'] and not service['can_renew']:
+            return error_response(start_response, f"Renewal opens {RENEW_WINDOW_DAYS} days before the address renews.",
+                                  status_code=400)
+        back = _portal_return_url(environ)
+        # An open renewal invoice is paid for what it says; otherwise this year's price (+ late fee once expired)
+        open_total = float((service['renewal_invoice'] or {}).get('total') or 0)
+        try:
+            url = address_billing.pay_once(company, open_total or ADDRESS_SERVICE_PRICE, f"{back}?paid=1", back,
+                                           late_fee=0 if open_total else service['late_fee'], user=user)
+        except address_billing.StripeError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        return success_response(start_response, data={'url': url})
+
     if path == '/api/client/addresses/card' and method == 'POST':
         from services import address_billing
         try:

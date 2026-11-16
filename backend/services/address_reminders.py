@@ -5,8 +5,8 @@
   * Auto reminders: in the last 7 days before the renewal date, one reminder a day (checked every hour).
     Off until an admin or manager switches them on in the tab (setting address_auto_reminders = '1'), so a
     deploy never starts emailing customers by itself. Addresses on card auto-renew are skipped.
-  * Website customers (who cannot open the CRM portal) get the Tide pay link and bank details to pay; portal
-    customers get a link to their Addresses page.
+  * Website customers (who cannot open the CRM portal) get a card link (Stripe, address_billing.pay_link) and the
+    bank details; portal customers get a link to their Addresses page (card or bank transfer there).
   * Every reminder is saved (address_reminders) before it is sent, so the same automatic one never goes twice.
 Nothing here deletes data.
 """
@@ -90,12 +90,15 @@ def compose(company, owner, service):
         points.append("Renew it from your client panel in a minute (card or bank transfer).")
         cta_label, cta_url = 'Renew my address', f"{PORTAL_URL}/portal/addresses"
     else:
-        points.append(f"Pay £{price:.0f} with the button below, or by bank transfer to {pay.get('account_name')}, "
-                      f"account {pay.get('account_number')}, sort code {pay.get('sort_code')}, "
-                      f"with {name} as the reference.")
-        # Website customers cannot open the CRM portal: the Tide pay link, or no button (bank details above)
-        cta_url = pay.get('pay_url') or None
-        cta_label = f"Pay £{price:.0f} now" if cta_url else None
+        # Website customers cannot open the CRM portal: their own card link (Stripe), else the invoice pay link;
+        # bank transfer is always offered too
+        from services.address_billing import pay_link
+        cta_url = (pay_link(company['id']) if company.get('id') else None) or pay.get('pay_url') or None
+        bank = (f"by bank transfer to {pay.get('account_name')}, account {pay.get('account_number')}, "
+                f"sort code {pay.get('sort_code')}, with {name} as the reference")
+        points.append(f"Pay £{price:.0f} by card with the button below, or {bank}." if cta_url
+                      else f"Pay £{price:.0f} {bank}.")
+        cta_label = f"Pay £{price:.0f} by card" if cta_url else None
     subject, text, html = compose_client_email(
         subject=(f"Renew your registered office address: {name}" if not due
                  else f"Your registered office address is due for renewal: {name}"),
