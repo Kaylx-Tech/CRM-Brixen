@@ -123,14 +123,14 @@ def compose_client_email(*, subject, headline, greeting, message, points=None, d
     if cta_label and cta_url:
         buttons.append(
             f'<a href="{html_escape(cta_url)}" '
-            'style="display:inline-block;margin:0 8px 8px 0;padding:12px 22px;background:#003971;color:#ffffff;'
-            'text-decoration:none;border-radius:999px;font-size:15px;font-weight:600;letter-spacing:-0.01em;">'
+            'style="display:inline-block;margin:0 6px 6px 0;padding:8px 16px;background:#003971;color:#ffffff;'
+            'text-decoration:none;border-radius:999px;font-size:13px;font-weight:600;line-height:1.3;">'
             f'{html_escape(cta_label)}</a>')
     if cta2_label and cta2_url:
         buttons.append(
             f'<a href="{html_escape(cta2_url)}" '
-            'style="display:inline-block;margin:0 8px 8px 0;padding:11px 21px;border:1px solid #003971;color:#003971;'
-            'text-decoration:none;border-radius:999px;font-size:15px;font-weight:600;letter-spacing:-0.01em;">'
+            'style="display:inline-block;margin:0 6px 6px 0;padding:7px 15px;border:1px solid #003971;color:#003971;'
+            'text-decoration:none;border-radius:999px;font-size:13px;font-weight:600;line-height:1.3;">'
             f'{html_escape(cta2_label)}</a>')
     cta_html = f'<p style="margin:20px 0 0;">{"".join(buttons)}</p>' if buttons else ''
 
