@@ -155,6 +155,19 @@ def handle_settings_routes(environ, start_response, path, method, user, body, qu
             return success_response(start_response, data=result, message=result.get('message'))
         return error_response(start_response, result.get('message') or 'WordPress connection failed', status_code=400)
 
+    # ── 7b. POST /api/admin/settings/import-wordpress-logins (old website passwords, one time) ──
+    if path == '/api/admin/settings/import-wordpress-logins' and method == 'POST':
+        from services.wordpress_logins import LoginImportError, import_logins
+        entries = body.get('users') if isinstance(body, dict) else None
+        try:
+            counts = import_logins(entries)
+        except LoginImportError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        print(f"[Website logins] imported by user {user.get('id')}: {counts}")
+        return success_response(start_response, data=counts, message=(
+            f"{counts['updated'] + counts['added']} website customer(s) can now sign in with their old website "
+            f"password ({counts['added']} added as new customers)."))
+
     # ── 8. POST /api/admin/settings/wordpress-webhooks (create signup webhook on WooCommerce) ──
     if path == '/api/admin/settings/wordpress-webhooks' and method == 'POST':
         if user_role not in ADMIN_ROLES:

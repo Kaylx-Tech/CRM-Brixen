@@ -110,6 +110,76 @@ def unusable_password_hash():
     return hash_password(secrets.token_urlsafe(32))
 
 
+_PHPASS_ITOA64 = './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+
+
+def _phpass_encode64(data, count):
+    out, i = [], 0
+    while i < count:
+        value = data[i]
+        i += 1
+        out.append(_PHPASS_ITOA64[value & 0x3f])
+        if i < count:
+            value |= data[i] << 8
+        out.append(_PHPASS_ITOA64[(value >> 6) & 0x3f])
+        if i >= count:
+            break
+        i += 1
+        if i < count:
+            value |= data[i] << 16
+        out.append(_PHPASS_ITOA64[(value >> 12) & 0x3f])
+        if i >= count:
+            break
+        i += 1
+        out.append(_PHPASS_ITOA64[(value >> 18) & 0x3f])
+    return ''.join(out)
+
+
+def _phpass_check(password, stored_hash):
+    """WordPress before 6.8 ("$P$" portable phpass: salted MD5, repeated)."""
+    if len(stored_hash) != 34:
+        return False
+    count_log2 = _PHPASS_ITOA64.find(stored_hash[3])
+    if count_log2 < 7 or count_log2 > 30:
+        return False
+    salt = stored_hash[4:12].encode('utf-8')
+    pw = password.encode('utf-8')
+    digest = hashlib.md5(salt + pw).digest()
+    for _ in range(1 << count_log2):
+        digest = hashlib.md5(digest + pw).digest()
+    return hmac.compare_digest(stored_hash[:12] + _phpass_encode64(digest, 16), stored_hash)
+
+
+def verify_wordpress_password(password, stored_hash):
+    """A password checked against the hash the old WordPress website kept (users.wordpress_password_hash, copied
+    once by Settings > Integrations > Import old website logins). WordPress 6.8+: "$wp" + bcrypt of
+    base64(HMAC-SHA384(password, key "wp-sha384")); older WordPress: "$P$" phpass; plain bcrypt "$2y$" too."""
+    if not isinstance(stored_hash, str) or not stored_hash or password is None:
+        return False
+    password = str(password)
+    try:
+        if stored_hash.startswith('$P$') or stored_hash.startswith('$H$'):
+            return _phpass_check(password, stored_hash)
+        if stored_hash.startswith('$wp$2') or stored_hash.startswith('$2'):
+            import base64
+            import bcrypt
+            bcrypt_hash = stored_hash[3:] if stored_hash.startswith('$wp') else stored_hash
+            bcrypt_hash = bcrypt_hash.replace('$2y$', '$2b$', 1).encode('utf-8')
+            # WordPress trims the password before hashing; try it as typed too
+            for candidate in dict.fromkeys((password.strip(), password)):
+                if stored_hash.startswith('$wp'):
+                    secret = base64.b64encode(hmac.new(b'wp-sha384', candidate.encode('utf-8'),
+                                                       hashlib.sha384).digest())
+                else:
+                    secret = candidate.encode('utf-8')
+                if bcrypt.checkpw(secret, bcrypt_hash):
+                    return True
+            return False
+    except Exception as exc:  # bcrypt missing or a damaged hash: not a match
+        print(f"[WordPress password] could not check: {type(exc).__name__}")
+    return False
+
+
 _thread_local = threading.local()
 
 PERFORMANCE_INDEXES_SQL = """
@@ -390,6 +460,9 @@ def ensure_schema():
         conn.execute("ALTER TABLE users ADD COLUMN is_b2b INTEGER NOT NULL DEFAULT 0")
     if 'account_type' not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN account_type TEXT DEFAULT 'Normal Client'")
+    if 'wordpress_password_hash' not in user_cols:
+        # The old website's password (see verify_wordpress_password); cleared once the CRM has its own
+        conn.execute("ALTER TABLE users ADD COLUMN wordpress_password_hash TEXT")
     if 'b2b_id' not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN b2b_id TEXT")
     if 'client_type' not in user_cols:

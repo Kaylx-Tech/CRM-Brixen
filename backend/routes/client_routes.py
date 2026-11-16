@@ -272,7 +272,8 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
             return success_response(start_response, data={'customers': people, 'count': len(people)})
         new_hash = hash_password(DEFAULT_CUSTOMER_PASSWORD)
         for r in todo:
-            execute_db("UPDATE users SET password_hash = ? WHERE id = ?;", (new_hash, r['id']))
+            execute_db("UPDATE users SET password_hash = ?, wordpress_password_hash = 'used' WHERE id = ?;",
+                       (new_hash, r['id']))
         _audit(user, 'CLIENT_PORTAL_ACCESS_BULK', 'users', None,
                f"Default portal password set for {len(todo)} Business/B2B customer(s)")
         return success_response(start_response, data={'customers': people, 'count': len(people)}, message=(
@@ -296,7 +297,8 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         if not target or target.get('role') != 'CLIENT':
             return error_response(start_response, "Customer not found", status_code=404)
 
-        execute_db("UPDATE users SET password_hash = ? WHERE id = ?;", (hash_password(password), cid))
+        execute_db("UPDATE users SET password_hash = ?, wordpress_password_hash = 'used' WHERE id = ?;",
+                   (hash_password(password), cid))
         _audit(user, 'CLIENT_PASSWORD_SET', 'users', cid, f"Set portal password for {target.get('email')}")
 
         name = target.get('full_name') or 'Customer'

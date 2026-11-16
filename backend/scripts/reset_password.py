@@ -64,7 +64,8 @@ def main():
 
     with con:  # single transaction
         con.execute(
-            "UPDATE users SET password_hash = ?, password_reset_token = NULL, password_reset_expires = NULL WHERE id = ?;",
+            "UPDATE users SET password_hash = ?, wordpress_password_hash = 'used', password_reset_token = NULL, "
+            "password_reset_expires = NULL WHERE id = ?;",
             (hash_password(password), user["id"]),
         )
         revoked = con.execute(

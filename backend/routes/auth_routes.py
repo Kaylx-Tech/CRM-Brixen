@@ -6,7 +6,7 @@ import secrets
 import time
 import threading
 import urllib.parse
-from db import query_db, execute_db, verify_password, hash_password
+from db import query_db, execute_db, verify_password, hash_password, verify_wordpress_password
 from utils.validation import validate, validation_error
 from utils.response import json_response, success_response, error_response
 from services.email_service import send_email
@@ -195,13 +195,21 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
             )
 
         user_row = query_db("""
-            SELECT id, email, password_hash, full_name as name, role, status
+            SELECT id, email, password_hash, wordpress_password_hash, full_name as name, role, status
             FROM users
             WHERE lower(email) = ?
             LIMIT 1;
         """, (email,), one=True)
-        
-        if not user_row or not verify_password(password, user_row['password_hash']):
+
+        signed_in = bool(user_row) and verify_password(password, user_row['password_hash'])
+        # A customer of the old WordPress website signs in with the password they had there; it becomes their CRM
+        # password straight away and the old one is forgotten
+        if user_row and not signed_in and user_row.get('role') == 'CLIENT' \
+                and verify_wordpress_password(password, user_row.get('wordpress_password_hash')):
+            execute_db("UPDATE users SET password_hash = ?, wordpress_password_hash = 'used' WHERE id = ?;",
+                       (hash_password(password), user_row['id']))
+            signed_in = True
+        if not signed_in:
             _record_login_failure(attempt_key)
             return error_response(start_response, "Invalid email or password.", status_code=401)
 
@@ -382,7 +390,7 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
             if 'confirm_password' in body and (body.get('confirm_password') or '') != new_password:
                 return validation_error(start_response, {'confirm_password': "New passwords do not match."})
             execute_db(
-                "UPDATE users SET password_hash = ? WHERE id = ?;",
+                "UPDATE users SET password_hash = ?, wordpress_password_hash = 'used' WHERE id = ?;",
                 (hash_password(new_password), user['id']),
             )
             # Sign out every other device; keep the session that made the change.
@@ -492,7 +500,8 @@ def handle_auth_routes(environ, start_response, path, method, user, body, query=
 
         execute_db("""
             UPDATE users
-            SET password_hash = ?, password_reset_token = NULL, password_reset_expires = NULL
+            SET password_hash = ?, wordpress_password_hash = 'used', password_reset_token = NULL,
+                password_reset_expires = NULL
             WHERE id = ?;
         """, (hash_password(new_password), found_user['id']))
         _revoke_user_sessions(found_user['id'])

@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { isAdminRole } from '@/lib/permissions'
-import { IconDeviceFloppy, IconLoader2, IconMail, IconBuilding, IconCloud, IconWorld, IconWebhook, IconId, IconCopy } from '@tabler/icons-react'
+import { IconDeviceFloppy, IconLoader2, IconMail, IconBuilding, IconCloud, IconWorld, IconWebhook, IconId, IconCopy, IconUserUp } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import { apiRequest, getApiBase } from '@/lib/api'
@@ -569,6 +569,41 @@ export default function Settings() {
     }
   }
 
+  // Old website logins: the file made from the WordPress database (one entry per website user)
+  const [loginImport, setLoginImport] = useState(null)
+  const importWebsiteLogins = async (file) => {
+    if (!file) return
+    setTesting('wplogins')
+    const toastId = toastProcessing('Importing old website logins…')
+    try {
+      let users
+      try {
+        const parsed = JSON.parse(await file.text())
+        users = Array.isArray(parsed) ? parsed : parsed?.users
+      } catch {
+        users = null
+      }
+      if (!Array.isArray(users) || !users.length) {
+        toastFail(toastId, 'This is not the old website logins file.')
+        return
+      }
+      const res = await apiRequest('/admin/settings/import-wordpress-logins', {
+        method: 'POST',
+        body: JSON.stringify({ users }),
+        label: 'Import website logins',
+        silent: true,
+      })
+      if (res.ok) {
+        setLoginImport(res.data?.data || null)
+        toastDone(toastId, res.data?.message || 'Website logins imported')
+      } else {
+        toastFail(toastId, res.reason || 'Import failed')
+      }
+    } finally {
+      setTesting('')
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4 w-full pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
@@ -1035,6 +1070,44 @@ export default function Settings() {
                   )}
                   Set up signup webhook
                 </Button>
+              </div>
+              <div className="mt-4 rounded-md border bg-muted/30 p-3">
+                <p className="text-sm font-medium">Old website logins</p>
+                <p className="mt-1 text-[12px] text-muted-foreground">
+                  Customers of the old WordPress website sign in to the client portal with the password they had there
+                  (it becomes their CRM password at their first sign-in). Choose the logins file made from the WordPress
+                  database. Staff, team and Business/B2B accounts are skipped; no CRM password is changed. Every
+                  customer must be allowed into the portal (CUSTOMER_PORTAL_FOR_ALL=1 on the API).
+                </p>
+                <label className="mt-3 inline-flex">
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    className="sr-only"
+                    disabled={!!testing || isLoading}
+                    onChange={(e) => {
+                      importWebsiteLogins(e.target.files?.[0])
+                      e.target.value = ''
+                    }}
+                  />
+                  <span className={`inline-flex h-7 cursor-pointer items-center rounded-md border bg-background px-3 text-sm hover:bg-accent ${testing ? 'pointer-events-none opacity-50' : ''}`}>
+                    {testing === 'wplogins' ? (
+                      <IconLoader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <IconUserUp className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    Import old website logins
+                  </span>
+                </label>
+                {loginImport && (
+                  <p className="mt-2 text-[12px] text-muted-foreground">
+                    {loginImport.updated} existing customer(s) updated, {loginImport.added} added
+                    {loginImport.staff ? `, ${loginImport.staff} website staff skipped` : ''}
+                    {loginImport.has_crm_password ? `, ${loginImport.has_crm_password} already use their CRM password` : ''}
+                    {loginImport.team ? `, ${loginImport.team} team account(s) skipped` : ''}
+                    {loginImport.no_password || loginImport.no_email ? `, ${loginImport.no_password + loginImport.no_email} without email or password` : ''}.
+                  </p>
+                )}
               </div>
             </Section>
 
