@@ -195,7 +195,9 @@ def compose(company, owner, service):
                ('Address', service.get('line1')), ('Renewal date', when),
                ('Yearly fee', f"£{ADDRESS_SERVICE_PRICE:.2f}")]
     if late:
-        details.append(('Late fee', f"£{late:.2f}"))
+        months = int(service.get('late_months') or 1)
+        details.append((f"Late fee ({months} month{'s' if months != 1 else ''} × £5)" if months > 1 else 'Late fee (1 month)',
+                        f"£{late:.2f}"))
     points = []
     if card_url:
         points.append("Pay by card in a minute, or by bank transfer with the details below.")

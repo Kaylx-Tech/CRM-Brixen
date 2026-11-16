@@ -122,7 +122,14 @@ def _pending_actions(uid):
 
 ADDRESS_SERVICE_PRICE = 50.0  # £ per year; the first year is included when the company is formed
 ADDRESS_GRACE_DAYS = 7  # unpaid this many days after the renewal date → Expired (services/address_expiry.py emails)
-ADDRESS_LATE_FEE = 5.0  # £ added to a renewal paid after the address expired
+ADDRESS_LATE_FEE = 5.0  # £ for every month (started) since the renewal date, once the address has expired
+
+
+def _late_months(expiry, today=None):
+    """Months of delay since the renewal date, each started month counting (6 Oct → 17 Nov is 2), at least 1."""
+    today = today or datetime.date.today()
+    months = (today.year - expiry.year) * 12 + today.month - expiry.month + (1 if today.day > expiry.day else 0)
+    return max(1, months)
 # Postcodes of the addresses Brixen provides. A registered office anywhere else is the client's own
 # address, not a service bought from us, so it is not listed on the portal Addresses page.
 BRIXEN_ADDRESS_POSTCODES = ('WV6 0SR', 'IG1 4JZ', 'W3 7LT', 'CV5 4AA', 'IG2 7LD')
@@ -179,7 +186,8 @@ def _address_renewals(company_id):
 def _company_address_service(company):
     """A company's registered office as a yearly £40 address subscription: paid for the first year
     from incorporation, a year more for every paid renewal, 'Renews soon' in its last 30 days, then 'Renewal due',
-    and 'Expired' 7 days after the renewal date; renewing an expired address costs £50 + £5 late fee.
+    and 'Expired' 7 days after the renewal date; renewing an expired address costs £50 + £5 for every month of
+    delay since the renewal date (each started month).
     The customer can renew from 30 days before the end; an unpaid renewal invoice is returned as renewal_invoice.
     With card auto-renew on (services/address_billing.py) Stripe charges on the renewal date instead."""
     from services.address_billing import subscription_for
@@ -201,10 +209,14 @@ def _company_address_service(company):
         status = ('Expired' if days_left < -ADDRESS_GRACE_DAYS else 'Renewal due' if days_left < 0
                   else 'Renews soon' if days_left <= RENEW_WINDOW_DAYS else 'Paid')
         can_renew = days_left <= RENEW_WINDOW_DAYS and not open_invoice
-    late_fee = ADDRESS_LATE_FEE if status == 'Expired' else 0.0
+    # £5 for every month of delay once expired (2 months late → £10)
+    late_months = _late_months(expiry) if status == 'Expired' and expiry else 0
+    late_fee = ADDRESS_LATE_FEE * late_months
     if sub and sub['status'] == 'active':
         # Stripe takes the payment itself; a subscription started after the year ran out renews on its own date
         status = 'Auto-renew' if not sub.get('cancel_at') else status
+        if status == 'Auto-renew':
+            late_fee, late_months = 0.0, 0
         can_renew = can_renew and bool(sub.get('cancel_at'))
         next_charge = _parse_company_date(sub.get('current_period_end'))
         if next_charge and (not expiry or next_charge > expiry):
@@ -214,10 +226,10 @@ def _company_address_service(company):
     # Companies House shows the company somewhere else now, or closed: nothing to renew, no reminders
     ch_status = str(ch.get('ch_status') or '').strip().lower()
     if ch.get('at_brixen') == 0:
-        status, can_renew, late_fee = 'Moved away', False, 0.0
+        status, can_renew, late_fee, late_months = 'Moved away', False, 0.0, 0
     elif ch_status and ch_status != 'active':
         status = 'Dissolved' if 'dissolved' in ch_status else ch_status.replace('-', ' ').capitalize()
-        can_renew, late_fee = False, 0.0
+        can_renew, late_fee, late_months = False, 0.0, 0
     auto_renew = {'status': sub['status'], 'next_charge': sub.get('current_period_end'),
                   'cancel_at': sub.get('cancel_at')} if sub else None
     line1 = (ch.get('ch_address') if ch.get('at_brixen') == 1 else None) or str(company.get('reg_office') or '').strip()
@@ -228,7 +240,7 @@ def _company_address_service(company):
         'start_date': start.isoformat() if start else None, 'expiry_date': expiry.isoformat() if expiry else None,
         'price': ADDRESS_SERVICE_PRICE, 'billing_period': 'year', 'status': status,
         'payment_status': 'Due' if status in ('Renewal due', 'Expired') else 'Paid',
-        'late_fee': late_fee, 'renewal_price': ADDRESS_SERVICE_PRICE + late_fee,
+        'late_fee': late_fee, 'late_months': late_months, 'renewal_price': ADDRESS_SERVICE_PRICE + late_fee,
         'can_renew': can_renew, 'renewal_invoice': open_invoice, 'auto_renew': auto_renew,
     }
 
@@ -250,7 +262,7 @@ def _renewal_pay_details():
 
 
 def _renew_company_address(user, company_id):
-    """Customer clicked Renew: place a £50 renewal order (+ £5 late fee once expired; its invoice follows),
+    """Customer clicked Renew: place a £50 renewal order (+ £5 a month late fee once expired; its invoice follows),
     or return the open one."""
     company = query_db("SELECT id, name, reg_office, inc_date, created_at FROM companies WHERE id = ? AND user_id = ?;",
                        (company_id, user['id']), one=True)
