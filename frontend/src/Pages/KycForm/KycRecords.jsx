@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { IconAlertTriangle, IconCopy, IconEye, IconId, IconLink, IconRefresh, IconSearch, IconSend, IconTrash } from '@tabler/icons-react'
+import { IconAlertTriangle, IconCopy, IconEye, IconId, IconLink, IconPencil, IconRefresh, IconSearch, IconSend, IconTrash } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -129,6 +129,55 @@ function OrderPicker({ check, onClose, onLinked }) {
   )
 }
 
+/** Correct the name or email of a check the client has not sent yet (a new email gets a fresh link). */
+function PersonEditor({ check, onClose, onSaved }) {
+  const [name, setName] = useState(check?.full_name || '')
+  const [email, setEmail] = useState(check?.email || '')
+  const [saving, setSaving] = useState(false)
+
+  const save = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    const res = await apiRequest(`/admin/kyc/${check.id}/person`, {
+      method: 'POST', body: { full_name: name.trim(), email: email.trim() }, label: 'KYC', silent: true,
+    })
+    setSaving(false)
+    if (res.ok) {
+      toast.success(res.data?.message || 'Saved')
+      onSaved()
+    } else {
+      toast.error(res.reason || 'Could not save it')
+    }
+  }
+
+  return (
+    <Dialog open={!!check} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[440px]">
+        <DialogHeader>
+          <DialogTitle>Edit KYC details</DialogTitle>
+          <DialogDescription>
+            A new email gets a fresh link (the old one stops working). This works until the client sends the form.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={save} className="space-y-3">
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium">Full name</span>
+            <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium">Email</span>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </label>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={saving || !name.trim() || !email.trim()}>{saving ? 'Saving…' : 'Save'}</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 /**
  * KYC: Brixen's identity checks, run on Finstap. The KYC link to send to any client (they verify on
  * portal.brixenconsultants.com), and the record of every check with the status Finstap's KYC team set.
@@ -156,6 +205,9 @@ export default function KycRecords({ embedded = false }) {
   // A check from the general KYC link: pick its order in the order picker
   const [linking, setLinking] = useState(null)
   const linkOrder = (check) => setLinking(check)
+
+  // A check not sent yet: correct its name or email
+  const [editing, setEditing] = useState(null)
 
   // A check the client has not sent yet (e.g. a second link for the same person): delete it (admins)
   const removeCheck = async (check) => {
@@ -384,6 +436,12 @@ export default function KycRecords({ embedded = false }) {
                               <IconCopy className="size-3.5" /> Their link
                             </Button>
                           )}
+                          {/* An order's check takes its person from the order form, so it is changed on the order */}
+                          {!c.order_number && !c.submitted_at && ['Not Started', 'In Progress', 'Declined'].includes(c.status) && (
+                            <Button variant="ghost" size="xs" className="h-7 gap-1 text-muted-foreground" onClick={() => setEditing(c)} aria-label={`Edit the KYC check for ${c.full_name}`}>
+                              <IconPencil className="size-3.5" /> Edit
+                            </Button>
+                          )}
                           {isAdminRole() && !c.submitted_at && ['Not Started', 'In Progress'].includes(c.status) && (
                             <Button variant="ghost" size="xs" className="h-7 gap-1 text-destructive hover:text-destructive" onClick={() => removeCheck(c)} aria-label={`Delete the KYC check for ${c.full_name}`}>
                               <IconTrash className="size-3.5" /> Delete
@@ -406,6 +464,7 @@ export default function KycRecords({ embedded = false }) {
       )}
 
       <OrderPicker key={linking?.id || 'none'} check={linking} onClose={() => setLinking(null)} onLinked={() => { setLinking(null); load() }} />
+      <PersonEditor key={editing?.id || 'none'} check={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load() }} />
       <KycCheckView key={viewing?.id || 'none'} check={viewing} statusLabel={statusLabel} onClose={() => setViewing(null)} />
     </div>
   )

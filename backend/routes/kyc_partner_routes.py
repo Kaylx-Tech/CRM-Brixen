@@ -14,6 +14,8 @@ POST /api/admin/kyc/ignore {order_id, undo?} → leave a missed KYC order out of
 GET  /api/admin/kyc/orders?q=&email=&name=  → orders to link a check to (the person's own orders first)
 POST /api/admin/kyc/<id>/order {order_number} → link a check to an order (e.g. one from the general KYC link)
 POST /api/admin/kyc/<id>/remove             → delete a check the client has not sent yet (admins)
+POST /api/admin/kyc/<id>/person {full_name, email} → correct the name or email of a check not sent yet
+                                              (a new email gets a fresh link; Finstap refuses it once sent)
 
 Env: FINSTAP_KYC_KEY (from admin.finstap.com → KYC → KYC for another website), FINSTAP_KYC_WORKSPACE
 (the Finstap workspace's name, default "brixen"), FINSTAP_API_URL (default https://api.finstap.com/api).
@@ -326,11 +328,26 @@ def handle_kyc_partner_routes(environ, start_response, path, method, user, body,
     if path == '/api/admin/kyc/orders' and method == 'GET':
         pick = lambda key: ((query or {}).get(key) or [''])[0]  # noqa: E731
         return success_response(start_response, data={'orders': _order_choices(pick('q'), pick('email'), pick('name'))})
-    # Link a check to an order (one started from the general KYC link), or delete one the client has not sent
-    action = re.match(r'^/api/admin/kyc/(\d+)/(order|remove)$', path)
+    # Link a check to an order (one started from the general KYC link), correct its person, or delete one the
+    # client has not sent
+    action = re.match(r'^/api/admin/kyc/(\d+)/(order|remove|person)$', path)
     if action and method == 'POST':
         if not cfg['key']:
             return error_response(start_response, "KYC is not connected to Finstap yet.", status_code=400)
+        if action.group(2) == 'person':
+            name = str((body or {}).get('full_name') or '').strip()[:160]
+            email = str((body or {}).get('email') or '').strip().lower()[:200]
+            if not name:
+                return error_response(start_response, "Type the person's name.", status_code=400)
+            if not email or not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', email):
+                return error_response(start_response, "Type a valid email address.", status_code=400)
+            # Finstap allows it only before the person sent the form; a new email gets a fresh link
+            data, err = _post(cfg, f"checks/{action.group(1)}/person", {'full_name': name, 'email': email})
+            if err:
+                return error_response(start_response, err, status_code=400)
+            return success_response(start_response, data={'full_name': name, 'email': email, **(data or {})},
+                                    message=("Saved. A new link was emailed to " + email + ".") if (data or {}).get('emailed')
+                                    else "Saved.")
         if action.group(2) == 'order':
             order = _find_order((body or {}).get('order_number'))
             if not order:
