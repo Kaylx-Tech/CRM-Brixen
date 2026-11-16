@@ -96,6 +96,26 @@ export default function RegisteredAddresses() {
   // A corrected email is kept on the customer's profile (or for this company when a team account holds it).
   const [confirming, setConfirming] = useState(null) // the row whose email is being checked
   const [email, setEmail] = useState('')
+  // Mark paid (admins and managers): the bank transfer arrived; the renewal is paid and the address runs a year more
+  const markPaid = async (r) => {
+    const amount = r.payment_claim?.amount ? ` (£${Number(r.payment_claim.amount).toFixed(2)})` : ''
+    if (!window.confirm(`Mark the address renewal for ${r.company_name} as paid${amount}? Do this once the bank transfer has arrived.`)) return
+    setSending(`paid-${r.id}`)
+    try {
+      const res = await apiRequest(`/admin/smart-links/registered-addresses/${r.company_id}/mark-paid`, {
+        method: 'POST', label: 'Mark paid', silent: true,
+      })
+      if (!res.ok) {
+        toast.error(res.reason || 'Could not mark it paid')
+        return
+      }
+      toast.success(res.data?.message || 'Marked paid')
+      load()
+    } finally {
+      setSending(null)
+    }
+  }
+
   // The email is asked only the first time for a company; after that the reminder goes straight to it
   const askEmail = (r) => {
     if (r.email_confirmed && r.reminder_email) {
@@ -300,14 +320,28 @@ export default function RegisteredAddresses() {
                     {needs && r.company_id ? (
                       <>
                         <span className="text-right text-[11px] leading-tight text-muted-foreground">
+                          {/* The customer pressed "I have paid by bank transfer" in the email */}
+                          {r.payment_claim ? (
+                            <span className="block font-medium text-emerald-600 dark:text-emerald-400" title={r.payment_claim.reference ? `Reference: ${r.payment_claim.reference}` : undefined}>
+                              Customer says paid · {shortDate(r.payment_claim.at)}
+                            </span>
+                          ) : null}
                           {r.last_reminder
                             ? <>Sent {shortDate(r.last_reminder.sent_on)}{r.last_reminder.kind === 'auto' ? ' · auto' : ''}{r.last_reminder.emailed ? '' : <span className="text-destructive"> · failed</span>}</>
                             : 'Not sent yet'}
                         </span>
-                        <Button variant="outline" size="sm" className="h-7 shrink-0 gap-1 px-2.5 text-xs" onClick={() => askEmail(r)} disabled={sending === r.id}>
-                          {sending === r.id ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconBell className="size-3.5" />}
-                          Remind
-                        </Button>
+                        <div className="flex shrink-0 gap-1">
+                          {auto.canManage && (
+                            <Button variant={r.payment_claim ? 'default' : 'ghost'} size="sm" className="h-7 gap-1 px-2.5 text-xs" onClick={() => markPaid(r)} disabled={sending === `paid-${r.id}`}>
+                              {sending === `paid-${r.id}` ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconCircleCheck className="size-3.5" />}
+                              Mark paid
+                            </Button>
+                          )}
+                          <Button variant="outline" size="sm" className="h-7 gap-1 px-2.5 text-xs" onClick={() => askEmail(r)} disabled={sending === r.id}>
+                            {sending === r.id ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconBell className="size-3.5" />}
+                            Remind
+                          </Button>
+                        </div>
                       </>
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>

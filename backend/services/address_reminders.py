@@ -5,8 +5,9 @@
   * Auto reminders: in the last 7 days before the renewal date, one reminder a day (checked every hour).
     Off until an admin or manager switches them on in the tab (setting address_auto_reminders = '1'), so a
     deploy never starts emailing customers by itself. Addresses on card auto-renew are skipped.
-  * Website customers (who cannot open the CRM portal) get a card link (Stripe, address_billing.pay_link) and the
-    bank details; portal customers get a link to their Addresses page (card or bank transfer there).
+  * Every customer can pay from the email without signing in: a card button (Stripe, address_billing.pay_link,
+    once Stripe is set up) and the bank details with an "I have paid by bank transfer" button (paid_link), which
+    tells the team to check the bank and press Mark paid. Portal customers also get their Addresses page link.
   * Every reminder is saved (address_reminders) before it is sent, so the same automatic one never goes twice.
 Nothing here deletes data.
 """
@@ -174,19 +175,25 @@ def compose(company, owner, service):
         "If it is not renewed, your address subscription will be cancelled and we will no longer act as the "
         "company's registered office. You are then responsible for giving Companies House a new address.",
     ]
+    # Paid straight from the email, no sign-in: by card (Stripe, once it is set up) or by bank transfer and then
+    # "I have paid" so the team knows to check the bank
+    from services.address_billing import paid_link, pay_link
+    card_url = (pay_link(company['id']) if company.get('id') else None) or pay.get('pay_url') or None
+    paid_url = paid_link(company['id']) if company.get('id') else None
+    bank = (f"by bank transfer to {pay.get('account_name')}, account {pay.get('account_number')}, "
+            f"sort code {pay.get('sort_code')}, with {name} as the reference")
+    points.append(f"Pay £{price:.0f} by card with the button below, or {bank}." if card_url
+                  else f"Pay £{price:.0f} {bank}.")
+    if paid_url:
+        points.append("After a bank transfer, press \"I have paid\" so our team can renew it straight away.")
     if portal:
-        points.append("Renew it from your client panel in a minute (card or bank transfer).")
-        cta_label, cta_url = 'Renew my address', f"{PORTAL_URL}/portal/addresses"
+        points.append(f"You can also renew it from your client panel: {PORTAL_URL}/portal/addresses")
+    if card_url:
+        cta_label, cta_url = f"Pay £{price:.0f} by card", card_url
+        cta2_label, cta2_url = ('I have paid by bank transfer', paid_url) if paid_url else (None, None)
     else:
-        # Website customers cannot open the CRM portal: their own card link (Stripe), else the invoice pay link;
-        # bank transfer is always offered too
-        from services.address_billing import pay_link
-        cta_url = (pay_link(company['id']) if company.get('id') else None) or pay.get('pay_url') or None
-        bank = (f"by bank transfer to {pay.get('account_name')}, account {pay.get('account_number')}, "
-                f"sort code {pay.get('sort_code')}, with {name} as the reference")
-        points.append(f"Pay £{price:.0f} by card with the button below, or {bank}." if cta_url
-                      else f"Pay £{price:.0f} {bank}.")
-        cta_label = f"Pay £{price:.0f} by card" if cta_url else None
+        cta_label, cta_url = ('I have paid by bank transfer', paid_url) if paid_url else (None, None)
+        cta2_label = cta2_url = None
     subject, text, html = compose_client_email(
         subject=(f"Renew your registered office address: {name}" if not due
                  else f"Your registered office address is due for renewal: {name}"),
@@ -200,7 +207,7 @@ def compose(company, owner, service):
         points=points,
         details=[('Company', name), ('Address', service.get('line1')), ('Renewal date', when),
                  ('To pay', f"£{price:.0f}")],
-        cta_label=cta_label, cta_url=cta_url, category='ORDER')
+        cta_label=cta_label, cta_url=cta_url, cta2_label=cta2_label, cta2_url=cta2_url, category='ORDER')
     return subject, text, html, cta_url
 
 

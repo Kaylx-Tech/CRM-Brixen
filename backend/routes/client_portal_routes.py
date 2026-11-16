@@ -152,6 +152,8 @@ def _parse_company_date(value):
 
 ADDRESS_RENEWAL_SERVICE = 'Registered Office Address Renewal'
 RENEW_WINDOW_DAYS = 30  # the Renew button opens this many days before the year ends
+# Address statuses that still wait for this year's payment
+NEEDS_RENEWAL_STATUSES = ('Renews soon', 'Renewal due', 'Expired', 'Payment failed')
 
 
 def _add_years(day, years):

@@ -180,10 +180,8 @@ def _ensure_pay_links():
     """)
 
 
-def pay_link(company_id):
-    """The company's own card payment link (one per company, kept), or None when Stripe is not set up."""
-    if not configured():
-        return None
+def _link_base(company_id):
+    """The company's own link in reminder emails (one per company, kept; no sign-in needed)."""
     import secrets
     from config import API_PUBLIC_URL
     _ensure_pay_links()
@@ -194,6 +192,73 @@ def pay_link(company_id):
         execute_db("INSERT INTO address_pay_links (token, company_id) VALUES (?, ?);", (token, int(company_id)))
     base = API_PUBLIC_URL or 'https://api.brixenconsultants.com'
     return f"{base}/api/public/address-renewal/{token}"
+
+
+def pay_link(company_id):
+    """Pay by card from the email (Stripe), or None when Stripe is not set up."""
+    return _link_base(company_id) if configured() else None
+
+
+def paid_link(company_id):
+    """"I have paid by bank transfer" from the email: the customer tells the team (no sign-in)."""
+    return f"{_link_base(company_id)}/paid"
+
+
+def ensure_claims():
+    execute_db("""
+        CREATE TABLE IF NOT EXISTS address_payment_claims (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            expiry_date TEXT,
+            amount REAL,
+            reference TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+
+
+def claim_bank_payment(company, service, reference=''):
+    """The customer says they paid by bank transfer (button in the reminder email): saved once per renewal date,
+    and the team is told to check the bank and press Mark paid. Returns True when it is new."""
+    from services.notification_service import notify_staff
+    ensure_claims()
+    if query_db("SELECT 1 FROM address_payment_claims WHERE company_id = ? AND COALESCE(expiry_date, '') = ?;",
+                (company['id'], service.get('expiry_date') or ''), one=True):
+        return False
+    amount = float(service.get('renewal_price') or 0)
+    execute_db("INSERT INTO address_payment_claims (company_id, expiry_date, amount, reference) VALUES (?, ?, ?, ?);",
+               (company['id'], service.get('expiry_date'), amount, str(reference or '').strip()[:120] or None))
+    notify_staff('Customer says the address renewal is paid',
+                 f"{company.get('name')}: the customer says they paid £{amount:.2f} by bank transfer"
+                 f"{' (reference: ' + str(reference).strip()[:120] + ')' if str(reference or '').strip() else ''}. "
+                 "Check the bank, then press Mark paid in Smart Operations › Registered Address.",
+                 'payment_received', '/admin/smart-operations?tab=registered-address')
+    return True
+
+
+def claims_for(company_ids):
+    """{company_id: {'at', 'amount', 'reference', 'expiry_date'}}: the latest "I have paid" of each company."""
+    ensure_claims()
+    out = {}
+    ids = list(company_ids)
+    for chunk in range(0, len(ids), 500):
+        part = ids[chunk:chunk + 500]
+        for r in query_db(f"""SELECT company_id, created_at, amount, reference, expiry_date FROM address_payment_claims
+                              WHERE company_id IN ({','.join('?' * len(part))}) ORDER BY id;""", tuple(part)) or []:
+            out[r['company_id']] = {'at': r['created_at'], 'amount': r['amount'], 'reference': r['reference'],
+                                    'expiry_date': r['expiry_date']}
+    return out
+
+
+def mark_bank_paid(company, service, actor):
+    """The team saw the bank transfer: the renewal invoice (or a new paid renewal order) is paid, the address moves
+    a year further."""
+    import time as _t
+    amount = float((service.get('renewal_invoice') or {}).get('total') or service.get('renewal_price') or 0)
+    paid = {'id': f"bank-{company['id']}-{int(_t.time())}", 'amount_paid': int(round(amount * 100))}
+    who = (actor or {}).get('full_name') or (actor or {}).get('email') or 'the team'
+    return _record_paid_year(company, paid, note=f"Paid by bank transfer (marked paid by {who})",
+                             method='GBP(Bank Transfer)')
 
 
 def company_for_link(token):
@@ -278,9 +343,10 @@ def apply_subscription(sub):
     return company['id']
 
 
-def _record_paid_year(company, stripe_invoice, note=None):
-    """A paid Stripe invoice (or a paid one-off Checkout) is one more paid year: pay the open renewal invoice, or
-    place a paid renewal order."""
+def _record_paid_year(company, stripe_invoice, note=None, method=CARD):
+    """A paid Stripe invoice (or a paid one-off Checkout, or a bank payment the team marked) is one more paid year:
+    pay the open renewal invoice, or place a paid renewal order."""
+    by_card = method == CARD
     ref = stripe_invoice['id']
     if query_db("SELECT 1 FROM address_renewal_payments WHERE stripe_invoice_id = ?;", (ref,), one=True):
         return False
@@ -291,7 +357,7 @@ def _record_paid_year(company, stripe_invoice, note=None):
     _paid_years, open_invoice = _address_renewals(company['id'])
     if open_invoice:
         invoice_id = open_invoice['id']
-        _updated, error, _mail = update_admin_invoice(invoice_id, {'status': 'Paid', 'payment_method': CARD})
+        _updated, error, _mail = update_admin_invoice(invoice_id, {'status': 'Paid', 'payment_method': method})
         if error:
             # Stripe sends the event again later
             raise StripeError(f"Renewal invoice {open_invoice.get('invoice_number')} could not be marked paid: {error}")
@@ -306,16 +372,18 @@ def _record_paid_year(company, stripe_invoice, note=None):
                 owner_name, owner_form_email, is_draft, current_step, created_at
             ) VALUES (?, ?, ?, ?, ?, 0, ?, 'Completed', ?, ?, ?, ?, 0, 5, datetime('now'));
         """, (order_number, company['user_id'], company['id'], ADDRESS_RENEWAL_SERVICE, amount, amount,
-              f"{note or 'Auto-renewed by card'} (Stripe {stripe_invoice.get('number') or ref})", CARD,
+              (f"{note or 'Auto-renewed by card'} (Stripe {stripe_invoice.get('number') or ref})" if by_card
+               else note or 'Paid by bank transfer'), method,
               owner.get('full_name'), owner.get('email')))
         invoice_id = ensure_invoice_for_order(order_id, paid=True)
     execute_db("""
         INSERT INTO address_renewal_payments (stripe_invoice_id, company_id, order_id, invoice_id, amount, receipt_url)
         VALUES (?, ?, ?, ?, ?, ?);
     """, (ref, company['id'], order_id, invoice_id, amount, stripe_invoice.get('hosted_invoice_url')))
-    notify_staff('Address renewed by card' if note else 'Address auto-renewed',
-                 f"{company.get('name')}: registered office renewed by card (£{amount:.2f}).",
-                 'payment_received', '/admin/payments')
+    if by_card:
+        notify_staff('Address renewed by card' if note else 'Address auto-renewed',
+                     f"{company.get('name')}: registered office renewed by card (£{amount:.2f}).",
+                     'payment_received', '/admin/payments')
     notify_user(company['user_id'], 'Address renewed',
                 f"Your registered office for {company.get('name')} was renewed for another year (£{amount:.2f}).",
                 'payment_received', '/portal/addresses')

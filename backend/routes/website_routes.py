@@ -18,7 +18,8 @@ POST     /api/public/service-orders                   Next.js website order form
 POST     /api/public/enquiries                        Next.js website contact form: a support ticket for the
                                                       team (services/website_enquiries.py). Limited per IP.
 GET      /api/public/address-renewal/<token>          the card link in a registered address reminder email:
-                                                      Stripe Checkout for this year's renewal (…/done: thank you)
+                                                      Stripe Checkout for this year's renewal (…/done: thank you;
+                                                      …/paid: "I have paid by bank transfer", a page + POST)
 """
 import datetime
 import hashlib
@@ -153,6 +154,50 @@ def _plain_page(start_response, title, message, status='200 OK'):
     return [page]
 
 
+def _address_bank_claim(environ, start_response, token, method, body):
+    """"I have paid by bank transfer" from the reminder email: a page with the bank details and one button (a POST,
+    so an email scanner opening the link never sends it); the team is told and checks the bank."""
+    import html
+    from routes.client_portal_routes import _company_address_service, _is_brixen_address, _renewal_pay_details
+    from services import address_billing
+    company = address_billing.company_for_link(token)
+    if not company or not _is_brixen_address(company.get('reg_office')):
+        return _plain_page(start_response, 'Link not found', 'This link is not valid. Please contact us.', '404 Not Found')
+    service = _company_address_service(company)
+    name = company.get('name') or 'your company'
+    if service['status'] in ('Paid', 'Auto-renew') and not service['renewal_invoice']:
+        return _plain_page(start_response, 'Nothing to pay',
+                           f"The registered office address of {name} is paid until "
+                           f"{service.get('expiry_date') or 'the renewal date'}. Thank you.")
+    if method == 'POST':
+        address_billing.claim_bank_payment(company, service, (body or {}).get('reference') if isinstance(body, dict) else '')
+        return _plain_page(start_response, 'Thank you',
+                           f"We have let our team know that you paid for the registered office address of {name}. "
+                           "Once the payment reaches our bank, the address is renewed for another year and you get a receipt.")
+    pay = _renewal_pay_details()
+    price = float(service.get('renewal_price') or 0)
+    e = html.escape
+    page = (f"<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,"
+            f"initial-scale=1'><title>Pay by bank transfer</title></head><body style=\"font-family:-apple-system,"
+            f"system-ui,sans-serif;max-width:480px;margin:10vh auto;padding:0 20px;color:#111;line-height:1.5\">"
+            f"<h1 style='font-size:22px'>Renew the registered office address</h1>"
+            f"<p>{e(name)} · <b>£{price:.2f}</b> for one more year.</p>"
+            f"<div style='border:1px solid #ddd;border-radius:12px;padding:12px 16px;margin:16px 0'>"
+            f"<p style='margin:0 0 6px;font-weight:600'>Bank transfer</p>"
+            f"Account name: {e(str(pay.get('account_name') or ''))}<br>Account number: {e(str(pay.get('account_number') or ''))}"
+            f"<br>Sort code: {e(str(pay.get('sort_code') or ''))}<br>Reference: {e(name)}</div>"
+            f"<form method='post'><label style='display:block;font-size:14px;margin-bottom:6px'>Payment reference "
+            f"(optional)<br><input name='reference' maxlength='120' style='width:100%;box-sizing:border-box;padding:10px;"
+            f"border:1px solid #ccc;border-radius:10px;margin-top:4px'></label>"
+            f"<button type='submit' style='width:100%;padding:12px;border:0;border-radius:10px;background:#1A69F8;"
+            f"color:#fff;font-size:16px;font-weight:600;margin-top:8px'>I have paid £{price:.2f}</button></form>"
+            f"<p style='font-size:13px;color:#666'>Press it after you send the transfer. Our team checks the bank and "
+            f"renews the address.</p></body></html>").encode()
+    start_response('200 OK', [('Content-Type', 'text/html; charset=utf-8'), ('Content-Length', str(len(page))),
+                              ('Cache-Control', 'no-store')])
+    return [page]
+
+
 def _address_card_payment(environ, start_response, token, done):
     """The card link in an address reminder email: Stripe Checkout for this year's renewal, then a thank-you page."""
     from routes.client_portal_routes import ADDRESS_SERVICE_PRICE, _company_address_service, _is_brixen_address
@@ -185,7 +230,9 @@ def _address_card_payment(environ, start_response, token, done):
 
 def handle_website_routes(environ, start_response, path, method, user, body, query):
     # Address renewal by card from the reminder email (website customers)
-    pay = re.match(r'^/api/public/address-renewal/([A-Za-z0-9_-]{16,64})(/done)?$', path)
+    pay = re.match(r'^/api/public/address-renewal/([A-Za-z0-9_-]{16,64})(/done|/paid)?$', path)
+    if pay and pay.group(2) == '/paid' and method in ('GET', 'POST'):
+        return _address_bank_claim(environ, start_response, pay.group(1), method, body)
     if pay and method == 'GET':
         return _address_card_payment(environ, start_response, pay.group(1), bool(pay.group(2)))
 

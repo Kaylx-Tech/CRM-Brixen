@@ -271,10 +271,15 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
 
     if path == '/api/admin/smart-links/registered-addresses' and method == 'GET':
         from services import address_reminders
+        from services.address_billing import claims_for
         rows = address_reminders.reminder_emails(_registered_addresses(user))
         last = address_reminders.last_reminders()
+        claims = claims_for({r['company_id'] for r in rows if r.get('company_id')})
         for r in rows:
             r['last_reminder'] = last.get(r.get('company_id')) if r.get('company_id') else None
+            # "I have paid by bank transfer" from the email, for this renewal date
+            claim = claims.get(r.get('company_id'))
+            r['payment_claim'] = claim if claim and claim.get('expiry_date') == r.get('expiry_date') else None
         return success_response(start_response, data={
             'addresses': rows, 'auto_reminders': address_reminders.auto_enabled(),
             'auto_days': address_reminders.AUTO_DAYS_BEFORE, 'can_manage': role in MANAGE_ROLES})
@@ -293,6 +298,28 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
         message = (f"Reminder emailed to {sent['sent_to']}." if sent['emailed']
                    else f"Reminder saved, but the email to {sent['sent_to']} could not be sent (check the email settings).")
         return success_response(start_response, data=sent, message=message)
+
+    # Mark paid: the bank transfer arrived (admins and managers): the renewal is paid, the address moves a year on
+    paid = re.match(r'^/api/admin/smart-links/registered-addresses/(\d+)/mark-paid$', path)
+    if paid and method == 'POST':
+        if role not in MANAGE_ROLES:
+            return error_response(start_response, "Only admins and managers can mark a renewal paid.", status_code=403)
+        from routes.client_portal_routes import _company_address_service, _is_brixen_address, NEEDS_RENEWAL_STATUSES
+        from services import address_billing
+        company = query_db("SELECT id, name, user_id, reg_office, inc_date, created_at FROM companies WHERE id = ?;",
+                           (int(paid.group(1)),), one=True)
+        if not company or not _is_brixen_address(company.get('reg_office')):
+            return error_response(start_response, "Address not found", status_code=404)
+        service = _company_address_service(company)
+        if service['status'] not in NEEDS_RENEWAL_STATUSES and not service['renewal_invoice']:
+            return error_response(start_response, "This address is already paid.", status_code=400)
+        try:
+            address_billing.mark_bank_paid(company, service, user)
+        except address_billing.StripeError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        after = _company_address_service(company)
+        return success_response(start_response, data={'status': after['status'], 'expiry_date': after['expiry_date']},
+                                message=f"{company.get('name')}: paid. The address now runs to {after['expiry_date']}.")
 
     # Auto reminders on / off (admins and managers)
     if path == '/api/admin/smart-links/registered-addresses/auto-reminders' and method == 'POST':

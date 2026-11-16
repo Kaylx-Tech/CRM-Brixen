@@ -82,8 +82,9 @@ def _greeting(client, order=None):
 
 
 def compose_client_email(*, subject, headline, greeting, message, points=None, details=None,
-                         cta_label=None, cta_url=None, category='ORDER'):
-    """Brixen transactional email (same shell as the invoice emails). Returns (subject, text, html)."""
+                         cta_label=None, cta_url=None, category='ORDER', cta2_label=None, cta2_url=None):
+    """Brixen transactional email (same shell as the invoice emails). Returns (subject, text, html).
+    cta2_*: an optional second button, outlined, next to the first."""
     brand = brand_settings()
     brand_for_sig = {**brand, 'legal_name': brand.get('legal_name') or 'Brixen Consultants Ltd'}
     points = [str(p).strip() for p in (points or []) if str(p).strip()]
@@ -102,12 +103,20 @@ def compose_client_email(*, subject, headline, greeting, message, points=None, d
             '<div style="margin:20px 0 0;padding:16px 18px;background:#f5f5f7;border-radius:12px;">'
             '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" '
             f'style="width:100%;border-collapse:collapse;">{rows}</table></div>')
-    cta_html = ''
+    buttons = []
     if cta_label and cta_url:
-        cta_html = (
-            f'<p style="margin:20px 0 0;"><a href="{html_escape(cta_url)}" '
-            'style="display:inline-block;padding:12px 22px;background:#003971;color:#ffffff;text-decoration:none;'
-            f'border-radius:999px;font-size:15px;font-weight:600;letter-spacing:-0.01em;">{html_escape(cta_label)}</a></p>')
+        buttons.append(
+            f'<a href="{html_escape(cta_url)}" '
+            'style="display:inline-block;margin:0 8px 8px 0;padding:12px 22px;background:#003971;color:#ffffff;'
+            'text-decoration:none;border-radius:999px;font-size:15px;font-weight:600;letter-spacing:-0.01em;">'
+            f'{html_escape(cta_label)}</a>')
+    if cta2_label and cta2_url:
+        buttons.append(
+            f'<a href="{html_escape(cta2_url)}" '
+            'style="display:inline-block;margin:0 8px 8px 0;padding:11px 21px;border:1px solid #003971;color:#003971;'
+            'text-decoration:none;border-radius:999px;font-size:15px;font-weight:600;letter-spacing:-0.01em;">'
+            f'{html_escape(cta2_label)}</a>')
+    cta_html = f'<p style="margin:20px 0 0;">{"".join(buttons)}</p>' if buttons else ''
 
     body_inner = (
         f'<p style="margin:0 0 12px;font-size:15px;line-height:1.55;color:#1d1d1f;">Hello {html_escape(greeting)},</p>'
@@ -128,6 +137,8 @@ def compose_client_email(*, subject, headline, greeting, message, points=None, d
     text_lines += [f"{k}: {v}" for k, v in details]
     if cta_label and cta_url:
         text_lines += ['', f"{cta_label}: {cta_url}"]
+    if cta2_label and cta2_url:
+        text_lines += [f"{cta2_label}: {cta2_url}"]
     return subject, '\n'.join(text_lines), html
 
 
