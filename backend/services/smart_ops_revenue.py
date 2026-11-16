@@ -11,7 +11,7 @@ from db import query_db
 
 # First match wins, in this order: a KYC or address line inside a package still counts for its own area
 AREAS = [
-    ('id-verification', 'ID Verification', re.compile(r'\bkyc\b|id verification|identity verification|aml check', re.I)),
+    ('id-verification', 'KYC', re.compile(r'\bkyc\b|id verification|identity verification|aml check', re.I)),
     ('registered-address', 'Registered Address',
      re.compile(r'registered (office|business)?\s*address|registered office|address renewal|mail forwarding', re.I)),
     ('uk-gov-checks', 'UK Gov filings',

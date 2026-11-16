@@ -133,7 +133,8 @@ function OrderPicker({ check, onClose, onLinked }) {
  * KYC: Brixen's identity checks, run on Finstap. The KYC link to send to any client (they verify on
  * portal.brixenconsultants.com), and the record of every check with the status Finstap's KYC team set.
  */
-export default function KycRecords() {
+// `embedded`: shown as the KYC tab of Smart Operations, which has its own heading
+export default function KycRecords({ embedded = false }) {
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -217,13 +218,15 @@ export default function KycRecords() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">KYC Verification</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Identity checks for your clients. Send them the KYC link; Finstap's KYC team checks what they send.
-          </p>
-        </div>
+      <div className={`flex flex-wrap items-end gap-3 ${embedded ? 'justify-end' : 'justify-between'}`}>
+        {!embedded && (
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">KYC Verification</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Identity checks for your clients. Send them the KYC link; Finstap's KYC team checks what they send.
+            </p>
+          </div>
+        )}
         <div className="flex flex-wrap gap-2">
         {data?.link && (
           <Button

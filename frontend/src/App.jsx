@@ -14,7 +14,6 @@ const Sso = lazyPage(() => import('./Pages/Sso'))
 // KYC form for Brixen's clients (runs on Finstap's KYC; public pages)
 const KycStart = lazyPage(() => import('./Pages/KycForm/KycStart'))
 const KycVerify = lazyPage(() => import('./Pages/KycForm/KycVerify'))
-const KycRecords = lazyPage(() => import('./Pages/KycForm/KycRecords'))
 const AdminLayout = lazyPage(() => import('./Layout/AdminLayout'))
 const Dashboard = lazyPage(() => import('./Pages/Dasboard'))
 const Customers = lazyPage(() => import('./Pages/Customer/Customers'))
@@ -150,7 +149,8 @@ const App = () => {
                 <Route path="email-log" element={<PageGuard page="email-log"><EmailLog /></PageGuard>} />
                 <Route path="tickets" element={<PageGuard page="tickets"><Tickets /></PageGuard>} />
                 <Route path="smart-operations" element={<PageGuard page="smart-operations"><SmartOperations /></PageGuard>} />
-                <Route path="kyc" element={<PageGuard page="smart-operations"><KycRecords /></PageGuard>} />
+                {/* KYC is the first tab of Smart Operations now; old links open it there */}
+                <Route path="kyc" element={<Navigate to="/admin/smart-operations" replace />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="profile" element={<Navigate to="/admin/settings?tab=profile" replace />} />

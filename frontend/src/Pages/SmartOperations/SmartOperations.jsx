@@ -32,7 +32,9 @@ import { toast } from 'sonner'
 import { useSearchParams } from 'react-router-dom'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Tasks from '@/Pages/Tasks/Tasks'
-import IdVerification from './IdVerification'
+// The first tab is KYC (Finstap's KYC checks). The Didit ID Verification tab (./IdVerification) is on hold:
+// the user will switch Didit back on later
+import KycRecords from '@/Pages/KycForm/KycRecords'
 import CompanyFormation from './CompanyFormation'
 import RegisteredAddresses from './RegisteredAddresses'
 import SmartOpsRevenue from './SmartOpsRevenue'
@@ -123,7 +125,7 @@ function LinkRow({ link, canManage, onEdit, onDelete }) {
 }
 
 export default function SmartOperations() {
-  // ID Verification (KYC orders) is the first, default tab; ?tab=company-formation opens the formation orders,
+  // KYC is the first, default tab (its key stays 'id-verification'); ?tab=company-formation opens the formation orders,
   // ?tab=links the links and ?tab=uk-gov-checks UK Gov Checks (the team's tasks; old ?tab=gov-forms links still work)
   const [searchParams, setSearchParams] = useSearchParams()
   const rawTab = searchParams.get('tab') === 'gov-forms' ? 'uk-gov-checks' : searchParams.get('tab')
@@ -264,7 +266,7 @@ export default function SmartOperations() {
           )}
           {tab === 'id-verification' && (
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Every order with a KYC product, for verifying the client's identity.
+              Identity checks for your clients. Send them the KYC link; Finstap's KYC team checks what they send.
             </p>
           )}
           {tab === 'company-formation' && (
@@ -293,7 +295,7 @@ export default function SmartOperations() {
         <TabsList>
           <TabsTrigger value="id-verification">
             <IconId className="size-4" />
-            ID Verification
+            KYC
           </TabsTrigger>
           <TabsTrigger value="company-formation">
             <IconBuildingPlus className="size-4" />
@@ -319,7 +321,7 @@ export default function SmartOperations() {
       )}
 
       {tab === 'id-verification' ? (
-        <IdVerification />
+        <KycRecords embedded />
       ) : tab === 'company-formation' ? (
         <CompanyFormation />
       ) : tab === 'registered-address' ? (
