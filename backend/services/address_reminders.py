@@ -86,12 +86,17 @@ def reminder_emails(rows):
         owners.update({r['id']: r for r in query_db(f"""
             SELECT c.id, u.role, u.email, u.notification_email FROM companies c LEFT JOIN users u ON u.id = c.user_id
             WHERE c.id IN ({marks});""", tuple(part)) or []})
+    # The team already checked the email once: a reminder was sent by hand to the email it still has
+    confirmed = {(c['company_id'], str(c['email'] or '').strip().lower()) for c in query_db(
+        "SELECT DISTINCT company_id, sent_to AS email FROM address_reminders WHERE kind = 'manual';") or []}
     for r in rows:
         owner = owners.get(r.get('company_id')) or {}
         r['owner_is_customer'] = own_customer(owner)
         own = (owner.get('notification_email') or owner.get('email') or '').strip() or None
         # A company under a team account (e.g. Admin) never emails the team: only an email the team typed for it
         r['reminder_email'] = own if r['owner_is_customer'] else custom.get(r.get('company_id'))
+        r['email_confirmed'] = bool(r['reminder_email']) and \
+            (r.get('company_id'), r['reminder_email'].strip().lower()) in confirmed
     return rows
 
 

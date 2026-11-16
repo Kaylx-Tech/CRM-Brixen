@@ -96,7 +96,12 @@ export default function RegisteredAddresses() {
   // A corrected email is kept on the customer's profile (or for this company when a team account holds it).
   const [confirming, setConfirming] = useState(null) // the row whose email is being checked
   const [email, setEmail] = useState('')
+  // The email is asked only the first time for a company; after that the reminder goes straight to it
   const askEmail = (r) => {
+    if (r.email_confirmed && r.reminder_email) {
+      remind(r)
+      return
+    }
     setConfirming(r)
     setEmail(r.reminder_email || '')
   }
@@ -119,7 +124,9 @@ export default function RegisteredAddresses() {
       setRows((list) => list.map((x) => {
         const same = x.id === r.id || (r.owner_is_customer && x.customer_id && x.customer_id === r.customer_id)
         const next = same ? { ...x, reminder_email: sent?.sent_to || x.reminder_email } : x
-        return x.id === r.id ? { ...next, last_reminder: { sent_on: sent?.sent_on, kind: 'manual', emailed: !!sent?.emailed } } : next
+        return x.id === r.id
+          ? { ...next, email_confirmed: true, last_reminder: { sent_on: sent?.sent_on, kind: 'manual', emailed: !!sent?.emailed } }
+          : next
       }))
     } finally {
       setSending(null)
