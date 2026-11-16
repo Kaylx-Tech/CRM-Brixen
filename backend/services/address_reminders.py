@@ -236,7 +236,7 @@ def compose(company, owner, service):
                {'title': 'Bank transfer · Pakistan (PKR)', 'rows': [(k, v) for k, v in pkr_rows if v]}],
         footnote=footnote, category='ORDER',
         # One short red line: what happens if it is not paid
-        alert="Unpaid: your address will be defaulted and the company can be closed.")
+        alert="If unpaid, your registered address will be defaulted and your company may be closed.")
     return subject, text, html, cta_url
 
 
