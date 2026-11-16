@@ -234,7 +234,10 @@ def compose(company, owner, service):
         cta_label=cta_label, cta_url=cta_url, cta2_label=cta2_label, cta2_url=cta2_url,
         boxes=[{'title': 'Bank transfer · UK (GBP)', 'rows': [(k, v) for k, v in bank_rows if v]},
                {'title': 'Bank transfer · Pakistan (PKR)', 'rows': [(k, v) for k, v in pkr_rows if v]}],
-        footnote=footnote, category='ORDER')
+        footnote=footnote, category='ORDER',
+        # One short red line: what happens if it is not paid
+        alert=("If this fee is not paid, your company's registered address will be defaulted at Companies House "
+               "and the company can be struck off (closed)."))
     return subject, text, html, cta_url
 
 

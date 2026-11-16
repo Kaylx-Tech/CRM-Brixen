@@ -101,7 +101,7 @@ def _rows_box(rows, total=None, title=None, margin='20px 0 0'):
 
 def compose_client_email(*, subject, headline, greeting, message, points=None, details=None,
                          cta_label=None, cta_url=None, category='ORDER', cta2_label=None, cta2_url=None,
-                         details_total=None, boxes=None, footnote=None):
+                         details_total=None, boxes=None, footnote=None, alert=None):
     """Brixen transactional email (same shell as the invoice emails). Returns (subject, text, html).
     cta2_*: an optional second button, outlined, next to the first. details_total: a bold last row of the details
     box (e.g. the amount to pay). boxes: more grey boxes after the buttons, [{'title', 'rows'}]. footnote: small
@@ -119,6 +119,10 @@ def compose_client_email(*, subject, headline, greeting, message, points=None, d
     boxes_html = ''.join(_rows_box(b['rows'], title=b.get('title'), margin='16px 0 0') for b in boxes)
     footnote_html = (f'<p style="margin:20px 0 0;font-size:13px;line-height:1.5;color:#6e6e73;">'
                      f'{html_escape(footnote)}</p>') if footnote else ''
+    # alert: one short warning line in red, under the message
+    alert_html = (f'<p style="margin:12px 0 10px;padding:8px 12px;background:#fff1f0;border-left:3px solid #d70015;'
+                  f'border-radius:6px;font-size:13px;line-height:1.45;color:#d70015;font-weight:600;">'
+                  f'{html_escape(alert)}</p>') if alert else ''
     buttons = []
     if cta_label and cta_url:
         buttons.append(
@@ -138,7 +142,7 @@ def compose_client_email(*, subject, headline, greeting, message, points=None, d
         f'<p style="margin:0 0 12px;font-size:15px;line-height:1.55;color:#1d1d1f;">Hello {html_escape(greeting)},</p>'
         f'<p style="margin:0;font-size:15px;line-height:1.55;color:#424245;">'
         f'{html_escape(message).replace(chr(10), "<br>")}</p>'
-        f'{points_html}{details_html}{cta_html}{boxes_html}{footnote_html}'
+        f'{alert_html}{points_html}{details_html}{cta_html}{boxes_html}{footnote_html}'
     )
     hero = eng.email_brand_header_html(brand, headline)
     html = eng.build_transactional_shell_html(
@@ -149,7 +153,7 @@ def compose_client_email(*, subject, headline, greeting, message, points=None, d
         signature_html=eng.email_signature_html(brand_for_sig),
         disclaimer_html=eng.email_disclaimer_html(eng.category_disclaimer(category)),
     )
-    text_lines = [f"Hello {greeting},", '', message, *points]
+    text_lines = [f"Hello {greeting},", '', message, *([f"! {alert}"] if alert else []), *points]
     text_lines += [f"{k}: {v}" for k, v in details]
     if details_total:
         text_lines += [f"{details_total[0]}: {details_total[1]}"]
