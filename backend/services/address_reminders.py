@@ -43,6 +43,14 @@ def _ensure():
         );
     """)
     execute_db("CREATE INDEX IF NOT EXISTS idx_address_reminders_company ON address_reminders(company_id, sent_on);")
+    # The emails the team checked or corrected (Change email / the first Reminder)
+    execute_db("""
+        CREATE TABLE IF NOT EXISTS address_email_checked (
+            company_id INTEGER PRIMARY KEY,
+            email TEXT NOT NULL,
+            checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
     # The email for a company whose owner is not a customer account (e.g. a company under the team's Admin)
     execute_db("""
         CREATE TABLE IF NOT EXISTS address_reminder_emails (
@@ -89,7 +97,8 @@ def reminder_emails(rows):
             WHERE c.id IN ({marks});""", tuple(part)) or []})
     # The team already checked the email once: a reminder was sent by hand to the email it still has
     confirmed = {(c['company_id'], str(c['email'] or '').strip().lower()) for c in query_db(
-        "SELECT DISTINCT company_id, sent_to AS email FROM address_reminders WHERE kind = 'manual';") or []}
+        "SELECT DISTINCT company_id, sent_to AS email FROM address_reminders WHERE kind = 'manual' "
+        "UNION SELECT company_id, email FROM address_email_checked;") or []}
     for r in rows:
         owner = owners.get(r.get('company_id')) or {}
         r['owner_is_customer'] = own_customer(owner)
@@ -122,6 +131,10 @@ def set_email(company_id, email, actor):
                       ON CONFLICT(company_id) DO UPDATE SET email = excluded.email, updated_by = excluded.updated_by,
                       updated_at = datetime('now');""", (company['id'], email, (actor or {}).get('email')))
         where = 'company'
+    # The team checked this email: the next Reminder goes straight to it (no email box)
+    execute_db("""INSERT INTO address_email_checked (company_id, email) VALUES (?, ?)
+                  ON CONFLICT(company_id) DO UPDATE SET email = excluded.email, checked_at = datetime('now');""",
+               (company['id'], email))
     try:
         execute_db("""INSERT INTO activity_logs (user_id, user_email, action, entity_type, entity_id, details)
                       VALUES (?, ?, 'ADDRESS_REMINDER_EMAIL', 'companies', ?, ?);""",

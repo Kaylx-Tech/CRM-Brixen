@@ -315,6 +315,19 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
                    else f"Reminder saved, but the email to {sent['sent_to']} could not be sent (check the email settings).")
         return success_response(start_response, data=sent, message=message)
 
+    # Change email: correct a customer's email any time (saved only; no reminder goes)
+    change = re.match(r'^/api/admin/smart-links/registered-addresses/(\d+)/email$', path)
+    if change and method == 'POST':
+        from services import address_reminders
+        try:
+            where = address_reminders.set_email(int(change.group(1)), (body or {}).get('email'), user)
+        except address_reminders.ReminderError as exc:
+            return error_response(start_response, str(exc), status_code=400)
+        email = str((body or {}).get('email') or '').strip().lower()
+        return success_response(start_response, data={'email': email, 'saved_on': where}, message=(
+            f"Saved. Emails for this customer now go to {email}." if where == 'customer'
+            else f"Saved. Reminders for this company now go to {email}."))
+
     # Mark paid: the bank transfer arrived (admins and managers): the renewal is paid, the address moves a year on
     paid = re.match(r'^/api/admin/smart-links/registered-addresses/(\d+)/mark-paid$', path)
     if paid and method == 'POST':

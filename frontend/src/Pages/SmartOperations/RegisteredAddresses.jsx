@@ -7,12 +7,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import {
   IconAlertTriangle,
   IconBell,
+  IconCheck,
   IconCircleCheck,
   IconCreditCard,
   IconClockHour4,
   IconHourglassLow,
   IconLoader2,
   IconMapPin,
+  IconPencil,
   IconRefresh,
   IconSearch,
 } from '@tabler/icons-react'
@@ -123,13 +125,43 @@ export default function RegisteredAddresses() {
   }
 
   // The email is asked only the first time for a company; after that the reminder goes straight to it
+  const [mode, setMode] = useState('remind') // 'remind' (check, then send) or 'edit' (change the email only)
   const askEmail = (r) => {
     if (r.email_confirmed && r.reminder_email) {
       remind(r)
       return
     }
+    setMode('remind')
     setConfirming(r)
     setEmail(r.reminder_email || '')
+  }
+
+  // Change email (pencil next to the email): any time, also when one is already there
+  const editEmail = (r) => {
+    setMode('edit')
+    setConfirming(r)
+    setEmail(r.reminder_email || '')
+  }
+  const sameCustomer = (r, x) => x.id === r.id || (r.owner_is_customer && x.customer_id && x.customer_id === r.customer_id)
+  const saveEmail = async (r, to) => {
+    setSending(r.id)
+    try {
+      const res = await apiRequest(`/admin/smart-links/registered-addresses/${r.company_id}/email`, {
+        method: 'POST', body: { email: to }, label: 'Email', silent: true,
+      })
+      if (!res.ok) {
+        toast.error(res.reason || 'The email could not be saved')
+        return
+      }
+      toast.success(res.data?.message || 'Saved')
+      const saved = res.data?.data?.email || to
+      setRows((list) => list.map((x) => (sameCustomer(r, x)
+        ? { ...x, reminder_email: saved, email_confirmed: x.id === r.id ? true : x.email_confirmed }
+        : x)))
+      setConfirming(null)
+    } finally {
+      setSending(null)
+    }
   }
 
   const remind = async (r, to) => {
@@ -309,7 +341,20 @@ export default function RegisteredAddresses() {
                   {/* Address and customer */}
                   <div className="min-w-0 pl-12 @3xl:pl-0">
                     <p className="truncate text-sm" title={r.address}>{r.address || '—'}</p>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground" title={customer}>{customer || '—'}</p>
+                    <p className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                      <span className="truncate" title={customer}>{customer || '—'}</span>
+                      {r.company_id && (
+                        <button
+                          type="button"
+                          onClick={() => editEmail(r)}
+                          className="shrink-0 rounded p-0.5 text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+                          title="Change Email"
+                          aria-label={`Change the email for ${r.company_name}`}
+                        >
+                          <IconPencil className="size-3" />
+                        </button>
+                      )}
+                    </p>
                   </div>
 
                   {/* Renewal date and status */}
@@ -382,17 +427,20 @@ export default function RegisteredAddresses() {
       <Dialog open={!!confirming} onOpenChange={(open) => !open && setConfirming(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Send a Renewal Reminder</DialogTitle>
+            <DialogTitle>{mode === 'edit' ? 'Change Email' : 'Send a Renewal Reminder'}</DialogTitle>
             <DialogDescription>
               {confirming?.company_name}
-              {confirming?.customer_name ? ` · ${confirming.customer_name}` : ''}. Check the email before it goes.
+              {confirming?.customer_name ? ` · ${confirming.customer_name}` : ''}.{' '}
+              {mode === 'edit' ? 'Type the right email and save it.' : 'Check the email before it goes.'}
             </DialogDescription>
           </DialogHeader>
           <form
             className="space-y-3"
             onSubmit={(e) => {
               e.preventDefault()
-              if (confirming && email.trim()) remind(confirming, email.trim())
+              if (!confirming || !email.trim()) return
+              if (mode === 'edit') saveEmail(confirming, email.trim())
+              else remind(confirming, email.trim())
             }}
           >
             <label className="block space-y-1 text-sm">
@@ -406,9 +454,16 @@ export default function RegisteredAddresses() {
             </p>
             <div className="flex justify-end gap-2 pt-1">
               <Button type="button" variant="ghost" onClick={() => setConfirming(null)}>Cancel</Button>
+              {mode === 'edit' && NEEDS_ACTION.includes(confirming?.status) && (
+                <Button type="button" variant="outline" disabled={!email.trim() || sending === confirming?.id}
+                  onClick={() => remind(confirming, email.trim())}>
+                  <IconBell className="size-4" /> Save and Send Reminder
+                </Button>
+              )}
               <Button type="submit" disabled={!email.trim() || sending === confirming?.id}>
-                {sending === confirming?.id ? <IconLoader2 className="size-4 animate-spin" /> : <IconBell className="size-4" />}
-                Send reminder
+                {sending === confirming?.id ? <IconLoader2 className="size-4 animate-spin" />
+                  : mode === 'edit' ? <IconCheck className="size-4" /> : <IconBell className="size-4" />}
+                {mode === 'edit' ? 'Save' : 'Send Reminder'}
               </Button>
             </div>
           </form>
