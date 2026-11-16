@@ -31,7 +31,12 @@ export function Inline({ text }) {
   let m
   while ((m = re.exec(text))) {
     if (m.index > last) parts.push(text.slice(last, m.index))
-    if (m[1]) parts.push(<strong key={m.index} className="font-semibold text-slate-900">{m[1]}</strong>)
+    if (m[1])
+      parts.push(
+        <strong key={m.index} className="font-semibold text-slate-900">
+          <Inline text={m[1]} />
+        </strong>
+      )
     else {
       const href = m[3]
       const label = m[2].trim()
@@ -53,11 +58,13 @@ export function Inline({ text }) {
   return parts
 }
 
-/** A legal document from src/content/legal/*.json: [["h2" | "h3" | "p" | "li", text], ...]. */
-export function LegalDocument({ blocks, updated }) {
+/** Copied WordPress text: [["h2" | "h3" | "p" | "li", text], ...]. A paragraph that is all bold is a small heading. */
+export function RichBlocks({ blocks }) {
   const out = []
   for (let i = 0; i < blocks.length; i++) {
-    const [tag, text] = blocks[i]
+    const [rawTag, text] = blocks[i]
+    const boldOnly = rawTag === "p" && /^\*\*[^*]+\*\*$/.test(text)
+    const tag = boldOnly ? "h3" : rawTag
     if (tag === "li") {
       const items = []
       while (i < blocks.length && blocks[i][0] === "li") items.push(blocks[i++][1])
@@ -83,7 +90,7 @@ export function LegalDocument({ blocks, updated }) {
     } else if (tag === "h3") {
       out.push(
         <h3 key={i} className="mt-8 text-lg font-bold text-brand-navy">
-          <Inline text={text} />
+          <Inline text={boldOnly ? text.slice(2, -2).replace(/\s*:\s*$/, "") : text} />
         </h3>
       )
     } else {
@@ -94,10 +101,15 @@ export function LegalDocument({ blocks, updated }) {
       )
     }
   }
+  return out
+}
+
+/** A legal document from src/content/legal/*.json. */
+export function LegalDocument({ blocks, updated }) {
   return (
     <section className="bg-brand-mist py-12 sm:py-16">
-      <article className="mx-auto max-w-4xl rounded-3xl bg-white px-6 py-10 leading-relaxed text-slate-700 shadow-[0_30px_60px_-45px_rgba(0,57,113,0.5)] ring-1 ring-slate-100 sm:px-12 sm:py-14">
-        {out}
+      <article className="mx-auto max-w-4xl break-words rounded-3xl bg-white px-6 py-10 leading-relaxed text-slate-700 shadow-[0_30px_60px_-45px_rgba(0,57,113,0.5)] ring-1 ring-slate-100 sm:px-12 sm:py-14">
+        <RichBlocks blocks={blocks} />
         {updated && <p className="mt-10 border-t border-slate-100 pt-6 text-sm text-brand-slate">{updated}</p>}
       </article>
     </section>

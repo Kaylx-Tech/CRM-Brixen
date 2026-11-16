@@ -31,6 +31,12 @@ const nextConfig = {
       { source: "/home-2/", destination: "/", permanent: true },
       // WordPress's /privacy-policy/ was its sample page; the real policy is the GDPR one
       { source: "/privacy-policy/", destination: "/gdpr-privacy-policy/", permanent: true },
+      // Empty duplicates of service pages on WordPress, and its old order thank-you page
+      { source: "/dormant-company-accounts/", destination: "/dormant-company-accounts-service/", permanent: true },
+      { source: "/company-secretary-service/", destination: "/company-secretary-services/", permanent: true },
+      { source: "/registered-office-address/", destination: "/registered-office-address-service/", permanent: true },
+      { source: "/directors-service-address/", destination: "/directors-services-address/", permanent: true },
+      { source: "/thankyou/", destination: "/order-complete/", permanent: true },
       ...DEMO_PAGES.map((source) => ({ source, destination: "/", permanent: true })),
       { source: "/customer-area/:path*", destination: `${PORTAL}/`, permanent: true },
       ...ACCOUNT_PAGES.map((source) => ({ source, destination: `${PORTAL}/`, permanent: false })),

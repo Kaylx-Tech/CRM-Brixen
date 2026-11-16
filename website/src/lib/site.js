@@ -29,7 +29,7 @@ export const SITE = {
 }
 
 // ── Pages ───────────────────────────────────────────────────────────────────
-// [path, title, group]. Each one is built for real step by step; until then it shows a short holding page.
+// [path, title, group]. Every page has its own folder under src/app (the sitemap is made from this list).
 // "details" pages are the order forms that sit behind each service page.
 const LIST = [
   // Main
@@ -40,7 +40,6 @@ const LIST = [
   ["/services/", "Our Services", "main"],
   ["/renewals/", "Renewals", "main"],
   ["/id-requirements/", "ID Requirements", "main"],
-  ["/thankyou/", "Thank You", "main"],
   ["/web-design-and-marketing/", "Web Design and Marketing", "business"],
   // Legal
   ["/terms-conditions/", "Terms & Conditions", "legal"],
@@ -59,12 +58,10 @@ const LIST = [
   ["/company-name-change-service/", "Company Name Change", "company"],
   ["/company-name-change-details/", "Company Name Change Details", "company-details"],
   ["/dormant-company-accounts-service/", "Dormant Company Accounts", "company"],
-  ["/dormant-company-accounts/", "Dormant Company Accounts", "company"],
   ["/dormant-company-accounts-service-details/", "Dormant Company Accounts Service Details", "company-details"],
   ["/directors-appointment-or-resignation/", "Directors Appointment or Resignation", "company"],
   ["/directors-appointment-or-resignation-details/", "Directors Appointment or Resignation Details", "company-details"],
   ["/company-secretary-services/", "Company Secretary Services", "company"],
-  ["/company-secretary-service/", "Company Secretary Service", "company"],
   ["/company-secretary-service-details/", "Company Secretary Service Details", "company-details"],
   ["/certification-of-good-standing/", "Certification of Good Standing", "company"],
   ["/certification-good-standing-service-details/", "Certification of Good Standing Details", "company-details"],
@@ -77,12 +74,10 @@ const LIST = [
   ["/vat-registration-service-details/", "VAT Registration Service Details", "business-details"],
   // Address services
   ["/registered-office-address-service/", "Registered Office Address Service", "address"],
-  ["/registered-office-address/", "Registered Office Address", "address"],
   ["/registered-office-address-details/", "Registered Office Address Details", "address-details"],
   ["/business-mail-forwarding-address/", "Business Mail Forwarding Address", "address"],
   ["/business-mail-forwarding-address-details/", "Business Mail Forwarding Address Details", "address-details"],
   ["/directors-services-address/", "Directors Service Address", "address"],
-  ["/directors-service-address/", "Directors Service Address", "address"],
   ["/directors-service-address-details/", "Directors Service Address Details", "address-details"],
   // Packages
   ["/digital-package-name-search/", "Digital Package: Name Search", "packages"],
@@ -104,7 +99,7 @@ export const PAGES = LIST.map(([path, title, group]) => ({
   title,
   group,
   // Order forms are reached from their service page; they are not offered to search engines on their own
-  index: !group.endsWith("-details") && path !== "/thankyou/",
+  index: !group.endsWith("-details"),
 }))
 
 export const pageByPath = (path) => PAGES.find((p) => p.path === path)

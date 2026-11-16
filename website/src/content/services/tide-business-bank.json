@@ -1,0 +1,95 @@
+{
+ "title": "Tide Business Bank",
+ "intro": "Tide is a simple online business banking service made for small businesses and freelancers, helping you manage your money easily through its smart and easy-to-use app.",
+ "includes": [
+  "Fast online account opening",
+  "business money management",
+  "Statement editing",
+  "Secure FSCS-protected savings",
+  "Simple and secure file handling",
+  "Simple mobile banking app",
+  "Quick payments and transfers"
+ ],
+ "body": [
+  [
+   "p",
+   "**What Tide Is**"
+  ],
+  [
+   "p",
+   "Tide is a UK-based fintech platform that provides business banking accounts and financial tools for small businesses, freelancers and sole traders."
+  ],
+  [
+   "p",
+   "It’s important to note that Tide **isn’t a full bank with its own banking licence** — instead it works with a partner bank (ClearBank) so your money is held securely via their infrastructure."
+  ],
+  [
+   "p",
+   "You can open an account online in minutes, manage your expenses, send invoices and connect accounting software."
+  ],
+  [
+   "p",
+   "**Key Benefits**"
+  ],
+  [
+   "li",
+   "Speed & convenience: You can open a business account quickly via the app, with less paperwork than many traditional banks."
+  ],
+  [
+   "li",
+   "Useful business tools: For small businesses, Tide offers things like invoicing, tracking expenses, and linking to accounting software — helping you save time."
+  ],
+  [
+   "li",
+   "Low/transparent fees: Depending on your plan, it can cost less than many traditional business bank accounts — good for freelancers or smaller firms."
+  ],
+  [
+   "li",
+   "Security & regulation: Although not a bank in the strictest sense, your funds are held via ClearBank and regulations are in place to protect your account."
+  ],
+  [
+   "p",
+   "**Why choose us (if you’re using our recommendation)?**"
+  ],
+  [
+   "p",
+   "If you’re a small business owner, freelancer or startup in the UK and you want banking that:"
+  ],
+  [
+   "li",
+   "Is mobile-friendly and digital (you manage it mostly via app),"
+  ],
+  [
+   "li",
+   "Understands the needs of smaller businesses (invoicing, bookkeeping, easy transfers)."
+  ],
+  [
+   "li",
+   "has relatively simple pricing and fewer legacy banking headaches — then Tide is a strong choice in that niche. We’re recommending it because it matches the “modern business” style rather than old‐school branch-based banking."
+  ],
+  [
+   "p",
+   "**Things to Know / Potential Drawbacks**"
+  ],
+  [
+   "li",
+   "Since it’s app-based and digital-first, customer service may differ from high street banks (less branch availability, heavy reliance on chat/support rather than in-person)."
+  ],
+  [
+   "li",
+   "Because it’s technically not a fully licensed bank on its own, there may be extra checks or limitations (e.g., deposit options, cash services) compared to a full bank."
+  ],
+  [
+   "li",
+   "As with any account for business use, make sure your business activities, income flows etc match what the provider expects — there may be more scrutiny."
+  ]
+ ],
+ "list": {
+  "title": "Documents Required?",
+  "items": [
+   "Company Name LTD",
+   "CNIC, Passport or Driving License",
+   "Any Bank Statements"
+  ]
+ }
+}

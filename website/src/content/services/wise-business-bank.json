@@ -1,0 +1,107 @@
+{
+ "title": "Wise Business Bank",
+ "intro": "Wise lets you send, receive, and hold money in different currencies at real exchange rates with no hidden fees.",
+ "includes": [
+  "Fast online account opening",
+  "business money management",
+  "Statement editing",
+  "Secure FSCS-protected savings",
+  "Simple and secure file handling",
+  "Simple mobile banking app",
+  "Quick payments and transfers"
+ ],
+ "body": [
+  [
+   "p",
+   "**What Wise Is**"
+  ],
+  [
+   "p",
+   "Wise is a UK-based financial-technology company (formerly known as TransferWise) that offers multi-currency accounts and international money transfers."
+  ],
+  [
+   "p",
+   "In the UK you can open a Wise account online, get local bank details for multiple currencies (including GBP, EUR, USD) and hold/send money in 40+ currencies."
+  ],
+  [
+   "p",
+   "It’s important: Wise is **not** a traditional full-bank (as of now) in the UK — it is regulated under the Electronic Money Regulations rather than a full banking licence."
+  ],
+  [
+   "p",
+   "**Key Benefits (Why You Might Choose Wise)**"
+  ],
+  [
+   "li",
+   "You can get local bank details (sort code + account number) in GBP and other currencies — great if you receive international payments."
+  ],
+  [
+   "li",
+   "Very good for spending/travelling overseas: Use the Wise debit card in 140+ countries, spend in many currencies with minimal hidden fees or poor exchange-rates."
+  ],
+  [
+   "li",
+   "Transparent fees: you convert at the mid-market exchange rate with a small clear conversion fee (typically between ~0.35% and 2%) rather than large mark-ups."
+  ],
+  [
+   "li",
+   "Easy to open and manage: Online/ app first, you can set up your account in minutes, choose currencies, etc."
+  ],
+  [
+   "p",
+   "**Why Pick Us (Why We Recommend It)**"
+  ],
+  [
+   "p",
+   "If you:"
+  ],
+  [
+   "li",
+   "Send or receive money internationally, or hold multiple currencies,"
+  ],
+  [
+   "li",
+   "Travel or purchase from abroad,"
+  ],
+  [
+   "li",
+   "Want more control and transparency over currency conversion and fees,"
+  ],
+  [
+   "p",
+   "Then Wise is an excellent modern option. We recommend it because it offers features that many traditional banks either don’t provide or charge much more for."
+  ],
+  [
+   "p",
+   "**Things to Know / Watch Out**"
+  ],
+  [
+   "li",
+   "Because Wise is not a full bank in the UK, your deposits are not covered by the UK deposit-protection scheme (FSCS) (as you would get with a full UK bank)."
+  ],
+  [
+   "li",
+   "Some users report issues with account verification, especially if their address or residency changes. For example:"
+  ],
+  [
+   "p",
+   "“Even if you keep it for a while, you’ll definitely be asked to provide proof of residency … If your home country is not supported by Wise you’ll definitely run into issues.”"
+  ],
+  [
+   "li",
+   "For business accounts (especially UK businesses), there have been reports about tougher onboarding or restrictions."
+  ],
+  [
+   "li",
+   "If you rely on cash deposits? Wise does not support cash/cheque deposits in the UK. Only online transfers."
+  ]
+ ],
+ "list": {
+  "title": "Documents Required?",
+  "items": [
+   "Company Name LTD",
+   "CNIC, Passport or Driving License",
+   "Any Bank Statements"
+  ]
+ }
+}

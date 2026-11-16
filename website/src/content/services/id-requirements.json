@@ -1,0 +1,124 @@
+{
+ "title": "Id Requirements",
+ "intro": "",
+ "includes": [],
+ "body": [
+  [
+   "h2",
+   "The law and regulations"
+  ],
+  [
+   "p",
+   "The regulations we abide by are the Money Laundering and Terrorist Financing Regulations 2019, the London Local Authorities Act 2007, along with the guidelines of Know Your Customer (KYC). Furthermore, Brixen Consultants is required to verify the ID of each customer and the shareholders and officers in places they meet the significant pre-determined norms."
+  ],
+  [
+   "h2",
+   "What checks are required to form a company?"
+  ],
+  [
+   "p",
+   "To form a company, various checks are required to ensure compliance with legal regulations and prevent illicit activities. These checks typically include:"
+  ],
+  [
+   "p",
+   "**Identity Verification:** Individuals forming the company must undergo identity verification to confirm their identity and prevent identity theft or fraud. This process involves providing personal information such as full name, date of birth, and residential address."
+  ],
+  [
+   "p",
+   "**Know Your Customer (KYC) Checks:** KYC checks are conducted to verify the identity of customers and assess the risk associated with their business activities. This helps in preventing money laundering, terrorist financing, and other financial crimes by ensuring that customers are legitimate and their funds are obtained through legal means."
+  ],
+  [
+   "p",
+   "**Anti-Money Laundering (AML) Checks:** AML checks are essential for detecting and preventing money laundering activities. These checks involve screening individuals against politically exposed persons (PEPs) lists, sanctions lists, and other watchlists to identify any potential risks or suspicious activities. **Politically Exposed Persons (PEPs):** PEPs are individuals who are or have been entrusted with prominent public functions, as well as their immediate family members and close associates. This definition includes government officials, senior politicians, military leaders, and high-ranking executives of state-owned enterprises. PEPs are considered high-risk individuals due to their potential to abuse their positions for personal gain or to facilitate illicit activities such as corruption, bribery, or money laundering. Therefore, screening individuals against PEP lists is essential to identify any potential risks or conflicts of interest associated with their involvement in the company."
+  ],
+  [
+   "p",
+   "Additionally, close associates and family members of PEPs are also subject to scrutiny as they may be used as proxies for concealing illicit assets or engaging in financial transactions on behalf of the PEP. By conducting PEP checks, companies can mitigate the risk of being unwittingly involved in activities that could harm their reputation or legal standing. Overall, PEP screening is a critical component of AML and KYC procedures, helping to safeguard against financial crime and ensure transparency and integrity in business dealings."
+  ],
+  [
+   "p",
+   "**Sanctions Screening:** Sanctions screening is conducted to ensure compliance with international sanctions regimes imposed by governments or regulatory authorities. This involves checking individuals and entities against sanctions lists to identify any prohibited transactions or dealings with sanctioned parties."
+  ],
+  [
+   "p",
+   "**Document Verification:** Individuals forming the company are required to provide supporting documents, such as a passport, driving license, or national identity card, to verify their identity. These documents are checked for authenticity and to ensure they have not been reported as lost, stolen, or compromised."
+  ],
+  [
+   "p",
+   "**Facial Recognition (Selfie Verification): **In some cases, individuals may be required to provide a selfie or facial recognition photo to verify their identity. This helps in ensuring that the person forming the company matches the identity document provided and prevents impersonation or identity fraud."
+  ],
+  [
+   "p",
+   "**Other Necessary Checks:** Depending on the jurisdiction and regulatory requirements, additional checks may be necessary, such as credit checks, background checks, or verification of beneficial ownership information."
+  ],
+  [
+   "p",
+   "Overall, these checks are crucial for ensuring the integrity of the company formation process, preventing financial crime, and maintaining compliance with legal and regulatory obligations."
+  ],
+  [
+   "h2",
+   "How is this going to affect the clients?"
+  ],
+  [
+   "p",
+   "We would like to clarify that the vast majority of our consumers are not impacted by the given verification process under any circumstance. The significant reason behind that is, that the process is fully automated and executed electronically with an approximately 90% of success rate."
+  ],
+  [
+   "h2",
+   "In case the automated verification process fails to succeed"
+  ],
+  [
+   "p",
+   "Brixen Consultants uses the platform of Sumsub to complete the approach of ID checks. In case a customer ends up not being able to complete the verification process, then the customer will be sent an email from our end to provide neccessary documents to complete the verification. In the email, Brixen Consultants will ask you for all the additional information that the company requires to obtain for the completion of the process. The customer will be offered a choice of either uploading the documents on the application or sending them directly to Brixen Consultants."
+  ],
+  [
+   "h2",
+   "Who is required to supply ID"
+  ],
+  [
+   "p",
+   "After sending you an email, Brixen Consultants will also provide the officers names whose details the company may require. Individuals whose ID and address we are legally required to verify are as follows-"
+  ],
+  [
+   "li",
+   "Any individual who buys a package of company formation."
+  ],
+  [
+   "li",
+   "Anyone using the address service or the secretariat service of the organization."
+  ],
+  [
+   "li",
+   "Shareholders, known to have over 25% of a given enterprise or LLP."
+  ],
+  [
+   "li",
+   "Every director of a company that might have been established by us or have placed an order with Brixen Consultants."
+  ],
+  [
+   "h2",
+   "The documents that we will need"
+  ],
+  [
+   "p",
+   "Brixen Consultants will like to gladly announce that no additional documents will be required in case the verification process ends up being successful. However, in case the company needs to search with the Sumsub App, then the following documents will be needed-"
+  ],
+  [
+   "li",
+   "**For ID**A passport or an ID card, given that the same is recognized by SumsubDriving license"
+  ],
+  [
+   "li",
+   "**For verifying proof of address**Utility bills including gas, water, or electric bill for the past 3 monthsThe council tax bill for the present taxable year or the statement of the mortgage from a verified lender that has been issued within the last 12 monthsOr the statement of a recognized bank, building society, or credit or debit cards issued in no less than the last 3 monthsOr the HMRC self-assessment or demand letter of tax"
+  ],
+  [
+   "h2",
+   "Additional fees"
+  ],
+  [
+   "p",
+   "We would like to clarify that there will be no extra charges if it’s possible to complete the verification steps by uploading the relevant documents. However, in cases where the implementation of the Sumsub’s extra verification features becomes necessary with its facial recognition , we will charge an additional fee of 4.99 pounds, and the deducted amount is not refundable."
+  ]
+ ],
+ "list": null
+}

@@ -10,7 +10,7 @@ export default function OrderNumber() {
   const order = useSyncExternalStore(subscribe, read, () => "")
   useEffect(() => {
     try {
-      for (const key of Object.keys(window.localStorage)) if (key.startsWith("brixen-formation-")) window.localStorage.removeItem(key)
+      for (const key of Object.keys(window.localStorage)) if (key.startsWith("brixen-formation-") || key.startsWith("brixen-order-")) window.localStorage.removeItem(key)
     } catch {
       // nothing saved
     }
