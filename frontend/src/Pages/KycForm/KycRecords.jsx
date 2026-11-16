@@ -12,6 +12,9 @@ import { isAdminRole } from '@/lib/permissions'
 import { SectionCards } from '../../Layout/StatsCard'
 import KycCheckView from './KycCheckView'
 
+// Sent by the client and not decided yet ("Submitted" until the KYC team opens it): an admin can delete it
+const IN_REVIEW = ['Submitted', 'In Review']
+
 // How a check's status reads to the team (the KYC team at Finstap sets Approved / In Review / Declined)
 function statusLabel(status) {
   if (status === 'Approved') return ['Approved', 'badge-green']
@@ -213,7 +216,7 @@ export default function KycRecords({ embedded = false }) {
   // delete it (admins; Finstap keeps approved and declined ones)
   const removeCheck = async (check) => {
     const who = `${check.full_name}${check.order_number ? ` (${check.order_number})` : ''}`
-    const sent = check.status === 'In Review'
+    const sent = IN_REVIEW.includes(check.status)
     if (!window.confirm(sent
       ? `Delete the KYC check for ${who}? The client already sent it: their answers, ID and documents are deleted too. This cannot be undone.`
       : `Delete the KYC check for ${who}? Their link will stop working.`)) return
@@ -447,7 +450,7 @@ export default function KycRecords({ embedded = false }) {
                               <IconPencil className="size-3.5" /> Edit
                             </Button>
                           )}
-                          {isAdminRole() && ((!c.submitted_at && ['Not Started', 'In Progress'].includes(c.status)) || c.status === 'In Review') && (
+                          {isAdminRole() && ((!c.submitted_at && ['Not Started', 'In Progress'].includes(c.status)) || IN_REVIEW.includes(c.status)) && (
                             <Button variant="ghost" size="xs" className="h-7 gap-1 text-destructive hover:text-destructive" onClick={() => removeCheck(c)} aria-label={`Delete the KYC check for ${c.full_name}`}>
                               <IconTrash className="size-3.5" /> Delete
                             </Button>
