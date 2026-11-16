@@ -168,46 +168,61 @@ def compose(company, owner, service):
     late = service.get('late_fee') or 0
     pay = _renewal_pay_details()
     portal = uses_crm_portal(owner)
-    due = service.get('status') in ('Renewal due', 'Expired')
-    points = [
-        f"The registered office address is £{ADDRESS_SERVICE_PRICE:.0f} a year"
-        + (f", plus a £{late:.0f} late fee now that it has expired." if late else '.'),
-        "If it is not renewed, your address subscription will be cancelled and we will no longer act as the "
-        "company's registered office. You are then responsible for giving Companies House a new address.",
-    ]
-    # Paid straight from the email, no sign-in: by card (Stripe, once it is set up) or by bank transfer and then
-    # "I have paid" so the team knows to check the bank
+    status = service.get('status')
+    due = status in ('Renewal due', 'Expired')
+    # Paid straight from the email, no sign-in: by card (Stripe) or by bank transfer and then "I have paid", so
+    # the team knows to check the bank
     from services.address_billing import paid_link, pay_link
     card_url = (pay_link(company['id']) if company.get('id') else None) or pay.get('pay_url') or None
     paid_url = paid_link(company['id']) if company.get('id') else None
-    bank = (f"by bank transfer to {pay.get('account_name')}, account {pay.get('account_number')}, "
-            f"sort code {pay.get('sort_code')}, with {name} as the reference")
-    points.append(f"Pay £{price:.0f} by card with the button below, or {bank}." if card_url
-                  else f"Pay £{price:.0f} {bank}.")
-    if paid_url:
-        points.append("After a bank transfer, press \"I have paid\" so our team can renew it straight away.")
-    if portal:
-        points.append(f"You can also renew it from your client panel: {PORTAL_URL}/portal/addresses")
     if card_url:
         cta_label, cta_url = f"Pay £{price:.0f} by card", card_url
         cta2_label, cta2_url = ('I have paid by bank transfer', paid_url) if paid_url else (None, None)
     else:
         cta_label, cta_url = ('I have paid by bank transfer', paid_url) if paid_url else (None, None)
         cta2_label = cta2_url = None
+
+    # One short line on top; the money in a box; the buttons; the bank details in their own box; the rest small
+    if status == 'Expired':
+        message = f"The registered office address for {name} expired on {when}. Renew it today to keep using it."
+    elif due:
+        message = f"The registered office address for {name} was due for renewal on {when}. Please renew it to keep using it."
+    else:
+        message = f"The registered office address for {name} renews on {when}. Renew it now so it does not lapse."
+    details = [('Company', name), ('Address', service.get('line1')), ('Renewal date', when),
+               ('Yearly fee', f"£{ADDRESS_SERVICE_PRICE:.2f}")]
+    if late:
+        details.append(('Late fee', f"£{late:.2f}"))
+    points = []
+    if card_url:
+        points.append("Pay by card in a minute, or by bank transfer with the details below.")
+    else:
+        points.append("Pay by bank transfer with the details below, then press \"I have paid\" so we can renew it straight away.")
+    bank_rows = [('Account name', pay.get('account_name')), ('Account number', pay.get('account_number')),
+                 ('Sort code', pay.get('sort_code')), ('Reference', name)]
+    footnote = ("If the address is not renewed, the subscription is cancelled and we will no longer act as the "
+                "company's registered office; you would then need to give Companies House a new address.")
+    if card_url and paid_url:
+        footnote = "Paid by bank transfer? Press \"I have paid\" so we can renew it straight away. " + footnote
+    if portal:
+        footnote += f" You can also renew it from your client panel: {PORTAL_URL}/portal/addresses"
+    # The customer's first name; never the guest or a team account's name ("Hello Unlinked")
+    first = (owner.get('full_name') or '').split() if own_customer(owner) else []
     subject, text, html = compose_client_email(
         subject=(f"Renew your registered office address: {name}" if not due
+                 else f"Your registered office address has expired: {name}" if status == 'Expired'
                  else f"Your registered office address is due for renewal: {name}"),
-        headline=('Time to renew your registered office address' if not due
-                  else 'Your registered office address is due for renewal'),
-        greeting=(owner.get('full_name') or 'there').split()[0],
-        message=((f"The registered office address for {name} was due for renewal on {when}. " if due
-                  else f"The registered office address for {name} renews on {when}. ")
-                 + f"Please renew it for £{price:.0f}" + (" (including the late fee)" if late else '')
-                 + " to keep using it."),
+        headline=('Renew your registered office address' if not due
+                  else 'Your registered office address has expired' if status == 'Expired'
+                  else 'Your registered office address is due'),
+        greeting=first[0] if first else 'there',
+        message=message,
         points=points,
-        details=[('Company', name), ('Address', service.get('line1')), ('Renewal date', when),
-                 ('To pay', f"£{price:.0f}")],
-        cta_label=cta_label, cta_url=cta_url, cta2_label=cta2_label, cta2_url=cta2_url, category='ORDER')
+        details=details,
+        details_total=('To pay', f"£{price:.2f}"),
+        cta_label=cta_label, cta_url=cta_url, cta2_label=cta2_label, cta2_url=cta2_url,
+        boxes=[{'title': 'Bank transfer', 'rows': [(k, v) for k, v in bank_rows if v]}],
+        footnote=footnote, category='ORDER')
     return subject, text, html, cta_url
 
 

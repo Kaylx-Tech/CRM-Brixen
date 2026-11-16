@@ -81,28 +81,44 @@ def _greeting(client, order=None):
     return 'there'
 
 
+def _rows_box(rows, total=None, title=None, margin='20px 0 0'):
+    """A grey box of label / value rows; `total` is a last (label, value) row in bold under a line."""
+    body = ''.join(
+        f'<tr><td style="padding:6px 0;color:#6e6e73;font-size:14px;vertical-align:top;">{html_escape(str(k))}</td>'
+        f'<td style="padding:6px 0 6px 16px;color:#1d1d1f;font-size:14px;font-weight:500;text-align:right;">'
+        f'{html_escape(str(v))}</td></tr>' for k, v in rows)
+    if total:
+        body += (f'<tr><td style="padding:10px 0 2px;border-top:1px solid #d2d2d7;color:#1d1d1f;font-size:15px;'
+                 f'font-weight:600;">{html_escape(str(total[0]))}</td><td style="padding:10px 0 2px 16px;'
+                 f'border-top:1px solid #d2d2d7;color:#1d1d1f;font-size:17px;font-weight:700;text-align:right;">'
+                 f'{html_escape(str(total[1]))}</td></tr>')
+    head = (f'<p style="margin:0 0 6px;font-size:13px;font-weight:600;color:#1d1d1f;text-transform:uppercase;'
+            f'letter-spacing:0.04em;">{html_escape(title)}</p>') if title else ''
+    return (f'<div style="margin:{margin};padding:16px 18px;background:#f5f5f7;border-radius:12px;">{head}'
+            '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" '
+            f'style="width:100%;border-collapse:collapse;">{body}</table></div>')
+
+
 def compose_client_email(*, subject, headline, greeting, message, points=None, details=None,
-                         cta_label=None, cta_url=None, category='ORDER', cta2_label=None, cta2_url=None):
+                         cta_label=None, cta_url=None, category='ORDER', cta2_label=None, cta2_url=None,
+                         details_total=None, boxes=None, footnote=None):
     """Brixen transactional email (same shell as the invoice emails). Returns (subject, text, html).
-    cta2_*: an optional second button, outlined, next to the first."""
+    cta2_*: an optional second button, outlined, next to the first. details_total: a bold last row of the details
+    box (e.g. the amount to pay). boxes: more grey boxes after the buttons, [{'title', 'rows'}]. footnote: small
+    grey text at the end."""
     brand = brand_settings()
     brand_for_sig = {**brand, 'legal_name': brand.get('legal_name') or 'Brixen Consultants Ltd'}
     points = [str(p).strip() for p in (points or []) if str(p).strip()]
     details = [(k, v) for k, v in (details or []) if str(v or '').strip()]
+    boxes = [b for b in (boxes or []) if b.get('rows')]
 
     points_html = ''.join(
         f'<p style="margin:6px 0 0;font-size:15px;line-height:1.5;color:#1d1d1f;">{html_escape(p)}</p>'
         for p in points)
-    details_html = ''
-    if details:
-        rows = ''.join(
-            f'<tr><td style="padding:6px 0;color:#6e6e73;font-size:14px;vertical-align:top;">{html_escape(str(k))}</td>'
-            f'<td style="padding:6px 0 6px 16px;color:#1d1d1f;font-size:14px;font-weight:500;text-align:right;">'
-            f'{html_escape(str(v))}</td></tr>' for k, v in details)
-        details_html = (
-            '<div style="margin:20px 0 0;padding:16px 18px;background:#f5f5f7;border-radius:12px;">'
-            '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" '
-            f'style="width:100%;border-collapse:collapse;">{rows}</table></div>')
+    details_html = _rows_box(details, details_total) if details or details_total else ''
+    boxes_html = ''.join(_rows_box(b['rows'], title=b.get('title'), margin='16px 0 0') for b in boxes)
+    footnote_html = (f'<p style="margin:20px 0 0;font-size:13px;line-height:1.5;color:#6e6e73;">'
+                     f'{html_escape(footnote)}</p>') if footnote else ''
     buttons = []
     if cta_label and cta_url:
         buttons.append(
@@ -122,7 +138,7 @@ def compose_client_email(*, subject, headline, greeting, message, points=None, d
         f'<p style="margin:0 0 12px;font-size:15px;line-height:1.55;color:#1d1d1f;">Hello {html_escape(greeting)},</p>'
         f'<p style="margin:0;font-size:15px;line-height:1.55;color:#424245;">'
         f'{html_escape(message).replace(chr(10), "<br>")}</p>'
-        f'{points_html}{details_html}{cta_html}'
+        f'{points_html}{details_html}{cta_html}{boxes_html}{footnote_html}'
     )
     hero = eng.email_brand_header_html(brand, headline)
     html = eng.build_transactional_shell_html(
@@ -135,10 +151,16 @@ def compose_client_email(*, subject, headline, greeting, message, points=None, d
     )
     text_lines = [f"Hello {greeting},", '', message, *points]
     text_lines += [f"{k}: {v}" for k, v in details]
+    if details_total:
+        text_lines += [f"{details_total[0]}: {details_total[1]}"]
     if cta_label and cta_url:
         text_lines += ['', f"{cta_label}: {cta_url}"]
     if cta2_label and cta2_url:
         text_lines += [f"{cta2_label}: {cta2_url}"]
+    for b in boxes:
+        text_lines += ['', b.get('title') or ''] + [f"{k}: {v}" for k, v in b['rows']]
+    if footnote:
+        text_lines += ['', footnote]
     return subject, '\n'.join(text_lines), html
 
 
