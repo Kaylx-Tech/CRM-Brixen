@@ -18,6 +18,7 @@ import { toast } from 'sonner'
 import { apiRequest } from '@/lib/api'
 import { useRefreshOnReturn } from '@/lib/useRefreshOnReturn'
 import { m, spring } from '@/lib/motion'
+import { SectionCards } from '../../Layout/StatsCard'
 import { shortDate } from './idvStatus'
 
 // What needs the team: the year runs out soon, has run out, or a card payment failed
@@ -39,10 +40,11 @@ const toneOf = (status) => TONES[status] || TONES.default
 const COLS = '@3xl:grid-cols-[minmax(0,1.6fr)_minmax(0,2fr)_minmax(0,1.15fr)_minmax(0,1.25fr)]'
 
 const SUMMARY = [
-  { key: 'Renews soon', label: 'Renews soon', icon: IconClockHour4, match: (s) => s === 'Renews soon', tone: 'text-sky-600 bg-sky-500/12' },
-  { key: 'Renewal due', label: 'Renewal due', icon: IconHourglassLow, match: (s) => s === 'Renewal due' || s === 'Pending Renewal', tone: 'text-amber-600 bg-amber-500/12' },
-  { key: 'Expired', label: 'Expired', icon: IconAlertTriangle, match: (s) => s === 'Expired' || s === 'Payment failed', tone: 'text-destructive bg-destructive/10' },
-  { key: 'Paid', label: 'Paid', icon: IconCircleCheck, match: (s) => PAID.includes(s) || !NEEDS_ACTION.includes(s), tone: 'text-emerald-600 bg-emerald-500/12' },
+  // tone: a colour of the CRM's stat boxes (Layout/StatsCard)
+  { key: 'Renews soon', label: 'Renews soon', icon: IconClockHour4, match: (s) => s === 'Renews soon', tone: 'sky' },
+  { key: 'Renewal due', label: 'Renewal due', icon: IconHourglassLow, match: (s) => s === 'Renewal due' || s === 'Pending Renewal', tone: 'amber' },
+  { key: 'Expired', label: 'Expired', icon: IconAlertTriangle, match: (s) => s === 'Expired' || s === 'Payment failed', tone: 'rose' },
+  { key: 'Paid', label: 'Paid', icon: IconCircleCheck, match: (s) => PAID.includes(s) || !NEEDS_ACTION.includes(s), tone: 'emerald' },
 ]
 
 function daysLeft(date) {
@@ -142,27 +144,18 @@ export default function RegisteredAddresses() {
   return (
     <div className="flex flex-col gap-4">
       {/* Status summary: each card is also a filter */}
-      <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-        {SUMMARY.map((s) => {
-          const active = filter === s.key
-          return (
-            <button
-              key={s.key}
-              type="button"
-              onClick={() => setFilter(active ? 'Needs action' : s.key)}
-              className={`group flex items-center gap-3 rounded-2xl border bg-card p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm ${active ? 'border-primary/50 ring-2 ring-primary/15' : ''}`}
-            >
-              <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${s.tone}`}>
-                <s.icon className="size-5" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-xs font-medium text-muted-foreground">{s.label}</span>
-                <span className="block text-xl font-semibold tabular-nums leading-tight">{isLoading && !rows.length ? '–' : counts[s.key]}</span>
-              </span>
-            </button>
-          )
-        })}
-      </div>
+      <SectionCards
+        compact
+        isLoading={isLoading && !rows.length}
+        stats={SUMMARY.map((s) => ({
+          title: s.label,
+          value: String(counts[s.key]),
+          icon: s.icon,
+          tone: s.tone,
+          active: filter === s.key,
+          onClick: () => setFilter(filter === s.key ? 'Needs action' : s.key),
+        }))}
+      />
 
       {/* Search, the list filter and auto reminders */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card/60 p-2.5">
