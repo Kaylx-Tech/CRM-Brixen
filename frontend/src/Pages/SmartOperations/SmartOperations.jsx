@@ -22,6 +22,7 @@ import {
   IconId,
   IconLink,
   IconLoader2,
+  IconMapPin,
   IconPencil,
   IconPlus,
   IconSearch,
@@ -33,6 +34,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Tasks from '@/Pages/Tasks/Tasks'
 import IdVerification from './IdVerification'
 import CompanyFormation from './CompanyFormation'
+import RegisteredAddresses from './RegisteredAddresses'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
 import { m, spring } from '@/lib/motion'
 import { apiRequest } from '@/lib/api'
@@ -122,7 +124,7 @@ export default function SmartOperations() {
   // ?tab=links the links and ?tab=uk-gov-checks UK Gov Checks (the team's tasks; old ?tab=gov-forms links still work)
   const [searchParams, setSearchParams] = useSearchParams()
   const rawTab = searchParams.get('tab') === 'gov-forms' ? 'uk-gov-checks' : searchParams.get('tab')
-  const tab = ['company-formation', 'links', 'uk-gov-checks'].includes(rawTab) ? rawTab : 'id-verification'
+  const tab = ['company-formation', 'registered-address', 'links', 'uk-gov-checks'].includes(rawTab) ? rawTab : 'id-verification'
   const govForms = tab === 'uk-gov-checks'
   const linksTab = tab === 'links'
   const setTab = (value) => setSearchParams(value === 'id-verification' ? {} : { tab: value }, { replace: true })
@@ -250,6 +252,11 @@ export default function SmartOperations() {
               Every order with a company formation product and the company being formed.
             </p>
           )}
+          {tab === 'registered-address' && (
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Companies whose registered office is one of Brixen's addresses, with their yearly renewal.
+            </p>
+          )}
         </div>
         <div className={`flex items-center gap-2 ${linksTab ? '' : 'hidden'}`}>
           {canManage && (
@@ -272,6 +279,10 @@ export default function SmartOperations() {
             <IconBuildingPlus className="size-4" />
             Company Formation
           </TabsTrigger>
+          <TabsTrigger value="registered-address">
+            <IconMapPin className="size-4" />
+            Registered Address
+          </TabsTrigger>
           <TabsTrigger value="links">
             <IconLink className="size-4" />
             Links
@@ -287,6 +298,8 @@ export default function SmartOperations() {
         <IdVerification />
       ) : tab === 'company-formation' ? (
         <CompanyFormation />
+      ) : tab === 'registered-address' ? (
+        <RegisteredAddresses />
       ) : govForms ? (
         <Tasks view="uk-gov-checks" />
       ) : (

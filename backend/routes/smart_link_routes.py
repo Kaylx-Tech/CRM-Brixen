@@ -8,6 +8,7 @@ PUT    /api/admin/smart-links/<id>       any of {category, title, url, note, sor
 DELETE /api/admin/smart-links/<id>
 GET    /api/admin/smart-links/id-verification   orders with a KYC product (ID Verification tab)
 GET    /api/admin/smart-links/company-formation formation orders and their companies (Company Formation tab)
+GET    /api/admin/smart-links/registered-addresses  every registered office address service (Registered Address tab)
 """
 import json
 import re
@@ -176,6 +177,62 @@ def _formation_orders(user):
     return orders
 
 
+def _registered_addresses(user):
+    """Registered Address: every company whose registered office is at one of Brixen's addresses, as the
+    yearly address service the client portal shows (paid from incorporation, a year more per paid renewal;
+    Renews soon / Renewal due / Expired / Auto-renew / Payment failed), plus addresses added by hand
+    (addresses table). STAFF only see the companies of the orders they added; no prices are returned."""
+    from routes.client_portal_routes import _company_address_service, _is_brixen_address
+    company_clauses, params = ["TRIM(COALESCE(c.reg_office, '')) <> ''"], []
+    if user.get('role') == 'STAFF':
+        company_clauses.append("c.id IN (SELECT company_id FROM orders WHERE created_by_id = ?)")
+        params.append(user.get('id'))
+    companies = query_db(f"""
+        SELECT c.id, c.name, c.company_number, c.reg_office, c.inc_date, c.created_at, c.status AS company_status,
+               u.id AS customer_id, u.full_name AS customer_name, u.email AS customer_email
+        FROM companies c LEFT JOIN users u ON u.id = c.user_id
+        WHERE {' AND '.join(company_clauses)}
+        ORDER BY datetime(c.created_at) DESC LIMIT 2000;
+    """, tuple(params)) or []
+
+    hand_clauses, hand_params = ["1 = 1"], []
+    if user.get('role') == 'STAFF':
+        hand_clauses.append("a.company_id IN (SELECT company_id FROM orders WHERE created_by_id = ?)")
+        hand_params.append(user.get('id'))
+    by_hand = query_db(f"""
+        SELECT a.*, c.name AS company_name, c.company_number, u.id AS customer_id, u.full_name AS customer_name,
+               u.email AS customer_email
+        FROM addresses a LEFT JOIN companies c ON c.id = a.company_id LEFT JOIN users u ON u.id = a.user_id
+        WHERE {' AND '.join(hand_clauses)} ORDER BY a.created_at DESC;
+    """, tuple(hand_params)) or []
+    listed = {a.get('company_id') for a in by_hand if a.get('company_id')}
+
+    rows = []
+    for a in by_hand:
+        line = ', '.join(x for x in (a.get('line1'), a.get('line2'), a.get('city'), a.get('postal_code')) if x)
+        rows.append({'id': f"address-{a['id']}", 'company_id': a.get('company_id'), 'company_name': a.get('company_name'),
+                     'company_number': a.get('company_number'), 'customer_id': a.get('customer_id'),
+                     'customer_name': a.get('customer_name'), 'customer_email': a.get('customer_email'),
+                     'address': line, 'type': a.get('type'), 'start_date': a.get('start_date'),
+                     'expiry_date': a.get('expiry_date'), 'status': a.get('status'), 'auto_renew': None,
+                     'renewal_invoice': None, 'source': 'Added by hand'})
+    for c in companies:
+        if c['id'] in listed or not _is_brixen_address(c.get('reg_office')):
+            continue
+        s = _company_address_service(c)
+        invoice = s.get('renewal_invoice') or None
+        rows.append({'id': s['id'], 'company_id': c['id'], 'company_name': c.get('name'),
+                     'company_number': c.get('company_number'), 'customer_id': c.get('customer_id'),
+                     'customer_name': c.get('customer_name'), 'customer_email': c.get('customer_email'),
+                     'address': s.get('line1'), 'type': 'Registered Office', 'start_date': s.get('start_date'),
+                     'expiry_date': s.get('expiry_date'), 'status': s.get('status'), 'auto_renew': s.get('auto_renew'),
+                     'renewal_invoice': {'invoice_number': invoice.get('invoice_number'), 'status': invoice.get('status')}
+                     if invoice else None, 'source': 'Company registered office'})
+    # Soonest renewal first; addresses without a date last
+    rows.sort(key=lambda r: (r.get('expiry_date') is None, str(r.get('expiry_date') or '')))
+    return rows
+
+
 def handle_smart_link_routes(environ, start_response, path, method, user, body, query):
     if not path.startswith('/api/admin/smart-links'):
         return None
@@ -204,6 +261,9 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
 
     if path == '/api/admin/smart-links/company-formation' and method == 'GET':
         return success_response(start_response, data={'orders': _formation_orders(user)})
+
+    if path == '/api/admin/smart-links/registered-addresses' and method == 'GET':
+        return success_response(start_response, data={'addresses': _registered_addresses(user)})
 
     if role not in MANAGE_ROLES:
         return error_response(start_response, "Only admins and managers can change Smart Operations links.",
