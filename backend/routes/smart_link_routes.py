@@ -271,7 +271,7 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
 
     if path == '/api/admin/smart-links/registered-addresses' and method == 'GET':
         from services import address_reminders
-        rows = _registered_addresses(user)
+        rows = address_reminders.reminder_emails(_registered_addresses(user))
         last = address_reminders.last_reminders()
         for r in rows:
             r['last_reminder'] = last.get(r.get('company_id')) if r.get('company_id') else None
@@ -279,11 +279,14 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
             'addresses': rows, 'auto_reminders': address_reminders.auto_enabled(),
             'auto_days': address_reminders.AUTO_DAYS_BEFORE, 'can_manage': role in MANAGE_ROLES})
 
-    # Reminder button: email the customer to renew now (any team member)
+    # Reminder button: the team confirms (or corrects) the email first, then the customer is emailed to renew now
+    # (any team member). A corrected email is kept: on the customer's profile, or for this company.
     remind = re.match(r'^/api/admin/smart-links/registered-addresses/(\d+)/remind$', path)
     if remind and method == 'POST':
         from services import address_reminders
         try:
+            if str((body or {}).get('email') or '').strip():
+                address_reminders.set_email(int(remind.group(1)), body['email'], user)
             sent = address_reminders.send(int(remind.group(1)), 'manual', user.get('full_name') or user.get('email'))
         except address_reminders.ReminderError as exc:
             return error_response(start_response, str(exc), status_code=400)

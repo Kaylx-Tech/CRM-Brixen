@@ -42,6 +42,89 @@ def _ensure():
         );
     """)
     execute_db("CREATE INDEX IF NOT EXISTS idx_address_reminders_company ON address_reminders(company_id, sent_on);")
+    # The email for a company whose owner is not a customer account (e.g. a company under the team's Admin)
+    execute_db("""
+        CREATE TABLE IF NOT EXISTS address_reminder_emails (
+            company_id INTEGER PRIMARY KEY,
+            email TEXT NOT NULL,
+            updated_by TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+
+
+def own_customer(owner):
+    """The company is under its own customer's account: not a team account (e.g. Admin) and not the shared
+    "Unlinked Guest Customer" that holds website orders of many people (its email must never be changed)."""
+    from routes.id_verification_routes import GUEST_EMAIL
+    return (owner or {}).get('role') == 'CLIENT' and str((owner or {}).get('email') or '').strip().lower() != GUEST_EMAIL
+
+
+def recipient(company, owner):
+    """(email, where it is kept) for a company's reminders: a customer's notification email, else their login
+    email; a company under a team account uses the email the team set for it. where: 'company', 'customer' or ''."""
+    _ensure()
+    if not own_customer(owner):
+        row = query_db("SELECT email FROM address_reminder_emails WHERE company_id = ?;", (company['id'],), one=True)
+        if row and str(row.get('email') or '').strip():
+            return row['email'].strip(), 'company'
+        return '', ''  # never the team's own email
+    email = (owner.get('notification_email') or owner.get('email') or '').strip()
+    return email, ('customer' if email else '')
+
+
+def reminder_emails(rows):
+    """For the Registered Address list: each row's reminder email and whether its owner is a customer account."""
+    _ensure()
+    ids = sorted({r['company_id'] for r in rows if r.get('company_id')})
+    custom, owners = {}, {}
+    for chunk in range(0, len(ids), 500):
+        part = ids[chunk:chunk + 500]
+        marks = ','.join('?' * len(part))
+        custom.update({r['company_id']: r['email'] for r in query_db(
+            f"SELECT company_id, email FROM address_reminder_emails WHERE company_id IN ({marks});", tuple(part)) or []})
+        owners.update({r['id']: r for r in query_db(f"""
+            SELECT c.id, u.role, u.email, u.notification_email FROM companies c LEFT JOIN users u ON u.id = c.user_id
+            WHERE c.id IN ({marks});""", tuple(part)) or []})
+    for r in rows:
+        owner = owners.get(r.get('company_id')) or {}
+        r['owner_is_customer'] = own_customer(owner)
+        own = (owner.get('notification_email') or owner.get('email') or '').strip() or None
+        # A company under a team account (e.g. Admin) never emails the team: only an email the team typed for it
+        r['reminder_email'] = own if r['owner_is_customer'] else custom.get(r.get('company_id'))
+    return rows
+
+
+def set_email(company_id, email, actor):
+    """The team corrected the email before a reminder. A customer account keeps it as its notification email
+    (all client emails go there; the login email is not changed); a company under a team account keeps it for
+    its own reminders. Returns where it was saved: 'customer' or 'company'."""
+    from utils.validation import email_problem
+    _ensure()
+    email = str(email or '').strip().lower()
+    if not email or email_problem(email):
+        raise ReminderError(email_problem(email) if email else "Type the customer's email address")
+    company = _company(company_id)
+    if not company:
+        raise ReminderError("Company not found")
+    owner = query_db("SELECT id, role, email FROM users WHERE id = ?;", (company.get('user_id'),), one=True) or {}
+    if own_customer(owner):
+        execute_db("UPDATE users SET notification_email = ? WHERE id = ?;", (email, owner['id']))
+        where = 'customer'
+    else:
+        execute_db("""INSERT INTO address_reminder_emails (company_id, email, updated_by) VALUES (?, ?, ?)
+                      ON CONFLICT(company_id) DO UPDATE SET email = excluded.email, updated_by = excluded.updated_by,
+                      updated_at = datetime('now');""", (company['id'], email, (actor or {}).get('email')))
+        where = 'company'
+    try:
+        execute_db("""INSERT INTO activity_logs (user_id, user_email, action, entity_type, entity_id, details)
+                      VALUES (?, ?, 'ADDRESS_REMINDER_EMAIL', 'companies', ?, ?);""",
+                   ((actor or {}).get('id'), (actor or {}).get('email') or 'SYSTEM', str(company['id']),
+                    f"Reminder email for {company.get('name')} set to {email}"
+                    f" ({'customer notification email' if where == 'customer' else 'this company only'})"))
+    except Exception as exc:
+        print(f"[Address reminders] audit: {exc}")
+    return where
 
 
 def auto_enabled():
@@ -133,9 +216,13 @@ def send(company_id, kind='manual', sent_by=None, today=None):
         raise ReminderError("This company does not use one of Brixen's addresses")
     owner = query_db("""SELECT id, full_name, email, notification_email, role, client_type, is_b2b, account_type
                         FROM users WHERE id = ?;""", (company.get('user_id'),), one=True) or {}
-    to = (owner.get('notification_email') or owner.get('email') or '').strip()
+    to, _where = recipient(company, owner)
     if not to:
-        raise ReminderError("The customer has no email address")
+        raise ReminderError("No customer email for this company yet: type it on the Reminder" if not own_customer(owner)
+                            else "The customer has no email address")
+    if not own_customer(owner):
+        # The email goes to the person the team typed in, not to the team account that holds the company
+        owner = {'full_name': '', 'email': to, 'role': 'CLIENT'}
     service = _company_address_service(company)
     if service.get('status') == 'Auto-renew':
         raise ReminderError("This address renews by card automatically; no reminder is needed")
@@ -146,9 +233,10 @@ def send(company_id, kind='manual', sent_by=None, today=None):
     subject, text, html, _url = compose(company, owner, service)
     emailed = send_email(to, subject, html, text, category='ORDER', user_id=owner.get('id'), company_id=company['id'])
     execute_db("UPDATE address_reminders SET emailed = ? WHERE id = ?;", (1 if emailed else 0, rid))
-    notify_user(owner.get('id'), 'Renew your registered office address',
-                f"The address for {company.get('name')} renews on {service.get('expiry_date')}. Renew it to keep it.",
-                'warning', '/portal/addresses')
+    if owner.get('id'):
+        notify_user(owner.get('id'), 'Renew your registered office address',
+                    f"The address for {company.get('name')} renews on {service.get('expiry_date')}. Renew it to keep it.",
+                    'warning', '/portal/addresses')
     return {'id': rid, 'company_id': company['id'], 'sent_to': to, 'emailed': bool(emailed), 'kind': kind,
             'sent_on': today.isoformat()}
 

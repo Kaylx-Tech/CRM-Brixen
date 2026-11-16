@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   IconAlertTriangle,
   IconBell,
@@ -91,12 +92,20 @@ export default function RegisteredAddresses() {
     load()
   }, [load])
 
-  // Reminder button: the customer gets the renewal email now
-  const remind = async (r) => {
+  // Reminder button: first the team checks the email (some are wrong), then the customer gets the renewal email.
+  // A corrected email is kept on the customer's profile (or for this company when a team account holds it).
+  const [confirming, setConfirming] = useState(null) // the row whose email is being checked
+  const [email, setEmail] = useState('')
+  const askEmail = (r) => {
+    setConfirming(r)
+    setEmail(r.reminder_email || '')
+  }
+
+  const remind = async (r, to) => {
     setSending(r.id)
     try {
       const res = await apiRequest(`/admin/smart-links/registered-addresses/${r.company_id}/remind`, {
-        method: 'POST', label: 'Reminder', silent: true,
+        method: 'POST', body: { email: to }, label: 'Reminder', silent: true,
       })
       if (!res.ok) {
         toast.error(res.reason || 'The reminder could not be sent')
@@ -105,7 +114,13 @@ export default function RegisteredAddresses() {
       const sent = res.data?.data
       if (sent?.emailed) toast.success(res.data?.message || 'Reminder sent')
       else toast.warning(res.data?.message || 'The email could not be sent')
-      setRows((list) => list.map((x) => (x.id === r.id ? { ...x, last_reminder: { sent_on: sent?.sent_on, kind: 'manual', emailed: !!sent?.emailed } } : x)))
+      setConfirming(null)
+      // The same customer's other companies use the saved email too
+      setRows((list) => list.map((x) => {
+        const same = x.id === r.id || (r.owner_is_customer && x.customer_id && x.customer_id === r.customer_id)
+        const next = same ? { ...x, reminder_email: sent?.sent_to || x.reminder_email } : x
+        return x.id === r.id ? { ...next, last_reminder: { sent_on: sent?.sent_on, kind: 'manual', emailed: !!sent?.emailed } } : next
+      }))
     } finally {
       setSending(null)
     }
@@ -222,7 +237,9 @@ export default function RegisteredAddresses() {
               const left = daysLeft(r.expiry_date)
               const tone = toneOf(r.status)
               const needs = NEEDS_ACTION.includes(r.status)
-              const customer = [r.customer_name, r.customer_email].filter(Boolean).join(' · ')
+              // The email reminders go to (a customer's notification email, or the one typed for this company)
+              const customer = [r.customer_name, r.reminder_email || (r.owner_is_customer ? r.customer_email : 'no customer email')]
+                .filter(Boolean).join(' · ')
               return (
                 <m.div
                   key={r.id}
@@ -280,7 +297,7 @@ export default function RegisteredAddresses() {
                             ? <>Sent {shortDate(r.last_reminder.sent_on)}{r.last_reminder.kind === 'auto' ? ' · auto' : ''}{r.last_reminder.emailed ? '' : <span className="text-destructive"> · failed</span>}</>
                             : 'Not sent yet'}
                         </span>
-                        <Button variant="outline" size="sm" className="h-7 shrink-0 gap-1 px-2.5 text-xs" onClick={() => remind(r)} disabled={sending === r.id}>
+                        <Button variant="outline" size="sm" className="h-7 shrink-0 gap-1 px-2.5 text-xs" onClick={() => askEmail(r)} disabled={sending === r.id}>
                           {sending === r.id ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconBell className="size-3.5" />}
                           Remind
                         </Button>
@@ -295,6 +312,43 @@ export default function RegisteredAddresses() {
           </div>
         </div>
       )}
+
+      {/* Check the email before a reminder goes */}
+      <Dialog open={!!confirming} onOpenChange={(open) => !open && setConfirming(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send a renewal reminder</DialogTitle>
+            <DialogDescription>
+              {confirming?.company_name}
+              {confirming?.customer_name ? ` · ${confirming.customer_name}` : ''}. Check the email before it goes.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (confirming && email.trim()) remind(confirming, email.trim())
+            }}
+          >
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Customer's email</span>
+              <Input autoFocus type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" />
+            </label>
+            <p className="text-xs text-muted-foreground">
+              {confirming?.owner_is_customer
+                ? `A changed email is saved on ${confirming?.customer_name || "the customer"}'s profile as their notification email, so all their emails go there. Their login email stays the same.`
+                : `This company is not under its own customer's account (it is under ${confirming?.customer_name || 'no customer'}), so the email is kept for this company's reminders only. Link the company to its customer in Companies when you can.`}
+            </p>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" variant="ghost" onClick={() => setConfirming(null)}>Cancel</Button>
+              <Button type="submit" disabled={!email.trim() || sending === confirming?.id}>
+                {sending === confirming?.id ? <IconLoader2 className="size-4 animate-spin" /> : <IconBell className="size-4" />}
+                Send reminder
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
