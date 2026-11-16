@@ -7,6 +7,10 @@ Claude Code reads this file by itself when it opens this folder. Keep it short a
 - Writes in Roman Urdu / Hindi (sometimes Hindi script). **Answer in Roman Urdu**, simply, no jargon.
 - Not a programmer by trade: explain what changed and what to check, not how the code works.
 - Wants to see a change before it goes live. Ask before anything big or global.
+- **Title Case** for every heading, greeting, alert line, label and button you write or the user dictates:
+  "Good Evening", "If Unpaid, Your Registered Address Will Be Defaulted and Your Company May Be Closed."
+  (small words and/or/of/by/to/the stay lowercase unless first). Long paragraphs stay normal sentences. Text the
+  user dictates also gets proper, professional English. The user should never have to ask for this again.
 
 ## The project
 
