@@ -264,12 +264,12 @@ const formatOperationsData = (rings) => {
 // Dashboard Component
 // ==========================================
 
-// "Good morning / afternoon / evening" by the local time
+// "Good Morning / Afternoon / Evening" by the local time
 function greetingFor(date) {
   const h = date.getHours()
-  if (h >= 5 && h < 12) return 'Good morning'
-  if (h >= 12 && h < 17) return 'Good afternoon'
-  return 'Good evening'
+  if (h >= 5 && h < 12) return 'Good Morning'
+  if (h >= 12 && h < 17) return 'Good Afternoon'
+  return 'Good Evening'
 }
 
 function firstName(user) {

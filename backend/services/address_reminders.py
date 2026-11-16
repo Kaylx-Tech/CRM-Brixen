@@ -223,9 +223,9 @@ def compose(company, owner, service):
         subject=(f"Renew your registered office address: {name}" if not due
                  else f"Your registered office address has expired: {name}" if status == 'Expired'
                  else f"Your registered office address is due for renewal: {name}"),
-        headline=('Renew your registered office address' if not due
-                  else 'Your registered office address has expired' if status == 'Expired'
-                  else 'Your registered office address is due'),
+        headline=('Renew Your Registered Office Address' if not due
+                  else 'Your Registered Office Address Has Expired' if status == 'Expired'
+                  else 'Your Registered Office Address Is Due'),
         greeting=first[0] if first else 'there',
         message=message,
         points=points,
@@ -236,7 +236,7 @@ def compose(company, owner, service):
                {'title': 'Bank transfer · Pakistan (PKR)', 'rows': [(k, v) for k, v in pkr_rows if v]}],
         footnote=footnote, category='ORDER',
         # One short red line: what happens if it is not paid
-        alert="If unpaid, your registered address will be defaulted and your company may be closed.")
+        alert="If Unpaid, Your Registered Address Will Be Defaulted and Your Company May Be Closed.")
     return subject, text, html, cta_url
 
 
