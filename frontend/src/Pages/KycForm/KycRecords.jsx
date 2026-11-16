@@ -212,6 +212,43 @@ export default function KycRecords({ embedded = false }) {
   // A check not sent yet: correct its name or email
   const [editing, setEditing] = useState(null)
 
+  // A check's order (or "Link order" for one from the general KYC link), the same on the table and the phone cards
+  const orderCell = (c) => (c.order_number ? (
+    <span className={ORDER_CHIP}>{c.order_number}</span>
+  ) : (
+    <div className="flex flex-col items-start gap-1">
+      <span className="text-xs text-muted-foreground">KYC link</span>
+      <button type="button" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline" onClick={() => linkOrder(c)}>
+        <IconLink className="size-3.5" /> Link order
+      </button>
+    </div>
+  ))
+
+  // A check's buttons: View, the client's link, Edit (not sent yet) and Delete (admins)
+  const actions = (c) => (
+    <>
+      <Button variant="outline" size="xs" className="h-7 gap-1" onClick={() => setViewing(c)}>
+        <IconEye className="size-3.5" /> View
+      </Button>
+      {c.session_url && (
+        <Button variant="ghost" size="xs" className="h-7 gap-1 text-muted-foreground" onClick={() => copyText(c.session_url, "Client's link")}>
+          <IconCopy className="size-3.5" /> Their link
+        </Button>
+      )}
+      {/* An order's check takes its person from the order form, so it is changed on the order */}
+      {!c.order_number && !c.submitted_at && ['Not Started', 'In Progress', 'Declined'].includes(c.status) && (
+        <Button variant="ghost" size="xs" className="h-7 gap-1 text-muted-foreground" onClick={() => setEditing(c)} aria-label={`Edit the KYC check for ${c.full_name}`}>
+          <IconPencil className="size-3.5" /> Edit
+        </Button>
+      )}
+      {isAdminRole() && ((!c.submitted_at && ['Not Started', 'In Progress'].includes(c.status)) || IN_REVIEW.includes(c.status)) && (
+        <Button variant="ghost" size="xs" className="h-7 gap-1 text-destructive hover:text-destructive" onClick={() => removeCheck(c)} aria-label={`Delete the KYC check for ${c.full_name}`}>
+          <IconTrash className="size-3.5" /> Delete
+        </Button>
+      )}
+    </>
+  )
+
   // A check the client has not sent yet (e.g. a second link for the same person), or one still In Review:
   // delete it (admins; Finstap keeps approved and declined ones)
   const removeCheck = async (check) => {
@@ -395,7 +432,31 @@ export default function KycRecords({ embedded = false }) {
             </div>
           </div>
           {checks.length ? (
-            <div className="overflow-x-auto">
+            <>
+            {/* Phones: one card per check, so nothing slides sideways */}
+            <div className="divide-y md:hidden">
+              {checks.map((c) => {
+                const [label, tone] = statusLabel(c.status)
+                return (
+                  <div key={c.id} className="py-3 first:pt-0 last:pb-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <button type="button" className="min-w-0 text-left" onClick={() => setViewing(c)}>
+                        <span className="block truncate font-medium">{c.full_name}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{c.email || '—'}</span>
+                      </button>
+                      <Badge className={`${tone} shrink-0 whitespace-nowrap`}>{label}</Badge>
+                    </div>
+                    {c.reason && <p className="mt-1 text-xs text-muted-foreground">{c.reason}</p>}
+                    <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                      {orderCell(c)}
+                      <span className="shrink-0 tabular-nums">{shortDate(c.created_at)}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-1">{actions(c)}</div>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead className="border-b text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
@@ -412,18 +473,7 @@ export default function KycRecords({ embedded = false }) {
                     const [label, tone] = statusLabel(c.status)
                     return (
                       <tr key={c.id} className="border-b align-top last:border-0">
-                        <td className="py-2.5 pr-3">
-                          {c.order_number ? (
-                            <span className={ORDER_CHIP}>{c.order_number}</span>
-                          ) : (
-                            <div className="flex flex-col items-start gap-1">
-                              <span className="text-xs text-muted-foreground">KYC link</span>
-                              <button type="button" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline" onClick={() => linkOrder(c)}>
-                                <IconLink className="size-3.5" /> Link order
-                              </button>
-                            </div>
-                          )}
-                        </td>
+                        <td className="py-2.5 pr-3">{orderCell(c)}</td>
                         <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{shortDate(c.created_at)}</td>
                         <td className="px-3 py-2.5">
                           <button type="button" className="text-left font-medium hover:text-primary" onClick={() => setViewing(c)}>
@@ -435,33 +485,14 @@ export default function KycRecords({ embedded = false }) {
                           <Badge className={`${tone} whitespace-nowrap`}>{label}</Badge>
                           {c.reason && <div className="mt-1 max-w-56 text-xs text-muted-foreground">{c.reason}</div>}
                         </td>
-                        <td className="py-2.5 pl-3 text-right whitespace-nowrap">
-                          <Button variant="outline" size="xs" className="h-7 gap-1" onClick={() => setViewing(c)}>
-                            <IconEye className="size-3.5" /> View
-                          </Button>
-                          {c.session_url && (
-                            <Button variant="ghost" size="xs" className="h-7 gap-1 text-muted-foreground" onClick={() => copyText(c.session_url, "Client's link")}>
-                              <IconCopy className="size-3.5" /> Their link
-                            </Button>
-                          )}
-                          {/* An order's check takes its person from the order form, so it is changed on the order */}
-                          {!c.order_number && !c.submitted_at && ['Not Started', 'In Progress', 'Declined'].includes(c.status) && (
-                            <Button variant="ghost" size="xs" className="h-7 gap-1 text-muted-foreground" onClick={() => setEditing(c)} aria-label={`Edit the KYC check for ${c.full_name}`}>
-                              <IconPencil className="size-3.5" /> Edit
-                            </Button>
-                          )}
-                          {isAdminRole() && ((!c.submitted_at && ['Not Started', 'In Progress'].includes(c.status)) || IN_REVIEW.includes(c.status)) && (
-                            <Button variant="ghost" size="xs" className="h-7 gap-1 text-destructive hover:text-destructive" onClick={() => removeCheck(c)} aria-label={`Delete the KYC check for ${c.full_name}`}>
-                              <IconTrash className="size-3.5" /> Delete
-                            </Button>
-                          )}
-                        </td>
+                        <td className="py-2.5 pl-3 text-right whitespace-nowrap">{actions(c)}</td>
                       </tr>
                     )
                   })}
                 </tbody>
               </table>
             </div>
+            </>
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center text-sm text-muted-foreground">
               <IconId className="mb-2 size-8" />

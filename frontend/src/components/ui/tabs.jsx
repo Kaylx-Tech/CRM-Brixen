@@ -20,9 +20,10 @@ function Tabs({
   )
 }
 
-// Wider than the screen (phones): the tabs scroll sideways instead of running off the page
+// Wider than the screen (phones): the tabs scroll sideways instead of running off the page. Only sideways:
+// no up-down scroll inside the bar (iPhone cut the labels and bounced them), and the swipe stays in the bar.
 const tabsListVariants = cva(
-  "group/tabs-list inline-flex w-fit max-w-full items-center justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-lg p-[3px] text-muted-foreground group-data-horizontal/tabs:h-9 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none",
+  "group/tabs-list inline-flex w-fit max-w-full shrink-0 items-center justify-start overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-lg p-[3px] text-muted-foreground group-data-horizontal/tabs:h-9 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none",
   {
     variants: {
       variant: {
