@@ -13,6 +13,8 @@ GET      /api/public/name-availability?name=         Next.js website name search
 POST     /api/public/formation-orders                 Next.js website "File Details" form (multipart: fields +
                                                       ID / proof of address files): draft order + Stripe
                                                       Checkout link (services/website_orders.py). Limited per IP.
+POST     /api/public/service-orders                   Next.js website order form of any other service
+                                                      (services/website_service_orders.py). Limited per IP.
 """
 import datetime
 import hashlib
@@ -147,8 +149,9 @@ def handle_website_routes(environ, start_response, path, method, user, body, que
             'similar': [i['name'] for i in data['similar'] if i.get('name')][:5],
         })
 
-    if path == '/api/public/formation-orders' and method == 'POST':
+    if path in ('/api/public/formation-orders', '/api/public/service-orders') and method == 'POST':
         from services.website_orders import OrderError, create_formation_order
+        from services.website_service_orders import create_service_order
         if not _allowed(_order_forms, _visitor_ip(environ), ORDER_FORM_LIMIT, ORDER_FORM_WINDOW_SECONDS):
             return json_response(start_response, {'status': 'error', 'message':
                                  'Too many order forms from your connection. Please wait a while or contact us.'},
@@ -157,7 +160,8 @@ def handle_website_routes(environ, start_response, path, method, user, body, que
         files = body.get('_files') or {}
         fields = {k: v for k, v in body.items() if k != '_files'}
         try:
-            result = create_formation_order(fields, files, _website_url(environ))
+            create = create_formation_order if path == '/api/public/formation-orders' else create_service_order
+            result = create(fields, files, _website_url(environ))
         except OrderError as exc:
             return json_response(start_response, {'status': 'error', 'message': str(exc)}, status_code=400)
         except Exception as exc:

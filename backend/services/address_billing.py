@@ -263,9 +263,10 @@ def handle_event(event):
     kind = event.get('type') or ''
     obj = (event.get('data') or {}).get('object') or {}
 
-    # Company formation ordered on the new website (services/website_orders.py); a bank payment can finish later
+    # Orders placed on the new website (formation: services/website_orders.py, other services:
+    # services/website_service_orders.py); a bank payment can finish later
     if kind in ('checkout.session.completed', 'checkout.session.async_payment_succeeded') \
-            and (obj.get('metadata') or {}).get('kind') == 'formation':
+            and (obj.get('metadata') or {}).get('kind') in ('formation', 'website_order'):
         from services.website_orders import handle_paid_session
         return handle_paid_session(obj)
 
