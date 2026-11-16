@@ -244,7 +244,7 @@ export function FaqConsult() {
         <div className="self-start rounded-3xl bg-white p-8 shadow-[0_30px_60px_-35px_rgba(0,57,113,0.5)] ring-1 ring-slate-100">
           <p className="text-sm font-bold uppercase tracking-widest text-brand-teal">Get In Touch</p>
           <h2 className="mt-2 text-3xl font-extrabold text-brand-navy">Book a Free Consultation</h2>
-          <p className="mt-3 text-sm text-brand-slate">Tell us what you need and we&apos;ll reply on WhatsApp.</p>
+          <p className="mt-3 text-sm text-brand-slate">Tell us what you need and we&apos;ll reply by email or WhatsApp.</p>
           <div className="mt-6">
             <ConsultationForm />
           </div>

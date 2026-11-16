@@ -15,6 +15,8 @@ POST     /api/public/formation-orders                 Next.js website "File Deta
                                                       Checkout link (services/website_orders.py). Limited per IP.
 POST     /api/public/service-orders                   Next.js website order form of any other service
                                                       (services/website_service_orders.py). Limited per IP.
+POST     /api/public/enquiries                        Next.js website contact form: a support ticket for the
+                                                      team (services/website_enquiries.py). Limited per IP.
 """
 import datetime
 import hashlib
@@ -41,6 +43,10 @@ _name_checks_lock = threading.Lock()
 ORDER_FORM_LIMIT = 6
 ORDER_FORM_WINDOW_SECONDS = 60 * 60
 _order_forms = {}
+# Contact form: at most this many questions per visitor per hour
+ENQUIRY_LIMIT = 5
+ENQUIRY_WINDOW_SECONDS = 60 * 60
+_enquiries = {}
 WEBSITE_URL = (os.environ.get('WEBSITE_URL') or 'https://brixenconsultants.com').rstrip('/')
 
 
@@ -170,6 +176,23 @@ def handle_website_routes(environ, start_response, path, method, user, body, que
             return json_response(start_response, {'status': 'error', 'message':
                                  'Your order could not be sent. Please try again in a minute or contact us.'},
                                  status_code=500)
+        return json_response(start_response, {'status': 'success', **result}, status_code=201)
+
+    if path == '/api/public/enquiries' and method == 'POST':
+        from services.website_enquiries import EnquiryError, create_enquiry
+        if not _allowed(_enquiries, _visitor_ip(environ), ENQUIRY_LIMIT, ENQUIRY_WINDOW_SECONDS):
+            return json_response(start_response, {'status': 'error', 'message':
+                                 'Too many messages from your connection. Please call or WhatsApp us.'},
+                                 status_code=429)
+        try:
+            result = create_enquiry(body if isinstance(body, dict) else {})
+        except EnquiryError as exc:
+            return json_response(start_response, {'status': 'error', 'message': str(exc)}, status_code=400)
+        except Exception as exc:
+            from services.error_tracking import report_problem
+            report_problem('website_enquiry', exc, level='error')
+            return json_response(start_response, {'status': 'error', 'message':
+                                 'Your message could not be sent. Please call or WhatsApp us.'}, status_code=500)
         return json_response(start_response, {'status': 'success', **result}, status_code=201)
 
     if not (path.startswith('/api/v1/wordpress/documents') or path == '/api/v1/auth/sso'):

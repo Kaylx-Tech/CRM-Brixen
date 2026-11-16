@@ -40,7 +40,7 @@ export default function FaqsPage() {
             <p className="text-sm font-bold uppercase tracking-widest text-brand-teal">Still have a question?</p>
             <h2 className="mt-2 text-2xl font-bold text-brand-navy">Ask us directly</h2>
             <p className="mt-2 text-sm text-brand-slate">
-              Send your question and we&apos;ll reply on WhatsApp, or see our{" "}
+              Send your question and we&apos;ll reply by email or WhatsApp, or see our{" "}
               <Link href="/packages/" className="font-semibold text-brand-blue hover:underline">
                 packages
               </Link>

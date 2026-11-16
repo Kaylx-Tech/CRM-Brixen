@@ -72,7 +72,7 @@ export default function ContactPage() {
             <h2 className="mt-2 text-3xl font-bold text-black">
               Send us your <span className="text-brand-blue">question</span>
             </h2>
-            <p className="mt-3 text-sm text-brand-slate">Tell us what you need and we&apos;ll reply on WhatsApp.</p>
+            <p className="mt-3 text-sm text-brand-slate">Tell us what you need and we&apos;ll reply by email or WhatsApp.</p>
             <div className="mt-7">
               <ConsultationForm />
             </div>
