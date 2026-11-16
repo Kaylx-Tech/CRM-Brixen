@@ -683,7 +683,7 @@ const Tasks = ({ view } = {}) => {
         cell: ({ row }) => (
           <div className="flex flex-col min-w-0">
             <span className="font-medium text-foreground">{row.original.name}</span>
-            <span className="text-sm text-muted-foreground">{row.original.email}</span>
+            <span className="truncate text-sm text-muted-foreground" title={row.original.email}>{row.original.email}</span>
           </div>
         ),
       }),

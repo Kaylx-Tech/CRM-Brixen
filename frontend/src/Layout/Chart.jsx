@@ -30,12 +30,16 @@ const revenueChartConfig = {
   revenue: { label: "Revenue", color: "var(--primary)" },
 }
 
+// The chosen segment of a segmented control (Apple style: a raised light pill, a soft grey one in dark mode)
+const SEGMENT_ON = "bg-background text-foreground shadow-sm dark:bg-white/15"
+
 // Range buttons, and what each one is compared with
 const REVENUE_RANGES = [
-  { value: "This Month", label: "This month", versus: "vs the same days last month" },
-  { value: "7d", label: "7 days", versus: "vs the 7 days before" },
-  { value: "30d", label: "30 days", versus: "vs the 30 days before" },
-  { value: "90d", label: "90 days", versus: "vs the 90 days before" },
+  // `short`: the label on a phone, so the four fit on one line
+  { value: "This Month", label: "This month", short: "Month", versus: "vs the same days last month" },
+  { value: "7d", label: "7 days", short: "7D", versus: "vs the 7 days before" },
+  { value: "30d", label: "30 days", short: "30D", versus: "vs the 30 days before" },
+  { value: "90d", label: "90 days", short: "90D", versus: "vs the 90 days before" },
 ]
 
 const shortMoney = (val) => `£${val >= 1000 ? `${(val / 1000).toFixed(val % 1000 === 0 ? 0 : 1)}k` : Math.round(val || 0)}`
@@ -165,8 +169,9 @@ export function ChartRevenueOverTime({
           <CardTitle className="text-sm font-semibold">Revenue</CardTitle>
           <p className="text-xs text-muted-foreground">All orders, net of cancellations and refunds</p>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="flex rounded-lg border bg-muted/60 p-0.5" role="tablist" aria-label="Chart style">
+        {/* Apple-style segmented controls: one line on a phone too */}
+        <div className="flex w-full items-center gap-1.5 sm:w-auto">
+          <div className="flex shrink-0 rounded-lg bg-muted p-0.5" role="tablist" aria-label="Chart style">
             {[
               { value: "bars", label: "Bars", Icon: IconChartBar },
               { value: "line", label: "Line", Icon: IconChartLine },
@@ -180,7 +185,7 @@ export function ChartRevenueOverTime({
                 title={label}
                 onClick={() => chooseKind(value)}
                 className={`rounded-md p-1 transition-colors ${
-                  kind === value ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  kind === value ? SEGMENT_ON : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Icon className="size-3.5" />
@@ -188,21 +193,21 @@ export function ChartRevenueOverTime({
             ))}
           </div>
         {onTimeFilterChange && (
-          <div className="flex rounded-lg border bg-muted/60 p-0.5" role="tablist" aria-label="Revenue range">
+          <div className="flex min-w-0 flex-1 rounded-lg bg-muted p-0.5 sm:flex-none" role="tablist" aria-label="Revenue range">
             {REVENUE_RANGES.map((r) => (
               <button
                 key={r.value}
                 type="button"
                 role="tab"
                 aria-selected={r.value === range.value}
+                aria-label={r.label}
                 onClick={() => onTimeFilterChange(r.value)}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-                  r.value === range.value
-                    ? "bg-foreground text-background shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                className={`flex-1 whitespace-nowrap rounded-md px-2 py-1 text-[11px] font-medium transition-colors sm:flex-none sm:px-3 sm:text-xs ${
+                  r.value === range.value ? SEGMENT_ON : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {r.label}
+                <span className="sm:hidden">{r.short}</span>
+                <span className="hidden sm:inline">{r.label}</span>
               </button>
             ))}
           </div>

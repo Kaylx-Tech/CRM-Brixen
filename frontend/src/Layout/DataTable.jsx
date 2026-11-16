@@ -62,9 +62,10 @@ function StackedRowCard({ row, table }) {
   const [first, ...rest] = cells.filter((c) => c !== actions);
   return (
     <div className="rounded-xl border bg-card p-3 shadow-xs" data-state={row.getIsSelected() ? "selected" : undefined}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1 text-sm font-medium">{first && <table.FlexRender cell={first} />}</div>
-        {actions && <div className="-mr-1 -mt-1 shrink-0"><table.FlexRender cell={actions} /></div>}
+      {/* The first column (e.g. an invoice number) stays on one line; the buttons move under it if they do not fit */}
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-28 flex-1 break-words text-sm font-medium">{first && <table.FlexRender cell={first} />}</div>
+        {actions && <div className="-mr-1 -mt-1 ml-auto shrink-0"><table.FlexRender cell={actions} /></div>}
       </div>
       {rest.length > 0 && (
         <dl className="mt-2 space-y-1.5 border-t pt-2">

@@ -83,8 +83,9 @@ export function SiteHeader({ homeHref = '/admin/dashboard' }) {
             <BreadcrumbList>
               {breadcrumbs.map((item, index) => (
                 <React.Fragment key={index}>
-                  {index > 0 && <BreadcrumbSeparator />}
-                  <BreadcrumbItem>
+                  {/* Phones show only the page's name, so the header stays one line */}
+                  {index > 0 && <BreadcrumbSeparator className="max-sm:hidden" />}
+                  <BreadcrumbItem className={item.isCurrent ? 'min-w-0' : 'max-sm:hidden'}>
                     {item.isCurrent ? (
                       <BreadcrumbPage className=" text-sm text-foreground">
                         {item.label}
