@@ -140,6 +140,7 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         rows = query_db(f"""
             SELECT u.id, u.full_name, u.email, u.phone, u.country, u.address, u.role, u.status, u.created_at,
                    u.client_type, u.is_b2b, u.b2b_id, u.wordpress_user_id, u.notification_email, u.account_type,
+                   COALESCE(u.website_account_by_crm, 0) as website_account_by_crm,
                    COALESCE(u.type_change_count, 0) as type_change_count,
                    COALESCE(u.type_locked, 0) as type_locked,
                    (SELECT COUNT(*) FROM companies WHERE user_id = u.id) as companies_count,
@@ -316,7 +317,10 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
                 'website_provisioned': False, 'website_error': site.get('message'),
             }, 502)
         if site.get('wordpress_user_id'):
-            execute_db("UPDATE users SET wordpress_user_id = ? WHERE id = ?;", (site['wordpress_user_id'], cid))
+            # A customer who had no website account got it from the CRM: their Source stays CRM
+            execute_db("""UPDATE users SET website_account_by_crm = CASE WHEN COALESCE(wordpress_user_id, '') GLOB '[0-9]*'
+                              THEN website_account_by_crm ELSE 1 END, wordpress_user_id = ? WHERE id = ?;""",
+                       (site['wordpress_user_id'], cid))
         return success_response(
             start_response,
             message=f"{name} can now sign in on the Brixen website ({wordpress_service.website_customer_login_url()}) with {target.get('email')}.",
@@ -519,7 +523,27 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         _audit(user, 'CUSTOMER_CREATED' if role == 'CLIENT' else 'STAFF_CREATED', 'users', new_id,
                f"Created {role}{f' ({staff_type})' if staff_type else ''} account for {email}")
         noun = 'Customer' if role == 'CLIENT' else 'Team member'
-        return success_response(start_response, message=f"{noun} '{full_name}' created successfully", data={"id": new_id})
+        message = f"{noun} '{full_name}' created successfully"
+        website = None
+        if role == 'CLIENT' and new_id:
+            # Individuals sign in on the website: their website login is made (or an existing one linked) now
+            from services.website_accounts import ensure_for_customer
+            try:
+                website = ensure_for_customer(new_id, password)
+            except Exception as exc:
+                website = {'ok': False, 'message': str(exc)}
+            if website.get('skipped'):
+                website = None
+            elif website.get('ok'):
+                message += (". Website account created." if website.get('created')
+                            else ". Linked to their existing website account (its password was not changed).")
+            else:
+                message += (f". The website account could not be made ({website.get('message')}); "
+                            "use Set Password to try again.")
+        return success_response(start_response, message=message, data={
+            "id": new_id,
+            "website_account": None if website is None else bool(website.get('ok')),
+        })
 
     # ── 8. GET /api/clients/<id> OR /api/admin/customers/<id> (Detail) ───────
     match_detail = re.match(r'^/(?:api/clients|api/admin/customers)/(\d+)$', path)

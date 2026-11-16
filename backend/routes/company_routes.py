@@ -772,6 +772,9 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
                         INSERT INTO users (full_name, email, password_hash, role, client_type, is_b2b, status, created_at)
                         VALUES (?, ?, ?, 'CLIENT', 'Individual', 0, 'Active', datetime('now', 'localtime'));
                     """, (new_name, new_email, unusable_password_hash()))
+                    # An Individual signs in on the website: make (or link) their website login in the background
+                    from services.website_accounts import ensure_in_background
+                    ensure_in_background(client_id)
         if not client_id:
             client_id = body.get('user_id') or body.get('client_id') or user_id
 

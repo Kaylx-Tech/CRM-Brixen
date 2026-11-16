@@ -425,6 +425,9 @@ def ensure_schema():
         conn.execute("ALTER TABLE users ADD COLUMN password_reset_token TEXT")
     if 'password_reset_expires' not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN password_reset_expires TIMESTAMP")
+    if 'website_account_by_crm' not in user_cols:
+        # 1 = the website login was made or linked by the CRM (services/website_accounts.py), not a website signup
+        conn.execute("ALTER TABLE users ADD COLUMN website_account_by_crm INTEGER NOT NULL DEFAULT 0")
     if 'checkout_phone' not in order_cols:
         conn.execute("ALTER TABLE orders ADD COLUMN checkout_phone TEXT")
     if 'access_email' not in order_cols:

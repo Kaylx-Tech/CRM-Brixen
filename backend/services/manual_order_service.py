@@ -36,6 +36,9 @@ def _ensure_client(data, actor=None):
             INSERT INTO users (email, password_hash, full_name, role, status, client_type, is_b2b, created_at)
             VALUES (?, ?, ?, 'CLIENT', 'Active', 'Individual', 0, datetime('now'));
         """, (email, hash_password(secrets.token_urlsafe(12)), full_name))
+        # An Individual signs in on the website: make (or link) their website login without holding up the order
+        from services.website_accounts import ensure_in_background
+        ensure_in_background(cid)
         row = query_db("SELECT * FROM users WHERE id = ? LIMIT 1;", (cid,), one=True)
         return int(cid), dict(row) if row else {'id': cid, 'full_name': full_name, 'email': email}, None
 

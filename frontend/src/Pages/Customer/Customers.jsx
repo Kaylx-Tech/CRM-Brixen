@@ -178,16 +178,18 @@ const Customers = () => {
             ageDays,
             isNew: ageDays !== null && ageDays <= 7,
             // Individuals sign in on the website: only a real WordPress user id means the account exists there
-            // (it is made by "Set password"; a customer added in the CRM or by an order has none yet)
+            // (made when the customer is added, or by Set password if that failed or for older customers)
+            // B2B, Business and new-website ("Website Portal") customers sign in to the CRM portal
             access:
-              type === "B2B" || type === "Business"
+              type === "B2B" || type === "Business" || c.website_login_only === false
                 ? c.portal_login_ready === false
                   ? "Needs portal password"
                   : "Portal login"
                 : /^\d+$/.test(String(c.wordpress_user_id || ""))
                   ? "Website account"
                   : "No website account",
-            source: c.wordpress_user_id ? "Website signup" : "CRM",
+            // A website account the CRM made or linked keeps the customer's Source as CRM
+            source: c.wordpress_user_id && !Number(c.website_account_by_crm) ? "Website signup" : "CRM",
             companies: c.companies_count ?? 0,
             orders: c.orders_count ?? 0,
             status: c.status || "Active",

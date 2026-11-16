@@ -86,6 +86,36 @@ def find_user_by_email(email):
     return None, None
 
 
+def link_or_create_website_user(*, email, password, full_name=None):
+    """A new CRM customer's website login: an existing website account with this email is only linked (its
+    password is never changed); otherwise a customer account is made with `password`.
+
+    Returns {'ok': bool, 'wordpress_user_id': str|None, 'created': bool, 'message': str}.
+    """
+    email = str(email or '').strip().lower()
+    if not email or len(str(password or '')) < 8:
+        return {'ok': False, 'created': False, 'message': 'Missing website login details'}
+    if not is_configured():
+        return {'ok': False, 'created': False,
+                'message': 'WordPress is not configured (API user / application password missing)'}
+    existing, err = find_user_by_email(email)
+    if err:
+        return {'ok': False, 'created': False, 'message': err}
+    if existing:
+        return {'ok': True, 'created': False, 'wordpress_user_id': str(existing['id']),
+                'message': 'Linked to the existing website account'}
+    name = (full_name or email.split('@')[0]).strip()
+    payload = {'username': _username_from_email(email), 'email': email, 'password': password,
+               'name': name, 'roles': ['customer']}
+    status, data, err = wp_request('POST', '/wp/v2/users', payload=payload)
+    if status == 400 and err and 'username' in err.lower():  # username taken → make it unique
+        payload['username'] = f"{_username_from_email(email)}_{abs(hash(email)) % 10000}"
+        status, data, err = wp_request('POST', '/wp/v2/users', payload=payload)
+    if err or not isinstance(data, dict) or not data.get('id'):
+        return {'ok': False, 'created': False, 'message': err or 'WordPress did not return a user'}
+    return {'ok': True, 'created': True, 'wordpress_user_id': str(data['id']), 'message': 'Website account created'}
+
+
 def provision_website_user(*, email, password, full_name=None, phone=None, wordpress_user_id=None):
     """Create the website login, or update its password if the user already exists.
 
