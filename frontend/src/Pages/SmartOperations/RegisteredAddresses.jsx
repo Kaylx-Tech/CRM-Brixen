@@ -13,7 +13,6 @@ import {
   IconMapPin,
   IconRefresh,
   IconSearch,
-  IconUser,
 } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { apiRequest } from '@/lib/api'
@@ -25,16 +24,19 @@ import { shortDate } from './idvStatus'
 const NEEDS_ACTION = ['Renews soon', 'Renewal due', 'Expired', 'Payment failed', 'Pending Renewal']
 const PAID = ['Paid', 'Auto-renew', 'Active']
 
-// Each status: its colour (badge, left strip, progress bar) and the summary card it counts in
+// Each status: a quiet pill with a coloured dot
 const TONES = {
-  Expired: { badge: 'bg-destructive/10 text-destructive ring-destructive/20', strip: 'bg-destructive', bar: 'bg-destructive' },
-  'Payment failed': { badge: 'bg-destructive/10 text-destructive ring-destructive/20', strip: 'bg-destructive', bar: 'bg-destructive' },
-  'Renewal due': { badge: 'bg-amber-500/12 text-amber-700 ring-amber-500/25 dark:text-amber-400', strip: 'bg-amber-500', bar: 'bg-amber-500' },
-  'Pending Renewal': { badge: 'bg-amber-500/12 text-amber-700 ring-amber-500/25 dark:text-amber-400', strip: 'bg-amber-500', bar: 'bg-amber-500' },
-  'Renews soon': { badge: 'bg-sky-500/12 text-sky-700 ring-sky-500/25 dark:text-sky-400', strip: 'bg-sky-500', bar: 'bg-sky-500' },
-  default: { badge: 'bg-emerald-500/12 text-emerald-700 ring-emerald-500/25 dark:text-emerald-400', strip: 'bg-emerald-500', bar: 'bg-emerald-500' },
+  Expired: { badge: 'bg-destructive/10 text-destructive', dot: 'bg-destructive' },
+  'Payment failed': { badge: 'bg-destructive/10 text-destructive', dot: 'bg-destructive' },
+  'Renewal due': { badge: 'bg-amber-500/10 text-amber-700 dark:text-amber-400', dot: 'bg-amber-500' },
+  'Pending Renewal': { badge: 'bg-amber-500/10 text-amber-700 dark:text-amber-400', dot: 'bg-amber-500' },
+  'Renews soon': { badge: 'bg-sky-500/10 text-sky-700 dark:text-sky-400', dot: 'bg-sky-500' },
+  default: { badge: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400', dot: 'bg-emerald-500' },
 }
 const toneOf = (status) => TONES[status] || TONES.default
+
+// The list's columns on wider screens (header and rows share them)
+const COLS = '@3xl:grid-cols-[minmax(0,1.6fr)_minmax(0,2fr)_minmax(0,1.15fr)_minmax(0,1.25fr)]'
 
 const SUMMARY = [
   { key: 'Renews soon', label: 'Renews soon', icon: IconClockHour4, match: (s) => s === 'Renews soon', tone: 'text-sky-600 bg-sky-500/12' },
@@ -55,13 +57,6 @@ function daysLeft(date) {
 function initials(name) {
   const words = String(name || '').replace(/\b(ltd|limited|llp|plc)\b\.?/gi, '').trim().split(/\s+/).filter(Boolean)
   return (words.slice(0, 2).map((w) => w[0]).join('') || '•').toUpperCase()
-}
-
-/** How far into the paid year the address is: 0% just renewed, 100% on the renewal date (or past it). */
-function yearProgress(expiry) {
-  const left = daysLeft(expiry)
-  if (left === null) return null
-  return Math.max(0, Math.min(100, Math.round(((365 - left) / 365) * 100)))
 }
 
 // Registered Address: every company whose registered office is one of Brixen's addresses, as the yearly address
@@ -206,8 +201,8 @@ export default function RegisteredAddresses() {
       </div>
 
       {isLoading && rows.length === 0 ? (
-        <div className="grid gap-3 xl:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}
+        <div className="grid gap-2 rounded-2xl border bg-card p-3">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
         </div>
       ) : shown.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed bg-card/40 px-4 py-16 text-center">
@@ -222,86 +217,89 @@ export default function RegisteredAddresses() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-3 xl:grid-cols-2">
-          {shown.map((r, i) => {
-            const left = daysLeft(r.expiry_date)
-            const tone = toneOf(r.status)
-            const progress = yearProgress(r.expiry_date)
-            const needs = NEEDS_ACTION.includes(r.status)
-            return (
-              <m.div
-                key={r.id}
-                initial={i < 10 ? { opacity: 0, y: 10 } : false}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ ...spring, delay: Math.min(i, 10) * 0.03 }}
-                className="relative overflow-hidden rounded-2xl border bg-card shadow-xs transition-shadow hover:shadow-md"
-              >
-                <span className={`absolute inset-y-0 left-0 w-1 ${tone.strip}`} aria-hidden="true" />
-                <div className="flex flex-col gap-3 p-4 pl-5">
-                  <div className="flex items-start gap-3">
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-semibold text-primary">
+        <div className="@container overflow-hidden rounded-2xl border bg-card">
+          <div className={`hidden ${COLS} border-b bg-muted/40 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground @3xl:grid`}>
+            <span>Company</span>
+            <span>Address · customer</span>
+            <span>Renewal</span>
+            <span className="text-right">Reminder</span>
+          </div>
+          <div className="divide-y">
+            {shown.map((r, i) => {
+              const left = daysLeft(r.expiry_date)
+              const tone = toneOf(r.status)
+              const needs = NEEDS_ACTION.includes(r.status)
+              const customer = [r.customer_name, r.customer_email].filter(Boolean).join(' · ')
+              return (
+                <m.div
+                  key={r.id}
+                  initial={i < 12 ? { opacity: 0 } : false}
+                  animate={{ opacity: 1 }}
+                  transition={{ ...spring, delay: Math.min(i, 12) * 0.02 }}
+                  className={`grid gap-3 px-4 py-3 transition-colors hover:bg-muted/30 @3xl:items-center @3xl:gap-4 ${COLS}`}
+                >
+                  {/* Company */}
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
                       {initials(r.company_name)}
                     </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[15px] font-semibold leading-tight">{r.company_name || '—'}</p>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {r.company_number || 'No company number'}{r.source === 'Added by hand' ? ' · added by hand' : ''}
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium leading-tight" title={r.company_name}>{r.company_name || '—'}</p>
+                      <p className="mt-0.5 truncate text-xs tabular-nums text-muted-foreground">
+                        {r.company_number || 'No company number'}{r.source === 'Added by hand' ? ' · by hand' : ''}
                       </p>
                     </div>
-                    <span className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${tone.badge}`}>
+                  </div>
+
+                  {/* Address and customer */}
+                  <div className="min-w-0 pl-12 @3xl:pl-0">
+                    <p className="truncate text-sm" title={r.address}>{r.address || '—'}</p>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground" title={customer}>{customer || '—'}</p>
+                  </div>
+
+                  {/* Renewal date and status */}
+                  <div className="min-w-0 pl-12 @3xl:pl-0">
+                    <p className="text-sm tabular-nums">
+                      {shortDate(r.expiry_date) || '—'}
+                      {left !== null && (
+                        <span className={`ml-1.5 text-xs ${left < 0 ? 'text-destructive' : left <= 30 ? 'text-sky-600 dark:text-sky-400' : 'text-muted-foreground'}`}>
+                          {left < 0 ? `${-left}d ago` : left === 0 ? 'today' : `in ${left}d`}
+                        </span>
+                      )}
+                    </p>
+                    <span className={`mt-1 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${tone.badge}`}>
+                      <span className={`size-1.5 rounded-full ${tone.dot}`} aria-hidden="true" />
                       {r.status}
                     </span>
-                  </div>
-
-                  <div className="grid gap-1.5 rounded-xl bg-muted/50 px-3 py-2 text-xs">
-                    <p className="flex items-start gap-1.5">
-                      <IconMapPin className="mt-px size-3.5 shrink-0 text-muted-foreground" />
-                      <span className="min-w-0 break-words">{r.address || '—'}</span>
-                    </p>
-                    <p className="flex items-center gap-1.5 text-muted-foreground">
-                      <IconUser className="size-3.5 shrink-0" />
-                      <span className="min-w-0 truncate">{[r.customer_name, r.customer_email].filter(Boolean).join(' · ') || '—'}</span>
-                    </p>
-                  </div>
-
-                  <div>
-                    <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 text-xs">
-                      <span className="text-muted-foreground">Since {shortDate(r.start_date) || '—'}</span>
-                      <span className={left !== null && left < 0 ? 'font-semibold text-destructive' : left !== null && left <= 30 ? 'font-semibold text-sky-700 dark:text-sky-400' : 'font-medium'}>
-                        {r.status === 'Auto-renew' ? 'Card charged ' : 'Renews '}{shortDate(r.expiry_date) || '—'}
-                        {left !== null ? (left < 0 ? ` · ${-left} days ago` : ` · in ${left} days`) : ''}
-                      </span>
-                    </div>
-                    {progress !== null && (
-                      <div className="h-1.5 overflow-hidden rounded-full bg-muted" title={`${progress}% of the year used`}>
-                        <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${progress}%` }} />
-                      </div>
-                    )}
                     {r.renewal_invoice && (
-                      <p className="mt-1.5 text-xs text-muted-foreground">
-                        Renewal invoice {r.renewal_invoice.invoice_number} · {r.renewal_invoice.status}
+                      <p className="mt-1 truncate text-[11px] text-muted-foreground">
+                        Invoice {r.renewal_invoice.invoice_number} · {r.renewal_invoice.status}
                       </p>
                     )}
                   </div>
 
-                  {needs && r.company_id && (
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <IconBell className="size-3.5" />
-                        {r.last_reminder
-                          ? `Last reminder ${shortDate(r.last_reminder.sent_on)}${r.last_reminder.kind === 'auto' ? ' (auto)' : ''}${r.last_reminder.emailed ? '' : ' · not delivered'}`
-                          : 'No reminder sent yet'}
-                      </span>
-                      <Button size="sm" className="h-8 gap-1.5 rounded-full px-3.5" onClick={() => remind(r)} disabled={sending === r.id}>
-                        {sending === r.id ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconBell className="size-3.5" />}
-                        Reminder
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </m.div>
-            )
-          })}
+                  {/* Reminder */}
+                  <div className="flex items-center justify-between gap-2 pl-12 @3xl:justify-end @3xl:pl-0">
+                    {needs && r.company_id ? (
+                      <>
+                        <span className="text-right text-[11px] leading-tight text-muted-foreground">
+                          {r.last_reminder
+                            ? <>Sent {shortDate(r.last_reminder.sent_on)}{r.last_reminder.kind === 'auto' ? ' · auto' : ''}{r.last_reminder.emailed ? '' : <span className="text-destructive"> · failed</span>}</>
+                            : 'Not sent yet'}
+                        </span>
+                        <Button variant="outline" size="sm" className="h-7 shrink-0 gap-1 px-2.5 text-xs" onClick={() => remind(r)} disabled={sending === r.id}>
+                          {sending === r.id ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconBell className="size-3.5" />}
+                          Remind
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </div>
+                </m.div>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
