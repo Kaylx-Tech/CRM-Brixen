@@ -175,6 +175,7 @@ def _address_bank_claim(environ, start_response, token, method, body):
                            f"We have let our team know that you paid for the registered office address of {name}. "
                            "Once the payment reaches our bank, the address is renewed for another year and you get a receipt.")
     pay = _renewal_pay_details()
+    from services.invoice_mail import INVOICE_BANK_PKR as pkr
     price = float(service.get('renewal_price') or 0)
     e = html.escape
     page = (f"<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,"
@@ -183,9 +184,13 @@ def _address_bank_claim(environ, start_response, token, method, body):
             f"<h1 style='font-size:22px'>Renew the registered office address</h1>"
             f"<p>{e(name)} · <b>£{price:.2f}</b> for one more year.</p>"
             f"<div style='border:1px solid #ddd;border-radius:12px;padding:12px 16px;margin:16px 0'>"
-            f"<p style='margin:0 0 6px;font-weight:600'>Bank transfer</p>"
+            f"<p style='margin:0 0 6px;font-weight:600'>Bank transfer · UK (GBP)</p>"
             f"Account name: {e(str(pay.get('account_name') or ''))}<br>Account number: {e(str(pay.get('account_number') or ''))}"
             f"<br>Sort code: {e(str(pay.get('sort_code') or ''))}<br>Reference: {e(name)}</div>"
+            f"<div style='border:1px solid #ddd;border-radius:12px;padding:12px 16px;margin:0 0 16px'>"
+            f"<p style='margin:0 0 6px;font-weight:600'>Bank transfer · Pakistan (PKR)</p>"
+            f"Account name: {e(str(pkr.get('account_name') or ''))}<br>Bank: {e(str(pkr.get('bank_name') or ''))}"
+            f"<br>IBAN: {e(str(pkr.get('iban') or ''))}<br>Reference: {e(name)}</div>"
             f"<form method='post'><label style='display:block;font-size:14px;margin-bottom:6px'>Payment reference "
             f"(optional)<br><input name='reference' maxlength='120' style='width:100%;box-sizing:border-box;padding:10px;"
             f"border:1px solid #ccc;border-radius:10px;margin-top:4px'></label>"

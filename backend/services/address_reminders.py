@@ -200,6 +200,10 @@ def compose(company, owner, service):
         points.append("Pay by bank transfer with the details below, then press \"I have paid\" so we can renew it straight away.")
     bank_rows = [('Account name', pay.get('account_name')), ('Account number', pay.get('account_number')),
                  ('Sort code', pay.get('sort_code')), ('Reference', name)]
+    # Customers in Pakistan can pay into Brixen's PKR account (the same details as on invoices)
+    from services.invoice_mail import INVOICE_BANK_PKR as pkr
+    pkr_rows = [('Account name', pkr.get('account_name')), ('Bank', pkr.get('bank_name')), ('IBAN', pkr.get('iban')),
+                ('Reference', name)]
     footnote = ("If the address is not renewed, the subscription is cancelled and we will no longer act as the "
                 "company's registered office; you would then need to give Companies House a new address.")
     if card_url and paid_url:
@@ -221,7 +225,8 @@ def compose(company, owner, service):
         details=details,
         details_total=('To pay', f"£{price:.2f}"),
         cta_label=cta_label, cta_url=cta_url, cta2_label=cta2_label, cta2_url=cta2_url,
-        boxes=[{'title': 'Bank transfer', 'rows': [(k, v) for k, v in bank_rows if v]}],
+        boxes=[{'title': 'Bank transfer · UK (GBP)', 'rows': [(k, v) for k, v in bank_rows if v]},
+               {'title': 'Bank transfer · Pakistan (PKR)', 'rows': [(k, v) for k, v in pkr_rows if v]}],
         footnote=footnote, category='ORDER')
     return subject, text, html, cta_url
 
