@@ -16,6 +16,9 @@ export const SITE = {
   icoNumber: "ZB941411",
   phone: "+44 7490 359487",
   phoneHref: "tel:+447490359487",
+  phone2: "+44 7360 515317",
+  phone2Href: "tel:+447360515317",
+  officeHours: "Monday to Sunday, open 24 hours",
   email: "contact@brixenconsultants.com",
   address: "57 Wellesley Road, Ilford, United Kingdom, IG1 4JZ",
   mapUrl: "https://maps.app.goo.gl/NMkEJ9NNvVWX5Sst7",
@@ -41,7 +44,6 @@ const LIST = [
   ["/web-design-and-marketing/", "Web Design and Marketing", "business"],
   // Legal
   ["/terms-conditions/", "Terms & Conditions", "legal"],
-  ["/privacy-policy/", "Privacy Policy", "legal"],
   ["/gdpr-privacy-policy/", "GDPR Privacy Policy", "legal"],
   ["/cookies-policy/", "Cookies Policy", "legal"],
   ["/refund-and-cancellation-policy/", "Refund and Cancellation Policy", "legal"],

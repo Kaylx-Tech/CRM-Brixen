@@ -29,6 +29,8 @@ const nextConfig = {
   async redirects() {
     return [
       { source: "/home-2/", destination: "/", permanent: true },
+      // WordPress's /privacy-policy/ was its sample page; the real policy is the GDPR one
+      { source: "/privacy-policy/", destination: "/gdpr-privacy-policy/", permanent: true },
       ...DEMO_PAGES.map((source) => ({ source, destination: "/", permanent: true })),
       { source: "/customer-area/:path*", destination: `${PORTAL}/`, permanent: true },
       ...ACCOUNT_PAGES.map((source) => ({ source, destination: `${PORTAL}/`, permanent: false })),
