@@ -3,6 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useState } from "react"
+import AccountMenu, { AccountLinks, CART_ICON, CartCount } from "@/components/AccountMenu"
 import { NAV, SITE, TOP_LINKS } from "@/lib/site"
 
 function Chevron({ open }) {
@@ -48,7 +49,7 @@ function Dropdown({ entry }) {
   )
 }
 
-/** Top strip (about, FAQ, My Account), then the logo and the main menu; on phones the menu folds into a button. */
+/** Top strip (about, FAQ, My Account with its dropdown), then the logo and the main menu; on phones the menu folds into a button. */
 export default function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openGroup, setOpenGroup] = useState(null)
@@ -66,6 +67,7 @@ export default function SiteHeader() {
                 {label}
               </Link>
             ))}
+            <AccountMenu />
           </nav>
         </div>
       </div>
@@ -104,6 +106,12 @@ export default function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <Link href="/cart/" aria-label="My Cart" className="relative flex size-10 items-center justify-center rounded-lg text-slate-800 hover:bg-brand-mist hover:text-brand-blue">
+            <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d={CART_ICON} />
+            </svg>
+            <CartCount className="absolute -right-0.5 -top-0.5" />
+          </Link>
           <Link
             href="/packages/"
             className="hidden rounded-full bg-brand-blue px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-navy sm:inline-flex"
@@ -164,14 +172,27 @@ export default function SiteHeader() {
               </div>
             )
           })}
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <Link href={`${SITE.portalUrl}/`} className="rounded-full border border-slate-200 py-2.5 text-center text-sm font-semibold text-slate-800">
-              My Account
-            </Link>
-            <Link href="/packages/" onClick={() => setMobileOpen(false)} className="rounded-full bg-brand-blue py-2.5 text-center text-sm font-semibold text-white">
-              View Packages
-            </Link>
+          <div className="border-b border-slate-100">
+            <button
+              type="button"
+              onClick={() => setOpenGroup(openGroup === "account" ? null : "account")}
+              className="flex w-full items-center justify-between py-3 font-semibold text-slate-800"
+              aria-expanded={openGroup === "account"}
+            >
+              <span className="flex items-center gap-2">
+                My Account <CartCount />
+              </span>
+              <Chevron open={openGroup === "account"} />
+            </button>
+            {openGroup === "account" && (
+              <div className="pb-3">
+                <AccountLinks onClick={() => setMobileOpen(false)} />
+              </div>
+            )}
           </div>
+          <Link href="/packages/" onClick={() => setMobileOpen(false)} className="mt-4 block rounded-full bg-brand-blue py-2.5 text-center text-sm font-semibold text-white">
+            View Packages
+          </Link>
         </nav>
       )}
     </header>

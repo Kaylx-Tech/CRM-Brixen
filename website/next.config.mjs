@@ -1,11 +1,11 @@
-const PORTAL = process.env.NEXT_PUBLIC_PORTAL_URL || "https://portal.brixenconsultants.com"
+const PORTAL = process.env.NEXT_PUBLIC_PORTAL_URL || "https://admin.brixenconsultants.com"
 
 // WordPress pages that are not rebuilt: theme demos and old account pages. Each sends visitors (and Google) to the
 // right place with a permanent redirect, so old links keep working.
 const DEMO_PAGES = [
   "/blog/", "/blog-grid/", "/blog-grid-2-columns/", "/blog-grid-4-columns-full-width/", "/blog-carousel/",
   "/portfolio-grid/", "/portfolio-grid-2-columns/", "/portfolio-grid-3-columns/", "/portfolio-carousel/",
-  "/wishlist/", "/shop/", "/cart/",
+  "/wishlist/", "/shop/",
 ]
 const ACCOUNT_PAGES = [
   "/login/", "/login-2/", "/login-3/", "/register/", "/registration/", "/my-account/", "/my-account-2/",
@@ -82,7 +82,7 @@ const nextConfig = {
       { source: "/product/:path*", destination: "/services/", permanent: true },
       { source: "/product-category/:path*", destination: "/services/", permanent: true },
       { source: "/product-tag/:path*", destination: "/services/", permanent: true },
-      { source: "/cart-2/", destination: "/packages/", permanent: true },
+      { source: "/cart-2/", destination: "/cart/", permanent: true },
       { source: "/checkout-2/:path*", destination: "/packages/", permanent: true },
       { source: "/checkout/:path*", destination: "/packages/", permanent: true },
       ...DEMO_PAGES.map((source) => ({ source, destination: "/", permanent: true })),

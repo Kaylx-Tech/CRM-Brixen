@@ -11,7 +11,7 @@ COPY . .
 #   SITE_LIVE=1                 only on the real brixenconsultants.com (lets search engines in; unset = hidden)
 #   NEXT_PUBLIC_SITE_URL        this site's address (canonical links, sitemap); default https://brixenconsultants.com
 #   NEXT_PUBLIC_API_URL         the CRM API; default https://api.brixenconsultants.com/api
-#   NEXT_PUBLIC_PORTAL_URL      the client portal; default https://portal.brixenconsultants.com
+#   NEXT_PUBLIC_PORTAL_URL      the client portal; default https://admin.brixenconsultants.com
 ARG SITE_LIVE
 ARG NEXT_PUBLIC_SITE_URL
 ARG NEXT_PUBLIC_API_URL
