@@ -35,6 +35,9 @@ import Tasks from '@/Pages/Tasks/Tasks'
 import IdVerification from './IdVerification'
 import CompanyFormation from './CompanyFormation'
 import RegisteredAddresses from './RegisteredAddresses'
+import SmartOpsRevenue from './SmartOpsRevenue'
+import { periodParam } from './revenuePeriods'
+import { canViewRevenue } from '@/lib/permissions'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
 import { m, spring } from '@/lib/motion'
 import { apiRequest } from '@/lib/api'
@@ -138,6 +141,23 @@ export default function SmartOperations() {
   const [isSaving, setIsSaving] = useState(false)
   const [toDelete, setToDelete] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Revenue of each area (admins only, as on Finance), shown above the ID Verification, Company Formation,
+  // Registered Address and UK Gov Checks tabs
+  const showRevenue = useMemo(() => canViewRevenue(), [])
+  const revenueTab = ['id-verification', 'company-formation', 'registered-address', 'uk-gov-checks'].includes(tab)
+  const [revenuePeriod, setRevenuePeriod] = useState('month')
+  const [revenue, setRevenue] = useState(null)
+  const [revenueLoading, setRevenueLoading] = useState(false)
+  useEffect(() => {
+    if (!showRevenue || !revenueTab) return undefined
+    let live = true
+    setRevenueLoading(true)
+    apiRequest(`/admin/smart-links/revenue?period=${periodParam(revenuePeriod)}`, { label: 'Revenue', silent: true })
+      .then((res) => { if (live && res.ok) setRevenue(res.data?.data || null) })
+      .finally(() => { if (live) setRevenueLoading(false) })
+    return () => { live = false }
+  }, [showRevenue, revenueTab, revenuePeriod])
 
   const load = useCallback(async () => {
     setIsLoading(true)
@@ -293,6 +313,10 @@ export default function SmartOperations() {
           </TabsTrigger>
         </TabsList>
       </Tabs>
+
+      {showRevenue && revenueTab && (
+        <SmartOpsRevenue area={tab} data={revenue} isLoading={revenueLoading} period={revenuePeriod} onPeriod={setRevenuePeriod} />
+      )}
 
       {tab === 'id-verification' ? (
         <IdVerification />

@@ -26,6 +26,7 @@ import DeleteConfirmation from "@/components/DeleteConfirmation"
 import { isAdminRole, canOpenPage } from "@/lib/permissions"
 import { useSearchParams } from "react-router-dom"
 import BalanceSheet from "../Finance/BalanceSheet"
+import SmartOpsRevenueTable from "../Finance/SmartOpsRevenueTable"
 import { openInvoice, downloadInvoice } from "@/lib/invoices"
 import { createColumnHelper } from "@tanstack/react-table"
 import { DataTable } from "../../Layout/DataTable"
@@ -994,6 +995,9 @@ export default function Payments() {
       {activeTab === 'revenue' && (
         <>
           <SectionCards stats={revenueStats} isLoading={isLoadingOrders} compact />
+
+          {/* Smart Operations areas: revenue, cost and profit (admins); follows the month and saved order costs */}
+          <SmartOpsRevenueTable month={selectedMonth} version={revenueStats[2]?.value} />
 
           <p className="text-sm text-muted-foreground">
             Set <strong>Order cost</strong> per customer/order. Profit = Sell price − Cost.

@@ -262,6 +262,13 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
     if path == '/api/admin/smart-links/company-formation' and method == 'GET':
         return success_response(start_response, data={'orders': _formation_orders(user)})
 
+    # Revenue, cost and profit of each Smart Operations area (admins only, as on Finance)
+    if path == '/api/admin/smart-links/revenue' and method == 'GET':
+        if role not in ('SUPER_ADMIN', 'ADMIN'):
+            return error_response(start_response, "Revenue is for admins only.", status_code=403)
+        from services.smart_ops_revenue import summary
+        return success_response(start_response, data=summary((query.get('period') or [''])[0]))
+
     if path == '/api/admin/smart-links/registered-addresses' and method == 'GET':
         from services import address_reminders
         rows = _registered_addresses(user)
