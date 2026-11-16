@@ -275,7 +275,15 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
         rows = address_reminders.reminder_emails(_registered_addresses(user))
         last = address_reminders.last_reminders()
         claims = claims_for({r['company_id'] for r in rows if r.get('company_id')})
+        # When each address started and the director, from Companies House (missing ones are checked in the background)
+        from services import address_start
+        started = address_start.known({r['company_id'] for r in rows if r.get('company_id')})
+        if any(r.get('company_id') and r['company_id'] not in started and r.get('company_number') for r in rows):
+            address_start.refresh_in_background()
         for r in rows:
+            s = started.get(r.get('company_id')) or {}
+            r['start_source'] = s.get('source')  # 'ad01' (moved to our address), 'incorporation', or None (not checked)
+            r['director'] = s.get('director')
             r['last_reminder'] = last.get(r.get('company_id')) if r.get('company_id') else None
             # "I have paid by bank transfer" from the email, for this renewal date
             claim = claims.get(r.get('company_id'))

@@ -183,7 +183,10 @@ def _company_address_service(company):
     The customer can renew from 30 days before the end; an unpaid renewal invoice is returned as renewal_invoice.
     With card auto-renew on (services/address_billing.py) Stripe charges on the renewal date instead."""
     from services.address_billing import subscription_for
-    start = _parse_company_date(company.get('inc_date')) or _parse_company_date(company.get('created_at'))
+    from services.address_start import start_of
+    # A company that moved to our address later (AD01 on Companies House) has the service from that change date
+    start = (_parse_company_date(start_of(company['id'])) or _parse_company_date(company.get('inc_date'))
+             or _parse_company_date(company.get('created_at')))
     paid_years, open_invoice = _address_renewals(company['id'])
     sub = subscription_for(company['id'])
     expiry = None

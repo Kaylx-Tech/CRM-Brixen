@@ -189,7 +189,10 @@ def compose(company, owner, service):
         message = f"The registered office address for {name} was due for renewal on {when}. Please renew it to keep using it."
     else:
         message = f"The registered office address for {name} renews on {when}. Renew it now so it does not lapse."
-    details = [('Company', name), ('Address', service.get('line1')), ('Renewal date', when),
+    from services.address_start import director_of
+    details = [('Company', name),
+               ('Director', director_of(company['id']) if company.get('id') else None),
+               ('Address', service.get('line1')), ('Renewal date', when),
                ('Yearly fee', f"£{ADDRESS_SERVICE_PRICE:.2f}")]
     if late:
         details.append(('Late fee', f"£{late:.2f}"))
@@ -210,8 +213,10 @@ def compose(company, owner, service):
         footnote = "Paid by bank transfer? Press \"I have paid\" so we can renew it straight away. " + footnote
     if portal:
         footnote += f" You can also renew it from your client panel: {PORTAL_URL}/portal/addresses"
-    # The customer's first name; never the guest or a team account's name ("Hello Unlinked")
-    first = (owner.get('full_name') or '').split() if own_customer(owner) else []
+    # The company's director (Companies House); else the customer's first name; never the guest or a team
+    # account's name ("Hello Unlinked")
+    director = dict(details).get('Director')
+    first = (director or '').split() or ((owner.get('full_name') or '').split() if own_customer(owner) else [])
     subject, text, html = compose_client_email(
         subject=(f"Renew your registered office address: {name}" if not due
                  else f"Your registered office address has expired: {name}" if status == 'Expired'
@@ -321,6 +326,12 @@ def start_worker():
 
     def _loop():
         while True:
+            try:
+                # First when each address started (AD01 on Companies House), so reminders use the right date
+                from services.address_start import refresh
+                refresh()
+            except Exception as exc:
+                print(f"[Address reminders] Companies House check: {exc}")
             try:
                 sent = run_auto()
                 if sent:

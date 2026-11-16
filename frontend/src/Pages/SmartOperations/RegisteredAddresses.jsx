@@ -296,6 +296,7 @@ export default function RegisteredAddresses() {
                       <p className="truncate text-sm font-medium leading-tight" title={r.company_name}>{r.company_name || '—'}</p>
                       <p className="mt-0.5 truncate text-xs tabular-nums text-muted-foreground">
                         {r.company_number || 'No company number'}{r.source === 'Added by hand' ? ' · by hand' : ''}
+                        {r.director ? ` · ${r.director}` : ''}
                       </p>
                     </div>
                   </div>
@@ -320,6 +321,12 @@ export default function RegisteredAddresses() {
                       <span className={`size-1.5 rounded-full ${tone.dot}`} aria-hidden="true" />
                       {r.status}
                     </span>
+                    {/* Moved to our address after it was formed: the year counts from that change (AD01) */}
+                    {r.start_source === 'ad01' && r.start_date && (
+                      <p className="mt-1 truncate text-[11px] text-muted-foreground" title="From the change of registered office address (AD01) on Companies House">
+                        Address since {shortDate(r.start_date)} · AD01
+                      </p>
+                    )}
                     {r.renewal_invoice && (
                       <p className="mt-1 truncate text-[11px] text-muted-foreground">
                         Invoice {r.renewal_invoice.invoice_number} · {r.renewal_invoice.status}
