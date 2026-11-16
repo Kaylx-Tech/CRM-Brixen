@@ -13,7 +13,7 @@ POST /api/admin/kyc/start {order_id}        → start a KYC order's check now (o
 POST /api/admin/kyc/ignore {order_id, undo?} → leave a missed KYC order out of the list (no link)
 GET  /api/admin/kyc/orders?q=&email=&name=  → orders to link a check to (the person's own orders first)
 POST /api/admin/kyc/<id>/order {order_number} → link a check to an order (e.g. one from the general KYC link)
-POST /api/admin/kyc/<id>/remove             → delete a check the client has not sent yet (admins)
+POST /api/admin/kyc/<id>/remove             → delete a check the client has not sent yet, or one In Review (admins)
 POST /api/admin/kyc/<id>/person {full_name, email} → correct the name or email of a check not sent yet
                                               (a new email gets a fresh link; Finstap refuses it once sent)
 

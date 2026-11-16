@@ -209,9 +209,14 @@ export default function KycRecords({ embedded = false }) {
   // A check not sent yet: correct its name or email
   const [editing, setEditing] = useState(null)
 
-  // A check the client has not sent yet (e.g. a second link for the same person): delete it (admins)
+  // A check the client has not sent yet (e.g. a second link for the same person), or one still In Review:
+  // delete it (admins; Finstap keeps approved and declined ones)
   const removeCheck = async (check) => {
-    if (!window.confirm(`Delete the KYC check for ${check.full_name}${check.order_number ? ` (${check.order_number})` : ''}? Their link will stop working.`)) return
+    const who = `${check.full_name}${check.order_number ? ` (${check.order_number})` : ''}`
+    const sent = check.status === 'In Review'
+    if (!window.confirm(sent
+      ? `Delete the KYC check for ${who}? The client already sent it: their answers, ID and documents are deleted too. This cannot be undone.`
+      : `Delete the KYC check for ${who}? Their link will stop working.`)) return
     const res = await apiRequest(`/admin/kyc/${check.id}/remove`, { method: 'POST', label: 'KYC', silent: true })
     if (res.ok) {
       toast.success(res.data?.message || 'KYC check deleted')
@@ -442,7 +447,7 @@ export default function KycRecords({ embedded = false }) {
                               <IconPencil className="size-3.5" /> Edit
                             </Button>
                           )}
-                          {isAdminRole() && !c.submitted_at && ['Not Started', 'In Progress'].includes(c.status) && (
+                          {isAdminRole() && ((!c.submitted_at && ['Not Started', 'In Progress'].includes(c.status)) || c.status === 'In Review') && (
                             <Button variant="ghost" size="xs" className="h-7 gap-1 text-destructive hover:text-destructive" onClick={() => removeCheck(c)} aria-label={`Delete the KYC check for ${c.full_name}`}>
                               <IconTrash className="size-3.5" /> Delete
                             </Button>
