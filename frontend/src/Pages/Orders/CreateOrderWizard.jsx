@@ -157,9 +157,26 @@ function openedByLabel(f, values) {
   return f.type === "radio" ? `${f.label}: ${values[f.key]}` : f.label
 }
 
+// The question itself, wherever it sits (top level or under a checkbox / radio answer)
+const fieldBase = (f) => `${f.type}:${normalizeLabel(f.label) || String(f.label || "").trim().toLowerCase()}`
+
 function mergeServiceFields(products) {
   const list = []
   for (const p of products) mergeFieldList(list, p.form_fields, p.name, "")
+  // A question one service asks under an answer (KYC: "new company?" → Company name, Director, Date of birth)
+  // and another asks on its own (Incorporation) is asked once, on its own: the sub-form leaves it out and the
+  // field names both services
+  const top = new Map(list.map((n) => [fieldBase(n), n]))
+  const dropAsked = (children) => children.filter((c) => {
+    const same = top.get(fieldBase(c))
+    if (!same) return true
+    for (const s of c.services) if (!same.services.includes(s)) same.services.push(s)
+    return false
+  })
+  for (const n of list) {
+    n.children = dropAsked(n.children)
+    for (const opt of Object.keys(n.branches)) n.branches[opt] = dropAsked(n.branches[opt])
+  }
   return list
 }
 
