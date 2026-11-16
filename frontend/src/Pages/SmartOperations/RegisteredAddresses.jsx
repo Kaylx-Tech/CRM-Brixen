@@ -8,6 +8,7 @@ import {
   IconAlertTriangle,
   IconBell,
   IconCircleCheck,
+  IconCreditCard,
   IconClockHour4,
   IconHourglassLow,
   IconLoader2,
@@ -82,7 +83,7 @@ export default function RegisteredAddresses() {
       }
       const d = res.data?.data || {}
       setRows(d.addresses || [])
-      setAuto({ on: !!d.auto_reminders, days: d.auto_days || 7, canManage: !!d.can_manage })
+      setAuto({ on: !!d.auto_reminders, days: d.auto_days || 7, canManage: !!d.can_manage, card: !!d.card_payments, webhook: !!d.card_webhook })
     } finally {
       setIsLoading(false)
     }
@@ -229,6 +230,17 @@ export default function RegisteredAddresses() {
             <span>Daily reminders, last {auto.days} days</span>
             <span className={`font-semibold ${auto.on ? 'text-emerald-600' : 'text-muted-foreground'}`}>{auto.on ? 'On' : 'Off'}</span>
           </label>
+          {/* Card payments work once Stripe's keys are on the server (Coolify); the keys are never shown */}
+          <span
+            className="flex items-center gap-2 rounded-full border bg-background px-3 py-1 text-xs"
+            title={auto.card && !auto.webhook ? 'STRIPE_WEBHOOK_SECRET is missing: payments go through but the CRM is not told' : 'Card payments by Stripe in the reminder email and the portal'}
+          >
+            <IconCreditCard className="size-3.5 text-muted-foreground" />
+            <span>Card payments</span>
+            <span className={`font-semibold ${auto.card && auto.webhook ? 'text-emerald-600' : auto.card ? 'text-amber-600' : 'text-muted-foreground'}`}>
+              {auto.card && auto.webhook ? 'On' : auto.card ? 'Webhook missing' : 'Off'}
+            </span>
+          </span>
           <Button variant="ghost" size="sm" onClick={load} disabled={isLoading}>
             <IconRefresh className={`size-4 ${isLoading ? 'animate-spin' : ''}`} /> Refresh
           </Button>

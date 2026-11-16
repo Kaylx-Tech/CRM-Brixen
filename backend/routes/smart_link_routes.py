@@ -271,7 +271,7 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
 
     if path == '/api/admin/smart-links/registered-addresses' and method == 'GET':
         from services import address_reminders
-        from services.address_billing import claims_for
+        from services.address_billing import claims_for, configured as card_payments_on, _setting as stripe_setting
         rows = address_reminders.reminder_emails(_registered_addresses(user))
         last = address_reminders.last_reminders()
         claims = claims_for({r['company_id'] for r in rows if r.get('company_id')})
@@ -282,7 +282,10 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
             r['payment_claim'] = claim if claim and claim.get('expiry_date') == r.get('expiry_date') else None
         return success_response(start_response, data={
             'addresses': rows, 'auto_reminders': address_reminders.auto_enabled(),
-            'auto_days': address_reminders.AUTO_DAYS_BEFORE, 'can_manage': role in MANAGE_ROLES})
+            'auto_days': address_reminders.AUTO_DAYS_BEFORE, 'can_manage': role in MANAGE_ROLES,
+            # Only whether Stripe is set up (STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET), never the keys
+            'card_payments': card_payments_on(),
+            'card_webhook': bool(stripe_setting('stripe_webhook_secret'))})
 
     # Reminder button: the team confirms (or corrects) the email first, then the customer is emailed to renew now
     # (any team member). A corrected email is kept: on the customer's profile, or for this company.
