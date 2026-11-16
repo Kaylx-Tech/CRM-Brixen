@@ -183,7 +183,10 @@ def _registered_addresses(user):
     Renews soon / Renewal due / Expired / Auto-renew / Payment failed), plus addresses added by hand
     (addresses table). STAFF only see the companies of the orders they added; no prices are returned."""
     from routes.client_portal_routes import _company_address_service, _is_brixen_address
-    company_clauses, params = ["TRIM(COALESCE(c.reg_office, '')) <> ''"], []
+    from services.address_start import known as ch_known
+    ch_facts = ch_known()
+    # At our address in the CRM, or at our address on Companies House (the CRM's copy can be old)
+    company_clauses, params = ["(TRIM(COALESCE(c.reg_office, '')) <> '' OR TRIM(COALESCE(c.company_number, '')) <> '')"], []
     if user.get('role') == 'STAFF':
         company_clauses.append("c.id IN (SELECT company_id FROM orders WHERE created_by_id = ?)")
         params.append(user.get('id'))
@@ -217,7 +220,9 @@ def _registered_addresses(user):
                      'expiry_date': a.get('expiry_date'), 'status': a.get('status'), 'auto_renew': None,
                      'renewal_invoice': None, 'source': 'Added by hand'})
     for c in companies:
-        if c['id'] in listed or not _is_brixen_address(c.get('reg_office')):
+        if c['id'] in listed:
+            continue
+        if not _is_brixen_address(c.get('reg_office')) and (ch_facts.get(c['id']) or {}).get('at_brixen') != 1:
             continue
         s = _company_address_service(c)
         invoice = s.get('renewal_invoice') or None
@@ -278,8 +283,8 @@ def handle_smart_link_routes(environ, start_response, path, method, user, body, 
         # When each address started and the director, from Companies House (missing ones are checked in the background)
         from services import address_start
         started = address_start.known({r['company_id'] for r in rows if r.get('company_id')})
-        if any(r.get('company_id') and r['company_id'] not in started and r.get('company_number') for r in rows):
-            address_start.refresh_in_background()
+        # Whatever is due (never checked, renewal near, a month old) is checked again in the background
+        address_start.refresh_in_background()
         for r in rows:
             s = started.get(r.get('company_id')) or {}
             r['start_source'] = s.get('source')  # 'ad01' (moved to our address), 'incorporation', or None (not checked)

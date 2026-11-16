@@ -237,20 +237,32 @@ def compose(company, owner, service):
 
 
 def _company(company_id):
-    return query_db("""SELECT id, name, user_id, reg_office, inc_date, created_at FROM companies
+    return query_db("""SELECT id, name, user_id, reg_office, inc_date, created_at, company_number FROM companies
                        WHERE id = ?;""", (company_id,), one=True)
 
 
 def send(company_id, kind='manual', sent_by=None, today=None):
     """Email one company's customer a renewal reminder. Returns the saved reminder (dict)."""
-    from routes.client_portal_routes import _company_address_service, _is_brixen_address
+    from routes.client_portal_routes import _company_address_service, NEEDS_RENEWAL_STATUSES
+    from services.address_start import ensure_fresh, uses_our_address
     from services.email_service import send_email
     from services.notification_service import notify_user
     _ensure()
     today = today or datetime.date.today()
     company = _company(company_id)
-    if not company or not _is_brixen_address(company.get('reg_office')):
-        raise ReminderError("This company does not use one of Brixen's addresses")
+    if not company:
+        raise ReminderError("Company not found")
+    company = dict(company)
+    # Never on old facts: Companies House is checked again first when the last check is over a day old
+    facts = ensure_fresh(company)
+    if not uses_our_address(company, facts):
+        raise ReminderError("Companies House shows this company at another address now, so no reminder was sent")
+    service = _company_address_service(company)
+    if service.get('status') == 'Auto-renew':
+        raise ReminderError("This address renews by card automatically; no reminder is needed")
+    if service.get('status') not in NEEDS_RENEWAL_STATUSES and not service.get('renewal_invoice'):
+        raise ReminderError(f"Nothing to renew: the address is {str(service.get('status') or '').lower()} "
+                            "(checked with Companies House)")
     owner = query_db("""SELECT id, full_name, email, notification_email, role, client_type, is_b2b, account_type
                         FROM users WHERE id = ?;""", (company.get('user_id'),), one=True) or {}
     to, _where = recipient(company, owner)
@@ -260,9 +272,6 @@ def send(company_id, kind='manual', sent_by=None, today=None):
     if not own_customer(owner):
         # The email goes to the person the team typed in, not to the team account that holds the company
         owner = {'full_name': '', 'email': to, 'role': 'CLIENT'}
-    service = _company_address_service(company)
-    if service.get('status') == 'Auto-renew':
-        raise ReminderError("This address renews by card automatically; no reminder is needed")
     # Saved first, so an automatic reminder never goes twice the same day
     rid = execute_db("""INSERT INTO address_reminders (company_id, expiry_date, kind, sent_on, sent_to, sent_by)
                         VALUES (?, ?, ?, ?, ?, ?);""",
@@ -280,17 +289,20 @@ def send(company_id, kind='manual', sent_by=None, today=None):
 
 def due_for_auto(today=None):
     """Companies whose renewal date is 0-7 days away and that had no automatic reminder today."""
-    from routes.client_portal_routes import _company_address_service, _is_brixen_address, _parse_company_date
+    from routes.client_portal_routes import _company_address_service, _parse_company_date, NEEDS_RENEWAL_STATUSES
+    from services.address_start import uses_our_address
     _ensure()
     today = today or datetime.date.today()
     out = []
-    for company in query_db("""SELECT id, name, user_id, reg_office, inc_date, created_at FROM companies
-                               WHERE TRIM(COALESCE(reg_office, '')) <> '' AND user_id IS NOT NULL;""") or []:
-        if not _is_brixen_address(company.get('reg_office')):
+    for company in query_db("""SELECT id, name, user_id, reg_office, inc_date, created_at, company_number FROM companies
+                               WHERE user_id IS NOT NULL;""") or []:
+        company = dict(company)
+        if not uses_our_address(company):
             continue
         service = _company_address_service(company)
         renewal = _parse_company_date(service.get('expiry_date'))
-        if not renewal or service.get('status') in ('Auto-renew', 'Paid'):
+        # Only an address still waiting for this year's payment (not moved away, dissolved or paid)
+        if not renewal or service.get('status') not in NEEDS_RENEWAL_STATUSES:
             continue
         if not 0 <= (renewal - today).days <= AUTO_DAYS_BEFORE:
             continue

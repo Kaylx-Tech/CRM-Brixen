@@ -26,9 +26,14 @@ import { shortDate } from './idvStatus'
 // What needs the team: the year runs out soon, has run out, or a card payment failed
 const NEEDS_ACTION = ['Renews soon', 'Renewal due', 'Expired', 'Payment failed', 'Pending Renewal']
 const PAID = ['Paid', 'Auto-renew', 'Active']
+// Companies House: not at our address any more, or the company is closed (shown under All only)
+const CLOSED = ['Moved away', 'Dissolved', 'Liquidation', 'Administration', 'Receivership', 'Insolvency proceedings']
 
 // Each status: a quiet pill with a coloured dot
 const TONES = {
+  // Companies House shows the company at another address now, or closed: nothing to renew, no reminders
+  'Moved away': { badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground/60' },
+  Dissolved: { badge: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground/60' },
   Expired: { badge: 'bg-destructive/10 text-destructive', dot: 'bg-destructive' },
   'Payment failed': { badge: 'bg-destructive/10 text-destructive', dot: 'bg-destructive' },
   'Renewal due': { badge: 'bg-amber-500/10 text-amber-700 dark:text-amber-400', dot: 'bg-amber-500' },
@@ -46,7 +51,7 @@ const SUMMARY = [
   { key: 'Renews soon', label: 'Renews soon', icon: IconClockHour4, match: (s) => s === 'Renews soon', tone: 'sky' },
   { key: 'Renewal due', label: 'Renewal due', icon: IconHourglassLow, match: (s) => s === 'Renewal due' || s === 'Pending Renewal', tone: 'amber' },
   { key: 'Expired', label: 'Expired', icon: IconAlertTriangle, match: (s) => s === 'Expired' || s === 'Payment failed', tone: 'rose' },
-  { key: 'Paid', label: 'Paid', icon: IconCircleCheck, match: (s) => PAID.includes(s) || !NEEDS_ACTION.includes(s), tone: 'emerald' },
+  { key: 'Paid', label: 'Paid', icon: IconCircleCheck, match: (s) => PAID.includes(s) || !(NEEDS_ACTION.includes(s) || CLOSED.includes(s)), tone: 'emerald' },
 ]
 
 function daysLeft(date) {

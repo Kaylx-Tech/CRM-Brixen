@@ -183,9 +183,12 @@ def _company_address_service(company):
     The customer can renew from 30 days before the end; an unpaid renewal invoice is returned as renewal_invoice.
     With card auto-renew on (services/address_billing.py) Stripe charges on the renewal date instead."""
     from services.address_billing import subscription_for
-    from services.address_start import start_of
-    # A company that moved to our address later (AD01 on Companies House) has the service from that change date
-    start = (_parse_company_date(start_of(company['id'])) or _parse_company_date(company.get('inc_date'))
+    from services.address_start import facts_of
+    # Companies House decides (services/address_start.py): the date the company moved to our address (AD01) or
+    # was formed there, whether it is still at our address, and whether it is still active
+    ch = facts_of(company['id'])
+    ch_start = ch.get('start_date') if ch.get('source') in ('ad01', 'incorporation') else None
+    start = (_parse_company_date(ch_start) or _parse_company_date(company.get('inc_date'))
              or _parse_company_date(company.get('created_at')))
     paid_years, open_invoice = _address_renewals(company['id'])
     sub = subscription_for(company['id'])
@@ -208,12 +211,20 @@ def _company_address_service(company):
             expiry = next_charge
     elif sub:
         status = 'Payment failed'
+    # Companies House shows the company somewhere else now, or closed: nothing to renew, no reminders
+    ch_status = str(ch.get('ch_status') or '').strip().lower()
+    if ch.get('at_brixen') == 0:
+        status, can_renew, late_fee = 'Moved away', False, 0.0
+    elif ch_status and ch_status != 'active':
+        status = 'Dissolved' if 'dissolved' in ch_status else ch_status.replace('-', ' ').capitalize()
+        can_renew, late_fee = False, 0.0
     auto_renew = {'status': sub['status'], 'next_charge': sub.get('current_period_end'),
                   'cancel_at': sub.get('cancel_at')} if sub else None
+    line1 = (ch.get('ch_address') if ch.get('at_brixen') == 1 else None) or str(company.get('reg_office') or '').strip()
     return {
         'id': f"company-{company['id']}", 'company_id': company['id'], 'company_name': company.get('name'),
         'type': 'Registered Office', 'service_name': 'Registered Office Address',
-        'line1': str(company.get('reg_office') or '').strip(), 'line2': '', 'city': '', 'postal_code': '', 'country': '',
+        'line1': line1, 'line2': '', 'city': '', 'postal_code': '', 'country': '',
         'start_date': start.isoformat() if start else None, 'expiry_date': expiry.isoformat() if expiry else None,
         'price': ADDRESS_SERVICE_PRICE, 'billing_period': 'year', 'status': status,
         'payment_status': 'Due' if status in ('Renewal due', 'Expired') else 'Paid',
