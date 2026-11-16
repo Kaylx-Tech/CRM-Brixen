@@ -127,7 +127,7 @@ function CompanyAnswer({ company }) {
     return (
       <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm">
         <p className="font-semibold">{company.name}</p>
-        <p className="text-xs text-muted-foreground">Not registered yet (proposed company name)</p>
+        <p className="text-xs text-muted-foreground">Not Registered Yet (Proposed Company Name)</p>
       </div>
     )
   }
@@ -140,7 +140,7 @@ function CompanyAnswer({ company }) {
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[13px]">
         <dt className="text-muted-foreground">Incorporated</dt>
         <dd>{company.incorporated ? formatUkDate(company.incorporated) : '—'}</dd>
-        <dt className="text-muted-foreground">Registered office</dt>
+        <dt className="text-muted-foreground">Registered Office</dt>
         <dd className="break-words">{company.address || '—'}</dd>
         <dt className="text-muted-foreground">Directors</dt>
         <dd>
@@ -191,7 +191,7 @@ function ServiceFormAnswers({ answers, linked, uploads }) {
         })}
         {uploads.length ? (
           <div className="flex flex-col gap-1 md:col-span-2">
-            <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Form uploads</span>
+            <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Form Uploads</span>
             <ul className="text-sm space-y-0.5">
               {uploads.map(([label, done]) => (
                 <li key={label} className="flex items-center gap-2">
@@ -205,7 +205,7 @@ function ServiceFormAnswers({ answers, linked, uploads }) {
         ) : null}
         {linked.length ? (
           <div className="flex flex-col gap-1 md:col-span-2">
-            <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Linked companies</span>
+            <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Linked Companies</span>
             <ul className="text-sm space-y-0.5">
               {linked.map((c) => (
                 <li key={c.company_id} className="flex items-center gap-2">
@@ -424,16 +424,16 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
 
     // Default standard fields if empty
     if (fields.length === 0) {
-      if (o.company_name) fields.push({ label: 'Desired company name', value: o.company_name })
-      if (o.company_address) fields.push({ label: 'Registered office address', value: o.company_address })
-      if (o.client_name || o.owner_name) fields.push({ label: 'Director name', value: o.client_name || o.owner_name })
+      if (o.company_name) fields.push({ label: 'Desired Company Name', value: o.company_name })
+      if (o.company_address) fields.push({ label: 'Registered Office Address', value: o.company_address })
+      if (o.client_name || o.owner_name) fields.push({ label: 'Director Name', value: o.client_name || o.owner_name })
       if (o.client_email || o.owner_form_email) fields.push({ label: 'Email', value: o.client_email || o.owner_form_email })
-      if (o.client_phone) fields.push({ label: 'UK phone number', value: o.client_phone })
-      if (o.business_activities) fields.push({ label: 'Business activities', value: o.business_activities })
-      if (o.company_number) fields.push({ label: 'Company number', value: o.company_number })
-      if (o.company_status) fields.push({ label: 'Company status', value: o.company_status || 'Active' })
-      if (o.incorporation_date) fields.push({ label: 'Incorporation date', value: o.incorporation_date })
-      if (o.trading_proof) fields.push({ label: 'Trading proof', value: o.trading_proof })
+      if (o.client_phone) fields.push({ label: 'UK Phone Number', value: o.client_phone })
+      if (o.business_activities) fields.push({ label: 'Business Activities', value: o.business_activities })
+      if (o.company_number) fields.push({ label: 'Company Number', value: o.company_number })
+      if (o.company_status) fields.push({ label: 'Company Status', value: o.company_status || 'Active' })
+      if (o.incorporation_date) fields.push({ label: 'Incorporation Date', value: o.incorporation_date })
+      if (o.trading_proof) fields.push({ label: 'Trading Proof', value: o.trading_proof })
     }
 
     setFormFields(fields)
@@ -813,12 +813,12 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                   {order?.created_by_name ? (
                     <>
                       <span>•</span>
-                      <span>Added by <span className="font-medium text-foreground">{order.created_by_name}</span></span>
+                      <span>Added By <span className="font-medium text-foreground">{order.created_by_name}</span></span>
                     </>
                   ) : order && !order.woocommerce_order_id && (Number(order.client_is_b2b) === 1 || order.client_type === 'B2B') ? (
                     <>
                       <span>•</span>
-                      <span>Added by <span className="font-medium text-foreground">B2B</span></span>
+                      <span>Added By <span className="font-medium text-foreground">B2B</span></span>
                     </>
                   ) : null}
                   {canAssign && order ? (
@@ -842,7 +842,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                   ) : order?.assigned_staff_name ? (
                     <>
                       <span>•</span>
-                      <span>Assigned to <span className="font-medium text-foreground">{order.assigned_staff_name}</span></span>
+                      <span>Assigned To <span className="font-medium text-foreground">{order.assigned_staff_name}</span></span>
                     </>
                   ) : null}
                 </DialogDescription>
@@ -982,7 +982,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                 <FieldMessage id="order-service_name-error" message={detailErrors.errors.service_name} />
                               </div>
                               <div className="space-y-1.5">
-                                <Label className="text-xs text-muted-foreground">Order date</Label>
+                                <Label className="text-xs text-muted-foreground">Order Date</Label>
                                 <Input id="order-order_date"
                                   {...invalidProps(detailErrors.errors, 'order_date', 'order-')}
                                   type="date"
@@ -993,7 +993,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                 <FieldMessage id="order-order_date-error" message={detailErrors.errors.order_date} />
                               </div>
                               <div className="space-y-1.5">
-                                <Label className="text-xs text-muted-foreground">Owner name (on the form)</Label>
+                                <Label className="text-xs text-muted-foreground">Owner Name (on the Form)</Label>
                                 <Input
                                   value={orderInfo.owner_name}
                                   onChange={(e) => setOrderInfo((p) => ({ ...p, owner_name: e.target.value }))}
@@ -1001,7 +1001,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                 />
                               </div>
                               <div className="space-y-1.5">
-                                <Label className="text-xs text-muted-foreground">Owner email (order emails)</Label>
+                                <Label className="text-xs text-muted-foreground">Owner Email (Order Emails)</Label>
                                 <Input id="order-owner_form_email"
                                   {...invalidProps(detailErrors.errors, 'owner_form_email', 'order-')}
                                   type="email"
@@ -1026,7 +1026,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectGroup>
-                                      <SelectItem value="none" className="text-sm">No company</SelectItem>
+                                      <SelectItem value="none" className="text-sm">No Company</SelectItem>
                                       {companyOptions.map((c) => (
                                         <SelectItem key={c.id} value={c.id} className="text-sm">{c.label}</SelectItem>
                                       ))}
@@ -1037,7 +1037,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                             </div>
                           </div>
 
-                          {formFields.length > 0 && <p className="text-sm font-semibold pt-1">Checkout fields</p>}
+                          {formFields.length > 0 && <p className="text-sm font-semibold pt-1">Checkout Fields</p>}
                           {formFields.map((field, idx) => {
                             const wide = isWideField(field.label)
                             return (
@@ -1077,7 +1077,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                           {/* Not-registered companies on the order: the name changes in the CRM too */}
                           {Object.keys(linkedNames).length > 0 && (
                             <>
-                              <p className="text-sm font-semibold pt-1">Linked companies</p>
+                              <p className="text-sm font-semibold pt-1">Linked Companies</p>
                               {serviceForm.linked.filter((c) => c.company_id in linkedNames).map((c) => {
                                 const key = `linked_company_${c.company_id}`
                                 return (
@@ -1109,7 +1109,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                           {/* The services' own form answers (company lookups stay as picked) */}
                           {editableAnswers.length > 0 && (
                             <>
-                              <p className="text-sm font-semibold pt-1">Service form</p>
+                              <p className="text-sm font-semibold pt-1">Service Form</p>
                               {editableAnswers.map((f) => {
                                 const long = isWideField(f.label) || String(answerEdits[f._index] || '').length > 60
                                 const setValue = (v) => setAnswerEdits((p) => ({ ...p, [f._index]: v }))
@@ -1412,7 +1412,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
 
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="text-sm font-bold text-foreground">Products on this Order</h4>
+                          <h4 className="text-sm font-bold text-foreground">Products on This Order</h4>
                           <p className="text-sm text-muted-foreground">
                             Purchased service package and add-ons.
                           </p>

@@ -92,7 +92,7 @@ export function PageState({ isLoading, error, isEmpty, emptyText, onRetry, child
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 py-12 text-center text-sm text-destructive">
         <IconAlertCircle className="size-5" />
         {error}
-        {onRetry ? <Button variant="outline" size="sm" onClick={onRetry}>Try again</Button> : null}
+        {onRetry ? <Button variant="outline" size="sm" onClick={onRetry}>Try Again</Button> : null}
       </div>
     )
   }

@@ -211,14 +211,14 @@ export default function CompanyFormation() {
       <Dialog open={!!registering} onOpenChange={(open) => !open && setRegistering(null)}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>Mark as registered</DialogTitle>
+            <DialogTitle>Mark as Registered</DialogTitle>
             <DialogDescription>
               {registering?.company?.name} ({registering?.order?.order_number}): the card takes the official details
               from Companies House and goes live.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">
-            <Label htmlFor="cf-company_number">Company number <RequiredMark /></Label>
+            <Label htmlFor="cf-company_number">Company Number <RequiredMark /></Label>
             <Input
               id="cf-company_number"
               {...invalidProps(regErrors.errors, 'company_number', 'cf-')}

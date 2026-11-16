@@ -48,8 +48,8 @@ const COLS = '@3xl:grid-cols-[minmax(0,1.6fr)_minmax(0,2fr)_minmax(0,1.15fr)_min
 
 const SUMMARY = [
   // tone: a colour of the CRM's stat boxes (Layout/StatsCard)
-  { key: 'Renews soon', label: 'Renews soon', icon: IconClockHour4, match: (s) => s === 'Renews soon', tone: 'sky' },
-  { key: 'Renewal due', label: 'Renewal due', icon: IconHourglassLow, match: (s) => s === 'Renewal due' || s === 'Pending Renewal', tone: 'amber' },
+  { key: 'Renews soon', label: 'Renews Soon', icon: IconClockHour4, match: (s) => s === 'Renews soon', tone: 'sky' },
+  { key: 'Renewal due', label: 'Renewal Due', icon: IconHourglassLow, match: (s) => s === 'Renewal due' || s === 'Pending Renewal', tone: 'amber' },
   { key: 'Expired', label: 'Expired', icon: IconAlertTriangle, match: (s) => s === 'Expired' || s === 'Payment failed', tone: 'rose' },
   { key: 'Paid', label: 'Paid', icon: IconCircleCheck, match: (s) => PAID.includes(s) || !(NEEDS_ACTION.includes(s) || CLOSED.includes(s)), tone: 'emerald' },
 ]
@@ -220,7 +220,7 @@ export default function RegisteredAddresses() {
                 onClick={() => setFilter(f)}
                 className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
-                {f} <span className="opacity-70">{counts[f]}</span>
+                {f === 'Needs action' ? 'Needs Action' : f} <span className="opacity-70">{counts[f]}</span>
               </button>
             ))}
           </div>
@@ -232,7 +232,7 @@ export default function RegisteredAddresses() {
           >
             <Checkbox checked={auto.on} onCheckedChange={(v) => toggleAuto(Boolean(v))} disabled={!auto.canManage} />
             <IconBell className="size-3.5 text-muted-foreground" />
-            <span>Daily reminders, last {auto.days} days</span>
+            <span>Daily Reminders, Last {auto.days} Days</span>
             <span className={`font-semibold ${auto.on ? 'text-emerald-600' : 'text-muted-foreground'}`}>{auto.on ? 'On' : 'Off'}</span>
           </label>
           {/* Card payments work once Stripe's keys are on the server (Coolify); the keys are never shown */}
@@ -241,7 +241,7 @@ export default function RegisteredAddresses() {
             title={auto.card && !auto.webhook ? 'STRIPE_WEBHOOK_SECRET is missing: payments go through but the CRM is not told' : 'Card payments by Stripe in the reminder email and the portal'}
           >
             <IconCreditCard className="size-3.5 text-muted-foreground" />
-            <span>Card payments</span>
+            <span>Card Payments</span>
             <span className={`font-semibold ${auto.card && auto.webhook ? 'text-emerald-600' : auto.card ? 'text-amber-600' : 'text-muted-foreground'}`}>
               {auto.card && auto.webhook ? 'On' : auto.card ? 'Webhook missing' : 'Off'}
             </span>
@@ -272,7 +272,7 @@ export default function RegisteredAddresses() {
         <div className="@container overflow-hidden rounded-2xl border bg-card">
           <div className={`hidden ${COLS} border-b bg-muted/40 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground @3xl:grid`}>
             <span>Company</span>
-            <span>Address · customer</span>
+            <span>Address · Customer</span>
             <span>Renewal</span>
             <span className="text-right">Reminder</span>
           </div>
@@ -382,7 +382,7 @@ export default function RegisteredAddresses() {
       <Dialog open={!!confirming} onOpenChange={(open) => !open && setConfirming(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Send a renewal reminder</DialogTitle>
+            <DialogTitle>Send a Renewal Reminder</DialogTitle>
             <DialogDescription>
               {confirming?.company_name}
               {confirming?.customer_name ? ` · ${confirming.customer_name}` : ''}. Check the email before it goes.
@@ -396,7 +396,7 @@ export default function RegisteredAddresses() {
             }}
           >
             <label className="block space-y-1 text-sm">
-              <span className="font-medium">Customer's email</span>
+              <span className="font-medium">Customer's Email</span>
               <Input autoFocus type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" />
             </label>
             <p className="text-xs text-muted-foreground">

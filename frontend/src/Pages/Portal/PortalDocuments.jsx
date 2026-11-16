@@ -73,7 +73,7 @@ function UploadCard({ orders, defaultOrderId, onUploaded }) {
 
   return (
     <div className="rounded-2xl border bg-card p-4">
-      <h3 className="font-semibold">Upload a document</h3>
+      <h3 className="font-semibold">Upload a Document</h3>
       <p className="mb-4 text-sm text-muted-foreground">PDF, image or Word file, up to 15 MB. Our team reviews every upload.</p>
       <div className="grid gap-3 md:grid-cols-[1fr_200px_200px_auto] md:items-end">
         <div className="space-y-1.5">
@@ -91,14 +91,14 @@ function UploadCard({ orders, defaultOrderId, onUploaded }) {
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label>For order (optional)</Label>
+          <Label>For Order (Optional)</Label>
           <Select value={orderId} onValueChange={(v) => setOrderId(v || "none")}>
             <SelectTrigger className="w-full">
               <SelectValue>{orderId === "none" ? "No specific order" : (orders.find((o) => String(o.id) === String(orderId))?.order_number || "Order")}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value="none">No specific order</SelectItem>
+                <SelectItem value="none">No Specific Order</SelectItem>
                 {orders.map((o) => <SelectItem key={o.id} value={String(o.id)}>{o.order_number} · {o.service_name}</SelectItem>)}
               </SelectGroup>
             </SelectContent>
@@ -136,7 +136,7 @@ export default function PortalDocuments() {
       {inReview.length ? (
         <div className="rounded-2xl border bg-card">
           <div className="border-b px-4 py-3">
-            <h3 className="font-semibold">Your uploads in review</h3>
+            <h3 className="font-semibold">Your Uploads in Review</h3>
           </div>
           <ul className="divide-y">
             {inReview.map((d) => (
@@ -152,7 +152,7 @@ export default function PortalDocuments() {
       ) : null}
 
       <div className="flex items-center justify-between gap-3">
-        <h3 className="font-semibold">Shared with you</h3>
+        <h3 className="font-semibold">Shared with You</h3>
         <div className="relative w-full max-w-72">
           <IconSearch className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search documents…" className="pl-9" />
@@ -165,7 +165,7 @@ export default function PortalDocuments() {
               <TableRow>
                 <TableHead>Document</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead>Company / order</TableHead>
+                <TableHead>Company / Order</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead className="text-right">Open</TableHead>
               </TableRow>

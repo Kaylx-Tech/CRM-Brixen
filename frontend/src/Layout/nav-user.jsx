@@ -145,7 +145,7 @@ export function NavUser({
               className="text-red-400 hover:text-red-300 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-300 cursor-pointer rounded-lg px-2.5 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
             >
               <IconLogout className="size-4" />
-              <span>Log out</span>
+              <span>Log Out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

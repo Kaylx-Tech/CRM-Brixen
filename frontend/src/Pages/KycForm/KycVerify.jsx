@@ -480,7 +480,7 @@ export default function KycVerify() {
     return shell(
       <div className="rounded-2xl border bg-background p-6 text-center">
         <IconAlertTriangle className="mx-auto size-10 text-amber-500" />
-        <h1 className="mt-3 text-lg font-semibold">This link cannot be used</h1>
+        <h1 className="mt-3 text-lg font-semibold">This Link Cannot Be Used</h1>
         <p className="mt-1 text-sm text-muted-foreground">{loadError}</p>
       </div>,
     )
@@ -526,7 +526,7 @@ export default function KycVerify() {
         <div className="mb-4 flex gap-2 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
           <IconAlertTriangle className="size-5 shrink-0" />
           <div>
-            <p className="font-semibold">Please send your documents again</p>
+            <p className="font-semibold">Please Send Your Documents Again</p>
             <p className="mt-0.5">{info.reason}</p>
           </div>
         </div>
@@ -535,7 +535,7 @@ export default function KycVerify() {
       <section className="rounded-2xl border bg-background p-5 sm:p-6">
         {step === 0 && (
           <>
-            <h1 className="text-xl font-semibold">Verify your identity</h1>
+            <h1 className="text-xl font-semibold">Verify Your Identity</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Hi {info.full_name}, it takes about five minutes. Which document will you use?
             </p>
@@ -630,7 +630,7 @@ export default function KycVerify() {
 
         {step === 2 && (
           <>
-            <h1 className="text-xl font-semibold">Take a selfie</h1>
+            <h1 className="text-xl font-semibold">Take a Selfie</h1>
             <p className="mt-1 mb-5 text-sm text-muted-foreground">
               Look straight at the camera, with your face inside the circle. No glasses, hat or mask.
             </p>
@@ -662,7 +662,7 @@ export default function KycVerify() {
 
         {step === 3 && (
           <>
-            <h1 className="text-xl font-semibold">Enter your address</h1>
+            <h1 className="text-xl font-semibold">Enter Your Address</h1>
             <p className="mt-1 text-sm text-muted-foreground">Provide the address you&apos;d like linked to your account.</p>
             <div className="mt-5 space-y-4">
               <Field id="address_line1" label="Address line 1" error={err("address_line1")}>
@@ -691,7 +691,7 @@ export default function KycVerify() {
 
         {step === 4 && (
           <>
-            <h1 className="text-xl font-semibold">Proof of address</h1>
+            <h1 className="text-xl font-semibold">Proof of Address</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               One document dated within the last 3 months, showing your name and the address you entered.
             </p>

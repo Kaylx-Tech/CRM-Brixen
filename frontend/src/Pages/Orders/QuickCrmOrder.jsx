@@ -480,7 +480,7 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                       </SelectTrigger>
                       <SelectContent className="overflow-hidden p-0">
                         <SelectGroup className="p-1">
-                          <SelectItem value="none">No company / create with details below</SelectItem>
+                          <SelectItem value="none">No Company / Create with Details Below</SelectItem>
                           {companies.map((c) => (
                             <SelectItem key={c.id} value={String(c.id)}>
                               {c.name}

@@ -305,7 +305,7 @@ function CompanyCheckField({ id, value, onChange, placeholder }) {
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
                     <span className="truncate font-medium">{r.name}</span>
-                    {r.number === current.exactNumber ? <Badge className="badge-green text-[10px]">Exact match</Badge> : null}
+                    {r.number === current.exactNumber ? <Badge className="badge-green text-[10px]">Exact Match</Badge> : null}
                   </span>
                   <span className="block truncate text-xs text-muted-foreground">
                     {r.number}{r.status ? ` · ${r.status}` : ""}{r.address ? ` · ${r.address}` : ""}
@@ -337,7 +337,7 @@ function CompanyCheckField({ id, value, onChange, placeholder }) {
             <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
               <dt className="text-muted-foreground">Incorporated</dt>
               <dd>{current.incorporated ? formatUkDate(current.incorporated) : "—"}</dd>
-              <dt className="text-muted-foreground">Registered office</dt>
+              <dt className="text-muted-foreground">Registered Office</dt>
               <dd className="min-w-0 break-words">{current.address || "—"}</dd>
               <dt className="text-muted-foreground">Directors</dt>
               <dd>
@@ -1407,7 +1407,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
             {step === 2 && (
               <section className="space-y-4">
                 <div>
-                  <h4 className="text-base font-bold">Select products</h4>
+                  <h4 className="text-base font-bold">Select Products</h4>
                   <p className="text-sm text-muted-foreground mt-0.5">
                     Tick as many as you need. Requirements merge into one details form and one document upload.
                   </p>
@@ -1530,7 +1530,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
             {step === 4 && (
               <section className="space-y-4">
                 <div>
-                  <h4 className="text-base font-bold">Upload required documents once</h4>
+                  <h4 className="text-base font-bold">Upload Required Documents Once</h4>
                   <p className="text-sm text-muted-foreground mt-0.5">
                     If you selected several products, requirements are merged and asked only once.
                   </p>
@@ -1562,7 +1562,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
                 )}
 
                 {standardDocs.length > 0 && fileFields.length > 0 && (
-                  <p className="text-sm font-semibold pt-1">Other documents</p>
+                  <p className="text-sm font-semibold pt-1">Other Documents</p>
                 )}
                 <div className="space-y-2">
                   {standardDocs.map((doc) => (
@@ -1624,7 +1624,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="rounded-xl border bg-card p-3">
-                      <div className="text-sm font-semibold">Service form</div>
+                      <div className="text-sm font-semibold">Service Form</div>
                       <div className="text-[11px] text-muted-foreground mt-0.5">
                         {textFields.length
                           ? `${textFields.filter((f) => fieldAnswer(f) && fieldAnswer(f) !== "No").length} of ${textFields.length} answered`
@@ -1632,7 +1632,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
                       </div>
                     </div>
                     <div className="rounded-xl border bg-card p-3">
-                      <div className="text-sm font-semibold">Required documents</div>
+                      <div className="text-sm font-semibold">Required Documents</div>
                       <div className="text-[11px] text-muted-foreground mt-0.5">
                         {fileFields.filter((f) => f.required && fieldFiles[f.key]).length +
                           standardDocs.filter((d) => d.required && docMarks[d.key]).length} of{" "}
@@ -1643,8 +1643,8 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
 
                   <div className="rounded-xl border bg-card p-4">
                     <div className="flex items-center justify-between gap-2 mb-3">
-                      <h5 className="text-sm font-bold">Order specifications</h5>
-                      <span className="text-[11px] text-muted-foreground">Checked once</span>
+                      <h5 className="text-sm font-bold">Order Specifications</h5>
+                      <span className="text-[11px] text-muted-foreground">Checked Once</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                       {[

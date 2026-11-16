@@ -365,7 +365,7 @@ export default function UploadDocumentModal({
           </div>
 
           <div className="grid gap-1.5">
-            <Label>Description / message to client</Label>
+            <Label>Description / Message to Client</Label>
             <Textarea
               className="min-h-[80px] w-full"
               value={message}
@@ -386,7 +386,7 @@ export default function UploadDocumentModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="grid gap-1.5">
-              <Label>Related company</Label>
+              <Label>Related Company</Label>
               <Select
                 value={companyId || 'none'}
                 onValueChange={(v) => {
@@ -401,7 +401,7 @@ export default function UploadDocumentModal({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="none">No company</SelectItem>
+                    <SelectItem value="none">No Company</SelectItem>
                     {companies.map((c) => (
                       <SelectItem key={c.id} value={String(c.id)}>
                         {c.name || c.company_name || `Company #${c.id}`}
@@ -413,7 +413,7 @@ export default function UploadDocumentModal({
             </div>
 
             <div className="grid gap-1.5">
-              <Label>Related order</Label>
+              <Label>Related Order</Label>
               <Select
                 value={orderId || 'none'}
                 onValueChange={(v) => setOrderId(v === 'none' ? '' : v)}
@@ -424,7 +424,7 @@ export default function UploadDocumentModal({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="none">No order</SelectItem>
+                    <SelectItem value="none">No Order</SelectItem>
                     {filteredOrders.map((o) => (
                       <SelectItem key={o.id} value={String(o.id)}>
                         {o.order_number}

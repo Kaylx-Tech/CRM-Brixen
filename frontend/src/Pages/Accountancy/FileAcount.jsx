@@ -76,7 +76,7 @@ const InlineDatePicker = ({ dateString, onChange }) => {
         }
       >
         <IconCalendar className="mr-2 h-4 w-4" />
-        {date ? format(date, "PPP") : <span>Pick a date</span>}
+        {date ? format(date, "PPP") : <span>Pick a Date</span>}
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
@@ -222,7 +222,7 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
       <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !isSubmitting) handleAttemptClose() }}>
         <DialogContent className="sm:max-w-150 p-0 overflow-hidden">
           <DialogHeader className="p-6 pb-2">
-            <DialogTitle>File yearly accounts</DialogTitle>
+            <DialogTitle>File Yearly Accounts</DialogTitle>
             <DialogDescription>
               Complete UK filing checks, then record the Companies House annual accounts for this
               company.
@@ -268,7 +268,7 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
               {/* Row 1: Period start & Year end */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="period-start">Period start <RequiredMark /></Label>
+                  <Label htmlFor="period-start">Period Start <RequiredMark /></Label>
                   <InlineDatePicker
                     dateString={periodStart}
                     onChange={setPeriodStart}
@@ -277,7 +277,7 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="year-end">Year end <RequiredMark /></Label>
+                  <Label htmlFor="year-end">Year End <RequiredMark /></Label>
                   <InlineDatePicker
                     dateString={periodEnd}
                     onChange={setPeriodEnd}
@@ -289,7 +289,7 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
               {/* Row 2: Due date & Accounts type */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="due-date">Due date</Label>
+                  <Label htmlFor="due-date">Due Date</Label>
                   <InlineDatePicker
                     dateString={dueDate}
                     onChange={setDueDate}
@@ -298,7 +298,7 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="accounts-type">Accounts type</Label>
+                  <Label htmlFor="accounts-type">Accounts Type</Label>
                   <Select value={accountsType} onValueChange={setAccountsType}>
                     <SelectTrigger id="accounts-type" className="w-full">
                       <SelectValue placeholder="Select type" />
@@ -307,8 +307,8 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
                       <SelectGroup>
                         <SelectItem value="Micro-entity">Micro-entity</SelectItem>
                         <SelectItem value="Dormant">Dormant</SelectItem>
-                        <SelectItem value="Full accounts">Full accounts</SelectItem>
-                        <SelectItem value="Small company accounts">Small company accounts</SelectItem>
+                        <SelectItem value="Full accounts">Full Accounts</SelectItem>
+                        <SelectItem value="Small company accounts">Small Company Accounts</SelectItem>
                       </SelectGroup>
                     </SelectContent>
                   </Select>
@@ -325,9 +325,9 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        <SelectItem value="In progress">In progress</SelectItem>
+                        <SelectItem value="In progress">In Progress</SelectItem>
                         <SelectItem value="Draft">Draft</SelectItem>
-                        <SelectItem value="Ready to file">Ready to file</SelectItem>
+                        <SelectItem value="Ready to file">Ready to File</SelectItem>
                         <SelectItem value="Filed">Filed</SelectItem>
                         <SelectItem value="Overdue">Overdue</SelectItem>
                       </SelectGroup>
@@ -336,7 +336,7 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="filing-confirmation_number">Confirmation number</Label>
+                  <Label htmlFor="filing-confirmation_number">Confirmation Number</Label>
                   <Input
                     id="filing-confirmation_number"
                     {...invalidProps(filingErrors.errors, 'confirmation_number', 'filing-')}
@@ -351,7 +351,7 @@ const FileAccount = ({ isOpen, onClose, company, companies = [], onFileSubmitted
 
               {/* Row 4: Internal notes */}
               <div className="space-y-2">
-                <Label htmlFor="internal-notes">Internal notes</Label>
+                <Label htmlFor="internal-notes">Internal Notes</Label>
                 <Textarea
                   id="internal-notes"
                   placeholder="Staff notes for this filing."

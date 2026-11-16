@@ -27,7 +27,7 @@ export function DatePicker() {
         }
       >
         <IconCalendar />
-        {date ? format(date, "PPP") : <span>Pick a date</span>}
+        {date ? format(date, "PPP") : <span>Pick a Date</span>}
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">
         <Calendar mode="single" selected={date} onSelect={setDate} />

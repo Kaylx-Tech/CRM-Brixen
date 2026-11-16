@@ -62,7 +62,7 @@ function NewTicketDialog({ open, onClose, onCreated, orders, initialSubject }) {
       <DialogContent className="sm:max-w-lg">
         <form onSubmit={submit} noValidate className="space-y-4">
           <DialogHeader>
-            <DialogTitle>Contact support</DialogTitle>
+            <DialogTitle>Contact Support</DialogTitle>
             <DialogDescription>Tell us what you need and our team will reply here.</DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">
@@ -87,7 +87,7 @@ function NewTicketDialog({ open, onClose, onCreated, orders, initialSubject }) {
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label>Related order (optional)</Label>
+            <Label>Related Order (Optional)</Label>
             <Select value={form.order_id} onValueChange={(v) => set("order_id")(v || "none")}>
               <SelectTrigger className="w-full">
                 <SelectValue>{form.order_id === "none" ? "None" : (orders.find((o) => String(o.id) === form.order_id)?.order_number || "Order")}</SelectValue>
@@ -202,7 +202,7 @@ export default function PortalSupport() {
   return (
     <div className="flex flex-col gap-6 w-full pb-10">
       <PageHeader title="Order Support" description="Ask us anything about your orders, documents or companies" onRefresh={reload} isLoading={isLoading}>
-        <Button onClick={() => setNewOpen(true)}><IconPlus className="size-4" /> New request</Button>
+        <Button onClick={() => setNewOpen(true)}><IconPlus className="size-4" /> New Request</Button>
       </PageHeader>
       <PageState isLoading={isLoading && !data} error={error} onRetry={reload} isEmpty={!tickets.length}
         emptyText="No support requests yet. Use New request to contact us.">

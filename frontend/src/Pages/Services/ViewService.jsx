@@ -209,7 +209,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                       </div>
                       <div className="mt-2">
                         <div className="text-2xl font-bold text-foreground">{formatGBP(sellPriceNum)}</div>
-                        <span className="text-sm text-muted-foreground">Customer price</span>
+                        <span className="text-sm text-muted-foreground">Customer Price</span>
                       </div>
                     </div>
                   ) : null}
@@ -223,7 +223,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                     </div>
                     <div className="mt-2">
                       <div className="text-2xl font-bold text-muted-foreground">{formatGBP(costPriceNum)}</div>
-                      <span className="text-sm text-muted-foreground">Base cost</span>
+                      <span className="text-sm text-muted-foreground">Base Cost</span>
                     </div>
                   </div>
 
@@ -375,7 +375,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
                       <IconBriefcase className="w-4 h-4 text-primary mt-0.5" />
                       <div>
                         <p className="text-sm font-medium">Service Authorization Details</p>
-                        <p className="text-sm text-muted-foreground">Client authorization form and designated company details</p>
+                        <p className="text-sm text-muted-foreground">Client Authorization Form and Designated Company Details</p>
                       </div>
                     </div>
                   </div>
@@ -386,7 +386,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
               <TabsContent value="form" className="m-0 space-y-4 outline-none">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-semibold text-sm">Order form</p>
+                    <p className="font-semibold text-sm">Order Form</p>
                     <p className="text-sm text-muted-foreground">
                       Asked in the Create Order wizard when this service is selected.
                     </p>

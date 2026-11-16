@@ -322,7 +322,7 @@ const AddCompany = ({ isOpen, onClose }) => {
                 <Label htmlFor="ch-search" className="text-sm font-semibold">
                   Search Companies House
                 </Label>
-                <span className="text-[10px] text-muted-foreground">Type name or 8-digit number to auto-fill</span>
+                <span className="text-[10px] text-muted-foreground">Type Name or 8-Digit Number to Auto-Fill</span>
               </div>
               <div className="relative">
                 <IconSearch className="absolute left-2.5 top-1.5 h-4 w-4 text-muted-foreground" />

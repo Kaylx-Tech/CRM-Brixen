@@ -61,7 +61,7 @@ export function DragHandle({ id }) {
       className="size-7 text-muted-foreground hover:bg-transparent"
     >
       <IconGripVertical className="size-3 text-muted-foreground" />
-      <span className="sr-only">Drag to reorder</span>
+      <span className="sr-only">Drag to Reorder</span>
     </Button>
   )
 }
@@ -308,12 +308,12 @@ export const dashboardColumns = columnHelper.columns([
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="flex size-7 text-muted-foreground" size="icon">
             <IconDotsVertical />
-            <span className="sr-only">Open menu</span>
+            <span className="sr-only">Open Menu</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-32">
           <DropdownMenuItem>Edit</DropdownMenuItem>
-          <DropdownMenuItem>Make a copy</DropdownMenuItem>
+          <DropdownMenuItem>Make a Copy</DropdownMenuItem>
           <DropdownMenuItem>Favorite</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>

@@ -95,7 +95,7 @@ export function LoginCodeStep({ apiUrl, challenge, emailHint, resendAfter = 60, 
           <span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
             <IconMailCheck className="size-6" />
           </span>
-          <h1 className="text-2xl font-bold">Check your email</h1>
+          <h1 className="text-2xl font-bold">Check Your Email</h1>
           <p className="text-balance text-sm text-muted-foreground">
             We sent a 6-digit login code to <span className="font-medium text-foreground">{emailHint}</span>.
             This browser will not ask again for 24 hours.

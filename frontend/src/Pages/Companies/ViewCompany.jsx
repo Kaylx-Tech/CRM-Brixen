@@ -371,7 +371,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
           {attention.length > 0 && (
             <Alert variant="destructive" className="mt-4 border-destructive/40">
               <IconAlertTriangle />
-              <AlertTitle>Attention required at Companies House</AlertTitle>
+              <AlertTitle>Attention Required at Companies House</AlertTitle>
               <AlertDescription>
                 <ul className="list-disc pl-4 space-y-0.5">
                   {attention.map((item) => (
@@ -387,7 +387,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
           )}
           {!isRegistered && (
             <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50/60 p-4 dark:border-violet-900/50 dark:bg-violet-950/20">
-              <p className="text-sm font-semibold text-violet-800 dark:text-violet-300">Not registered yet</p>
+              <p className="text-sm font-semibold text-violet-800 dark:text-violet-300">Not Registered Yet</p>
               <p className="mt-0.5 text-sm text-muted-foreground">
                 Once Companies House registers it, enter the company number. The official name, office,
                 directors and deadlines come in and the company goes live (its customer and orders stay linked).
@@ -727,7 +727,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                 {/* Upload a document against this company */}
                 <div className="rounded-xl border bg-muted/20 p-4 space-y-3">
                   <div>
-                    <h4 className="text-sm font-semibold">Upload document</h4>
+                    <h4 className="text-sm font-semibold">Upload Document</h4>
                     <p className="text-xs text-muted-foreground">PDF, image or Word, up to 15 MB. Filed under this company and its owner.</p>
                   </div>
                   <div className="grid gap-3 md:grid-cols-[1fr_200px]">

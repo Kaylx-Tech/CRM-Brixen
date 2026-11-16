@@ -183,7 +183,7 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="sellPrice">Sell price (£) <RequiredMark /></Label>
+                <Label htmlFor="sellPrice">Sell Price (£) <RequiredMark /></Label>
                 <Input 
                   id="sellPrice"
                   {...invalidProps(errors, 'sellPrice', '')} 
@@ -196,7 +196,7 @@ const AddService = ({ isOpen, onClose, onSuccess }) => {
                 <FieldMessage id="sellPrice-error" message={errors.sellPrice} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="originalPrice">Original / cost price (£)</Label>
+                <Label htmlFor="originalPrice">Original / Cost Price (£)</Label>
                 <Input 
                   id="originalPrice"
                   {...invalidProps(errors, 'originalPrice', '')} 

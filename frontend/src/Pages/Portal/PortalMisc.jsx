@@ -85,7 +85,7 @@ function RenewalPayDialog({ open, onOpenChange, address, pay, onCard, cardBusy }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Pay your address renewal</DialogTitle>
+          <DialogTitle>Pay Your Address Renewal</DialogTitle>
           <DialogDescription>
             {address.company_name} · {money(invoice.total)} for one more year. The address stays active once the payment arrives.
           </DialogDescription>
@@ -99,16 +99,16 @@ function RenewalPayDialog({ open, onOpenChange, address, pay, onCard, cardBusy }
             </Button>
           ) : pay?.pay_url ? (
             <a href={pay.pay_url} target="_blank" rel="noopener noreferrer" className={buttonVariants()}>
-              <IconCreditCard className="size-4" /> Pay by card <IconExternalLink className="size-3.5" />
+              <IconCreditCard className="size-4" /> Pay by Card <IconExternalLink className="size-3.5" />
             </a>
           ) : null}
           {pay?.account_number ? (
             <div className="rounded-lg border bg-muted/40 p-3">
-              <p className="mb-2 font-medium">Or pay by bank transfer</p>
+              <p className="mb-2 font-medium">Or Pay by Bank Transfer</p>
               <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1">
-                <dt className="text-muted-foreground">Account name</dt><dd>{pay.account_name}</dd>
-                <dt className="text-muted-foreground">Account number</dt><dd className="tabular-nums">{pay.account_number}</dd>
-                <dt className="text-muted-foreground">Sort code</dt><dd className="tabular-nums">{pay.sort_code}</dd>
+                <dt className="text-muted-foreground">Account Name</dt><dd>{pay.account_name}</dd>
+                <dt className="text-muted-foreground">Account Number</dt><dd className="tabular-nums">{pay.account_number}</dd>
+                <dt className="text-muted-foreground">Sort Code</dt><dd className="tabular-nums">{pay.sort_code}</dd>
                 <dt className="text-muted-foreground">Reference</dt><dd className="font-medium">{invoice.invoice_number}</dd>
               </dl>
             </div>
@@ -205,7 +205,7 @@ export function PortalAddresses() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatDate(a.expiry_date)}
-                    {a.auto_renew?.cancel_at ? <span className="block text-xs">Auto-renew ends</span> : null}
+                    {a.auto_renew?.cancel_at ? <span className="block text-xs">Auto-Renew Ends</span> : null}
                   </TableCell>
                   <TableCell><StatusBadge status={a.status} /></TableCell>
                   <TableCell>
@@ -267,8 +267,8 @@ export function PortalAccountancy() {
         isLoading={isLoading && !data}
         stats={[
           { title: "Overdue", value: String(m.overdue ?? 0) },
-          { title: "Due in 60 days", value: String(m.due_in_60_days ?? 0) },
-          { title: "In progress", value: String(m.in_progress ?? 0) },
+          { title: "Due in 60 Days", value: String(m.due_in_60_days ?? 0) },
+          { title: "In Progress", value: String(m.in_progress ?? 0) },
           { title: "Filed", value: String(m.filed ?? 0) },
         ]}
       />
@@ -278,10 +278,10 @@ export function PortalAccountancy() {
             <TableHeader>
               <TableRow>
                 <TableHead>Company</TableHead>
-                <TableHead>Year end</TableHead>
-                <TableHead>Accounts due</TableHead>
+                <TableHead>Year End</TableHead>
+                <TableHead>Accounts Due</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead>ID check</TableHead>
+                <TableHead>ID Check</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>

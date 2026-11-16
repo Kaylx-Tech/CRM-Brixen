@@ -124,7 +124,7 @@ export default function KycCheckView({ check, statusLabel, onClose }) {
             )}
 
             <section>
-              <h3 className="mb-3 text-sm font-semibold">What the client entered</h3>
+              <h3 className="mb-3 text-sm font-semibold">What the Client Entered</h3>
               <Facts
                 rows={[
                   ['First name', r.first_name || String(r.full_name || '').split(' ')[0]],

@@ -228,7 +228,7 @@ export default function EmailLog() {
         cell: ({ row }) => <StatusBadge status={row.getValue('status')} error={row.original.last_error} />,
       }),
       columnHelper.accessor('triggered_by_name', {
-        header: 'Triggered by',
+        header: 'Triggered By',
         cell: ({ row }) => (
           <span className="text-sm text-muted-foreground">{row.getValue('triggered_by_name') || 'System'}</span>
         ),
@@ -293,7 +293,7 @@ export default function EmailLog() {
           { title: 'Total Emails', hero: true, value: String(total), footerSubText: 'Sent or attempted' },
           { title: 'Delivered', tone: 'emerald', icon: IconMailCheck, value: String(counts.sent || 0), footerSubText: total ? `${Math.round(((counts.sent || 0) / total) * 100)}% of all emails` : 'Nothing yet' },
           { title: 'Not Delivered', tone: 'rose', icon: IconMailX, value: String(failed), footerSubText: 'Failed, bad address or no SMTP' },
-          { title: 'Held (emails off)', tone: 'amber', icon: IconMailPause, value: String(counts.suppressed || 0), footerSubText: 'Send emails is switched off' },
+          { title: 'Held (Emails Off)', tone: 'amber', icon: IconMailPause, value: String(counts.suppressed || 0), footerSubText: 'Send emails is switched off' },
         ]}
       />
 

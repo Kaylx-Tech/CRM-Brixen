@@ -526,7 +526,7 @@ const Companies = () => {
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted/60 mb-3 text-muted-foreground">
             <IconSearch className="h-6 w-6" />
           </div>
-          <h3 className="text-lg font-semibold tracking-tight">No companies found</h3>
+          <h3 className="text-lg font-semibold tracking-tight">No Companies Found</h3>
           <p className="text-sm text-muted-foreground max-w-sm mt-1 mb-4">
             {searchTerm
               ? `No records found matching "${searchTerm}". Try searching by a different name or number.`

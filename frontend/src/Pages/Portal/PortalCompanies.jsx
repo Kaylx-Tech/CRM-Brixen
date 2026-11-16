@@ -16,7 +16,7 @@ function AttentionBox({ company }) {
   return (
     <Alert variant="destructive" className="border-destructive/40">
       <IconAlertTriangle />
-      <AlertTitle>Action needed at Companies House</AlertTitle>
+      <AlertTitle>Action Needed at Companies House</AlertTitle>
       <AlertDescription>
         <ul className="list-disc space-y-0.5 pl-4">
           {issues.map((item) => (

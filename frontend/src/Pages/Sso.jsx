@@ -37,7 +37,7 @@ export default function Sso() {
       {error ? (
         <>
           <p className="text-destructive">{error}</p>
-          <a className="text-primary underline" href="/login">Go to sign in</a>
+          <a className="text-primary underline" href="/login">Go to Sign In</a>
         </>
       ) : (
         <>

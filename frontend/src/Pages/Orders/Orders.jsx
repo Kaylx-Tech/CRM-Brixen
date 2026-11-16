@@ -38,13 +38,13 @@ const columnHelper = createColumnHelper()
 const STATUS_OPTIONS = ['Pending', 'In Progress', 'Completed', 'Cancelled']
 
 const DATE_PRESETS = [
-  { value: 'all', label: 'All dates' },
+  { value: 'all', label: 'All Dates' },
   { value: 'today', label: 'Today' },
   { value: 'yesterday', label: 'Yesterday' },
-  { value: 'this_week', label: 'This week' },
-  { value: 'this_month', label: 'This month' },
-  { value: 'last_month', label: 'Last month' },
-  { value: 'this_year', label: 'This year' },
+  { value: 'this_week', label: 'This Week' },
+  { value: 'this_month', label: 'This Month' },
+  { value: 'last_month', label: 'Last Month' },
+  { value: 'this_year', label: 'This Year' },
 ]
 
 function formatOrderNumberDisplay(raw) {
@@ -671,7 +671,7 @@ export default function Orders() {
           {o.company_name ? (
             <p className="mt-1 truncate text-sm">
               {o.company_registered ? o.company_name : <span className="italic">{o.company_name}</span>}
-              {!o.company_registered ? <Badge className="badge-amber ml-1.5 rounded-full text-[10px]">Desired name</Badge> : null}
+              {!o.company_registered ? <Badge className="badge-amber ml-1.5 rounded-full text-[10px]">Desired Name</Badge> : null}
             </p>
           ) : null}
           {/* Phones cannot hover: the internal notes show here, two lines at most */}
@@ -757,8 +757,8 @@ export default function Orders() {
       onValueChange: setAddedByFilter,
       options: [
         ...(facets.added_by || []).map((m) => ({ label: m.full_name || `#${m.id}`, value: String(m.id) })),
-        { label: 'B2B customer', value: 'b2b' },
-        { label: 'Website / not recorded', value: 'website' },
+        { label: 'B2B Customer', value: 'b2b' },
+        { label: 'Website / Not Recorded', value: 'website' },
       ],
     }] : []),
   ], [facets.companies, facets.products, facets.added_by, companyFilter, statusFilter, productFilter, paymentFilter,
@@ -822,14 +822,14 @@ export default function Orders() {
 
       {clientType === 'B2B' && (
         <div className="rounded-lg border bg-card p-3 space-y-2">
-          <div className="text-sm font-semibold">Select a B2B client</div>
+          <div className="text-sm font-semibold">Select a B2B Client</div>
           <p className="text-sm text-muted-foreground">Open a B2B account first, then their orders appear below.</p>
           <Select value={b2bClientId} onValueChange={setB2bClientId}>
             <SelectTrigger className="max-w-md text-sm">
               <SelectValue placeholder="Choose B2B client" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All B2B clients</SelectItem>
+              <SelectItem value="all">All B2B Clients</SelectItem>
               {b2bCustomers.map((c) => (
                 <SelectItem key={c.id} value={String(c.id)}>
                   {c.full_name || c.email} {c.b2b_id ? `(${c.b2b_id})` : ''}

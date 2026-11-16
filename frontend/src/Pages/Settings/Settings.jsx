@@ -775,7 +775,7 @@ export default function Settings() {
                   onCheckedChange={(v) => setField('emails_enabled', !!v)}
                   disabled={isLoading}
                 />
-                <span className="font-medium">Send emails</span>
+                <span className="font-medium">Send Emails</span>
               </label>
               <p className={`text-xs ${form.emails_enabled ? 'text-muted-foreground' : 'text-amber-600'}`}>
                 {form.emails_enabled
@@ -1072,7 +1072,7 @@ export default function Settings() {
                 </Button>
               </div>
               <div className="mt-4 rounded-md border bg-muted/30 p-3">
-                <p className="text-sm font-medium">Old website logins</p>
+                <p className="text-sm font-medium">Old Website Logins</p>
                 <p className="mt-1 text-[12px] text-muted-foreground">
                   Customers of the old WordPress website sign in to the client portal with the password they had there
                   (it becomes their CRM password at their first sign-in). Choose the logins file made from the WordPress
@@ -1304,7 +1304,7 @@ export default function Settings() {
             >
               {profile.role !== 'CLIENT' && (
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="text-sm text-muted-foreground">Signed-in role</span>
+                  <span className="text-sm text-muted-foreground">Signed-in Role</span>
                   {profile.role ? (
                     <Badge className="badge-sky text-[11px]">{profile.role}</Badge>
                   ) : null}

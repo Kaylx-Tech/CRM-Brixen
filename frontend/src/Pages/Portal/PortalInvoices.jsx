@@ -29,9 +29,9 @@ export default function PortalInvoices() {
         compact
         isLoading={isLoading && !data}
         stats={[
-          { title: "Total billed", value: money(totals.billed) },
+          { title: "Total Billed", value: money(totals.billed) },
           { title: "Paid", value: money(totals.paid) },
-          { title: "Still due", value: money(totals.due) },
+          { title: "Still Due", value: money(totals.due) },
         ]}
       />
       <Tabs value={tab} onValueChange={setTab}>

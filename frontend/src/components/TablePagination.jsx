@@ -18,7 +18,7 @@ export const TablePagination = ({
             </div>
             <div className="flex items-center space-x-6 lg:space-x-8">
                 <div className="flex items-center space-x-2">
-                    <p className="text-sm font-medium">Rows per page</p>
+                    <p className="text-sm font-medium">Rows per Page</p>
                     <select
                         className="h-7 w-[70px] rounded-md border border-input bg-transparent px-2 py-1 text-sm ring-offset-background"
                         value={rowsPerPage}
@@ -41,7 +41,7 @@ export const TablePagination = ({
                         onClick={() => onPageChange(currentPage - 1)}
                         disabled={currentPage <= 1}
                     >
-                        <span className="sr-only">Go to previous page</span>
+                        <span className="sr-only">Go to Previous Page</span>
                         {"<"}
                     </Button>
                     <Button
@@ -50,7 +50,7 @@ export const TablePagination = ({
                         onClick={() => onPageChange(currentPage + 1)}
                         disabled={currentPage >= totalPages}
                     >
-                        <span className="sr-only">Go to next page</span>
+                        <span className="sr-only">Go to Next Page</span>
                         {">"}
                     </Button>
                 </div>

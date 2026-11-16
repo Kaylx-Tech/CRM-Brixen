@@ -54,7 +54,7 @@ export default function OrderIdVerification({ orderId }) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <IconId className="size-4 text-primary" />
-          <h4 className="text-sm font-bold">Identity verification</h4>
+          <h4 className="text-sm font-bold">Identity Verification</h4>
         </div>
         <Button variant="ghost" size="xs" className="h-7 gap-1 text-muted-foreground" nativeButton={false} render={<Link to="/admin/smart-operations" />}>
           Open in ID Verification

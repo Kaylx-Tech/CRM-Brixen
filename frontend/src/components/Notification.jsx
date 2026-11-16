@@ -280,7 +280,7 @@ export default function Notifications() {
             <div className="bg-muted/80 p-3 rounded-full mb-3 text-muted-foreground">
               <IconBell className="h-6 w-6" />
             </div>
-            <h4 className="text-sm font-semibold text-foreground mb-1">No notifications</h4>
+            <h4 className="text-sm font-semibold text-foreground mb-1">No Notifications</h4>
             <p className="text-sm text-muted-foreground max-w-56 leading-relaxed mb-4">
               You're completely caught up! New alerts and updates will appear here.
             </p>
@@ -333,7 +333,7 @@ export default function Notifications() {
 
                       {href && (
                         <div className="mt-1.5 flex items-center text-[11px] font-medium text-primary gap-0.5">
-                          <span className="group-hover:underline">View details</span>
+                          <span className="group-hover:underline">View Details</span>
                           <IconArrowRight className="h-3 w-3 inline transition-transform group-hover:translate-x-0.5" />
                         </div>
                       )}

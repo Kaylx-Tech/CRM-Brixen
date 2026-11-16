@@ -89,7 +89,7 @@ export default function KycStart() {
         {loadError || (info && !info.available) ? (
           <div className="rounded-2xl border bg-background p-6 text-center">
             <IconAlertTriangle className="mx-auto size-10 text-amber-500" />
-            <h1 className="mt-3 text-lg font-semibold">This link cannot be used</h1>
+            <h1 className="mt-3 text-lg font-semibold">This Link Cannot Be Used</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {loadError || `${info.message} Please contact ${name}.`}
             </p>
@@ -100,7 +100,7 @@ export default function KycStart() {
           </div>
         ) : (
           <form onSubmit={start} className="rounded-2xl border bg-background p-5 sm:p-6">
-            <h1 className="text-xl font-semibold">Verify your identity</h1>
+            <h1 className="text-xl font-semibold">Verify Your Identity</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {name} asks you to verify your identity. It takes about five minutes: have your ID card, driving
               licence or passport and a proof of address ready.
@@ -108,12 +108,12 @@ export default function KycStart() {
             <div className="mt-5 space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="first_name">First name</Label>
+                  <Label htmlFor="first_name">First Name</Label>
                   <Input id="first_name" value={form.first_name} onChange={set("first_name")} autoComplete="given-name" />
                   {errors.first_name && <p className="text-xs text-destructive">{errors.first_name}</p>}
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="last_name">Last name</Label>
+                  <Label htmlFor="last_name">Last Name</Label>
                   <Input id="last_name" value={form.last_name} onChange={set("last_name")} autoComplete="family-name" />
                   {errors.last_name && <p className="text-xs text-destructive">{errors.last_name}</p>}
                 </div>
@@ -128,7 +128,7 @@ export default function KycStart() {
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="phone">Phone (optional)</Label>
+                <Label htmlFor="phone">Phone (Optional)</Label>
                 <PhoneInput id="phone" type="tel" value={form.phone} onChange={set("phone")} autoComplete="tel" />
               </div>
             </div>

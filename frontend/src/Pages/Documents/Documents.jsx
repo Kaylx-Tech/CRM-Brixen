@@ -465,7 +465,7 @@ export default function Documents() {
                   <IconClipboardCheck className="mr-1 h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Review document</TooltipContent>
+              <TooltipContent>Review Document</TooltipContent>
             </Tooltip>
 
             {canActOnDoc(d) && (
@@ -627,7 +627,7 @@ export default function Documents() {
               </div>
 
               <div>
-                <div className="font-semibold mb-1">Matching evidence</div>
+                <div className="font-semibold mb-1">Matching Evidence</div>
                 <ul className="list-disc pl-5 text-emerald-700 dark:text-emerald-300 space-y-0.5">
                   {(matching.length ? matching : ['—']).map((x, i) => (
                     <li key={`m-${i}`}>{String(x)}</li>
@@ -636,7 +636,7 @@ export default function Documents() {
               </div>
 
               <div>
-                <div className="font-semibold mb-1">Conflicting evidence</div>
+                <div className="font-semibold mb-1">Conflicting Evidence</div>
                 <ul className="list-disc pl-5 text-destructive space-y-0.5">
                   {(conflicting.length ? conflicting : ['—']).map((x, i) => (
                     <li key={`c-${i}`}>{String(x)}</li>
@@ -646,7 +646,7 @@ export default function Documents() {
 
               {tops.length > 0 && (
                 <div>
-                  <div className="font-semibold mb-1">Top candidates</div>
+                  <div className="font-semibold mb-1">Top Candidates</div>
                   <ul className="list-disc pl-5 space-y-0.5">
                     {tops.slice(0, 5).map((t, i) => (
                       <li key={`t-${i}`}>
@@ -728,12 +728,12 @@ export default function Documents() {
       <Dialog open={reassignOpen} onOpenChange={setReassignOpen}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>Reassign document</DialogTitle>
+            <DialogTitle>Reassign Document</DialogTitle>
             <DialogDescription>Update client, company, or category, then re-queue for approval.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
             <div className="grid gap-1.5">
-              <Label>Client user id</Label>
+              <Label>Client User ID</Label>
               <Input
                 className="w-full"
                 value={reassignForm.client_id}
@@ -742,7 +742,7 @@ export default function Documents() {
               />
             </div>
             <div className="grid gap-1.5">
-              <Label>Company id</Label>
+              <Label>Company ID</Label>
               <Input
                 className="w-full"
                 value={reassignForm.company_id}
@@ -762,7 +762,7 @@ export default function Documents() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setReassignOpen(false)}>Cancel</Button>
-            <Button onClick={submitReassign}>Save reassignment</Button>
+            <Button onClick={submitReassign}>Save Reassignment</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -768,7 +768,7 @@ export default function Intake() {
                   {totalProcessed} filed · {totalFailed} failed
                 </Badge>
               ) : (
-                <span className="text-sm text-muted-foreground">Ready to process</span>
+                <span className="text-sm text-muted-foreground">Ready to Process</span>
               )}
             </div>
           </div>
@@ -879,7 +879,7 @@ export default function Intake() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
             <div className="rounded-md border bg-card p-4 space-y-2">
-              <div className="text-[11px] text-muted-foreground">Client profile</div>
+              <div className="text-[11px] text-muted-foreground">Client Profile</div>
               <div className="text-sm font-semibold truncate">{extractedName}</div>
               <div className="text-sm text-muted-foreground">
                 DOB: <span className="text-foreground">{extractedDob || 'Not detected'}</span>
@@ -907,7 +907,7 @@ export default function Intake() {
             </div>
 
             <div className="rounded-md border bg-card p-4 space-y-2">
-              <div className="text-[11px] text-muted-foreground">Companies House match</div>
+              <div className="text-[11px] text-muted-foreground">Companies House Match</div>
               <div className="text-sm font-semibold truncate">
                 {companyProfile.name || chMatch.company_name || 'No Direct Match'}
               </div>
@@ -919,7 +919,7 @@ export default function Intake() {
               ) : candidates.length > 0 ? (
                 <Badge className="badge-amber text-[11px]">Review ({candidates.length})</Badge>
               ) : (
-                <Badge className="bg-muted text-muted-foreground text-[11px]">No match</Badge>
+                <Badge className="bg-muted text-muted-foreground text-[11px]">No Match</Badge>
               )}
               {candidates.length > 0 && !companyProfile.id && (
                 <div className="space-y-1.5 pt-1 border-t">
@@ -943,7 +943,7 @@ export default function Intake() {
             </div>
 
             <div className="rounded-md border bg-card p-4 space-y-2">
-              <div className="text-[11px] text-muted-foreground">Filing status</div>
+              <div className="text-[11px] text-muted-foreground">Filing Status</div>
               <div className="text-sm font-semibold">Customer Uploads</div>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Documents filed for staff review. Confirm identity and contact details on the customer profile.
@@ -952,7 +952,7 @@ export default function Intake() {
             </div>
 
             <div className="rounded-md border bg-card p-4 space-y-2">
-              <div className="text-[11px] text-muted-foreground">Scan accuracy</div>
+              <div className="text-[11px] text-muted-foreground">Scan Accuracy</div>
               <div className="text-sm font-semibold">
                 {quality.label || (quality.score ? `${quality.score}% Score` : 'OCR Complete')}
               </div>
@@ -1036,7 +1036,7 @@ export default function Intake() {
 
           <div className="grid gap-3 py-1">
             <div className="grid gap-1.5">
-              <Label htmlFor="drive-link">Drive link</Label>
+              <Label htmlFor="drive-link">Drive Link</Label>
               <Input
                 id="drive-link"
                 placeholder="https://drive.google.com/drive/folders/..."

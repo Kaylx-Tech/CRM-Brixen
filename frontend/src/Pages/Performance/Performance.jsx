@@ -74,11 +74,11 @@ export function MyPerformance() {
   const m = data?.metrics || {}
   const orders = data?.my_orders || []
   const stats = [
-    { title: 'Incentive grade', hero: true, value: m.grade ? `Grade ${m.grade}` : '—' },
-    { title: 'Orders this month', value: String(m.assigned_count ?? 0) },
+    { title: 'Incentive Grade', hero: true, value: m.grade ? `Grade ${m.grade}` : '—' },
+    { title: 'Orders This Month', value: String(m.assigned_count ?? 0) },
     { title: 'Pending', value: String(m.open_count ?? 0) },
-    { title: 'In progress', value: String(m.in_progress_count ?? 0) },
-    { title: 'Completed this month', value: String(m.completed_count ?? 0) },
+    { title: 'In Progress', value: String(m.in_progress_count ?? 0) },
+    { title: 'Completed This Month', value: String(m.completed_count ?? 0) },
   ]
 
   return (
@@ -101,7 +101,7 @@ export function MyPerformance() {
       <div className="rounded-2xl border bg-card">
         <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
           <div>
-            <h3 className="font-semibold">My orders</h3>
+            <h3 className="font-semibold">My Orders</h3>
             <p className="text-sm text-muted-foreground">Orders assigned to you (or added by you) still to finish</p>
           </div>
         </div>
@@ -183,7 +183,7 @@ function TeamIncentives() {
     <div className="rounded-2xl border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
         <div>
-          <h3 className="font-semibold">Team incentives</h3>
+          <h3 className="font-semibold">Team Incentives</h3>
           <p className="text-sm text-muted-foreground">Monthly leaderboard, grades and bonus eligibility</p>
         </div>
         <div className="flex items-center gap-2">
@@ -201,11 +201,11 @@ function TeamIncentives() {
           <TableHeader>
             <TableRow>
               <TableHead>Rank</TableHead>
-              <TableHead>Team member</TableHead>
+              <TableHead>Team Member</TableHead>
               <TableHead>Department</TableHead>
               <TableHead className="text-right">Orders</TableHead>
               <TableHead className="text-right">Completed</TableHead>
-              <TableHead className="text-right">On time</TableHead>
+              <TableHead className="text-right">On Time</TableHead>
               <TableHead className="text-right">Overdue</TableHead>
               <TableHead>Grade</TableHead>
               <TableHead>Incentive</TableHead>
@@ -248,7 +248,7 @@ export function StaffDashboard() {
     <div className="flex flex-col gap-6 w-full pb-10">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">{firstName ? `Welcome, ${firstName}` : 'My Dashboard'}</h2>
-        <p className="text-sm text-muted-foreground mt-1">Your orders and this month's performance</p>
+        <p className="text-sm text-muted-foreground mt-1">Your Orders and This Month's Performance</p>
       </div>
       <MyPerformance />
     </div>
@@ -267,8 +267,8 @@ export default function Performance() {
       {canSeeTeam ? (
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
-            <TabsTrigger value="mine">My performance</TabsTrigger>
-            <TabsTrigger value="team">Team incentives</TabsTrigger>
+            <TabsTrigger value="mine">My Performance</TabsTrigger>
+            <TabsTrigger value="team">Team Incentives</TabsTrigger>
           </TabsList>
         </Tabs>
       ) : null}

@@ -1,8 +1,8 @@
 // Periods for the Smart Operations revenue strip
 export const REVENUE_PERIODS = [
-  ['month', 'This month'],
-  ['year', 'This year'],
-  ['all', 'All time'],
+  ['month', 'This Month'],
+  ['year', 'This Year'],
+  ['all', 'All Time'],
 ]
 
 /** 'month' → '2026-11', 'year' → '2026', 'all' → '' (the API's period) */

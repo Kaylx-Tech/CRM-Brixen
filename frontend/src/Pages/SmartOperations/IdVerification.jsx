@@ -77,7 +77,7 @@ function AmlResult({ aml }) {
   return (
     <div className="rounded-lg border p-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold">AML screening</p>
+        <p className="text-sm font-semibold">AML Screening</p>
         <Badge className={amlTone(aml)}>{amlLabel(aml)}</Badge>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
@@ -119,7 +119,7 @@ function PoaResult({ poa }) {
   return (
     <div className="rounded-lg border p-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold">Proof of address</p>
+        <p className="text-sm font-semibold">Proof of Address</p>
         <Badge className={checkTone(poa.status)}>{poa.status || 'Not Started'}</Badge>
       </div>
       <dl className="mt-2 space-y-1 text-xs">
@@ -445,14 +445,14 @@ export default function IdVerification() {
       <Dialog open={!!adding} onOpenChange={(open) => !open && setAdding(null)}>
         <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
-            <DialogTitle>Add person to verify</DialogTitle>
+            <DialogTitle>Add Person to Verify</DialogTitle>
             <DialogDescription>
               {adding?.order_number}: {configured ? 'a Didit verification link is created straight away.' : 'Didit is not connected yet.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="idv-full_name">Full name <RequiredMark /></Label>
+              <Label htmlFor="idv-full_name">Full Name <RequiredMark /></Label>
               <Input id="idv-full_name" {...invalidProps(personErrors.errors, 'full_name', 'idv-')} value={personForm.full_name} onChange={(e) => { setPersonForm((p) => ({ ...p, full_name: e.target.value })); personErrors.recheck('full_name', e.target.value) }} />
               <FieldMessage id="idv-full_name-error" message={personErrors.errors.full_name} />
             </div>
@@ -507,7 +507,7 @@ export default function IdVerification() {
             <div className="space-y-4">
               <div className="rounded-lg border bg-muted/30 p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold">Companies House (ACSP) details</p>
+                  <p className="text-sm font-semibold">Companies House (ACSP) Details</p>
                   <Button
                     variant="outline"
                     size="xs"
@@ -535,7 +535,7 @@ export default function IdVerification() {
                 </a>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="idv-ch-code">Companies House personal code</Label>
+                <Label htmlFor="idv-ch-code">Companies House Personal Code</Label>
                 <div className="flex gap-2">
                   <Input
                     id="idv-ch-code"

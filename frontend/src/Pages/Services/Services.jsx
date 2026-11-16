@@ -342,7 +342,7 @@ const Services = () => {
       ...(showPrices
         ? [
             columnHelper.accessor("sellPrice", {
-              header: "Sell price",
+              header: "Sell Price",
               cell: ({ row }) => <span className="font-medium">{row.getValue("sellPrice")}</span>,
             }),
           ]
@@ -351,7 +351,7 @@ const Services = () => {
       ...(canManageCatalog
         ? [
             columnHelper.accessor("originalPrice", {
-              header: "Original price",
+              header: "Original Price",
               cell: ({ row }) => (
                 <span className="text-muted-foreground">{row.getValue("originalPrice")}</span>
               ),
@@ -530,7 +530,7 @@ const Services = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-sellPrice">Sell price (£) <RequiredMark /></Label>
+                  <Label htmlFor="edit-sellPrice">Sell Price (£) <RequiredMark /></Label>
                   <Input
                     id="edit-sellPrice"
                     {...invalidProps(editErrors.errors, 'sellPrice', 'edit-')}
@@ -544,7 +544,7 @@ const Services = () => {
                   <FieldMessage id="edit-sellPrice-error" message={editErrors.errors.sellPrice} />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-originalPrice">Original / cost price (£)</Label>
+                  <Label htmlFor="edit-originalPrice">Original / Cost Price (£)</Label>
                   <Input
                     id="edit-originalPrice"
                     {...invalidProps(editErrors.errors, 'originalPrice', 'edit-')}

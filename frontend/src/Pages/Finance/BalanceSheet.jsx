@@ -227,7 +227,7 @@ export default function BalanceSheet({ embedded = false }) {
       ),
     }),
     incomeCol.accessor('method', {
-      header: 'Paid by',
+      header: 'Paid By',
       cell: ({ row }) => (
         <div className="flex flex-col">
           <span className="text-sm">{row.original.method || '—'}</span>
@@ -401,7 +401,7 @@ export default function BalanceSheet({ embedded = false }) {
       </div>
 
       <div className="mt-2">
-        <h3 className="text-base font-semibold mb-2">Month by month</h3>
+        <h3 className="text-base font-semibold mb-2">Month by Month</h3>
         <DataTable columns={monthColumns} data={sheet?.months || []} isLoading={isLoading && !sheet} />
       </div>
 
@@ -438,12 +438,12 @@ export default function BalanceSheet({ embedded = false }) {
                 <FieldMessage id="expense-amount-error" message={expenseErrors.errors.amount} />
               </div>
               <div className="grid gap-1.5">
-                <Label>Paid from</Label>
+                <Label>Paid From</Label>
                 <Select value={expenseForm.currency} onValueChange={(v) => setExpenseForm((p) => ({ ...p, currency: v }))}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="GBP">GBP account (£)</SelectItem>
-                    <SelectItem value="PKR">PKR account (Rs)</SelectItem>
+                    <SelectItem value="GBP">GBP Account (£)</SelectItem>
+                    <SelectItem value="PKR">PKR Account (Rs)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -486,7 +486,7 @@ export default function BalanceSheet({ embedded = false }) {
                 <FieldMessage id="start-amount-error" message={startErrors.errors.amount} />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="start-start_month">From month <RequiredMark /></Label>
+                <Label htmlFor="start-start_month">From Month <RequiredMark /></Label>
                 <Input id="start-start_month"
                   {...invalidProps(startErrors.errors, 'start_month', 'start-')} type="month" value={startForm.start_month}
                   onChange={(e) => setStartForm((p) => ({ ...p, start_month: e.target.value }))} />
@@ -508,7 +508,7 @@ export default function BalanceSheet({ embedded = false }) {
       <Dialog open={!!rupeeForm} onOpenChange={(open) => !open && !savingRupees && setRupeeForm(null)}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>Rupees received</DialogTitle>
+            <DialogTitle>Rupees Received</DialogTitle>
             <DialogDescription>
               {rupeeForm && `${rupeeForm.invoice.invoice_number}: ${formatMoney(rupeeForm.invoice.invoice_pkr_gbp ?? rupeeForm.invoice.gbp_amount, 'GBP')} paid into the PKR account. Type what actually reached the bank.`}
             </DialogDescription>

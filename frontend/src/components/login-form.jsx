@@ -158,8 +158,8 @@ export function LoginForm({ className, ...props }) {
             <div className="flex flex-col py-8 items-center gap-2 text-center">
               {/* Phones hide the blue brand panel, so the logo sits above the form */}
               <img src={brixenLogoDark} alt="Brixen" className="mb-4 h-12 w-auto md:hidden" />
-              <h1 className="text-2xl font-bold">Welcome back</h1>
-              <p className="text-balance text-muted-foreground">Login to your account</p>
+              <h1 className="text-2xl font-bold">Welcome Back</h1>
+              <p className="text-balance text-muted-foreground">Login to Your Account</p>
             </div>
 
             {error && (
@@ -215,7 +215,7 @@ export function LoginForm({ className, ...props }) {
               </Button>
             </Field>
             {/* <FieldDescription className="text-center">
-                Don&apos;t have an account? <Link to="/signup">Sign up</Link>
+                Don&apos;t have an account? <Link to="/signup">Sign Up</Link>
               </FieldDescription> */}
           </FieldGroup>
         </form>

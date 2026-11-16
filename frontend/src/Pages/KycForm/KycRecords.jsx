@@ -18,11 +18,11 @@ const IN_REVIEW = ['Submitted', 'In Review']
 // How a check's status reads to the team (the KYC team at Finstap sets Approved / In Review / Declined)
 function statusLabel(status) {
   if (status === 'Approved') return ['Approved', 'badge-green']
-  if (status === 'Declined') return ['Rejected, new link sent', 'bg-destructive/15 text-destructive']
+  if (status === 'Declined') return ['Rejected, New Link Sent', 'bg-destructive/15 text-destructive']
   // The client sent everything: Finstap's KYC team is checking it
-  if (status === 'In Review' || status === 'Submitted') return ['In review', 'badge-amber']
-  if (status === 'In Progress') return ['Filling the form', 'badge-sky']
-  return ['Waiting for client', 'bg-muted text-muted-foreground']
+  if (status === 'In Review' || status === 'Submitted') return ['In Review', 'badge-amber']
+  if (status === 'In Progress') return ['Filling the Form', 'badge-sky']
+  return ['Waiting for Client', 'bg-muted text-muted-foreground']
 }
 
 // Which tab a check sits under
@@ -106,7 +106,7 @@ function OrderPicker({ check, onClose, onLinked }) {
     <Dialog open={!!check} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Link to an order</DialogTitle>
+          <DialogTitle>Link to an Order</DialogTitle>
           <DialogDescription>{check ? `${check.full_name}${check.email ? ` · ${check.email}` : ''}` : ''}</DialogDescription>
         </DialogHeader>
         <div className="relative">
@@ -120,7 +120,7 @@ function OrderPicker({ check, onClose, onLinked }) {
             <p className="py-6 text-center text-sm text-muted-foreground">No orders found.</p>
           ) : (
             <>
-              {mine.length > 0 && <p className="px-1 pt-1 text-xs font-medium text-muted-foreground">Orders for this person</p>}
+              {mine.length > 0 && <p className="px-1 pt-1 text-xs font-medium text-muted-foreground">Orders for This Person</p>}
               {mine.map((o) => <Row key={o.id} o={o} />)}
               {rest.length > 0 && <p className="px-1 pt-2 text-xs font-medium text-muted-foreground">{mine.length ? 'Other recent orders' : 'Recent orders'}</p>}
               {rest.map((o) => <Row key={o.id} o={o} />)}
@@ -157,14 +157,14 @@ function PersonEditor({ check, onClose, onSaved }) {
     <Dialog open={!!check} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
-          <DialogTitle>Edit KYC details</DialogTitle>
+          <DialogTitle>Edit KYC Details</DialogTitle>
           <DialogDescription>
             A new email gets a fresh link (the old one stops working). This works until the client sends the form.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={save} className="space-y-3">
           <label className="block space-y-1 text-sm">
-            <span className="font-medium">Full name</span>
+            <span className="font-medium">Full Name</span>
             <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} />
           </label>
           <label className="block space-y-1 text-sm">
@@ -217,7 +217,7 @@ export default function KycRecords({ embedded = false }) {
     <span className={ORDER_CHIP}>{c.order_number}</span>
   ) : (
     <div className="flex flex-col items-start gap-1">
-      <span className="text-xs text-muted-foreground">KYC link</span>
+      <span className="text-xs text-muted-foreground">KYC Link</span>
       <button type="button" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline" onClick={() => linkOrder(c)}>
         <IconLink className="size-3.5" /> Link order
       </button>
@@ -306,9 +306,9 @@ export default function KycRecords({ embedded = false }) {
     const all = data?.checks || []
     const count = (b) => all.filter((c) => bucket(c.status) === b).length
     return [
-      { title: 'KYC checks', value: String(all.length), footerSubText: 'Sent to Finstap', icon: IconId },
-      { title: 'Waiting for client', tone: 'sky', value: String(count('waiting')), footerSubText: 'Link sent, form not sent yet' },
-      { title: 'In review', tone: 'amber', value: String(count('review')), footerSubText: "Finstap's KYC team is checking" },
+      { title: 'KYC Checks', value: String(all.length), footerSubText: 'Sent to Finstap', icon: IconId },
+      { title: 'Waiting for Client', tone: 'sky', value: String(count('waiting')), footerSubText: 'Link sent, form not sent yet' },
+      { title: 'In Review', tone: 'amber', value: String(count('review')), footerSubText: "Finstap's KYC team is checking" },
       { title: 'Approved', tone: 'emerald', value: String(count('approved')), footerSubText: `${count('rejected')} rejected` },
     ]
   }, [data])
@@ -383,8 +383,8 @@ export default function KycRecords({ embedded = false }) {
                       <span className="truncate font-medium">{o.client_name || '—'}</span>
                       <Badge className="bg-muted text-muted-foreground">{o.status}</Badge>
                       {o.b2b && <Badge className="bg-violet-500/15 text-violet-700 dark:text-violet-300">B2B</Badge>}
-                      {o.verified === 'ch_code' && <Badge className="badge-green">Already verified · CH code</Badge>}
-                      {o.verified === 'approved' && <Badge className="badge-green">Already verified · earlier check</Badge>}
+                      {o.verified === 'ch_code' && <Badge className="badge-green">Already Verified · CH Code</Badge>}
+                      {o.verified === 'approved' && <Badge className="badge-green">Already Verified · Earlier Check</Badge>}
                       {o.newer_order && <Badge className="badge-amber">Same client as {o.newer_order}</Badge>}
                     </div>
                     <div className="truncate text-xs text-muted-foreground">{o.email || 'No email'} · {shortDate(o.created_at)}</div>
@@ -421,7 +421,7 @@ export default function KycRecords({ embedded = false }) {
               <TabsList className="max-w-full justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <TabsTrigger value="all" className={TAB}>All</TabsTrigger>
                 <TabsTrigger value="waiting" className={TAB}>Waiting</TabsTrigger>
-                <TabsTrigger value="review" className={TAB}>In review</TabsTrigger>
+                <TabsTrigger value="review" className={TAB}>In Review</TabsTrigger>
                 <TabsTrigger value="approved" className={TAB}>Approved</TabsTrigger>
                 <TabsTrigger value="rejected" className={TAB}>Rejected</TabsTrigger>
               </TabsList>

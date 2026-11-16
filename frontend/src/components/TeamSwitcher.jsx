@@ -40,7 +40,7 @@ const SEP = "-mx-1 my-1"
 const APPEARANCE = [
   { value: "light", label: "Light", Icon: IconSun },
   { value: "dark", label: "Dark", Icon: IconMoon },
-  { value: "system", label: "Same as this device", Icon: IconDeviceDesktop },
+  { value: "system", label: "Same as This Device", Icon: IconDeviceDesktop },
 ]
 
 /** Light / Dark / System as one segmented switch; the chosen one is raised with a ring. */

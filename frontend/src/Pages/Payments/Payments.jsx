@@ -179,7 +179,7 @@ function invoiceWhenLabel(inv) {
 }
 
 function buildMonthOptions(count = 12) {
-  const options = [{ value: 'all', label: 'All months' }]
+  const options = [{ value: 'all', label: 'All Months' }]
   const now = new Date()
   for (let i = 0; i < count; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
@@ -404,21 +404,21 @@ export default function Payments() {
         active: revenueFilter === 'all',
       },
       {
-        title: 'Sell total',
+        title: 'Sell Total',
         value: formatGBP(sell),
         footerSubText: 'Click to filter revenue',
         onClick: () => setRevenueFilter((prev) => (prev === 'sell' ? 'all' : 'sell')),
         active: revenueFilter === 'sell',
       },
       {
-        title: 'Total cost',
+        title: 'Total Cost',
         value: formatGBP(cost),
         footerSubText: 'Click to filter cost',
         onClick: () => setRevenueFilter((prev) => (prev === 'cost' ? 'all' : 'cost')),
         active: revenueFilter === 'cost',
       },
       {
-        title: 'Net profit',
+        title: 'Net Profit',
         value: formatGBP(net),
         trendValue: sell > 0 ? `${((net / sell) * 100).toFixed(1)}%` : '0%',
         trendDirection: net >= 0 ? 'up' : 'down',
@@ -431,7 +431,7 @@ export default function Payments() {
 
   const invoiceStatCards = useMemo(() => [
     {
-      title: 'Total billed',
+      title: 'Total Billed',
       hero: true,
       value: formatGBP(collectionStats.billed),
       footerSubText: (() => {
@@ -442,14 +442,14 @@ export default function Payments() {
       active: payFilter === 'all',
     },
     {
-      title: 'Received (paid)',
+      title: 'Received (Paid)',
       value: formatGBP(collectionStats.paid),
       footerSubText: 'Click to filter paid',
       onClick: () => setPayFilter('paid'),
       active: payFilter === 'paid',
     },
     {
-      title: 'Clients still owe',
+      title: 'Clients Still Owe',
       value: formatGBP(collectionStats.owed),
       footerSubText: 'Click outstanding',
       onClick: () => setPayFilter('outstanding'),
@@ -463,14 +463,14 @@ export default function Payments() {
       active: payFilter === 'pending',
     },
     {
-      title: 'Part paid',
+      title: 'Part Paid',
       value: String(collectionStats.partial),
       footerSubText: 'Deposits received',
       onClick: () => setPayFilter('partial'),
       active: payFilter === 'partial',
     },
     {
-      title: 'All unpaid',
+      title: 'All Unpaid',
       value: String(allUnpaid),
       footerSubText: 'Every month',
       onClick: () => {
@@ -729,7 +729,7 @@ export default function Payments() {
       cell: ({ row }) => <span>{row.getValue('paidLabel')}</span>,
     }),
     invoiceCol.accessor('dueLabel', {
-      header: 'Still owed',
+      header: 'Still Owed',
       cell: ({ row }) => (
         <span className={`font-bold ${row.original.money.due > 0.004 ? 'text-destructive' : 'text-emerald-600'}`}>
           {row.getValue('dueLabel')}
@@ -835,7 +835,7 @@ export default function Payments() {
       cell: ({ row }) => <ProductCell name={row.original.service_name} />,
     }),
     costCol.accessor('sellLabel', {
-      header: 'Sell price',
+      header: 'Sell Price',
       cell: ({ row }) => <span className="font-semibold">{row.getValue('sellLabel')}</span>,
     }),
     costCol.display({
@@ -874,7 +874,7 @@ export default function Payments() {
       ),
     }),
     profitCol.accessor('orders', { header: 'Orders' }),
-    profitCol.accessor('sellLabel', { header: 'Sell total' }),
+    profitCol.accessor('sellLabel', { header: 'Sell Total' }),
     profitCol.accessor('costLabel', { header: 'Cost' }),
     profitCol.accessor('profitLabel', {
       header: 'Profit',
@@ -897,9 +897,9 @@ export default function Payments() {
         </div>
       ),
     }),
-    oweCol.accessor('count', { header: 'Open invoices' }),
+    oweCol.accessor('count', { header: 'Open Invoices' }),
     oweCol.accessor('dueLabel', {
-      header: 'Still owed',
+      header: 'Still Owed',
       cell: ({ row }) => <span className="font-bold text-destructive">{row.getValue('dueLabel')}</span>,
     }),
   ], [])
@@ -910,7 +910,7 @@ export default function Payments() {
       placeholder: 'Payment status',
       options: [
         { label: 'Pending', value: 'Pending' },
-        { label: 'Part paid', value: 'Partial Paid' },
+        { label: 'Part Paid', value: 'Partial Paid' },
         { label: 'Overdue', value: 'Overdue' },
         { label: 'Paid', value: 'Paid' },
         { label: 'Cancelled', value: 'Cancelled' },
@@ -980,7 +980,7 @@ export default function Payments() {
           />
 
           <div className="mt-2">
-            <h3 className="text-base font-semibold mb-2">Who still owes you</h3>
+            <h3 className="text-base font-semibold mb-2">Who Still Owes You</h3>
             <DataTable
               columns={oweColumns}
               data={oweByClient}
@@ -1000,7 +1000,7 @@ export default function Payments() {
           <SmartOpsRevenueTable month={selectedMonth} version={revenueStats[2]?.value} />
 
           <p className="text-sm text-muted-foreground">
-            Set <strong>Order cost</strong> per customer/order. Profit = Sell price − Cost.
+            Set <strong>Order Cost</strong> per customer/order. Profit = Sell price − Cost.
           </p>
 
 
@@ -1011,7 +1011,7 @@ export default function Payments() {
           />
 
           <div className="mt-2">
-            <h3 className="text-base font-semibold mb-2">Profit by customer</h3>
+            <h3 className="text-base font-semibold mb-2">Profit by Customer</h3>
             <DataTable
               columns={profitColumns}
               data={profitByCustomer}
@@ -1025,7 +1025,7 @@ export default function Payments() {
       <Dialog open={!!editInvoice} onOpenChange={(open) => !open && setEditInvoice(null)}>
         <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-[620px]">
           <DialogHeader>
-            <DialogTitle>Edit invoice</DialogTitle>
+            <DialogTitle>Edit Invoice</DialogTitle>
             <DialogDescription>
               Pay after work, take the full amount first, or take a deposit (usually 50%) and the rest when the job is done.
             </DialogDescription>
@@ -1061,7 +1061,7 @@ export default function Payments() {
                 </div>
 
                 <div className="grid gap-1.5">
-                  <Label>When they pay</Label>
+                  <Label>When They Pay</Label>
                   <Select
                     value={editForm.payment_timing}
                     onValueChange={(v) => setEditForm((p) => ({ ...p, payment_timing: v }))}
@@ -1076,7 +1076,7 @@ export default function Payments() {
                 </div>
 
                 <div className="grid gap-1.5">
-                  <Label>Payment method</Label>
+                  <Label>Payment Method</Label>
                   <Select
                     value={editForm.payment_method}
                     onValueChange={(v) => setEditForm((p) => ({ ...p, payment_method: v }))}
@@ -1091,7 +1091,7 @@ export default function Payments() {
                 </div>
 
                 <div className="grid gap-1.5">
-                  <Label htmlFor="invoice-due_date">Due date</Label>
+                  <Label htmlFor="invoice-due_date">Due Date</Label>
                   <Input id="invoice-due_date"
                     {...invalidProps(invoiceErrors.errors, 'due_date', 'invoice-')}
                     type="date"
@@ -1116,7 +1116,7 @@ export default function Payments() {
 
                 {editForm.payment_timing === 'Deposit' && (
                   <div className="grid gap-1.5">
-                    <Label htmlFor="invoice-deposit_amount">Deposit now <RequiredMark /></Label>
+                    <Label htmlFor="invoice-deposit_amount">Deposit Now <RequiredMark /></Label>
                     <Input id="invoice-deposit_amount"
                       {...invalidProps(invoiceErrors.errors, 'deposit_amount', 'invoice-')}
                       className="w-full"
@@ -1168,7 +1168,7 @@ export default function Payments() {
                     {canAdd && (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_1.3fr]">
                         <div className="grid gap-1.5">
-                          <Label htmlFor="invoice-received_now">Received now (£)</Label>
+                          <Label htmlFor="invoice-received_now">Received Now (£)</Label>
                           <Input id="invoice-received_now"
                             {...invalidProps(invoiceErrors.errors, 'received_now', 'invoice-')}
                             placeholder={plainAmount(owed)}
@@ -1179,7 +1179,7 @@ export default function Payments() {
                           <FieldMessage id="invoice-received_now-error" message={invoiceErrors.errors.received_now} />
                         </div>
                         <div className="grid gap-1.5">
-                          <Label htmlFor="invoice-payment_date">Date received</Label>
+                          <Label htmlFor="invoice-payment_date">Date Received</Label>
                           <Input id="invoice-payment_date"
                             {...invalidProps(invoiceErrors.errors, 'payment_date', 'invoice-')}
                             type="date"
@@ -1190,7 +1190,7 @@ export default function Payments() {
                           <FieldMessage id="invoice-payment_date-error" message={invoiceErrors.errors.payment_date} />
                         </div>
                         <div className="grid gap-1.5">
-                          <Label>Paid by</Label>
+                          <Label>Paid By</Label>
                           <Select
                             value={editForm.payment_received_method}
                             onValueChange={(v) => setEditForm((p) => ({ ...p, payment_received_method: v }))}

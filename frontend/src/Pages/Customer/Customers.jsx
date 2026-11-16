@@ -85,7 +85,7 @@ function PortalAccessButton({ onDone }) {
       <Dialog open={list !== null} onOpenChange={(o) => !o && !busy && setList(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Portal access for Business customers</DialogTitle>
+            <DialogTitle>Portal Access for Business Customers</DialogTitle>
             <DialogDescription>
               {list?.length
                 ? `${list.length} Business customer(s) cannot sign in to the portal yet. They get the default password; customers who already signed in are not changed.`
@@ -443,7 +443,7 @@ const Customers = () => {
         },
       }),
       columnHelper.accessor("signedUp", {
-        header: "Signed up",
+        header: "Signed Up",
         cell: ({ row }) => (
           <span className="text-sm text-muted-foreground">{row.getValue("signedUp")}</span>
         ),
@@ -453,7 +453,7 @@ const Customers = () => {
         cell: ({ row }) => {
           const source = row.getValue("source");
           if (source === "Website signup") {
-            return <Badge className="badge-sky">Website signup</Badge>;
+            return <Badge className="badge-sky">Website Signup</Badge>;
           }
           return <Badge className="badge-green">{source || "CRM"}</Badge>;
         },
@@ -509,7 +509,7 @@ const Customers = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-7 w-7 p-0">
-                  <span className="sr-only">Open menu</span>
+                  <span className="sr-only">Open Menu</span>
                   <IconDotsVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -560,7 +560,7 @@ const Customers = () => {
       columnKey: "source",
       placeholder: "Sources",
       options: [
-        { label: "Website signup", value: "Website signup" },
+        { label: "Website Signup", value: "Website signup" },
         { label: "Created in CRM", value: "CRM" },
       ],
     },
@@ -577,10 +577,10 @@ const Customers = () => {
       columnKey: "access",
       placeholder: "Access",
       options: [
-        { label: "Website account", value: "Website account" },
-        { label: "No website account", value: "No website account" },
-        { label: "Portal login", value: "Portal login" },
-        { label: "Needs portal password", value: "Needs portal password" },
+        { label: "Website Account", value: "Website account" },
+        { label: "No Website Account", value: "No website account" },
+        { label: "Portal Login", value: "Portal login" },
+        { label: "Needs Portal Password", value: "Needs portal password" },
       ],
     },
   ];

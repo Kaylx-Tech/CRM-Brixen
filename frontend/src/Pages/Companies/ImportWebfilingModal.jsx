@@ -544,7 +544,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                 {parsedNumbers.length > 0 ? (
                   <div className="rounded-2xl border bg-muted/20">
                     <div className="flex items-center justify-between px-3 py-1.5 text-xs text-muted-foreground border-b">
-                      <span>Companies House results</span>
+                      <span>Companies House Results</span>
                       <span>{selectedNumbers.length} of {parsedNumbers.length} selected</span>
                     </div>
                     <ul className="max-h-48 overflow-y-auto overscroll-contain divide-y divide-border/50">
@@ -710,7 +710,7 @@ export function ImportWebfilingModal({ isOpen, onClose, onImportSuccess }) {
                             </button>
                           ))
                         ) : (
-                          <p className="px-3 py-2 text-sm text-muted-foreground">No customer found</p>
+                          <p className="px-3 py-2 text-sm text-muted-foreground">No Customer Found</p>
                         )}
                       </div>
                     )}

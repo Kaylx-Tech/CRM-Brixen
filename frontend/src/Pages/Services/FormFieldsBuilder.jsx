@@ -21,13 +21,13 @@ import {
 } from "@tabler/icons-react"
 
 export const FIELD_TYPES = [
-  { value: "text", label: "Text input", icon: IconForms },
-  { value: "date", label: "Date (calendar)", icon: IconCalendar },
-  { value: "file", label: "Document upload", icon: IconUpload },
-  { value: "radio", label: "Question (radio)", icon: IconCircleDot },
-  { value: "checkbox", label: "Checkbox + sub-form", icon: IconSquareCheck },
-  { value: "company", label: "Company (Companies House check)", icon: IconBuilding },
-  { value: "company_name", label: "Company name availability", icon: IconSignature },
+  { value: "text", label: "Text Input", icon: IconForms },
+  { value: "date", label: "Date (Calendar)", icon: IconCalendar },
+  { value: "file", label: "Document Upload", icon: IconUpload },
+  { value: "radio", label: "Question (Radio)", icon: IconCircleDot },
+  { value: "checkbox", label: "Checkbox + Sub-Form", icon: IconSquareCheck },
+  { value: "company", label: "Company (Companies House Check)", icon: IconBuilding },
+  { value: "company_name", label: "Company Name Availability", icon: IconSignature },
 ]
 
 const MAX_FIELDS = 30
@@ -164,7 +164,7 @@ export default function FormFieldsBuilder({ value = [], onChange, disabled, nest
     <div className="space-y-3">
       {!nested ? (
         <div>
-          <Label>Order form</Label>
+          <Label>Order Form</Label>
           <p className="mt-1 text-xs text-muted-foreground">
             Asked when this service is ordered. Text, questions and checkboxes appear on the Details step, document
             uploads on the Documents step. A checkbox opens its own fields when ticked.

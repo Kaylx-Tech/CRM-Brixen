@@ -707,7 +707,7 @@ const Tasks = ({ view } = {}) => {
         header: 'Departments',
         cell: ({ row }) => {
           const m = row.original
-          if (m.role !== 'STAFF') return <span className="text-sm text-muted-foreground">All (by role)</span>
+          if (m.role !== 'STAFF') return <span className="text-sm text-muted-foreground">All (by Role)</span>
           const list = m.departments || []
           if (!list.length) return <Badge className="badge-red">None</Badge>
           if (list.length === DEPARTMENTS.length) return <span className="text-sm">All</span>
@@ -719,7 +719,7 @@ const Tasks = ({ view } = {}) => {
         },
       }),
       columnHelper.accessor('openTasks', {
-        header: 'Open tasks',
+        header: 'Open Tasks',
       cell: ({ row }) => (
           <span className="text-sm">
             {row.original.openTasks}
@@ -979,7 +979,7 @@ const Tasks = ({ view } = {}) => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="task-due_date">Due date</Label>
+                <Label htmlFor="task-due_date">Due Date</Label>
                 <Input
                   id="task-due_date"
                   {...invalidProps(taskErrors.errors, 'due_date', 'task-')}
@@ -1044,7 +1044,7 @@ const Tasks = ({ view } = {}) => {
       >
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>Add team member</DialogTitle>
+            <DialogTitle>Add Team Member</DialogTitle>
             <DialogDescription>
               Create a staff account that can be assigned to tasks.
             </DialogDescription>

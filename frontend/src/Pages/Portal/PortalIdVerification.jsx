@@ -36,7 +36,7 @@ export default function PortalIdVerification({ orderId, onlyOpen = false }) {
     <div className="rounded-2xl border bg-card">
       <div className="flex items-center gap-2 border-b px-4 py-3">
         <IconId className="size-4 text-primary" />
-        <h3 className="font-semibold">Identity verification</h3>
+        <h3 className="font-semibold">Identity Verification</h3>
       </div>
       <ul className="divide-y">
         {shown.map((v) => {

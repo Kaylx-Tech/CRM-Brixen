@@ -36,7 +36,7 @@ const SEGMENT_ON = "bg-background text-foreground shadow-sm dark:bg-white/15"
 // Range buttons, and what each one is compared with
 const REVENUE_RANGES = [
   // `short`: the label on a phone, so the four fit on one line
-  { value: "This Month", label: "This month", short: "Month", versus: "vs the same days last month" },
+  { value: "This Month", label: "This Month", short: "Month", versus: "vs the same days last month" },
   { value: "7d", label: "7 days", short: "7D", versus: "vs the 7 days before" },
   { value: "30d", label: "30 days", short: "30D", versus: "vs the 30 days before" },
   { value: "90d", label: "90 days", short: "90D", versus: "vs the 90 days before" },

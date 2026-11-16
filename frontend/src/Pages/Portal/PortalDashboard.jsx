@@ -35,10 +35,10 @@ export default function PortalDashboard() {
   const d = data || {}
 
   const stats = [
-    { title: "My businesses", value: String(d.total_companies ?? 0), onClick: () => navigate("/portal/companies") },
-    { title: "Active orders", value: String(d.active_orders_count ?? 0), onClick: () => navigate("/portal/orders") },
+    { title: "My Businesses", value: String(d.total_companies ?? 0), onClick: () => navigate("/portal/companies") },
+    { title: "Active Orders", value: String(d.active_orders_count ?? 0), onClick: () => navigate("/portal/orders") },
     { title: "Documents", value: String(d.documents_count ?? 0), onClick: () => navigate("/portal/documents") },
-    { title: "Pending actions", value: String(d.pending_actions_count ?? 0) },
+    { title: "Pending Actions", value: String(d.pending_actions_count ?? 0) },
   ]
 
   const runAction = (a) => {

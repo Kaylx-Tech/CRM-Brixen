@@ -324,7 +324,7 @@ const Accountancy = () => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-7 w-7 p-0">
-                <span className="sr-only">Open menu</span>
+                <span className="sr-only">Open Menu</span>
                 <IconDotsVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -469,7 +469,7 @@ const Accountancy = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-7 w-7 p-0">
-                  <span className="sr-only">Open menu</span>
+                  <span className="sr-only">Open Menu</span>
                   <IconDotsVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -618,7 +618,7 @@ const Accountancy = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-7 w-7 p-0">
-                  <span className="sr-only">Open menu</span>
+                  <span className="sr-only">Open Menu</span>
                   <IconDotsVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -657,8 +657,8 @@ const Accountancy = () => {
       options: [
         { label: "Overdue", value: "Overdue" },
         { label: "Due Soon", value: "Due Soon" },
-        { label: "Not started", value: "Not started" },
-        { label: "Ready to file", value: "Ready to file" },
+        { label: "Not Started", value: "Not started" },
+        { label: "Ready to File", value: "Ready to file" },
         { label: "Filed", value: "Filed" },
       ]
     },
@@ -676,7 +676,7 @@ const Accountancy = () => {
       placeholder: "IDV Status",
       options: [
         { label: "Verified", value: "Verified" },
-        { label: "Not started", value: "Not started" },
+        { label: "Not Started", value: "Not started" },
       ]
     }
   ]
@@ -688,14 +688,14 @@ const Accountancy = () => {
       options: [
         { label: "Draft", value: "Draft" },
         { label: "Filed", value: "Filed" },
-        { label: "Ready to file", value: "Ready to file" },
+        { label: "Ready to File", value: "Ready to file" },
       ]
     },
     {
       columnKey: "type",
       placeholder: "Account Type",
       options: [
-        { label: "Micro-entity Balance Sheet", value: "Micro-entity Balance Sheet" },
+        { label: "Micro-Entity Balance Sheet", value: "Micro-entity Balance Sheet" },
         { label: "Full Accounts", value: "Full Accounts" },
         { label: "Dormant", value: "Dormant" },
       ]
@@ -711,7 +711,7 @@ const Accountancy = () => {
         { label: "Nil Return Filed", value: "Nil Return Filed" },
         { label: "Payment Due", value: "Payment Due" },
         { label: "Dissolved", value: "Dissolved" },
-        { label: "Strike off proposed", value: "Strike off proposed" },
+        { label: "Strike Off Proposed", value: "Strike off proposed" },
       ]
     }
   ]

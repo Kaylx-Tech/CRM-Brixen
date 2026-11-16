@@ -91,7 +91,7 @@ export function AppSidebar({
           className="flex h-9 w-full items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 text-sm text-white/50 transition-colors hover:bg-white/10 hover:text-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 cursor-pointer"
         >
           <IconSearch className="h-3.5 w-3.5 shrink-0" />
-          <span className="flex-1 text-left">Search anything</span>
+          <span className="flex-1 text-left">Search Anything</span>
           <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-sans text-[10px] text-white/50">{searchKey}</kbd>
         </button>
       </SidebarHeader>

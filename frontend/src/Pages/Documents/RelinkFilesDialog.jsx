@@ -102,7 +102,7 @@ export default function RelinkFilesDialog({ open, onOpenChange, onDone }) {
     <Dialog open={open} onOpenChange={(o) => !running && onOpenChange(o)}>
       <DialogContent className="sm:max-w-[720px]">
         <DialogHeader>
-          <DialogTitle>Re-attach original files</DialogTitle>
+          <DialogTitle>Re-Attach Original Files</DialogTitle>
           <DialogDescription>
             Pick the original files (or a whole folder). Each file is matched to an existing document by name and size,
             uploaded to Google Drive and linked. Nothing is duplicated or deleted.

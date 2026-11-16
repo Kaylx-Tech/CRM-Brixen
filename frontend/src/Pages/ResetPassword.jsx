@@ -66,7 +66,7 @@ export default function ResetPassword() {
             <AlertDescription>Open the link from your email again, or request a new one.</AlertDescription>
           </Alert>
           <Field>
-            <Button onClick={() => navigate("/forgot-password")}>Request a new link</Button>
+            <Button onClick={() => navigate("/forgot-password")}>Request a New Link</Button>
           </Field>
           <Link to="/login" className="text-center text-sm underline-offset-4 hover:underline">
             Back to login
@@ -99,7 +99,7 @@ export default function ResetPassword() {
             </Alert>
           )}
           <Field>
-            <FieldLabel htmlFor="password">New password</FieldLabel>
+            <FieldLabel htmlFor="password">New Password</FieldLabel>
             <Input
               id="password"
               {...invalidProps(errors, 'password', '')}
@@ -114,7 +114,7 @@ export default function ResetPassword() {
             <FieldDescription>At least {MIN_PASSWORD_LEN} characters.</FieldDescription>
           </Field>
           <Field>
-            <FieldLabel htmlFor="confirm">Confirm new password</FieldLabel>
+            <FieldLabel htmlFor="confirm">Confirm New Password</FieldLabel>
             <Input
               id="confirm"
               {...invalidProps(errors, 'confirm', '')}

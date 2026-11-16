@@ -446,7 +446,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                 {/* UK filing checks */}
                 <section className="space-y-3">
                   <div>
-                    <h4 className="text-sm font-bold">UK filing checks</h4>
+                    <h4 className="text-sm font-bold">UK Filing Checks</h4>
                     <p className="text-sm text-muted-foreground mt-0.5">
                       Companies Act registered office, ECCTA identity verification, PSC register, and Companies House codes.
                     </p>
@@ -460,7 +460,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-sm font-semibold">Identity verification</Label>
+                      <Label className="text-sm font-semibold">Identity Verification</Label>
                       <Select value={identity} onValueChange={setIdentity}>
                         <SelectTrigger className="w-full text-sm">
                           <SelectValue placeholder="Select status" />
@@ -477,7 +477,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-sm font-semibold">PSC verification</Label>
+                      <Label className="text-sm font-semibold">PSC Verification</Label>
                       <Select value={psc} onValueChange={setPsc}>
                         <SelectTrigger className="w-full text-sm">
                           <SelectValue placeholder="Select status" />
@@ -521,7 +521,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                 {/* Bank statements */}
                 <section className="space-y-3">
                   <div>
-                    <h4 className="text-sm font-bold">Bank statements</h4>
+                    <h4 className="text-sm font-bold">Bank Statements</h4>
                     <p className="text-sm text-muted-foreground mt-0.5">
                       Upload the period statements, then post each line into the cash book.
                     </p>
@@ -551,7 +551,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
 
                   <form onSubmit={handleUpload} className="space-y-3 rounded-xl border bg-card p-4">
                     <div className="space-y-2">
-                      <Label className="text-sm font-semibold">Statement file</Label>
+                      <Label className="text-sm font-semibold">Statement File</Label>
                       <Input
                         name="statementFile"
                         type="file"
@@ -575,7 +575,7 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                 {/* Cash book */}
                 <section className="space-y-3">
                   <div>
-                    <h4 className="text-sm font-bold">Cash book</h4>
+                    <h4 className="text-sm font-bold">Cash Book</h4>
                     <p className="text-sm text-muted-foreground mt-0.5">
                       FRS 105 headings for micro-entity accounts. Receipts are positive; costs and drawings are payments out.
                     </p>
@@ -655,8 +655,8 @@ const ViewAccount = ({ isOpen, onClose, company, onProceedToFile }) => {
                           </SelectTrigger>
                           <SelectContent className="overflow-hidden p-0">
                             <SelectGroup className="p-1">
-                              <SelectItem value="in">In (receipt)</SelectItem>
-                              <SelectItem value="out">Out (payment)</SelectItem>
+                              <SelectItem value="in">In (Receipt)</SelectItem>
+                              <SelectItem value="out">Out (Payment)</SelectItem>
                             </SelectGroup>
                           </SelectContent>
                         </Select>
