@@ -44,7 +44,7 @@ def _forbidden(start_response, message="Insufficient permissions"):
 
 def _client_target(cid):
     return query_db(
-        "SELECT id, email, full_name, phone, role, wordpress_user_id, is_b2b, client_type "
+        "SELECT id, email, full_name, phone, role, wordpress_user_id, is_b2b, client_type, account_type "
         "FROM users WHERE id = ? LIMIT 1;", (cid,), one=True)
 
 
@@ -139,7 +139,7 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
 
         rows = query_db(f"""
             SELECT u.id, u.full_name, u.email, u.phone, u.country, u.address, u.role, u.status, u.created_at,
-                   u.client_type, u.is_b2b, u.b2b_id, u.wordpress_user_id, u.notification_email,
+                   u.client_type, u.is_b2b, u.b2b_id, u.wordpress_user_id, u.notification_email, u.account_type,
                    COALESCE(u.type_change_count, 0) as type_change_count,
                    COALESCE(u.type_locked, 0) as type_locked,
                    (SELECT COUNT(*) FROM companies WHERE user_id = u.id) as companies_count,

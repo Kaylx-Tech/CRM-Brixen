@@ -243,6 +243,40 @@ def create_formation_order(fields, files, website_url):
     return {'order_number': order_number, 'checkout_url': session['url']}
 
 
+def _open_portal_account(order):
+    """The new website has no customer login: a paying customer signs in to the CRM portal. The first paid order
+    makes the account a portal account and emails a link to choose a password (valid 7 days). Customers who can
+    already sign in to the portal get nothing extra (they have their password; "Forgot password" works)."""
+    import hashlib as _hashlib
+    import secrets
+    import urllib.parse
+    from services.portal_access import WEBSITE_PORTAL, uses_crm_portal
+    user = query_db("SELECT * FROM users WHERE id = ?;", (order['user_id'],), one=True)
+    if not user or user.get('role') != 'CLIENT' or uses_crm_portal(dict(user)):
+        return False
+    raw_token = secrets.token_urlsafe(32)
+    execute_db("""
+        UPDATE users SET account_type = ?, password_reset_token = ?, password_reset_expires = datetime('now', '+7 days')
+        WHERE id = ?;
+    """, (WEBSITE_PORTAL, _hashlib.sha256(raw_token.encode('utf-8')).hexdigest(), user['id']))
+    from routes.auth_routes import _frontend_base_url
+    from services.client_mail import compose_client_email
+    from services.email_service import send_email
+    link = f"{_frontend_base_url()}/reset-password?token={urllib.parse.quote(raw_token)}"
+    subject, text, html = compose_client_email(
+        subject='Your Brixen account is ready – choose your password',
+        headline='Your Brixen account is ready',
+        greeting=str(user.get('full_name') or 'there').split()[0],
+        message=f"Thank you for your order {order['order_number']}. You can follow your order, upload documents, "
+                "download invoices and message our team in your Brixen account. Choose a password to sign in.",
+        details=[('Order', order['order_number']), ('Service', order.get('service_name')), ('Sign-in email', user['email'])],
+        points=['This link works for 7 days. After that, use "Forgot password" on the sign-in page.'],
+        cta_label='Choose my password', cta_url=link, category='SECURITY')
+    send_email(user['email'], subject, html, text_content=text, category='SECURITY', user_id=user['id'],
+               order_id=order['id'], store_body=False)
+    return True
+
+
 def handle_paid_session(session):
     """Stripe Checkout for a website formation order is paid: place the order. Returns a note for the log."""
     meta = session.get('metadata') or {}
@@ -284,6 +318,11 @@ def handle_paid_session(session):
         report_problem('formation_company', exc, level='error', order_id=order['id'])
     # Paid invoice; creating it paid also emails the customer the receipt
     ensure_invoice_for_order(order['id'], paid=True)
+    try:
+        _open_portal_account(order)
+    except Exception as exc:
+        from services.error_tracking import report_problem
+        report_problem('website_account_email', exc, level='error', order_id=order['id'])
     who = order.get('owner_name') or order.get('full_name') or order.get('email')
     notify_staff('New website order (paid)', f"Order {order['order_number']} from {who}: {order['service_name']}, "
                  f"£{paid:.2f} paid by card.", 'order_update', '/admin/orders')
