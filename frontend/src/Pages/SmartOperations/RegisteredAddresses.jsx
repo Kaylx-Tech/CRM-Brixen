@@ -403,7 +403,7 @@ export default function RegisteredAddresses() {
                           {auto.canManage && (
                             <Button variant={r.payment_claim ? 'default' : 'ghost'} size="sm" className="h-7 gap-1 px-2.5 text-xs" onClick={() => markPaid(r)} disabled={sending === `paid-${r.id}`}>
                               {sending === `paid-${r.id}` ? <IconLoader2 className="size-3.5 animate-spin" /> : <IconCircleCheck className="size-3.5" />}
-                              Mark paid
+                              Mark Paid
                             </Button>
                           )}
                           <Button variant="outline" size="sm" className="h-7 gap-1 px-2.5 text-xs" onClick={() => askEmail(r)} disabled={sending === r.id}>
