@@ -200,26 +200,14 @@ const Companies = () => {
   ]
 
   // Months that have registered companies, newest first, with how many in each
-  // Year filter (Apple Photos style): the newest year with companies first; "none" = no incorporation date
-  const [pickedYear, setPickedYear] = useState('')
   const incMonth = ALL_MONTHS
   const monthCounts = companies.reduce((acc, c) => {
     const key = incorporationMonth(c.incDate)
     if (key) acc[key] = (acc[key] || 0) + 1
     return acc
   }, {})
-  const yearCounts = companies.reduce((acc, c) => {
-    const key = incorporationMonth(c.incDate)?.slice(0, 4) || 'none'
-    acc[key] = (acc[key] || 0) + 1
-    return acc
-  }, {})
-  const yearOptions = Object.keys(yearCounts).filter((y) => y !== 'none').sort().reverse()
-  if (yearCounts.none) yearOptions.push('none')
-  const incYear = yearOptions.includes(pickedYear) ? pickedYear : yearOptions[0] || ''
-  const yearOf = (c) => incorporationMonth(c.incDate)?.slice(0, 4) || 'none'
 
   const filteredCompanies = companies.filter((company) => {
-    if (incYear && yearOf(company) !== incYear) return false
     const term = searchTerm.toLowerCase()
     const matchesSearch =
       (company.name && company.name.toLowerCase().includes(term)) ||
@@ -242,7 +230,7 @@ const Companies = () => {
 
   // A new search, tab or page size starts again on page 1
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0])
-  const filterKey = `${activeTab}|${searchTerm}|${pageSize}|${incYear}`
+  const filterKey = `${activeTab}|${searchTerm}|${pageSize}`
   const [pageInfo, setPageInfo] = useState({ key: filterKey, page: 1 })
   const totalPages = Math.max(1, Math.ceil(filteredCompanies.length / pageSize))
   const currentPage = Math.min(pageInfo.key === filterKey ? pageInfo.page : 1, totalPages)
@@ -417,40 +405,8 @@ const Companies = () => {
           </TabsList>
         </Tabs>
 
-        {/* Month registered + search */}
+        {/* Search */}
         <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto shrink-0">
-          {/* Year filter: a slim segmented control; the picked year is a solid pill (like Add Company) that slides */}
-          {yearOptions.length > 0 && (
-            <div
-              role="tablist"
-              aria-label="Year registered"
-              className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full bg-muted/70 p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            >
-              {yearOptions.map((y) => {
-                const on = y === incYear
-                return (
-                  <button
-                    key={y}
-                    type="button"
-                    role="tab"
-                    aria-selected={on}
-                    onClick={() => setPickedYear(y)}
-                    className={`relative flex h-7 shrink-0 items-center gap-1 rounded-full px-3 text-[13px] font-medium transition-colors ${on ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                  >
-                    {on && (
-                      <m.span
-                        layoutId="company-year-pill"
-                        className="absolute inset-0 rounded-full bg-primary shadow-sm"
-                        transition={spring}
-                      />
-                    )}
-                    <span className="relative">{y === 'none' ? 'No date' : y}</span>
-                    <span className={`relative text-[11px] tabular-nums ${on ? 'text-primary-foreground/75' : 'text-muted-foreground/70'}`}>{yearCounts[y]}</span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
           <div className="relative w-full md:w-auto">
             <IconSearch className="absolute left-2.5 top-1.5 h-4 w-4 text-muted-foreground" />
             <Input
