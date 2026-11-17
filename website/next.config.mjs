@@ -1,4 +1,3 @@
-const PORTAL = process.env.NEXT_PUBLIC_PORTAL_URL || "https://admin.brixenconsultants.com"
 
 // WordPress pages that are not rebuilt: theme demos and old account pages. Each sends visitors (and Google) to the
 // right place with a permanent redirect, so old links keep working.
@@ -7,10 +6,16 @@ const DEMO_PAGES = [
   "/portfolio-grid/", "/portfolio-grid-2-columns/", "/portfolio-grid-3-columns/", "/portfolio-carousel/",
   "/wishlist/", "/shop/",
 ]
+// WordPress account pages -> My Account on this site (/my-account/ itself is a page now)
 const ACCOUNT_PAGES = [
-  "/login/", "/login-2/", "/login-3/", "/register/", "/registration/", "/my-account/", "/my-account-2/",
-  "/client-panel/", "/user/", "/lost-password/", "/password-reset/", "/logout/",
+  "/login/", "/login-2/", "/login-3/", "/register/", "/registration/", "/my-account-2/", "/client-panel/", "/user/",
+  "/logout/", "/customer-area/",
 ]
+// WooCommerce My Account sections -> the same tab
+const ACCOUNT_TABS = {
+  "orders": "orders", "view-order": "orders", "downloads": "files", "customer-messages": "files",
+  "edit-account": "account", "edit-address": "account", "payment-methods": "invoices",
+}
 
 // WooCommerce product pages (/product/<slug>/) -> the page that sells it now. Products with no page of their own
 // (add-ons and offers) go to the services list.
@@ -86,8 +91,15 @@ const nextConfig = {
       { source: "/checkout-2/:path*", destination: "/packages/", permanent: true },
       { source: "/checkout/:path*", destination: "/packages/", permanent: true },
       ...DEMO_PAGES.map((source) => ({ source, destination: "/", permanent: true })),
-      { source: "/customer-area/:path*", destination: `${PORTAL}/`, permanent: true },
-      ...ACCOUNT_PAGES.map((source) => ({ source, destination: `${PORTAL}/`, permanent: false })),
+      ...ACCOUNT_PAGES.map((source) => ({ source, destination: "/my-account/", permanent: true })),
+      { source: "/customer-area/:path*", destination: "/my-account/", permanent: true },
+      { source: "/client-panel/:path*", destination: "/my-account/", permanent: true },
+      { source: "/lost-password/", destination: "/my-account/lost-password/", permanent: true },
+      { source: "/password-reset/", destination: "/my-account/lost-password/", permanent: true },
+      { source: "/my-account/customer-logout/", destination: "/my-account/", permanent: false },
+      ...Object.entries(ACCOUNT_TABS).map(([wp, tab]) => ({
+        source: `/my-account/${wp}/:path*`, destination: `/my-account/?tab=${tab}`, permanent: true,
+      })),
     ]
   },
 }

@@ -244,36 +244,28 @@ def create_formation_order(fields, files, website_url):
 
 
 def _open_portal_account(order):
-    """The new website has no customer login: a paying customer signs in to the CRM portal. The first paid order
-    makes the account a portal account and emails a link to choose a password (valid 7 days). Customers who can
-    already sign in to the portal get nothing extra (they have their password; "Forgot password" works)."""
+    """A paying customer of the website gets "My Account" on the website (routes/website_account_routes.py): the
+    first paid order marks the account (account_type 'Website Portal') and emails a link to choose a password
+    (valid 7 days). Skipped for B2B / Business customers (CRM portal), customers already marked, and old WordPress
+    customers who sign in with their old password or already chose a new one."""
     import hashlib as _hashlib
     import secrets
     import urllib.parse
-    from services.portal_access import WEBSITE_PORTAL, uses_crm_portal
+    from services.portal_access import WEBSITE_PORTAL, uses_crm_portal, is_website_portal_client
     user = query_db("SELECT * FROM users WHERE id = ?;", (order['user_id'],), one=True)
-    if not user or user.get('role') != 'CLIENT' or uses_crm_portal(dict(user)):
+    if not user or user.get('role') != 'CLIENT':
+        return False
+    user = dict(user)
+    if uses_crm_portal(user) or is_website_portal_client(user) or str(user.get('wordpress_password_hash') or ''):
         return False
     raw_token = secrets.token_urlsafe(32)
     execute_db("""
         UPDATE users SET account_type = ?, password_reset_token = ?, password_reset_expires = datetime('now', '+7 days')
         WHERE id = ?;
     """, (WEBSITE_PORTAL, _hashlib.sha256(raw_token.encode('utf-8')).hexdigest(), user['id']))
-    from routes.auth_routes import _frontend_base_url
-    from services.client_mail import compose_client_email
-    from services.email_service import send_email
-    link = f"{_frontend_base_url()}/reset-password?token={urllib.parse.quote(raw_token)}"
-    subject, text, html = compose_client_email(
-        subject='Your Brixen account is ready – choose your password',
-        headline='Your Brixen account is ready',
-        greeting=str(user.get('full_name') or 'there').split()[0],
-        message=f"Thank you for your order {order['order_number']}. You can follow your order, upload documents, "
-                "download invoices and message our team in your Brixen account. Choose a password to sign in.",
-        details=[('Order', order['order_number']), ('Service', order.get('service_name')), ('Sign-in email', user['email'])],
-        points=['This link works for 7 days. After that, use "Forgot password" on the sign-in page.'],
-        cta_label='Choose my password', cta_url=link, category='SECURITY')
-    send_email(user['email'], subject, html, text_content=text, category='SECURITY', user_id=user['id'],
-               order_id=order['id'], store_body=False)
+    from routes.website_account_routes import WEBSITE_URL, send_password_email
+    link = f"{WEBSITE_URL}/my-account/reset-password/?token={urllib.parse.quote(raw_token)}"
+    send_password_email(user, link, reset=False, order=order, hours=7 * 24)
     return True
 
 

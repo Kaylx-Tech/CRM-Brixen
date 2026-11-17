@@ -25,7 +25,7 @@ export default function RenewalsPage() {
             <div className="rounded-3xl bg-brand-navy p-7 text-white">
               <h2 className="text-xl font-bold">Renew in your account</h2>
               <p className="mt-2 text-sm text-white/80">Log in to My Account to see your active and expired services and renew them with a click.</p>
-              <a href={`${SITE.portalUrl}/`} className="mt-5 flex justify-center rounded-md bg-linear-to-br from-brand-blue to-brand-navy px-5 py-3 font-semibold ring-1 ring-white/20 hover:brightness-110">
+              <a href="/my-account/?tab=orders" className="mt-5 flex justify-center rounded-md bg-linear-to-br from-brand-blue to-brand-navy px-5 py-3 font-semibold ring-1 ring-white/20 hover:brightness-110">
                 Go to My Account
               </a>
             </div>

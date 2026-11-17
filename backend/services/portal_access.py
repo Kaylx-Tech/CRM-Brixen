@@ -1,17 +1,16 @@
 """Who may sign in to the CRM portal (app.py client_can_use_crm_portal).
 
-The team always. Customers: B2B and Business accounts, and customers who paid for an order on the new website
-(Next.js, website/ in this repo; marked account_type = 'Website Portal' when the payment comes in, because that
-site has no customer login of its own). Other individual customers sign in on the WordPress website; the CRM sends
-them there instead. When WordPress is switched off, turn on the setting customer_portal_for_all (or env
-CUSTOMER_PORTAL_FOR_ALL=1) so every customer signs in to the CRM portal. An admin who switched into a customer
-account (impersonation) can always see it.
+The team always. Customers: B2B and Business accounts only. Individual (retail) customers sign in to "My Account"
+on the Brixen website (Next.js, website/ in this repo; routes/website_account_routes.py), never the CRM portal; the
+CRM sends them there. account_type = 'Website Portal' marks a customer whose website account was opened by a paid
+website order. The setting customer_portal_for_all (or env CUSTOMER_PORTAL_FOR_ALL=1) would let every customer into
+the CRM portal; leave it off. An admin who switched into a customer account (impersonation) can always see it.
 """
 from services.wordpress_service import wordpress_base_url, website_customer_login_url
 
 STAFF_ROLES = ('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF')
 WEBSITE_ONLY_MESSAGE = "This is a website customer account. Please sign in on the Brixen website."
-WEBSITE_PORTAL = 'Website Portal'  # users.account_type of customers who ordered on the new website
+WEBSITE_PORTAL = 'Website Portal'  # users.account_type: website account opened by a paid website order
 
 
 def is_b2b_client(user):
@@ -36,10 +35,9 @@ def portal_for_all_customers():
 
 
 def uses_crm_portal(user):
-    """B2B and Business customers sign in to the CRM client portal (with the default password at first), and
-    customers of the new website (or every customer, once WordPress is off)."""
-    return is_b2b_client(user) or is_business_client(user) or is_website_portal_client(user) \
-        or (bool(user) and portal_for_all_customers())
+    """B2B and Business customers sign in to the CRM client portal (with the default password at first); everyone
+    else signs in on the website (unless customer_portal_for_all is switched on)."""
+    return is_b2b_client(user) or is_business_client(user) or (bool(user) and portal_for_all_customers())
 
 
 def client_can_use_crm_portal(user, *, impersonated=False):

@@ -460,6 +460,19 @@ def ensure_schema():
         conn.execute("ALTER TABLE users ADD COLUMN is_b2b INTEGER NOT NULL DEFAULT 0")
     if 'account_type' not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN account_type TEXT DEFAULT 'Normal Client'")
+    # My Account on the website: its own sign-in, apart from the CRM's user_sessions (website_account_routes.py)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS website_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            token_hash TEXT UNIQUE NOT NULL,
+            user_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_activity_at TIMESTAMP,
+            expires_at TIMESTAMP NOT NULL,
+            revoked_at TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
     if 'wordpress_password_hash' not in user_cols:
         # The old website's password (see verify_wordpress_password); cleared once the CRM has its own
         conn.execute("ALTER TABLE users ADD COLUMN wordpress_password_hash TEXT")

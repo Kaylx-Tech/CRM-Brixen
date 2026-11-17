@@ -1074,10 +1074,9 @@ export default function Settings() {
               <div className="mt-4 rounded-md border bg-muted/30 p-3">
                 <p className="text-sm font-medium">Old Website Logins</p>
                 <p className="mt-1 text-[12px] text-muted-foreground">
-                  Customers of the old WordPress website sign in to the client portal with the password they had there
-                  (it becomes their CRM password at their first sign-in). Choose the logins file made from the WordPress
-                  database. Staff, team and Business/B2B accounts are skipped; no CRM password is changed. Every
-                  customer must be allowed into the portal (CUSTOMER_PORTAL_FOR_ALL=1 on the API).
+                  Customers of the old WordPress website sign in to My Account on the website with the password they
+                  had there (it becomes their password at their first sign-in). Choose the logins file made from the
+                  WordPress database. Staff, team and Business/B2B accounts are skipped; no password is changed.
                 </p>
                 <label className="mt-3 inline-flex">
                   <input

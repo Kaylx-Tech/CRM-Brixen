@@ -21,6 +21,7 @@ from .client_portal_routes import handle_client_portal_routes
 from .email_log_routes import handle_email_log_routes
 from .ticket_routes import handle_ticket_routes
 from .website_routes import handle_website_routes
+from .website_account_routes import handle_website_account_routes
 from .smart_link_routes import handle_smart_link_routes
 from .id_verification_routes import handle_id_verification_routes
 from .kyc_partner_routes import handle_kyc_partner_routes
@@ -39,6 +40,11 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
     
     # KYC run on Finstap: the link and Brixen's record of the checks (routes/kyc_partner_routes.py)
     res = handle_kyc_partner_routes(environ, start_response, path, method, user, body, query)
+    if res is not None:
+        return res
+
+    # 0. My Account on the website (retail customers; its own sign-in, never the CRM portal)
+    res = handle_website_account_routes(environ, start_response, path, method, user, body, query)
     if res is not None:
         return res
 

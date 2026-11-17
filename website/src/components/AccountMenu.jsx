@@ -1,7 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { ACCOUNT_MENU } from "@/lib/site"
+import { useRouter } from "next/navigation"
+import { accountApi, forgetAccount, useAccount } from "@/lib/account"
+import { ACCOUNT_MENU, BUSINESS_PORTAL, SIGN_IN_ICON, SIGN_OUT_ICON } from "@/lib/site"
 import { useCart } from "@/lib/cart"
 
 function Icon({ d, className = "size-4" }) {
@@ -26,7 +28,7 @@ export function CartCount({ className = "" }) {
   )
 }
 
-/** One row of the menu: the portal pages open the CRM client portal, "My Cart" stays on the website. */
+/** One row of the menu. My Account pages load as a page (they read ?tab= when they open); the cart is a link. */
 function Row({ label, href, icon, onClick }) {
   const inner = (
     <>
@@ -38,7 +40,14 @@ function Row({ label, href, icon, onClick }) {
     </>
   )
   const cls = "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-brand-mist hover:text-brand-blue"
-  return href.startsWith("/") ? (
+  if (typeof onClick === "function" && !href) {
+    return (
+      <button type="button" onClick={onClick} className={`${cls} w-full text-left`}>
+        {inner}
+      </button>
+    )
+  }
+  return href === "/cart/" ? (
     <Link href={href} onClick={onClick} className={cls}>
       {inner}
     </Link>
@@ -49,11 +58,34 @@ function Row({ label, href, icon, onClick }) {
   )
 }
 
+/** The last rows: sign in (or out), and the portal for Business / B2B clients. */
+function SessionRows({ onClick }) {
+  const account = useAccount()
+  const router = useRouter()
+  async function logOut() {
+    await accountApi("/logout", { method: "POST" })
+    forgetAccount()
+    router.push("/my-account/")
+  }
+  return (
+    <>
+      {account ? (
+        <Row label="Log out" icon={SIGN_OUT_ICON} onClick={logOut} />
+      ) : (
+        <Row label="Log in / Forgot password" href="/my-account/" icon={SIGN_IN_ICON} onClick={onClick} />
+      )}
+      <a href={BUSINESS_PORTAL} className="mt-1 block border-t border-slate-100 px-3 pb-1 pt-2.5 text-xs font-semibold text-brand-slate hover:text-brand-blue">
+        Business / B2B client portal →
+      </a>
+    </>
+  )
+}
+
 /** "My Account" in the top strip with its dropdown (as WordPress: account home, orders, files, account, log out). */
 export default function AccountMenu() {
   return (
     <div className="group relative">
-      <a href={ACCOUNT_MENU[0][1]} className="flex items-center gap-1.5 opacity-90 hover:opacity-100">
+      <a href="/my-account/" className="flex items-center gap-1.5 opacity-90 hover:opacity-100">
         <Icon d={USER_ICON} className="size-3.5" />
         My Account
         <CartCount className="!min-w-4 !px-1 !text-[10px] !leading-4" />
@@ -66,6 +98,7 @@ export default function AccountMenu() {
           {ACCOUNT_MENU.map(([label, href, icon]) => (
             <Row key={label} label={label} href={href} icon={icon} />
           ))}
+          <SessionRows />
         </div>
       </div>
     </div>
@@ -79,6 +112,7 @@ export function AccountLinks({ onClick }) {
       {ACCOUNT_MENU.map(([label, href, icon]) => (
         <Row key={label} label={label} href={href} icon={icon} onClick={onClick} />
       ))}
+      <SessionRows onClick={onClick} />
     </div>
   )
 }

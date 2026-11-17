@@ -44,7 +44,7 @@ export default function OrderCompletePage() {
           ))}
         </ol>
         <div className="mt-10 flex flex-wrap justify-center gap-3">
-          <a href={`${SITE.portalUrl}/`} className="rounded-md bg-linear-to-br from-brand-navy from-20% to-brand-blue px-6 py-3.5 font-semibold text-white hover:brightness-110">
+          <a href="/my-account/" className="rounded-md bg-linear-to-br from-brand-navy from-20% to-brand-blue px-6 py-3.5 font-semibold text-white hover:brightness-110">
             Go to My Account
           </a>
           <Link href="/" className="rounded-md border-2 border-brand-blue px-6 py-3 font-semibold text-brand-blue hover:bg-brand-blue hover:text-white">

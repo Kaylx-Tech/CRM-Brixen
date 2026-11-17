@@ -7,11 +7,11 @@ per website user: wordpress_user_id, email, name, phone, roles, password_hash). 
     and the WordPress id is filled in when missing;
   * not in the CRM yet: added as a customer (CLIENT, no CRM password of its own) with that hash.
 
-At sign-in (routes/auth_routes.py) a customer whose CRM password does not match is checked against that hash; when it
+At sign-in (My Account on the website, routes/website_account_routes.py; also routes/auth_routes.py) a customer whose CRM password does not match is checked against that hash; when it
 matches, the password becomes their CRM password and the old hash is marked 'used'. Setting a new password marks it too.
 
 Skipped: website staff (administrator, shop manager, editor, author), team accounts in the CRM, and customers who
-already sign in to the CRM portal with their own password (B2B, Business, new-website customers). Nothing is deleted
+already have their own password (B2B, Business, new-website customers). Nothing is deleted
 and no CRM password is changed. Running it again only refreshes the old hashes of customers who have not signed in
 with them yet.
 """

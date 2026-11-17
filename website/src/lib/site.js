@@ -110,17 +110,20 @@ export const TOP_LINKS = [
   ["FAQ", "/faqs/"],
 ]
 
-// "My Account" dropdown (as on WordPress: account home, orders, files, account details), plus the cart. The account
-// pages are the CRM client portal; someone not signed in is asked to sign in first. [label, link, icon path]
+// "My Account" dropdown (as on WordPress: account home, orders, files, account details), plus the cart. The pages
+// are My Account on this website (/my-account/, for individual customers); B2B and Business clients use the CRM
+// client portal (BUSINESS_PORTAL). [label, link, icon path]
 export const ACCOUNT_MENU = [
-  ["Dashboard", `${SITE.portalUrl}/portal/dashboard`, "M4 13h6V4H4zM14 20h6v-9h-6zM14 4v3h6V4zM4 20h6v-3H4z"],
-  ["My Orders", `${SITE.portalUrl}/portal/orders`, "M6 7h12l-1 13H7L6 7Zm3 0a3 3 0 0 1 6 0"],
-  ["Invoices & Payments", `${SITE.portalUrl}/portal/invoices`, "M7 3h10v18l-2.5-1.5L12 21l-2.5-1.5L7 21V3Zm3 5h4m-4 4h4"],
-  ["Messages & Files", `${SITE.portalUrl}/portal/documents`, "M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z"],
-  ["Account Details", `${SITE.portalUrl}/portal/profile`, "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0"],
+  ["Dashboard", "/my-account/", "M4 13h6V4H4zM14 20h6v-9h-6zM14 4v3h6V4zM4 20h6v-3H4z"],
+  ["My Orders", "/my-account/?tab=orders", "M6 7h12l-1 13H7L6 7Zm3 0a3 3 0 0 1 6 0"],
+  ["Invoices & Payments", "/my-account/?tab=invoices", "M7 3h10v18l-2.5-1.5L12 21l-2.5-1.5L7 21V3Zm3 5h4m-4 4h4"],
+  ["Messages & Files", "/my-account/?tab=files", "M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z"],
+  ["Account Details", "/my-account/?tab=account", "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0"],
   ["My Cart", "/cart/", "M3 4h2l2.4 11h10.2L20 8H6.2M10 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm7 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"],
-  ["Log in / Forgot password", `${SITE.portalUrl}/login`, "M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 16l4-4-4-4M14 12H4"],
 ]
+export const SIGN_IN_ICON = "M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 16l4-4-4-4M14 12H4"
+export const SIGN_OUT_ICON = "M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M14 16l4-4-4-4M18 12H8"
+export const BUSINESS_PORTAL = `${SITE.portalUrl}/login`
 
 export const NAV = [
   { label: "Home", href: "/" },
