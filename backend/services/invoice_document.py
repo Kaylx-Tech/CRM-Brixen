@@ -19,6 +19,25 @@ from services.invoice_mail import INVOICE_BANK_GBP, INVOICE_BANK_PKR
 from services.portal_compat import brand_settings
 
 LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', 'img', 'brixen-logo.png')
+# The company letterhead ("brixen letterhead 1.pdf") drawn on every invoice page: pictures without text in
+# static/img/letterhead/, their sizes in letterhead points (LH), drawn at LH_SCALE mm per point
+LETTERHEAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', 'img', 'letterhead')
+LH = {'top_w': 186.1, 'top_h': 93.4, 'bottom_w': 293.6, 'bottom_h': 154.9, 'logo_w': 103.4, 'map_w': 246.75}
+LH_SCALE = 0.4
+CONTENT_BOTTOM = 238  # mm: the invoice text ends above the bottom waves
+LETTERHEAD_OFFICE_ADDRESS = '4A R Block Rd, Block R Phase 2 Johar Town, Lahore, 54000, Pakistan'
+
+
+def _office_address(brand):
+    """The office address at the bottom of the letterhead (Settings office_address, else the letterhead's)."""
+    text = str((brand or {}).get('office_address') or '').strip()
+    if not text:
+        try:
+            from services.settings_service import get_setting
+            text = (get_setting('office_address') or '').strip()
+        except Exception:
+            text = ''
+    return text or LETTERHEAD_OFFICE_ADDRESS
 
 # Registered company details printed on every invoice (app.py brand_settings)
 COMPANY_DETAILS = {
@@ -300,48 +319,66 @@ def _render_pdf(payload, s=1.0):
         pdf.set_xy(x, y + 0.2)
         pdf.cell(w, h - 0.4, text, align='C')
 
-    contact = ' · '.join(filter(None, [brand.get('support_email') or 'contact@brixenconsultants.com',
-                                       _phone_display(brand)]))
+    office = _office_address(brand)
+    website = re.sub(r'^https?://', '', str(brand.get('website') or 'https://brixenconsultants.com')).rstrip('/')
+
+    def art(name, **kw):
+        path = os.path.join(LETTERHEAD_DIR, name)
+        if os.path.exists(path):
+            try:
+                pdf.image(path, **kw)
+            except Exception:
+                pass
 
     class InvoicePDF(FPDF):
-        def footer(self):
-            self.set_y(-16)
-            self.set_font('Helvetica', '', 8)
-            self.set_text_color(*muted)
-            self.cell(0, 4, latin(f"Thank you for your business. Questions? {contact}"), align='C',
-                      new_x='LMARGIN', new_y='NEXT')
-            self.cell(0, 4, latin(' · '.join(filter(None, [
-                brand.get('legal_name', ''), f"Company No {brand.get('company_number', '')}",
-                f"ICO {brand.get('ico_number', '')}"]))), align='C')
+        # The letterhead on every page: corner waves, contact lines, logo and the faint world map
+        def header(self):
+            m = LH_SCALE
+            art('map.png', x=(210 - LH['map_w'] * m * 1.25) / 2, y=112, w=LH['map_w'] * m * 1.25)
+            art('top-right.png', x=210 - LH['top_w'] * m, y=0, w=LH['top_w'] * m)
+            logo_w = LH['logo_w'] * m
+            art('logo.png', x=R - logo_w, y=LH['top_h'] * m - 1, w=logo_w)
+            y0 = LH['top_h'] * m - 1.5
+            for icon, text in (('web', website), ('phone', _phone_display(brand)),
+                               ('mail', brand.get('support_email') or 'contact@brixenconsultants.com')):
+                art(f'icon-{icon}.png', x=L, y=y0 + 0.6, w=3.4)
+                self.set_xy(L + 5, y0)
+                self.set_font('Helvetica', 'B', 8.5)
+                self.set_text_color(*lh_navy)
+                self.cell(80, 4.6, latin(text))
+                y0 += 5.2
 
+        # The letterhead's bottom: waves on the left, the office address and the company details on the right
+        def footer(self):
+            m = LH_SCALE
+            art('bottom-left.png', x=0, y=297 - LH['bottom_h'] * m, w=LH['bottom_w'] * m)
+            x, w = 112, R - 112
+            self.set_xy(x, 297 - 27)
+            self.set_font('Helvetica', 'B', 8)
+            self.set_text_color(*ink)
+            self.cell(24, 4, 'Office Address:')
+            self.set_font('Helvetica', '', 8)
+            self.set_xy(x + 23, 297 - 27)
+            self.multi_cell(w - 23, 4, latin(office), align='L')
+            self.set_xy(x, self.get_y() + 1.5)
+            self.set_font('Helvetica', '', 6.8)
+            self.set_text_color(*muted)
+            self.multi_cell(w, 3.3, latin(' · '.join(filter(None, [
+                brand.get('legal_name', ''), f"Company No {brand.get('company_number', '')}",
+                f"ICO {brand.get('ico_number', '')}",
+                f"Registered Office: {brand.get('registered_office', '')}"]))), align='L')
+
+    lh_navy = (0, 12, 61)
     pdf = InvoicePDF(orientation='P', unit='mm', format='A4')
-    pdf.set_auto_page_break(auto=True, margin=20)
-    pdf.add_page()
+    # Text stays above the bottom waves
+    pdf.set_auto_page_break(auto=True, margin=297 - CONTENT_BOTTOM)
     pdf.set_margins(L, 18, 210 - R)
+    pdf.add_page()
     pdf.set_title(latin(f"Invoice {invoice.get('invoice_number') or ''}"))
 
-    # ── Logo and who it is from ──────────────────────────────────────────────────────────────────
-    top = 18
-    if os.path.exists(LOGO_PATH):
-        try:
-            pdf.image(LOGO_PATH, x=L, y=top, w=40 if s >= 0.8 else 34)
-        except Exception:
-            pass
-    pdf.set_xy(R - 80, top)
-    pdf.set_font('Helvetica', 'B', 9)
-    pdf.set_text_color(*ink)
-    pdf.cell(80, 4.4, latin(brand.get('legal_name', '')), align='R', new_x='LEFT', new_y='NEXT')
-    pdf.set_font('Helvetica', '', 8.5)
-    pdf.set_text_color(*muted)
-    pdf.set_x(R - 80)
-    pdf.multi_cell(80, 4.2, latin('\n'.join(filter(None, [
-        brand.get('registered_office', ''),
-        brand.get('support_email') or 'contact@brixenconsultants.com',
-        _phone_display(brand),
-    ]))), align='R')
-
-    # ── Title, amount and status ─────────────────────────────────────────────────────────────────
-    y = max(pdf.get_y(), top + 22) + 10 * s
+    # ── Title, amount and status (under the letterhead's contact lines and logo) ────────────────
+    top = LH['top_h'] * LH_SCALE + 14
+    y = top + 6 * s
     pdf.set_xy(L, y)
     pdf.set_font('Helvetica', 'B', 24 if s >= 0.8 else 20)
     pdf.set_text_color(*ink)
@@ -455,6 +492,8 @@ def _render_pdf(payload, s=1.0):
     fx = payload.get('pakistan_fx') or {}
     # Height from what is inside: title and two bank rows, then the pay button and the Pakistan note
     box_h = 37 + (11 if gbp.get('pay_url') else 0) + (16 if fx.get('math') else 0)
+    if box_y + box_h > CONTENT_BOTTOM:  # would run into the letterhead's bottom waves: draw more compactly
+        return bytes(pdf.output()), 2
     pdf.set_fill_color(*panel)
     _round_rect(pdf, L, box_y, W, box_h, 4)
     pdf.set_xy(L + 6, box_y + 5)

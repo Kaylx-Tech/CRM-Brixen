@@ -561,21 +561,87 @@ def email_html_for_preview(html):
     return html.replace(marker, f'data:image/png;base64,{data}')
 
 
-def email_brand_header_html(brand, headline):
-    """Hero row: the logo (or the company name when there is none) above the email's headline."""
+# Letterhead (the company's printed letterhead, "brixen letterhead 1.pdf"): navy and blue waves in the top-right
+# and bottom-left corners, the website / phone / email on the left and the logo on the right, a faint world map
+# behind the text and the office address at the bottom. The pictures are in frontend/public/email/letterhead-*.png
+# (no text in them); every word comes from Settings, so it stays correct when details change.
+LETTERHEAD_NAVY = '#000c3d'
+LETTERHEAD_OFFICE_ADDRESS = '4A R Block Rd, Block R Phase 2 Johar Town, Lahore, 54000, Pakistan'
+
+
+def _img(filename, width, alt='', style=''):
+    return (f'<img src="{html_escape(hosted_email_image_url(filename))}" width="{width}" alt="{html_escape(alt)}" '
+            f'style="display:block;width:100%;max-width:{width}px;height:auto;border:0;outline:none;'
+            f'text-decoration:none;{style}">')
+
+
+def email_letterhead_top_html(brand):
+    """The letterhead's top: the corner waves, then the contact lines (left) and the logo (right)."""
+    c = brand_contact_fields(brand)
     name = (brand or {}).get('company_name') or 'Brixen Consultants'
-    src = email_logo_src(brand)
-    if src:
-        top = (f'<img src="{html_escape(src)}" alt="{html_escape(name)}" height="36" '
-               'style="display:block;margin:0 auto;height:36px;width:auto;max-width:200px;border:0;outline:none;'
-               'text-decoration:none;">')
-    else:
-        top = (f'<p style="margin:0;font-size:17px;letter-spacing:-0.01em;color:#003971;'
-               f'font-weight:700;">{html_escape(name)}</p>')
+    lines = [('web', c['website_label'], c['website']), ('phone', c['phone'], f"tel:+{c['phone_digits']}"),
+             ('mail', c['email'], f"mailto:{c['email']}")]
+    rows = ''.join(
+        f'<tr><td width="16" style="padding:3px 8px 3px 0;vertical-align:middle;">'
+        f'<img src="{html_escape(hosted_email_image_url(f"letterhead-icon-{icon}.png"))}" width="13" height="13" alt="" '
+        f'style="display:block;width:13px;height:13px;border:0;"></td>'
+        f'<td class="lh-contact" style="padding:3px 0;vertical-align:middle;font-family:{EMAIL_FONT_STACK};font-size:12px;line-height:1.3;'
+        f'font-weight:600;"><a href="{html_escape(href)}" style="color:{LETTERHEAD_NAVY};text-decoration:none;">'
+        f'{html_escape(text)}</a></td></tr>'
+        for icon, text, href in lines if text)
     return (
-        f'<tr><td align="center" style="padding:36px 36px 12px;background:#ffffff;text-align:center;">{top}'
-        f'<h1 style="margin:{16 if src else 8}px 0 0;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-0.02em;color:#1d1d1f;">'
-        f'{html_escape(headline)}</h1></td></tr>'
+        f'<tr><td style="padding:0;line-height:0;font-size:0;">{_img("letterhead-top.png", 600)}</td></tr>'
+        f'<tr><td style="padding:0 0 4px;">'
+        f'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>'
+        f'<td class="lh-left" style="padding:0 0 0 36px;vertical-align:middle;">'
+        f'<table role="presentation" cellspacing="0" cellpadding="0" border="0">{rows}</table></td>'
+        f'<td class="lh-right" width="35%" style="width:35%;padding:0 50px 0 12px;vertical-align:middle;" align="right">'
+        f'{_img("letterhead-logo.png", 156, name, "margin-left:auto;")}</td>'
+        f'</tr></table></td></tr>'
+    )
+
+
+def email_letterhead_footer_html(brand=None):
+    """The letterhead's bottom: waves on the left, the office address (and the registered company details) on
+    the right."""
+    if brand is None:
+        try:
+            from services.portal_compat import brand_settings
+            brand = brand_settings()
+        except Exception:
+            brand = {}
+    try:
+        from services.invoice_document import COMPANY_DETAILS as reg, _office_address
+        office = _office_address(brand)
+    except Exception:
+        reg, office = {}, LETTERHEAD_OFFICE_ADDRESS
+    legal = ' · '.join(filter(None, [
+        reg.get('legal_name'), f"Company No {reg['company_number']}" if reg.get('company_number') else '',
+        f"Registered Office: {reg['registered_office']}" if reg.get('registered_office') else '']))
+    legal_html = (f'<p style="margin:8px 0 0;font-family:{EMAIL_FONT_STACK};font-size:10px;line-height:1.45;'
+                  f'color:#6e6e73;">{html_escape(legal)}</p>') if legal else ''
+    return (
+        f'<tr><td style="padding:8px 0 0;">'
+        f'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>'
+        f'<td width="50%" style="width:50%;padding:0;vertical-align:bottom;line-height:0;font-size:0;">'
+        f'{_img("letterhead-foot-left.png", 302)}</td>'
+        f'<td style="padding:0;vertical-align:bottom;">'
+        f'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">'
+        f'<tr><td style="padding:0 28px 10px 14px;vertical-align:bottom;">'
+        f'<p style="margin:0;font-family:{EMAIL_FONT_STACK};font-size:12px;line-height:1.45;color:#1d1d1f;">'
+        f'<strong style="font-weight:700;">Office Address:</strong> {html_escape(office)}</p>{legal_html}</td></tr>'
+        f'<tr><td style="padding:0;line-height:0;font-size:0;">{_img("letterhead-foot-right.png", 298)}</td></tr>'
+        f'</table></td></tr></table></td></tr>'
+    )
+
+
+def email_brand_header_html(brand, headline):
+    """Hero: the letterhead top (waves, contact lines, logo), then the email's headline."""
+    return (
+        email_letterhead_top_html(brand)
+        + f'<tr><td class="email-pad" align="left" style="padding:22px 36px 14px;text-align:left;">'
+        f'<h1 style="margin:0;font-family:{EMAIL_FONT_STACK};font-size:26px;line-height:1.2;font-weight:700;'
+        f'letter-spacing:-0.02em;color:{LETTERHEAD_NAVY};">{html_escape(headline)}</h1></td></tr>'
     )
 
 
@@ -590,7 +656,19 @@ def build_transactional_shell_html(
     footer_html='',
     ivory='#f5f5f7',
 ):
-    closing = footer_html or email_slim_brand_bar_html()
+    # The letterhead's bottom (waves and office address) closes every email unless the caller gives its own
+    closing = footer_html or email_letterhead_footer_html()
+    # The faint world map of the letterhead behind the text (email apps that do not show background pictures
+    # simply show white)
+    map_url = html_escape(hosted_email_image_url('letterhead-map.png'))
+    # Phones: less side space, a smaller logo and contact lines (email apps without <style> keep the desktop look)
+    phone_css = (
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        '<style>@media only screen and (max-width:480px){'
+        '.email-pad{padding-left:20px!important;padding-right:20px!important}'
+        '.lh-left{padding-left:20px!important}.lh-right{padding-right:20px!important;width:30%!important}'
+        '.lh-contact{font-size:11px!important}}</style>')
+    head_html = head_html.replace('</head>', phone_css + '</head>') if '</head>' in head_html else head_html
     return f"""<!DOCTYPE html>
 <html lang="en">
 {head_html}
@@ -598,15 +676,11 @@ def build_transactional_shell_html(
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="{ivory}" style="background:{ivory};padding:40px 0;width:100%;">
     <tr>
       <td align="center" style="padding:0 20px;">
-        <table role="presentation" class="email-shell" width="600" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:600px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.05);">
+        <table role="presentation" class="email-shell" width="600" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:600px;background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.05);">
           {hero_html}
           <tr>
-            <td align="left" class="email-pad" style="padding:0 36px 20px;background:#ffffff;word-break:break-word;text-align:left;font-size:16px;line-height:1.55;color:#1d1d1f;">
+            <td align="left" class="email-pad" background="{map_url}" style="padding:0 36px 24px;background-color:#ffffff;background-image:url('{map_url}');background-repeat:no-repeat;background-position:center center;word-break:break-word;text-align:left;font-size:16px;line-height:1.55;color:#1d1d1f;">
               {body_inner_html}
-            </td>
-          </tr>
-          <tr>
-            <td align="left" class="email-pad" style="padding:12px 36px 36px;background:#ffffff;word-break:break-word;text-align:left;">
               {signature_html}
               {disclaimer_html}
             </td>
@@ -630,11 +704,8 @@ def email_signature_html(brand, *, align='left'):
         f'<p style="margin:0 0 8px;font-weight:400;">Kind regards,</p>'
         f'<p style="margin:0;font-weight:600;color:#1d1d1f;">The {html_escape(bname)} Team</p>'
         f'<p style="margin:0;">{html_escape(cname)}</p>'
-        f'<p style="margin:8px 0 0;font-size:13px;color:#6e6e73;">'
-        f'<a href="mailto:{html_escape(c["email"])}" style="color:#003971;text-decoration:none;">{html_escape(c["email"])}</a><br>'
-        f'{html_escape(c["phone"])}<br>'
-        f'<a href="{html_escape(c["website"])}" style="color:#003971;text-decoration:none;">{html_escape(c["website"])}</a>'
-        f'</p></div>'
+        # The website, phone and email are in the letterhead at the top of the email
+        f'</div>'
     )
 
 def email_disclaimer_html(note):
