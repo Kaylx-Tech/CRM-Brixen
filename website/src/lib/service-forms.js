@@ -76,7 +76,6 @@ const SHORT = [COMPANY_DETAILS, DETAILS]
 
 export const SERVICE_FORMS = {
   "kyc-verification": SHORT,
-  "business-website": SHORT,
   "vat-registration": SHORT,
   "business-mail-forwarding-address": SHORT,
   "confirmation-statement": FULL(

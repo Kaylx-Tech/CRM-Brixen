@@ -68,8 +68,6 @@ const LIST = [
   ["/apostilled-documents-service/", "Apostilled Documents Service", "company"],
   ["/apostilled-documents-service-details/", "Apostilled Documents Service Details", "company-details"],
   // Business services
-  ["/business-website/", "Business Website", "business"],
-  ["/business-website-service-details/", "Business Website Service Details", "business-details"],
   ["/vat-registration/", "VAT Registration", "business"],
   ["/vat-registration-service-details/", "VAT Registration Service Details", "business-details"],
   // Address services
@@ -155,7 +153,6 @@ export const NAV = [
       {
         title: "Business Services",
         items: [
-          ["Business Website", "/business-website/"],
           ["VAT Registration", "/vat-registration/"],
         ],
       },
@@ -200,7 +197,6 @@ export const FOOTER = [
   {
     title: "Business & Address",
     items: [
-      ["Business Website", "/business-website/"],
       ["VAT Registration", "/vat-registration/"],
       ["Registered Office Address", "/registered-office-address-service/"],
     ],

@@ -36,8 +36,8 @@ const PRODUCTS = {
   "certification-of-good-standing-service": "/certification-of-good-standing/",
   "apostilled-documents-service": "/apostilled-documents-service/",
   "apostilled-documents-service-2": "/apostilled-documents-service/",
-  "business-website": "/business-website/",
-  "business-email-and-website": "/business-website/",
+  "business-website": "/web-design-and-marketing/",
+  "business-email-and-website": "/web-design-and-marketing/",
   "vat-registration": "/vat-registration/",
   "vat-registration-2": "/vat-registration/",
   "registered-office-address": "/registered-office-address-service/",
@@ -82,6 +82,9 @@ const nextConfig = {
       { source: "/registered-office-address/", destination: "/registered-office-address-service/", permanent: true },
       { source: "/directors-service-address/", destination: "/directors-services-address/", permanent: true },
       { source: "/thankyou/", destination: "/order-complete/", permanent: true },
+      // The Business Website service was stopped (2026-11-17)
+      { source: "/business-website/", destination: "/web-design-and-marketing/", permanent: true },
+      { source: "/business-website-service-details/", destination: "/web-design-and-marketing/", permanent: true },
       ...Object.entries(PRODUCTS).map(([slug, destination]) => ({ source: `/product/${slug}/`, destination, permanent: true })),
       // Any other product, category or tag page, and WooCommerce's own cart / checkout pages
       { source: "/product/:path*", destination: "/services/", permanent: true },

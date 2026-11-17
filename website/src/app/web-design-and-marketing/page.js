@@ -76,12 +76,6 @@ export default function WebDesignPage() {
               </div>
             ))}
           </div>
-          <p className="mt-8 text-center text-sm text-brand-slate">
-            Want a simple 6-page business website with email instead?{" "}
-            <Link href="/business-website/" className="font-semibold text-brand-blue hover:underline">
-              See our Business Website service
-            </Link>
-          </p>
         </div>
       </section>
 

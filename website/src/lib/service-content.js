@@ -2,7 +2,6 @@
 import apostilledDocumentsService from "@/content/services/apostilled-documents-service.json"
 import businessBankAccounts from "@/content/services/business-bank-accounts.json"
 import businessMailForwardingAddress from "@/content/services/business-mail-forwarding-address.json"
-import businessWebsite from "@/content/services/business-website.json"
 import certificationOfGoodStanding from "@/content/services/certification-of-good-standing.json"
 import companyDissolution2 from "@/content/services/company-dissolution-2.json"
 import companyFormation from "@/content/services/company-formation.json"
@@ -29,7 +28,6 @@ export const SERVICE_CONTENT = {
   "apostilled-documents-service": apostilledDocumentsService,
   "business-bank-accounts": businessBankAccounts,
   "business-mail-forwarding-address": businessMailForwardingAddress,
-  "business-website": businessWebsite,
   "certification-of-good-standing": certificationOfGoodStanding,
   "company-dissolution-2": companyDissolution2,
   "company-formation": companyFormation,

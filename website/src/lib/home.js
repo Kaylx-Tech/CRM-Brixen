@@ -56,11 +56,11 @@ export const SERVICES = [
     href: "/business-bank-accounts/",
   },
   {
-    title: "Business Website",
-    price: "From £200",
-    text: "Get a professional website that helps your business grow online.",
-    points: ["Professional online presence", "Custom business websites", "Digital brand identity", "Website design solutions"],
-    href: "/business-website/",
+    title: "Confirmation Statement",
+    price: "From £100",
+    text: "We file your company's yearly confirmation statement with Companies House, on time.",
+    points: ["Annual filing done for you", "Avoid late filing problems", "Officers & shareholders checked", "Fast turnaround"],
+    href: "/confirmation-statement-service/",
   },
   {
     title: "VAT Registration",

@@ -19,7 +19,6 @@ export const SERVICE_PAGES = [
   // On WordPress this page is the order form itself (Companies House identity verification, ACSP)
   { path: "/companies-house-id-verification/", group: "company", name: "Companies House ID Verification", order: "companies-house-id-verification", details: "/companies-house-id-verification/", price: 20, formOnly: true, intro: "Verify your identity with Companies House through Brixen Consultants, a registered Authorised Corporate Service Provider (ACSP). Fill in the form, pay, and we guide you through the checks." },
   // Business services
-  { path: "/business-website/", content: "business-website", group: "business", name: "Business Website", order: "business-website", details: "/business-website-service-details/", price: 200 },
   { path: "/vat-registration/", content: "vat-registration", group: "business", name: "VAT Registration", order: "vat-registration", details: "/vat-registration-service-details/", price: 250 },
   // Address services
   { path: "/registered-office-address-service/", content: "registered-office-address-service", group: "address", name: "Registered Office Address", order: "registered-office-address", details: "/registered-office-address-details/", price: 70 },

@@ -473,6 +473,14 @@ def ensure_schema():
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     """)
+    # One-time data fixes, each run once (its name is kept in data_fixes)
+    conn.execute("CREATE TABLE IF NOT EXISTS data_fixes (name TEXT PRIMARY KEY, done_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+    if not conn.execute("SELECT 1 FROM data_fixes WHERE name = 'whole_pound_prices'").fetchone():
+        # 2026-11-17: service prices ending in .99 become whole pounds (49.99 -> 50); old orders and invoices keep
+        # what was charged. Later prices set by hand are left alone.
+        conn.execute("UPDATE services SET price = ROUND(price + 0.01, 2) "
+                     "WHERE CAST(ROUND(price * 100) AS INTEGER) % 100 = 99")
+        conn.execute("INSERT INTO data_fixes (name) VALUES ('whole_pound_prices')")
     if 'wordpress_password_hash' not in user_cols:
         # The old website's password (see verify_wordpress_password); cleared once the CRM has its own
         conn.execute("ALTER TABLE users ADD COLUMN wordpress_password_hash TEXT")
