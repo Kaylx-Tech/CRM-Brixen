@@ -562,11 +562,10 @@ def email_html_for_preview(html):
 
 
 # Letterhead (the company's printed letterhead, "brixen letterhead 1.pdf"): navy and blue waves in the top-right
-# and bottom-left corners, the website / phone / email on the left and the logo on the right, a faint world map
-# behind the text and the office address at the bottom. The pictures are in frontend/public/email/letterhead-*.png
-# (no text in them); every word comes from Settings, so it stays correct when details change.
+# and bottom-left corners, the logo at the top left, a faint world map behind the text, and the website / phone /
+# email with the company details at the bottom. The pictures are in frontend/public/email/letterhead-*.png (no
+# text in them).
 LETTERHEAD_NAVY = '#000c3d'
-LETTERHEAD_OFFICE_ADDRESS = '4A R Block Rd, Block R Phase 2 Johar Town, Lahore, 54000, Pakistan'
 
 
 def _img(filename, width, alt='', style=''):
@@ -576,34 +575,22 @@ def _img(filename, width, alt='', style=''):
 
 
 def email_letterhead_top_html(brand):
-    """The letterhead's top: the corner waves, then the contact lines (left) and the logo (right)."""
-    c = brand_contact_fields(brand)
+    """The letterhead's top: the logo on the left, the corner waves on the right."""
     name = (brand or {}).get('company_name') or 'Brixen Consultants'
-    lines = [('web', c['website_label'], c['website']), ('phone', c['phone'], f"tel:+{c['phone_digits']}"),
-             ('mail', c['email'], f"mailto:{c['email']}")]
-    rows = ''.join(
-        f'<tr><td width="16" style="padding:3px 8px 3px 0;vertical-align:middle;">'
-        f'<img src="{html_escape(hosted_email_image_url(f"letterhead-icon-{icon}.png"))}" width="13" height="13" alt="" '
-        f'style="display:block;width:13px;height:13px;border:0;"></td>'
-        f'<td class="lh-contact" style="padding:3px 0;vertical-align:middle;font-family:{EMAIL_FONT_STACK};font-size:12px;line-height:1.3;'
-        f'font-weight:600;"><a href="{html_escape(href)}" style="color:{LETTERHEAD_NAVY};text-decoration:none;">'
-        f'{html_escape(text)}</a></td></tr>'
-        for icon, text, href in lines if text)
     return (
-        f'<tr><td style="padding:0;line-height:0;font-size:0;">{_img("letterhead-top.png", 600)}</td></tr>'
-        f'<tr><td style="padding:0 0 4px;">'
+        f'<tr><td style="padding:0;">'
         f'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>'
-        f'<td class="lh-left" style="padding:0 0 0 36px;vertical-align:middle;">'
-        f'<table role="presentation" cellspacing="0" cellpadding="0" border="0">{rows}</table></td>'
-        f'<td class="lh-right" width="35%" style="width:35%;padding:0 50px 0 12px;vertical-align:middle;" align="right">'
-        f'{_img("letterhead-logo.png", 156, name, "margin-left:auto;")}</td>'
+        f'<td class="lh-left" style="padding:28px 12px 0 36px;vertical-align:middle;">'
+        f'{_img("letterhead-logo.png", 170, name)}</td>'
+        f'<td width="282" style="width:47%;padding:0;vertical-align:top;line-height:0;font-size:0;" align="right">'
+        f'{_img("letterhead-top-right.png", 282, "", "margin-left:auto;")}</td>'
         f'</tr></table></td></tr>'
     )
 
 
 def email_letterhead_footer_html(brand=None):
-    """The letterhead's bottom: waves on the left, the office address (and the registered company details) on
-    the right."""
+    """The letterhead's bottom: waves on the left; the website, phone and email and the registered company
+    details on the right."""
     if brand is None:
         try:
             from services.portal_compat import brand_settings
@@ -611,10 +598,21 @@ def email_letterhead_footer_html(brand=None):
         except Exception:
             brand = {}
     try:
-        from services.invoice_document import COMPANY_DETAILS as reg, _office_address
-        office = _office_address(brand)
+        from services.invoice_document import COMPANY_DETAILS as reg, LETTERHEAD_PHONE as phone
     except Exception:
-        reg, office = {}, LETTERHEAD_OFFICE_ADDRESS
+        reg, phone = {}, ''
+    c = brand_contact_fields(brand)
+    phone_digits = re.sub(r'\D', '', phone)
+    lines = [('web', c['website_label'], c['website']), ('phone', phone, f"tel:+{phone_digits}"),
+             ('mail', c['email'], f"mailto:{c['email']}")]
+    rows = ''.join(
+        f'<tr><td width="16" style="padding:2px 7px 2px 0;vertical-align:middle;">'
+        f'<img src="{html_escape(hosted_email_image_url(f"letterhead-icon-{icon}.png"))}" width="12" height="12" alt="" '
+        f'style="display:block;width:12px;height:12px;border:0;"></td>'
+        f'<td class="lh-contact" style="padding:2px 0;vertical-align:middle;font-family:{EMAIL_FONT_STACK};'
+        f'font-size:12px;line-height:1.3;font-weight:600;"><a href="{html_escape(href)}" '
+        f'style="color:{LETTERHEAD_NAVY};text-decoration:none;">{html_escape(text)}</a></td></tr>'
+        for icon, text, href in lines if text)
     legal = ' · '.join(filter(None, [
         reg.get('legal_name'), f"Company No {reg['company_number']}" if reg.get('company_number') else '',
         f"Registered Office: {reg['registered_office']}" if reg.get('registered_office') else '']))
@@ -627,16 +625,15 @@ def email_letterhead_footer_html(brand=None):
         f'{_img("letterhead-foot-left.png", 302)}</td>'
         f'<td style="padding:0;vertical-align:bottom;">'
         f'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">'
-        f'<tr><td style="padding:0 28px 10px 14px;vertical-align:bottom;">'
-        f'<p style="margin:0;font-family:{EMAIL_FONT_STACK};font-size:12px;line-height:1.45;color:#1d1d1f;">'
-        f'<strong style="font-weight:700;">Office Address:</strong> {html_escape(office)}</p>{legal_html}</td></tr>'
+        f'<tr><td style="padding:0 24px 10px 14px;vertical-align:bottom;">'
+        f'<table role="presentation" cellspacing="0" cellpadding="0" border="0">{rows}</table>{legal_html}</td></tr>'
         f'<tr><td style="padding:0;line-height:0;font-size:0;">{_img("letterhead-foot-right.png", 298)}</td></tr>'
         f'</table></td></tr></table></td></tr>'
     )
 
 
 def email_brand_header_html(brand, headline):
-    """Hero: the letterhead top (waves, contact lines, logo), then the email's headline."""
+    """Hero: the letterhead top (logo and waves), then the email's headline."""
     return (
         email_letterhead_top_html(brand)
         + f'<tr><td class="email-pad" align="left" style="padding:22px 36px 14px;text-align:left;">'
@@ -666,7 +663,7 @@ def build_transactional_shell_html(
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         '<style>@media only screen and (max-width:480px){'
         '.email-pad{padding-left:20px!important;padding-right:20px!important}'
-        '.lh-left{padding-left:20px!important}.lh-right{padding-right:20px!important;width:30%!important}'
+        '.lh-left{padding-left:20px!important}'
         '.lh-contact{font-size:11px!important}}</style>')
     head_html = head_html.replace('</head>', phone_css + '</head>') if '</head>' in head_html else head_html
     return f"""<!DOCTYPE html>

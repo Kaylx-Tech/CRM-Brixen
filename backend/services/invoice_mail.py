@@ -164,6 +164,21 @@ def _build_sections(invoice, order, *, include_bank):
 
     sections = [_section_html('Invoice', summary)]
     if include_bank:
+        # Pay by card (Stripe Checkout for what is due), above the bank details
+        card_url = None
+        try:
+            from services.invoice_card import pay_link
+            card_url = pay_link(invoice['id']) if invoice.get('id') else None
+        except Exception:
+            card_url = None
+        if card_url:
+            sections.append(
+                f'<p style="margin:20px 0 0;"><a href="{html_escape(card_url)}" '
+                'style="display:inline-block;padding:10px 22px;background:#003971;color:#ffffff;'
+                'text-decoration:none;border-radius:999px;font-size:14px;font-weight:600;line-height:1.3;">'
+                'Pay by Card</a></p>'
+                '<p style="margin:6px 0 0;font-size:12px;line-height:1.45;color:#6e6e73;">'
+                'Secure card payment by Stripe. Or pay by bank transfer below.</p>')
         gbp = INVOICE_BANK_GBP
         pkr = INVOICE_BANK_PKR
         sections.append(_section_html('Pay in GBP', [

@@ -301,7 +301,8 @@ def update_admin_invoice(invoice_id, data, *, actor=None):
     change = round(amount_paid - old_paid, 2)
     if abs(change) > 0.004:
         record_payment(invoice_id, change, pay_day, pay_method,
-                       note=None if change > 0 else 'Correction', actor=actor)
+                       note=(str(data.get('payment_note') or '').strip() or None) if change > 0 else 'Correction',
+                       actor=actor)
 
     execute_db(
         """

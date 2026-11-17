@@ -402,6 +402,12 @@ def handle_event(event):
         from services.website_orders import handle_paid_session
         return handle_paid_session(obj)
 
+    # An invoice paid by card from its "Pay by Card" link (services/invoice_card.py)
+    if kind in ('checkout.session.completed', 'checkout.session.async_payment_succeeded') \
+            and (obj.get('metadata') or {}).get('kind') == 'invoice_payment':
+        from services.invoice_card import handle_paid_session as invoice_paid
+        return invoice_paid(obj)
+
     # One renewal year paid by card now (pay_once): from the portal or the reminder email's card link
     if kind in ('checkout.session.completed', 'checkout.session.async_payment_succeeded') \
             and (obj.get('metadata') or {}).get('kind') == 'address_payment':

@@ -25,19 +25,8 @@ LETTERHEAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__
 LH = {'top_w': 186.1, 'top_h': 93.4, 'bottom_w': 293.6, 'bottom_h': 154.9, 'logo_w': 103.4, 'map_w': 246.75}
 LH_SCALE = 0.4
 CONTENT_BOTTOM = 238  # mm: the invoice text ends above the bottom waves
-LETTERHEAD_OFFICE_ADDRESS = '4A R Block Rd, Block R Phase 2 Johar Town, Lahore, 54000, Pakistan'
-
-
-def _office_address(brand):
-    """The office address at the bottom of the letterhead (Settings office_address, else the letterhead's)."""
-    text = str((brand or {}).get('office_address') or '').strip()
-    if not text:
-        try:
-            from services.settings_service import get_setting
-            text = (get_setting('office_address') or '').strip()
-        except Exception:
-            text = ''
-    return text or LETTERHEAD_OFFICE_ADDRESS
+# The UK number on the letterhead (emails and invoices)
+LETTERHEAD_PHONE = '+44 7490 359487'
 
 # Registered company details printed on every invoice (app.py brand_settings)
 COMPANY_DETAILS = {
@@ -203,6 +192,14 @@ def line_items(invoice):
     return _reconcile(items, charged)
 
 
+def _card_link(invoice_id):
+    try:
+        from services.invoice_card import pay_link
+        return pay_link(invoice_id)
+    except Exception:
+        return None
+
+
 def document_payload(invoice_id):
     invoice = load_invoice(invoice_id)
     if not invoice:
@@ -229,6 +226,8 @@ def document_payload(invoice_id):
         'part_paid': money['display_status'] == 'Partial Paid',
         'pakistan_fx': pakistan_fx_note(fx_pounds) if client_is_in_pakistan(invoice) else None,
         # Each payment with its day and method (part payments too), listed under the totals
+        # "Pay by Card" (Stripe Checkout) while something is due
+        'pay_url': _card_link(invoice_id),
         'payments': [{'date': format_uk_date(p.get('paid_on')), 'method': p.get('method') or '',
                       'amount': ('-' if float(p.get('amount') or 0) < 0 else '')
                                 + format_money(abs(float(p.get('amount') or 0)))}
@@ -319,8 +318,7 @@ def _render_pdf(payload, s=1.0):
         pdf.set_xy(x, y + 0.2)
         pdf.cell(w, h - 0.4, text, align='C')
 
-    office = _office_address(brand)
-    website = re.sub(r'^https?://', '', str(brand.get('website') or 'https://brixenconsultants.com')).rstrip('/')
+    website =re.sub(r'^https?://', '', str(brand.get('website') or 'https://brixenconsultants.com')).rstrip('/')
 
     def art(name, **kw):
         path = os.path.join(LETTERHEAD_DIR, name)
@@ -331,36 +329,29 @@ def _render_pdf(payload, s=1.0):
                 pass
 
     class InvoicePDF(FPDF):
-        # The letterhead on every page: corner waves, contact lines, logo and the faint world map
+        # The letterhead on every page: corner waves, the logo (top left) and the faint world map
         def header(self):
             m = LH_SCALE
             art('map.png', x=(210 - LH['map_w'] * m * 1.25) / 2, y=112, w=LH['map_w'] * m * 1.25)
             art('top-right.png', x=210 - LH['top_w'] * m, y=0, w=LH['top_w'] * m)
-            logo_w = LH['logo_w'] * m
-            art('logo.png', x=R - logo_w, y=LH['top_h'] * m - 1, w=logo_w)
-            y0 = LH['top_h'] * m - 1.5
-            for icon, text in (('web', website), ('phone', _phone_display(brand)),
-                               ('mail', brand.get('support_email') or 'contact@brixenconsultants.com')):
-                art(f'icon-{icon}.png', x=L, y=y0 + 0.6, w=3.4)
-                self.set_xy(L + 5, y0)
-                self.set_font('Helvetica', 'B', 8.5)
-                self.set_text_color(*lh_navy)
-                self.cell(80, 4.6, latin(text))
-                y0 += 5.2
+            art('logo.png', x=L, y=18, w=LH['logo_w'] * m * 1.1)
 
-        # The letterhead's bottom: waves on the left, the office address and the company details on the right
+        # The letterhead's bottom: waves on the left; the website, phone and email and the company details on
+        # the right
         def footer(self):
             m = LH_SCALE
             art('bottom-left.png', x=0, y=297 - LH['bottom_h'] * m, w=LH['bottom_w'] * m)
             x, w = 112, R - 112
-            self.set_xy(x, 297 - 27)
-            self.set_font('Helvetica', 'B', 8)
-            self.set_text_color(*ink)
-            self.cell(24, 4, 'Office Address:')
-            self.set_font('Helvetica', '', 8)
-            self.set_xy(x + 23, 297 - 27)
-            self.multi_cell(w - 23, 4, latin(office), align='L')
-            self.set_xy(x, self.get_y() + 1.5)
+            y0 = 297 - 34
+            for icon, text in (('web', website), ('phone', LETTERHEAD_PHONE),
+                               ('mail', brand.get('support_email') or 'contact@brixenconsultants.com')):
+                art(f'icon-{icon}.png', x=x, y=y0 + 0.6, w=3.2)
+                self.set_xy(x + 5, y0)
+                self.set_font('Helvetica', 'B', 8.5)
+                self.set_text_color(*lh_navy)
+                self.cell(w - 5, 4.4, latin(text))
+                y0 += 5
+            self.set_xy(x, y0 + 1.5)
             self.set_font('Helvetica', '', 6.8)
             self.set_text_color(*muted)
             self.multi_cell(w, 3.3, latin(' · '.join(filter(None, [
@@ -376,9 +367,8 @@ def _render_pdf(payload, s=1.0):
     pdf.add_page()
     pdf.set_title(latin(f"Invoice {invoice.get('invoice_number') or ''}"))
 
-    # ── Title, amount and status (under the letterhead's contact lines and logo) ────────────────
-    top = LH['top_h'] * LH_SCALE + 14
-    y = top + 6 * s
+    # ── Title, amount and status (under the letterhead's logo) ──────────────────────────────────
+    y = LH['top_h'] * LH_SCALE + 8 * s
     pdf.set_xy(L, y)
     pdf.set_font('Helvetica', 'B', 24 if s >= 0.8 else 20)
     pdf.set_text_color(*ink)
@@ -491,7 +481,8 @@ def _render_pdf(payload, s=1.0):
     box_y = pdf.get_y()
     fx = payload.get('pakistan_fx') or {}
     # Height from what is inside: title and two bank rows, then the pay button and the Pakistan note
-    box_h = 37 + (11 if gbp.get('pay_url') else 0) + (16 if fx.get('math') else 0)
+    pay_url = payload.get('pay_url') or gbp.get('pay_url')
+    box_h = 37 + (11 if pay_url else 0) + (16 if fx.get('math') else 0)
     if box_y + box_h > CONTENT_BOTTOM:  # would run into the letterhead's bottom waves: draw more compactly
         return bytes(pdf.output()), 2
     pdf.set_fill_color(*panel)
@@ -522,15 +513,15 @@ def _render_pdf(payload, s=1.0):
                        ('IBAN', pkr['iban'])), by)
     by += 11
     # "Pay now" pill linking to the card payment page (only when a payment link is set)
-    if gbp.get('pay_url'):
-        text = 'Pay now by card'
+    if pay_url:
+        text = 'Pay by Card'
         pdf.set_font('Helvetica', 'B', 9.5)
         pw, ph = pdf.get_string_width(text) + 12, 7.5
         pdf.set_fill_color(*navy)
         _round_rect(pdf, L + 6, by, pw, ph, ph / 2)
         pdf.set_text_color(255, 255, 255)
         pdf.set_xy(L + 6, by + 0.5)
-        pdf.cell(pw, ph - 1, text, align='C', link=gbp['pay_url'])
+        pdf.cell(pw, ph - 1, text, align='C', link=pay_url)
         by += ph + 3
     if fx.get('math'):
         pdf.set_xy(L + 6, by)

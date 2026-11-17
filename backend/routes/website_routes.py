@@ -257,7 +257,39 @@ def _address_card_payment(environ, start_response, token, done):
     return [b'']
 
 
+def _invoice_card_payment(start_response, token, done, cancelled):
+    """"Pay by Card" on an invoice (PDF or email): Stripe Checkout for what is due, then a thank-you page."""
+    from services import invoice_card
+    from services.address_billing import StripeError
+    invoice = invoice_card.invoice_for_link(token)
+    if not invoice:
+        return _plain_page(start_response, 'Link Not Found', 'This payment link is not valid. Please contact us.',
+                           '404 Not Found')
+    number = invoice.get('invoice_number') or 'your invoice'
+    if done and cancelled:
+        return _plain_page(start_response, 'Payment Not Made',
+                           f"You went back before paying invoice {number}. You can open the link from your invoice "
+                           "again to pay by card, or pay by bank transfer.")
+    if done:
+        return _plain_page(start_response, 'Thank You',
+                           f"Your card payment for invoice {number} was received. We will email you a receipt.")
+    try:
+        url = invoice_card.checkout_url(invoice, token)
+    except StripeError as exc:
+        return _plain_page(start_response, 'Card Payment Not Available',
+                           f"{exc} You can pay by bank transfer with the details on your invoice, or contact us.",
+                           '400 Bad Request')
+    start_response('302 Found', [('Location', url), ('Cache-Control', 'no-store'), ('Content-Length', '0')])
+    return [b'']
+
+
 def handle_website_routes(environ, start_response, path, method, user, body, query):
+    # An invoice paid by card from its "Pay by Card" link
+    inv = re.match(r'^/api/public/invoice-pay/([A-Za-z0-9_-]{16,64})(/done)?$', path)
+    if inv and method == 'GET':
+        cancelled = str(((query or {}).get('cancelled') or [''])[0]) == '1'
+        return _invoice_card_payment(start_response, inv.group(1), bool(inv.group(2)), cancelled)
+
     # Address renewal by card from the reminder email (website customers)
     pay = re.match(r'^/api/public/address-renewal/([A-Za-z0-9_-]{16,64})(/done|/paid)?$', path)
     if pay and pay.group(2) == '/paid' and method in ('GET', 'POST'):
