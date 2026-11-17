@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useState } from "react"
-import AccountMenu, { AccountLinks, CART_ICON, CartCount } from "@/components/AccountMenu"
+import AccountMenu, { CART_ICON, CartCount } from "@/components/AccountMenu"
 import { NAV, SITE, TOP_LINKS } from "@/lib/site"
 
 function Chevron({ open }) {
@@ -172,24 +172,9 @@ export default function SiteHeader() {
               </div>
             )
           })}
-          <div className="border-b border-slate-100">
-            <button
-              type="button"
-              onClick={() => setOpenGroup(openGroup === "account" ? null : "account")}
-              className="flex w-full items-center justify-between py-3 font-semibold text-slate-800"
-              aria-expanded={openGroup === "account"}
-            >
-              <span className="flex items-center gap-2">
-                My Account <CartCount />
-              </span>
-              <Chevron open={openGroup === "account"} />
-            </button>
-            {openGroup === "account" && (
-              <div className="pb-3">
-                <AccountLinks onClick={() => setMobileOpen(false)} />
-              </div>
-            )}
-          </div>
+          <Link href="/my-account/" onClick={() => setMobileOpen(false)} className="block border-b border-slate-100 py-3 font-semibold text-slate-800">
+            My Account
+          </Link>
           <Link href="/packages/" onClick={() => setMobileOpen(false)} className="mt-4 block rounded-full bg-brand-blue py-2.5 text-center text-sm font-semibold text-white">
             View Packages
           </Link>

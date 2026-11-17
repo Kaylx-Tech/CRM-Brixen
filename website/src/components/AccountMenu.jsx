@@ -1,9 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { accountApi, forgetAccount, useAccount } from "@/lib/account"
-import { ACCOUNT_MENU, BUSINESS_PORTAL, SIGN_IN_ICON, SIGN_OUT_ICON } from "@/lib/site"
 import { useCart } from "@/lib/cart"
 
 function Icon({ d, className = "size-4" }) {
@@ -17,7 +14,7 @@ function Icon({ d, className = "size-4" }) {
 export const USER_ICON = "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0"
 export const CART_ICON = "M3 4h2l2.4 11h10.2L20 8H6.2M10 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm7 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
 
-/** How many unfinished orders are in "My Cart" (shown as a small number). */
+/** How many unfinished orders are in "My Cart" (shown as a small number on the cart icon). */
 export function CartCount({ className = "" }) {
   const items = useCart()
   if (!items.length) return null
@@ -28,91 +25,12 @@ export function CartCount({ className = "" }) {
   )
 }
 
-/** One row of the menu. My Account pages load as a page (they read ?tab= when they open); the cart is a link. */
-function Row({ label, href, icon, onClick }) {
-  const inner = (
-    <>
-      <span className="flex size-8 items-center justify-center rounded-lg bg-brand-mist text-brand-blue">
-        <Icon d={icon} />
-      </span>
-      <span className="flex-1">{label}</span>
-      {href === "/cart/" && <CartCount />}
-    </>
-  )
-  const cls = "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-brand-mist hover:text-brand-blue"
-  if (typeof onClick === "function" && !href) {
-    return (
-      <button type="button" onClick={onClick} className={`${cls} w-full text-left`}>
-        {inner}
-      </button>
-    )
-  }
-  return href === "/cart/" ? (
-    <Link href={href} onClick={onClick} className={cls}>
-      {inner}
-    </Link>
-  ) : (
-    <a href={href} onClick={onClick} className={cls}>
-      {inner}
-    </a>
-  )
-}
-
-/** The last rows: sign in (or out), and the portal for Business / B2B clients. */
-function SessionRows({ onClick }) {
-  const account = useAccount()
-  const router = useRouter()
-  async function logOut() {
-    await accountApi("/logout", { method: "POST" })
-    forgetAccount()
-    router.push("/my-account/")
-  }
-  return (
-    <>
-      {account ? (
-        <Row label="Log out" icon={SIGN_OUT_ICON} onClick={logOut} />
-      ) : (
-        <Row label="Log in / Forgot password" href="/my-account/" icon={SIGN_IN_ICON} onClick={onClick} />
-      )}
-      <a href={BUSINESS_PORTAL} className="mt-1 block border-t border-slate-100 px-3 pb-1 pt-2.5 text-xs font-semibold text-brand-slate hover:text-brand-blue">
-        Business / B2B client portal →
-      </a>
-    </>
-  )
-}
-
-/** "My Account" in the top strip with its dropdown (as WordPress: account home, orders, files, account, log out). */
+/** "My Account" in the top strip: a plain link to the My Account page (sign in there, or the account when signed in). */
 export default function AccountMenu() {
   return (
-    <div className="group relative">
-      <a href="/my-account/" className="flex items-center gap-1.5 opacity-90 hover:opacity-100">
-        <Icon d={USER_ICON} className="size-3.5" />
-        My Account
-        <CartCount className="!min-w-4 !px-1 !text-[10px] !leading-4" />
-        <svg aria-hidden viewBox="0 0 20 20" className="size-3.5 transition-transform group-hover:rotate-180">
-          <path d="M5 7.5 10 12.5 15 7.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
-      </a>
-      <div className="invisible absolute right-0 top-full z-50 pt-2 opacity-0 transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
-        <div className="w-64 rounded-2xl bg-white p-2 text-slate-800 shadow-[0_20px_50px_-20px_rgba(0,57,113,0.45)] ring-1 ring-slate-200">
-          {ACCOUNT_MENU.map(([label, href, icon]) => (
-            <Row key={label} label={label} href={href} icon={icon} />
-          ))}
-          <SessionRows />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/** The same links in the phone menu. */
-export function AccountLinks({ onClick }) {
-  return (
-    <div className="grid gap-1">
-      {ACCOUNT_MENU.map(([label, href, icon]) => (
-        <Row key={label} label={label} href={href} icon={icon} onClick={onClick} />
-      ))}
-      <SessionRows onClick={onClick} />
-    </div>
+    <Link href="/my-account/" className="flex items-center gap-1.5 opacity-90 hover:opacity-100">
+      <Icon d={USER_ICON} className="size-3.5" />
+      My Account
+    </Link>
   )
 }
