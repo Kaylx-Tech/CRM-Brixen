@@ -1,15 +1,16 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useEffect, useRef, useState, useSyncExternalStore } from "react"
-import { SITE } from "@/lib/site"
+import { useState, useSyncExternalStore } from "react"
+import NameCheckResult from "@/components/order/NameCheckResult"
+import { useNameCheck } from "@/lib/name-check"
 
 // The name typed in the hero or on /packages/ arrives in the address (?name=); it is read in the browser so the page
 // itself stays static
 const subscribe = () => () => {}
 const nameFromAddress = () => (new URLSearchParams(window.location.search).get("name") || "").trim().slice(0, 160)
 
-/** Step 2 of an order: is this company name free at Companies House? (CRM: GET /api/public/name-availability) */
+/** Step 2 of an order: is this company name free at Companies House? Checked live while the visitor types. */
 export default function CompanyNameCheck({ pkg }) {
   const initial = useSyncExternalStore(subscribe, nameFromAddress, () => "")
   // A new name in the address starts the box afresh with that name
@@ -19,43 +20,11 @@ export default function CompanyNameCheck({ pkg }) {
 function NameCheckBox({ pkg, initial }) {
   const router = useRouter()
   const [name, setName] = useState(initial)
-  const [state, setState] = useState({ status: "idle" })
-  const request = useRef(0)
-
-  async function check(value) {
-    const wanted = value.trim()
-    if (wanted.length < 3) {
-      setState({ status: "error", message: "Please enter a company name (at least 3 characters)." })
-      return
-    }
-    const id = ++request.current
-    setState({ status: "checking", name: wanted })
-    try {
-      const res = await fetch(`${SITE.apiUrl}/public/name-availability?name=${encodeURIComponent(wanted)}`)
-      const data = await res.json().catch(() => ({}))
-      if (id !== request.current) return // an older answer arriving late
-      if (!res.ok || data.status !== "success") {
-        setState({ status: "error", message: data.message || "We could not check this name. Please try again." })
-        return
-      }
-      setState({ status: data.available ? "available" : "taken", name: data.name, warnings: data.warnings || [], similar: data.similar || [] })
-    } catch {
-      if (id === request.current) setState({ status: "error", message: "Network error. Please check your connection and try again." })
-    }
-  }
-
-  // Came here with a name already: check it straight away
-  const checkedInitial = useRef(false)
-  useEffect(() => {
-    if (initial && !checkedInitial.current) {
-      checkedInitial.current = true
-      check(initial)
-    }
-  }, [initial])
+  const { state, checkNow } = useNameCheck(name)
 
   const submit = (e) => {
     e.preventDefault()
-    check(name)
+    checkNow()
   }
 
   const goOn = () => router.push(`${pkg.next}?name=${encodeURIComponent(state.name)}`)
@@ -77,36 +46,13 @@ function NameCheckBox({ pkg, initial }) {
         />
         <button
           type="submit"
-          disabled={state.status === "checking"}
-          className="shrink-0 rounded-md bg-linear-to-br from-brand-navy from-20% to-brand-blue px-7 font-semibold text-white transition hover:brightness-110 disabled:opacity-60"
+          className="shrink-0 rounded-md bg-linear-to-br from-brand-navy from-20% to-brand-blue px-7 font-semibold text-white transition hover:brightness-110"
         >
           Search
         </button>
       </form>
 
-      <div className="mt-5 text-lg font-semibold text-white" aria-live="polite">
-        {state.status === "checking" && <p>⏳ Checking availability...</p>}
-        {state.status === "error" && <p className="text-red-400">⚠️ {state.message}</p>}
-        {(state.status === "available" || state.status === "taken") && (
-          <div>
-            <p className="break-words">{state.name}</p>
-            {state.status === "available" ? (
-              <p className="text-green-400">✅ This company name is available!</p>
-            ) : (
-              <p className="text-red-400">❌ This company name is not available. Please try a different name.</p>
-            )}
-            {state.status === "available" &&
-              state.warnings.map((w) => (
-                <p key={w} className="mt-1 text-sm font-normal text-amber-300">
-                  Note: {w}
-                </p>
-              ))}
-            {state.status === "taken" && state.similar.length > 0 && (
-              <p className="mt-2 text-sm font-normal text-white/70">Similar names already registered: {state.similar.join(", ")}</p>
-            )}
-          </div>
-        )}
-      </div>
+      <NameCheckResult state={state} />
 
       {state.status === "available" && (
         <button

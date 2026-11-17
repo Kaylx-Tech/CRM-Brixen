@@ -40,10 +40,14 @@ from routes.webhook_routes import _webhook_secret
 from routes.company_routes import name_availability
 from config import ALLOWED_CORS_ORIGINS
 
-# Public name search: at most this many checks per visitor inside the window (each one calls Companies House)
-NAME_CHECK_LIMIT = 20
+# Public name search (live: it checks while the visitor types): at most this many checks per visitor inside the
+# window. Each new name calls Companies House; a name asked again within NAME_CACHE_SECONDS is answered from memory
+# and does not count.
+NAME_CHECK_LIMIT = 120
 NAME_CHECK_WINDOW_SECONDS = 10 * 60
+NAME_CACHE_SECONDS = 5 * 60
 _name_checks = {}
+_name_answers = {}
 _name_checks_lock = threading.Lock()
 # Website orders: at most this many order forms per visitor per hour
 ORDER_FORM_LIMIT = 6
@@ -80,6 +84,24 @@ def _allowed(table, ip, limit, window):
 
 def _name_check_allowed(ip):
     return _allowed(_name_checks, ip, NAME_CHECK_LIMIT, NAME_CHECK_WINDOW_SECONDS)
+
+
+def _cached_name_answer(name):
+    """The answer for this exact name (any case) from the last few minutes, or None."""
+    with _name_checks_lock:
+        hit = _name_answers.get(name.lower())
+    return hit[1] if hit and time.time() - hit[0] < NAME_CACHE_SECONDS else None
+
+
+def _remember_name_answer(name, answer):
+    now = time.time()
+    with _name_checks_lock:
+        if len(_name_answers) > 2000:  # forget old answers so memory stays small
+            for key in [k for k, v in _name_answers.items() if now - v[0] >= NAME_CACHE_SECONDS]:
+                _name_answers.pop(key, None)
+            if len(_name_answers) > 2000:
+                _name_answers.clear()
+        _name_answers[name.lower()] = (now, answer)
 
 
 def _website_url(environ):
@@ -244,21 +266,27 @@ def handle_website_routes(environ, start_response, path, method, user, body, que
         return _address_card_payment(environ, start_response, pay.group(1), bool(pay.group(2)))
 
     if path == '/api/public/name-availability' and method == 'GET':
+        name = str(((query or {}).get('name') or [''])[0]).strip()[:160]
+        answer = _cached_name_answer(name)
+        if answer:
+            return json_response(start_response, answer)
         if not _name_check_allowed(_visitor_ip(environ)):
             return json_response(start_response, {'status': 'error', 'message':
                                  'Too many name checks. Please wait a few minutes or contact us.'}, status_code=429)
-        data, err, status = name_availability(((query or {}).get('name') or [''])[0])
+        data, err, status = name_availability(name)
         if err:
             if status >= 500:  # never show the visitor our setup or Companies House errors
                 err = 'Name check is not available right now. Please try again or contact us.'
             return json_response(start_response, {'status': 'error', 'message': err}, status_code=status)
-        return json_response(start_response, {
+        answer = {
             'status': 'success',
             'name': data['name'],
             'available': data['available'],
             'warnings': data['warnings'],
             'similar': [i['name'] for i in data['similar'] if i.get('name')][:5],
-        })
+        }
+        _remember_name_answer(name, answer)
+        return json_response(start_response, answer)
 
     if path in ('/api/public/formation-orders', '/api/public/service-orders') and method == 'POST':
         from services.website_orders import OrderError, create_formation_order
