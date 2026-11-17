@@ -87,33 +87,78 @@ def checkout_url(invoice, token):
     return address_billing._api('POST', '/checkout/sessions', data)['url']
 
 
+def _add_card_payment(invoice, amount, session_id, how='by card'):
+    """Add a card payment to the invoice (once per Stripe session). Returns a note for the log."""
+    note = f"Card payment (Stripe {session_id})"
+    if query_db("SELECT 1 FROM invoice_payments WHERE invoice_id = ? AND note = ?;", (invoice['id'], note), one=True):
+        return 'already saved'
+    from services.invoice_service import invoice_money_state, update_admin_invoice
+    money = invoice_money_state(invoice)
+    paid = round(min(money['total'], money['amount_paid'] + amount), 2)
+    _updated, error, _mail = update_admin_invoice(invoice['id'], {
+        'amount_paid': paid, 'payment_received_method': CARD, 'payment_note': note})
+    if error:
+        raise StripeError(f"Invoice {invoice.get('invoice_number')} could not be updated: {error}")
+    _tell_team('Invoice paid by card', f"Invoice {invoice.get('invoice_number')}: £{amount:.2f} paid {how}.")
+    return 'invoice payment saved'
+
+
+def _tell_team(title, message):
+    try:
+        from services.notification_service import notify_staff
+        notify_staff(title, message, 'payment_received', '/admin/payments')
+    except Exception:
+        pass
+
+
 def handle_paid_session(obj):
-    """A finished Checkout for an invoice: add the card payment (once per Stripe session)."""
+    """A finished Checkout for an invoice ("Pay by Card"): add the card payment."""
     if obj.get('payment_status') != 'paid':
         return 'waiting for the payment'
     meta = obj.get('metadata') or {}
     if not str(meta.get('invoice_id') or '').isdigit():
         return 'unknown invoice'
-    invoice_id = int(meta['invoice_id'])
-    note = f"Card payment (Stripe {obj.get('id')})"
-    if query_db("SELECT 1 FROM invoice_payments WHERE invoice_id = ? AND note = ?;", (invoice_id, note), one=True):
-        return 'already saved'
-    invoice = query_db("SELECT * FROM invoices WHERE id = ?;", (invoice_id,), one=True)
+    invoice = query_db("SELECT * FROM invoices WHERE id = ?;", (int(meta['invoice_id']),), one=True)
     if not invoice:
         return 'unknown invoice'
-    from services.invoice_service import invoice_money_state, update_admin_invoice
-    money = invoice_money_state(invoice)
+    return _add_card_payment(invoice, round((obj.get('amount_total') or 0) / 100, 2), obj.get('id'))
+
+
+def handle_payment_link_session(obj):
+    """A payment through a Stripe Payment Link made in the Stripe dashboard (buy.stripe.com/…). Stripe does not
+    say which invoice it is for, so the CRM looks for it: the invoice number put on the link
+    (?client_reference_id=INV-…), else the one open invoice of that email with exactly that amount due. When
+    none (or several) match, the team is told to match it by hand."""
+    if obj.get('payment_status') != 'paid':
+        return 'waiting for the payment'
     amount = round((obj.get('amount_total') or 0) / 100, 2)
-    paid = round(min(money['total'], money['amount_paid'] + amount), 2)
-    _updated, error, _mail = update_admin_invoice(invoice_id, {
-        'amount_paid': paid, 'payment_received_method': CARD, 'payment_note': note})
-    if error:
-        raise StripeError(f"Invoice {invoice.get('invoice_number')} could not be updated: {error}")
-    try:
-        from services.notification_service import notify_staff
-        notify_staff('Invoice paid by card',
-                     f"Invoice {invoice.get('invoice_number')}: £{amount:.2f} paid by card.",
-                     'payment_received', '/admin/payments')
-    except Exception:
-        pass
-    return 'invoice payment saved'
+    details = obj.get('customer_details') or {}
+    email = str(details.get('email') or obj.get('customer_email') or '').strip().lower()
+    who = details.get('name') or email or 'a customer'
+    if str(obj.get('currency') or 'gbp').lower() != CURRENCY:
+        _tell_team('Card payment to match', f"{who} paid {amount:.2f} {str(obj.get('currency')).upper()} through a "
+                   "Stripe Payment Link. Please find the invoice and mark it paid.")
+        return 'payment link: other currency, team told'
+
+    from services.invoice_service import invoice_money_state
+    ref = str(obj.get('client_reference_id') or '').strip()
+    invoice = None
+    if ref:
+        invoice = query_db("SELECT * FROM invoices WHERE LOWER(invoice_number) = LOWER(?) LIMIT 1;", (ref,), one=True)
+    if not invoice and email:
+        rows = query_db("""
+            SELECT DISTINCT i.* FROM invoices i
+            LEFT JOIN users u ON u.id = i.user_id
+            LEFT JOIN orders o ON o.id = i.order_id
+            WHERE i.status NOT IN ('Paid', 'Cancelled')
+              AND (LOWER(u.email) = ? OR LOWER(COALESCE(o.owner_form_email, '')) = ?);
+        """, (email, email)) or []
+        due = [r for r in rows if abs(invoice_money_state(r)['amount_due'] - amount) < 0.01]
+        if len(due) == 1:
+            invoice = due[0]
+    if not invoice:
+        _tell_team('Card payment to match',
+                   f"{who} paid £{amount:.2f} through a Stripe Payment Link, but no single open invoice matches "
+                   f"(email {email or 'not given'}). Please find the invoice and mark it paid.")
+        return 'payment link: no single match, team told'
+    return _add_card_payment(invoice, amount, obj.get('id'), how='by card (Stripe Payment Link)')

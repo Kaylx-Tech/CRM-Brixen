@@ -408,6 +408,13 @@ def handle_event(event):
         from services.invoice_card import handle_paid_session as invoice_paid
         return invoice_paid(obj)
 
+    # A Stripe Payment Link made in the Stripe dashboard (not by the CRM): find the invoice it pays
+    if kind in ('checkout.session.completed', 'checkout.session.async_payment_succeeded') and obj.get('payment_link') \
+            and (obj.get('metadata') or {}).get('kind') not in (
+                'formation', 'website_order', 'invoice_payment', 'address_payment', 'address'):
+        from services.invoice_card import handle_payment_link_session
+        return handle_payment_link_session(obj)
+
     # One renewal year paid by card now (pay_once): from the portal or the reminder email's card link
     if kind in ('checkout.session.completed', 'checkout.session.async_payment_succeeded') \
             and (obj.get('metadata') or {}).get('kind') == 'address_payment':
