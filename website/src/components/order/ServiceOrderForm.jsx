@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { COUNTRIES } from "@/lib/countries"
+import { crmSections, useCrmForm } from "@/lib/crm-forms"
 import { SERVICE_FORMS } from "@/lib/service-forms"
 import { SITE } from "@/lib/site"
 
-// A service's order form (src/lib/service-forms.js), sent to the CRM (POST /api/public/service-orders), which saves
-// the order and returns the Stripe card payment page.
+// A service's order form, sent to the CRM (POST /api/public/service-orders), which saves the order and returns the
+// Stripe card payment page. The form is the service's own order form from the CRM when it has one there
+// (src/lib/crm-forms.js), otherwise the WordPress-style form in src/lib/service-forms.js.
 
 const subscribe = () => () => {}
 const MAX_BYTES = 15 * 1024 * 1024
@@ -20,12 +22,13 @@ export default function ServiceOrderForm(props) {
   // The form keeps a draft in this browser, so it is drawn in the browser only
   const inBrowser = useSyncExternalStore(subscribe, () => true, () => false)
   const cancelled = useSyncExternalStore(subscribe, () => new URLSearchParams(window.location.search).get("payment") === "cancelled", () => false)
-  if (!inBrowser) return <div className="h-[900px] animate-pulse rounded-3xl bg-white ring-1 ring-slate-100" aria-label="Loading the form" />
-  return <Form {...props} cancelled={cancelled} />
+  const crm = useCrmForm(props.orderKey)
+  const sections = useMemo(() => (crm ? crmSections(crm) : SERVICE_FORMS[props.orderKey]), [crm, props.orderKey])
+  if (!inBrowser || crm === undefined) return <div className="h-[900px] animate-pulse rounded-3xl bg-white ring-1 ring-slate-100" aria-label="Loading the form" />
+  return <Form key={crm ? "crm" : "site"} {...props} sections={sections} fromCrm={Boolean(crm)} cancelled={cancelled} />
 }
 
-function Form({ orderKey, name, price, cancelled }) {
-  const sections = SERVICE_FORMS[orderKey]
+function Form({ orderKey, name, price, sections, fromCrm, cancelled }) {
   const draftKey = `brixen-order-${orderKey}`
   const [v, setV] = useState(() => {
     const start = {}
@@ -81,6 +84,7 @@ function Form({ orderKey, name, price, cancelled }) {
     e.preventDefault()
     const body = new FormData()
     const rows = []
+    const answers = []
     const role = {}
     body.append("service", orderKey)
     for (const s of shown) {
@@ -97,12 +101,16 @@ function Form({ orderKey, name, price, cancelled }) {
           text = chosen.map((file) => file.name).join(", ")
         } else text = String(value || "").trim()
         if (f.type === "tel" && /^\+\d{1,4}$/.test(text)) text = ""
+        // The CRM writes dates as DD/MM/YYYY
+        if (f.crm && f.type === "date" && /^\d{4}-\d{2}-\d{2}$/.test(text)) text = text.split("-").reverse().join("/")
         if (text) rows.push({ label: f.label, value: text })
+        if (f.crm) answers.push({ id: f.crm.id, label: f.label, type: f.crm.type, value: text })
         if (f.role) role[f.role] = String(value || "").trim()
         if (f.priceAdd) body.append(`opt_${f.name}`, value || "")
       }
     }
     body.append("fields_json", JSON.stringify(rows))
+    if (fromCrm) body.append("service_fields_json", JSON.stringify(answers))
     body.append("email", role.email || "")
     body.append("name", role.name || [role.first_name, role.last_name].filter(Boolean).join(" "))
     body.append("phone", role.phone || "")

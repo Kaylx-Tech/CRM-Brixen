@@ -1,12 +1,17 @@
 """Service orders from the new website (Next.js, website/): every service page's order form ("details" page), paid
 by card on Stripe. Company formation packages have their own form (services/website_orders.py).
 
-The form is drawn from website/src/lib/service-forms.js. It posts:
+The form shown is the service's own order form from the CRM catalogue (Services > order form) when the service is in
+the CRM with a form (crm_form() below; the website reads them from GET /api/public/service-forms); otherwise the
+WordPress-style form in website/src/lib/service-forms.js. It posts:
   service          the service key below (the price is set here, never by the browser)
   fields_json      [{label, value}, ...] what the customer filled in, as shown under the order's form fields
   email, name, phone, company_name, company_number   the customer and company, for the CRM record
   opt_<name>       choices that change the price (OPTIONS below)
   file_<name>_<n>  uploads, with file_label_<name> as their name (REQUIRED_FILES below)
+  service_fields_json   with a CRM form: [{id, label, type, value}] the answers to its questions, checked against
+                   the form here (required questions, uploads) and saved like an order made in the CRM
+                   (order_form_values_json.service_fields)
 The order is saved as a draft (Pending + is_draft) until Stripe's webhook reports the payment
 (services/website_orders.handle_paid_session, the same as formation orders).
 """
@@ -40,6 +45,10 @@ SERVICES = {
     'ifast-business-bank': ('Ifast Business Bank', 100.00),
     'monzo-business-bank': ('Monzo Business Bank', 200.00),
     'transwap-business-bank': ('Transwap Business Bank', 200.00),
+}
+# The CRM service whose order form the website shows, when its name differs from SERVICES (matched without case)
+CRM_NAMES = {
+    'registered-office-address': ('Registered Office Address', 'Registered Business Address'),
 }
 # Choices that add to the price: service -> option -> value -> extra £
 OPTIONS = {
@@ -77,6 +86,85 @@ FILE_TYPES = {'pdf': 'application/pdf', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg
               'doc': 'application/msword',
               'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}
 EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+
+def _norm(name):
+    return re.sub(r'[^a-z0-9]+', ' ', str(name or '').lower()).strip()
+
+
+def crm_form(service):
+    """(CRM service row, its order-form fields) for a website service key, or None when the service is not in the
+    CRM (Active) or has no form."""
+    from routes.catalog_routes import form_fields_of
+    if service not in SERVICES:
+        return None
+    names = {_norm(n) for n in (SERVICES[service][0], *CRM_NAMES.get(service, ()))}
+    rows = query_db("SELECT id, name, form_config_json FROM services WHERE status = 'Active' ORDER BY id;") or []
+    for row in rows:
+        if _norm(row['name']) in names:
+            fields = form_fields_of(dict(row))
+            if fields:
+                return dict(row), fields
+    return None
+
+
+def crm_forms():
+    """{website service key: {'service': CRM name, 'fields': [...]}} for every service that has a CRM form."""
+    out = {}
+    for key in SERVICES:
+        found = crm_form(key)
+        if found:
+            out[key] = {'service': found[0]['name'], 'fields': found[1]}
+    return out
+
+
+def _crm_answers(service, raw, uploads):
+    """The answers to the CRM form, checked: every required question that applies has an answer and every required
+    upload is there. Returns (CRM service row, service_fields as the CRM saves them)."""
+    from services.website_orders import OrderError
+    found = crm_form(service)
+    if not found:
+        raise OrderError("This order form was updated. Please refresh the page and fill it in again.")
+    row, fields = found
+    try:
+        items = json.loads(raw or '[]')
+    except (TypeError, ValueError):
+        items = None
+    if not isinstance(items, list):
+        raise OrderError("The form could not be read. Please refresh the page and try again.")
+    answers = {}
+    for item in items[:MAX_FIELDS]:
+        if isinstance(item, dict) and item.get('id'):
+            answers[str(item['id'])] = str(item.get('value') or '').strip()[:2000]
+
+    out, missing = [], []
+
+    def walk(level):
+        for f in level:
+            value = answers.get(f['id'], '')
+            if f['type'] == 'file':
+                if f.get('required') and f'crm_{f["id"]}' not in uploads:
+                    missing.append(f['label'])
+            elif f.get('required') and f['type'] != 'checkbox' and not value:
+                missing.append(f['label'])
+            if value:
+                out.append({'label': f['label'], 'type': f['type'], 'value': value, 'services': [row['name']]})
+            if f['type'] == 'radio':
+                for option, branch in zip(f.get('options') or [], f.get('option_fields') or []):
+                    if value == option:
+                        walk(branch or [])
+            if f['type'] == 'checkbox' and value.lower() in ('yes', 'true', '1', 'on'):
+                walk(f.get('fields') or [])
+
+    walk(fields)
+    if missing:
+        raise OrderError(f"Please fill in: {', '.join(missing[:6])}.")
+    from utils.validation import check_service_fields
+    bad = check_service_fields(out)
+    if bad:
+        label, message = next(iter(bad.items()))
+        raise OrderError(f"{label}: {message}")
+    return row, out
 
 
 def _text(fields, key, limit=200):
@@ -133,9 +221,14 @@ def _check(fields, files):
         uploads.setdefault(m.group(1), {'label': label, 'files': []})['files'].append((name, ext, data))
     if sum(len(u['files']) for u in uploads.values()) > MAX_FILES:
         raise OrderError(f"Upload at most {MAX_FILES} files.")
-    for field, label in REQUIRED_FILES.get(service, []):
-        if field not in uploads:
-            raise OrderError(f"Please upload your {label}.")
+    crm = None
+    if fields.get('service_fields_json'):
+        crm = _crm_answers(service, fields.get('service_fields_json'), uploads)
+    else:
+        for field, label in REQUIRED_FILES.get(service, []):
+            if field not in uploads:
+                raise OrderError(f"Please upload your {label}.")
+    v['crm'] = crm
     return v, form, round(price, 2), uploads
 
 
@@ -188,7 +281,8 @@ def create_service_order(fields, files, website_url):
     """, (order_number, user_id, service_name, price, price, 'Website order: awaiting card payment on Stripe.', CARD,
           v['name'], v['email'], v['phone'], json.dumps(rows),
           json.dumps({'source': 'website', 'service': v['service'], 'company_name': v['company_name'],
-                      'company_number': v['company_number']})))
+                      'company_number': v['company_number'],
+                      **({'service_fields': v['crm'][1], 'crm_service_id': v['crm'][0]['id']} if v['crm'] else {})})))
     what = f" for {v['company_name']}" if v['company_name'] else ''
     log_order_timeline(order_id, 'Pending', 'Order form sent from the website',
                        f"{service_name}{what}: waiting for the card payment.")

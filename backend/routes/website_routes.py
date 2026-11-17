@@ -15,6 +15,8 @@ POST     /api/public/formation-orders                 Next.js website "File Deta
                                                       Checkout link (services/website_orders.py). Limited per IP.
 POST     /api/public/service-orders                   Next.js website order form of any other service
                                                       (services/website_service_orders.py). Limited per IP.
+GET      /api/public/service-forms                    the CRM order form of each website service that has one
+                                                      (services/website_service_orders.crm_forms).
 POST     /api/public/enquiries                        Next.js website contact form: a support ticket for the
                                                       team (services/website_enquiries.py). Limited per IP.
 GET      /api/public/address-renewal/<token>          the card link in a registered address reminder email:
@@ -280,6 +282,16 @@ def handle_website_routes(environ, start_response, path, method, user, body, que
                                  'Your order could not be sent. Please try again in a minute or contact us.'},
                                  status_code=500)
         return json_response(start_response, {'status': 'success', **result}, status_code=201)
+
+    if path == '/api/public/service-forms' and method == 'GET':
+        from services.website_service_orders import crm_forms
+        try:
+            forms = crm_forms()
+        except Exception as exc:
+            from services.error_tracking import report_problem
+            report_problem('website_service_forms', exc, level='warning')
+            forms = {}
+        return json_response(start_response, {'status': 'success', 'forms': forms})
 
     if path == '/api/public/enquiries' and method == 'POST':
         from services.website_enquiries import EnquiryError, create_enquiry

@@ -18,6 +18,10 @@ const started = (draft) =>
       : typeof value === "string" && value.trim() && !/^\+\d{1,4}$/.test(value.trim()),
   )
 
+// A CRM order form keeps its answers as crm_<question>: the company question names the order
+const companyAnswer = (draft) =>
+  (Object.entries(draft).find(([k, v]) => /company/.test(k) && typeof v === "string" && v.trim()) || [])[1] || ""
+
 function read() {
   const items = []
   try {
@@ -37,7 +41,7 @@ function read() {
       } else {
         const service = SERVICE_PAGES.find((s) => s.order === key.slice("brixen-order-".length))
         if (!service) continue
-        items.push({ key, name: service.name, detail: draft.company_name || draft.name || "", price: service.price ? `£${service.price}` : "", href: service.details })
+        items.push({ key, name: service.name, detail: draft.company_name || draft.name || companyAnswer(draft), price: service.price ? `£${service.price}` : "", href: service.details })
       }
     }
   } catch {
