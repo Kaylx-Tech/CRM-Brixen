@@ -722,6 +722,9 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
   const [productSearch, setProductSearch] = useState("")
   const [category, setCategory] = useState("All")
   const [selectedProducts, setSelectedProducts] = useState([])
+  // The price of each chosen service for this order, set while placing it ({ product id: "120" }); empty =
+  // the catalogue price (B2B customers: 0 until the team types their rate)
+  const [priceEdits, setPriceEdits] = useState({})
 
   const [formValues, setFormValues] = useState({
     full_name: "",
@@ -759,6 +762,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
     setProductSearch("")
     setCategory("All")
     setSelectedProducts([])
+    setPriceEdits({})
     setFormValues({
       full_name: "",
       email: "",
@@ -878,11 +882,18 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
     })
   }, [products, productSearch, category])
 
+  // A service's price on this order: the one typed while placing it, else the catalogue (B2B: 0 until typed)
+  const isB2BOrder = Boolean(selectedCustomer && isB2BCustomer(selectedCustomer))
+  const typedPrice = (p) => {
+    const raw = String(priceEdits[p.id] ?? "").trim()
+    const n = raw === "" ? NaN : Number(raw)
+    return Number.isFinite(n) && n >= 0 ? n : null
+  }
+  const priceOf = (p) => typedPrice(p) ?? (isB2BOrder ? 0 : Number(p.price) || 0)
+  const anyTyped = selectedProducts.some((p) => typedPrice(p) !== null)
+
   const selectedSummary = useMemo(() => {
-    const price = selectedProducts.reduce((sum, p) => {
-      if (selectedCustomer && isB2BCustomer(selectedCustomer)) return sum
-      return sum + (Number(p.price) || 0)
-    }, 0)
+    const price = selectedProducts.reduce((sum, p) => sum + priceOf(p), 0)
     const title =
       selectedProducts.length === 1
         ? selectedProducts[0].name
@@ -896,7 +907,9 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
           ? "Multi"
           : "—"
     return { price, title, cat }
-  }, [selectedProducts, selectedCustomer])
+    // priceOf reads priceEdits and the customer type
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProducts, selectedCustomer, priceEdits])
 
   const serviceFields = useMemo(() => mergeServiceFields(selectedProducts), [selectedProducts])
   const activeFields = useMemo(() => activeServiceFields(serviceFields, fieldValues), [serviceFields, fieldValues])
@@ -932,13 +945,12 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
   }, [activeFields, fieldValues])
 
   const buildPayload = (currentStep) => {
-    const isB2B = selectedCustomer && isB2BCustomer(selectedCustomer)
     return {
       service_id: selectedProducts[0]?.id || null,
       service_name: selectedSummary.title,
       line_items: selectedProducts.map((p) => ({
         product_name: p.name,
-        price: isB2B ? 0 : Number(p.price) || 0,
+        price: priceOf(p),
         category_name: p.category || "",
       })),
       client_id: selectedCustomer?.id,
@@ -1045,11 +1057,10 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
   }
 
   const toggleProduct = (product) => {
-    setSelectedProducts((prev) => {
-      const exists = prev.some((p) => p.id === product.id)
-      if (exists) return prev.filter((p) => p.id !== product.id)
-      return [...prev, product]
-    })
+    const exists = selectedProducts.some((p) => p.id === product.id)
+    setSelectedProducts((prev) => (exists ? prev.filter((p) => p.id !== product.id) : [...prev, product]))
+    // A removed service forgets its typed price
+    if (exists) setPriceEdits((prev) => { const next = { ...prev }; delete next[product.id]; return next })
   }
 
   const handleSaveDraft = async () => {
@@ -1493,6 +1504,48 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
                     )}
                   </div>
                 )}
+
+                {/* The price of each chosen service for this order, set right here while placing it */}
+                {showPrices && !portal && selectedProducts.length > 0 && (
+                  <div className="rounded-xl border bg-card p-4">
+                    <div className="mb-3 flex items-baseline justify-between gap-2">
+                      <h4 className="text-sm font-semibold">Prices for This Order</h4>
+                      <span className="text-xs text-muted-foreground">
+                        {isB2BOrder ? "B2B: type the agreed rate" : "Leave empty for the catalogue price"}
+                      </span>
+                    </div>
+                    <div className="divide-y">
+                      {selectedProducts.map((p) => (
+                        <div key={p.id} className="flex items-center justify-between gap-3 py-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{p.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Catalogue {formatGbp(p.price)}
+                            </p>
+                          </div>
+                          <div className="relative w-32 shrink-0">
+                            <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">£</span>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              inputMode="decimal"
+                              className="h-9 pl-6 text-right tabular-nums"
+                              placeholder={isB2BOrder ? "0.00" : Number(p.price || 0).toFixed(2)}
+                              value={priceEdits[p.id] ?? ""}
+                              onChange={(e) => setPriceEdits((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                              aria-label={`Price for ${p.name}`}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 flex items-center justify-between border-t pt-3 text-sm">
+                      <span className="font-semibold">Order Total</span>
+                      <span className="text-base font-bold tabular-nums">{formatGbp(selectedSummary.price)}</span>
+                    </div>
+                  </div>
+                )}
               </section>
             )}
 
@@ -1510,7 +1563,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
                   <div className="text-right">
                     {showPrices ? (
                       <div className="text-xl font-extrabold text-primary">
-                        {selectedCustomer && isB2BCustomer(selectedCustomer)
+                        {isB2BOrder && !anyTyped
                           ? "Custom B2B Rate"
                           : formatGbp(selectedSummary.price)}
                       </div>
@@ -1613,7 +1666,7 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
                       <div className="text-right">
                         <div className="text-[11px] font-semibold text-muted-foreground">AUTHORITATIVE TOTAL</div>
                         <div className="text-2xl font-extrabold">
-                          {selectedCustomer && isB2BCustomer(selectedCustomer)
+                          {isB2BOrder && !anyTyped
                             ? "Custom B2B"
                             : formatGbp(selectedSummary.price)}
                         </div>
