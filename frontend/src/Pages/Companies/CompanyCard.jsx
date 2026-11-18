@@ -89,15 +89,20 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
             <IconBuildingSkyscraper className="size-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-sm font-semibold leading-tight" title={name}>
-              <button
-                type="button"
-                onClick={() => setIsViewModalOpen(true)}
-                className="max-w-full truncate text-left hover:text-primary focus-visible:outline-none focus-visible:underline"
-              >
-                {name}
-              </button>
-            </h3>
+            {/* Name, then the country flag and a small status beside it */}
+            <div className="flex min-w-0 items-center gap-1.5">
+              <h3 className="min-w-0 truncate text-sm font-semibold leading-tight" title={name}>
+                <button
+                  type="button"
+                  onClick={() => setIsViewModalOpen(true)}
+                  className="max-w-full truncate text-left hover:text-primary focus-visible:outline-none focus-visible:underline"
+                >
+                  {name}
+                </button>
+              </h3>
+              <span className="shrink-0 text-sm leading-none" title={countryName} aria-label={countryName}>{countryFlag}</span>
+              <Badge className={cn(statusTone, 'h-4 shrink-0 px-1.5 text-[10px]')}>{status}</Badge>
+            </div>
             <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
               <span className="tabular-nums">{number}</span>
               {genuine && (
@@ -147,11 +152,6 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5 px-4">
-          <span className="inline-flex items-center gap-1 rounded-lg bg-muted px-2 py-1 text-[11px] font-medium">
-            <span>{countryFlag}</span>
-            {countryName}
-          </span>
-          <Badge className={statusTone}>{status}</Badge>
           <DueChip icon={IconCalendarDue} label="CS Due" date={raw.confirmation_next_due} overdue={Boolean(raw.confirmation_overdue)} />
           <DueChip icon={IconFileText} label="Accounts" date={raw.accounts_next_due} overdue={Boolean(raw.accounts_overdue)} />
         </div>
