@@ -5,11 +5,11 @@ import { SITE } from "@/lib/site"
 
 export const metadata = {
   title: "Contact Us",
-  description: `Contact Brixen Consultants: call or WhatsApp ${SITE.phone}, email ${SITE.email}, or send us your question. Open 24 hours, 7 days a week.`,
+  description: `Contact Brixen Consultants: call ${SITE.phone}, WhatsApp ${SITE.phone2}, email ${SITE.email}, or send us your question. Open 24 hours, 7 days a week.`,
   alternates: { canonical: "/contact/" },
 }
 
-const WHATSAPP = `https://wa.me/${SITE.phoneHref.replace("tel:+", "")}`
+const WHATSAPP = `https://wa.me/${SITE.whatsapp}`
 
 function Icon({ d }) {
   return (

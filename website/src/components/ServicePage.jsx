@@ -6,7 +6,7 @@ import { SERVICE_CONTENT } from "@/lib/service-content"
 import { GROUP_TITLES, SERVICE_PAGES, money } from "@/lib/services"
 import { SITE } from "@/lib/site"
 
-const WHATSAPP = `https://wa.me/${SITE.phoneHref.replace("tel:+", "")}`
+const WHATSAPP = `https://wa.me/${SITE.whatsapp}`
 const BANKS = SERVICE_PAGES.filter((s) => s.group === "banking" && s.order)
 
 const firstSentence = (text) => {

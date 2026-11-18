@@ -11,7 +11,7 @@ export const metadata = {
   alternates: { canonical: "/about/" },
 }
 
-const WHATSAPP = `https://wa.me/${SITE.phoneHref.replace("tel:+", "")}`
+const WHATSAPP = `https://wa.me/${SITE.whatsapp}`
 
 // "Your support and trust makes us the best company formation agent in the UK" (WordPress about page)
 const POINTS = [

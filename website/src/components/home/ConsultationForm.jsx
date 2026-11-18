@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { SITE } from "@/lib/site"
 
-const WHATSAPP = SITE.phoneHref.replace("tel:+", "")
+const WHATSAPP = SITE.whatsapp
 const EMPTY = { name: "", email: "", phone: "", company: "", service: "UK Formation (LTD)", budget: "", message: "", website: "" }
 
 /**

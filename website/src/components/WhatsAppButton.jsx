@@ -1,6 +1,6 @@
 import { SITE } from "@/lib/site"
 
-const NUMBER = SITE.phoneHref.replace("tel:+", "")
+const NUMBER = SITE.whatsapp
 
 /** The round green WhatsApp button in the bottom-left corner of every page, as on the WordPress site. */
 export default function WhatsAppButton() {

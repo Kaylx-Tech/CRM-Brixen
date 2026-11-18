@@ -10,7 +10,7 @@ export const metadata = {
   alternates: { canonical: "/web-design-and-marketing/" },
 }
 
-const WHATSAPP = `https://wa.me/${SITE.phoneHref.replace("tel:+", "")}`
+const WHATSAPP = `https://wa.me/${SITE.whatsapp}`
 
 const SERVICES = [
   ["WordPress Website Development", "Custom WordPress design with SEO optimization, responsive layouts, and powerful functionality tailored to your brand.", ["Custom Theme Design", "SEO Optimization", "Mobile Responsive", "E-commerce Integration"]],

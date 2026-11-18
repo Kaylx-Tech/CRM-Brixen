@@ -18,6 +18,8 @@ export const SITE = {
   phoneHref: "tel:+447490359487",
   phone2: "+44 7360 515317",
   phone2Href: "tel:+447360515317",
+  // WhatsApp chats go to the second number
+  whatsapp: "447360515317",
   officeHours: "Monday to Sunday, open 24 hours",
   email: "contact@brixenconsultants.com",
   address: "57 Wellesley Road, Ilford, United Kingdom, IG1 4JZ",
