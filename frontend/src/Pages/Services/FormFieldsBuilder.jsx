@@ -61,7 +61,8 @@ function defaultLabel(type, fields, skipIndex = -1) {
 }
 
 function newField(type, fields = []) {
-  const field = { label: defaultLabel(type, fields), type, required: type === "file", placeholder: "" }
+  // Every new field (a document upload too) starts optional; tick Required only for what the order really needs
+  const field = { label: defaultLabel(type, fields), type, required: false, placeholder: "" }
   if (type === "radio") field.options = ["Yes", "No"]
   if (type === "checkbox") field.fields = []
   return field
