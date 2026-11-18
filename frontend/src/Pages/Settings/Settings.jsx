@@ -14,6 +14,7 @@ import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import { apiRequest, getApiBase } from '@/lib/api'
 import { validateFields, focusFirstError } from '@/lib/validation'
 import { FieldMessage, RequiredMark } from '@/components/FormField'
+import FirstLastName from '@/components/FirstLastName'
 
 // Where Didit posts verification results (the API may live on another address than this page)
 const diditWebhookUrl = new URL(`${getApiBase()}/webhooks/didit`, window.location.origin).href
@@ -1331,14 +1332,24 @@ export default function Settings() {
                     />
                   </Field>
                 )}
-                <Field id="prof_full_name" required label="Full name">
-                  <Input
-                    id="prof_full_name"
-                    value={profile.full_name}
-                    onChange={(e) => setProfileField('full_name', e.target.value)}
-                    disabled={isLoading}
-                    required
-                  />
+                <Field id="prof_full_name" required label={profile.role === 'CLIENT' ? 'Name' : 'Full Name'}>
+                  {/* Clients give their name as First Name + Last Name; the team keeps one box */}
+                  {profile.role === 'CLIENT' ? (
+                    <FirstLastName
+                      id="prof_full_name"
+                      value={profile.full_name}
+                      onChange={(name) => setProfileField('full_name', name)}
+                      disabled={isLoading}
+                    />
+                  ) : (
+                    <Input
+                      id="prof_full_name"
+                      value={profile.full_name}
+                      onChange={(e) => setProfileField('full_name', e.target.value)}
+                      disabled={isLoading}
+                      required
+                    />
+                  )}
                 </Field>
                 <Field id="prof_phone" label="Phone number">
                   <PhoneInput

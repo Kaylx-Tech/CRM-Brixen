@@ -30,6 +30,7 @@ import { formatGBP } from "@/lib/money"
 import ToastSave from "@/components/ToastSave"
 import { useFormErrors, checkField } from "@/lib/validation"
 import { FieldMessage, RequiredMark, invalidProps } from "@/components/FormField"
+import FirstLastName from "@/components/FirstLastName"
 
 const QUICK_ORDER_SCHEMA = {
   client_id: { label: "Client", required: true, when: (v) => v.client_mode === "existing" },
@@ -445,12 +446,11 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="qo-new_client_full_name" className="text-sm font-semibold">Client Full Name <RequiredMark /></Label>
-                      <Input id="qo-new_client_full_name"
-                        {...invalidProps(errors, 'new_client_full_name', 'qo-')}
-                        className="w-full"
+                      <FirstLastName id="qo-new_client_full_name"
                         value={newClientName}
-                        onChange={(e) => { setNewClientName(e.target.value); recheck('new_client_full_name', e.target.value) }}
-                        placeholder="e.g. Alexander Vance"
+                        onChange={(name) => { setNewClientName(name); recheck('new_client_full_name', name) }}
+                        invalid={!!errors.new_client_full_name}
+                        describedBy="qo-new_client_full_name-error"
                       />
                       <FieldMessage id="qo-new_client_full_name-error" message={errors.new_client_full_name} />
                     </div>
@@ -576,12 +576,11 @@ export default function QuickCrmOrder({ open, onClose, onCreated }) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold">Director / Owner Full Name</Label>
-                    <Input id="qo-owner_name"
-                      {...invalidProps(errors, 'owner_name', 'qo-')}
-                      className="w-full"
+                    <FirstLastName id="qo-owner_name"
                       value={ownerName}
-                      onChange={(e) => { setOwnerName(e.target.value); recheck('owner_name', e.target.value) }}
-                      placeholder="e.g. Eleanor Finch"
+                      onChange={(name) => { setOwnerName(name); recheck('owner_name', name) }}
+                      invalid={!!errors.owner_name}
+                      describedBy="qo-owner_name-error"
                     />
                     <FieldMessage id="qo-owner_name-error" message={errors.owner_name} />
                   </div>

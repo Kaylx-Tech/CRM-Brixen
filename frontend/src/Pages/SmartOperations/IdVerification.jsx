@@ -34,6 +34,7 @@ import { useRefreshOnReturn } from '@/lib/useRefreshOnReturn'
 import { amlLabel, amlTone, checkTone, openHits, shortDate } from './idvStatus'
 import { useFormErrors, checkField } from '@/lib/validation'
 import { FieldMessage, RequiredMark, invalidProps } from '@/components/FormField'
+import FirstLastName from '@/components/FirstLastName'
 
 const PERSON_SCHEMA = {
   full_name: { label: 'Full name', required: true, maxLength: 120 },
@@ -453,7 +454,7 @@ export default function IdVerification() {
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor="idv-full_name">Full Name <RequiredMark /></Label>
-              <Input id="idv-full_name" {...invalidProps(personErrors.errors, 'full_name', 'idv-')} value={personForm.full_name} onChange={(e) => { setPersonForm((p) => ({ ...p, full_name: e.target.value })); personErrors.recheck('full_name', e.target.value) }} />
+              <FirstLastName id="idv-full_name" value={personForm.full_name} invalid={!!personErrors.errors.full_name} describedBy="idv-full_name-error" onChange={(name) => { setPersonForm((p) => ({ ...p, full_name: name })); personErrors.recheck('full_name', name) }} />
               <FieldMessage id="idv-full_name-error" message={personErrors.errors.full_name} />
             </div>
             <div className="space-y-1.5">

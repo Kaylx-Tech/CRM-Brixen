@@ -66,6 +66,8 @@ import { formatGBP, plainAmount } from '@/lib/money'
 import { canCancelOrder, cancelOrder, cancelOrderMessage } from '@/lib/orders'
 import OrderIdVerification from '@/Pages/SmartOperations/OrderIdVerification'
 import { useFormErrors } from '@/lib/validation'
+import FirstLastName from '@/components/FirstLastName'
+import { isPersonNameLabel } from '@/lib/personName'
 import { FieldMessage, RequiredMark, invalidProps } from '@/components/FormField'
 
 const ORDER_DETAILS_SCHEMA = {
@@ -994,10 +996,9 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                               </div>
                               <div className="space-y-1.5">
                                 <Label className="text-xs text-muted-foreground">Owner Name (on the Form)</Label>
-                                <Input
+                                <FirstLastName
                                   value={orderInfo.owner_name}
-                                  onChange={(e) => setOrderInfo((p) => ({ ...p, owner_name: e.target.value }))}
-                                  className="text-sm bg-background"
+                                  onChange={(name) => setOrderInfo((p) => ({ ...p, owner_name: name }))}
                                 />
                               </div>
                               <div className="space-y-1.5">
@@ -1056,7 +1057,10 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                                     <IconTrash className="w-3.5 h-3.5" />
                                   </Button>
                                 </div>
-                                {wide ? (
+                                {isPersonNameLabel(field.label) ? (
+                                  // A person's name: First Name + Last Name, saved as one name
+                                  <FirstLastName value={field.value} onChange={(name) => handleFieldValueChange(idx, name)} />
+                                ) : wide ? (
                                   <Textarea
                                     rows={2}
                                     value={field.value}

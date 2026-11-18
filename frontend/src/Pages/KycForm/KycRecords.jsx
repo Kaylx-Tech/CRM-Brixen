@@ -11,6 +11,7 @@ import { apiRequest } from '@/lib/api'
 import { isAdminRole } from '@/lib/permissions'
 import { SectionCards } from '../../Layout/StatsCard'
 import KycCheckView from './KycCheckView'
+import FirstLastName from '@/components/FirstLastName'
 
 // Sent by the client and not decided yet ("Submitted" until the KYC team opens it): an admin can delete it
 const IN_REVIEW = ['Submitted', 'In Review']
@@ -164,8 +165,8 @@ function PersonEditor({ check, onClose, onSaved }) {
         </DialogHeader>
         <form onSubmit={save} className="space-y-3">
           <label className="block space-y-1 text-sm">
-            <span className="font-medium">Full Name</span>
-            <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+            <span className="font-medium">Name</span>
+            <FirstLastName value={name} onChange={setName} />
           </label>
           <label className="block space-y-1 text-sm">
             <span className="font-medium">Email</span>

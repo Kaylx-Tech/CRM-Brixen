@@ -20,6 +20,7 @@ import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import ToastSave from '@/components/ToastSave'
 import { useFormErrors } from '@/lib/validation'
 import { FieldMessage, RequiredMark, invalidProps } from '@/components/FormField'
+import FirstLastName from '@/components/FirstLastName'
 
 const COMPANY_SCHEMA = {
   company_name: { label: 'Company name', required: true, maxLength: 160 },
@@ -532,14 +533,13 @@ const AddCompany = ({ isOpen, onClose }) => {
                   <Label htmlFor="add-comp-director" className="text-sm font-normal">
                     Director Name
                   </Label>
-                  <Input
+                  <FirstLastName
                     id="add-comp-director"
-                    {...invalidProps(errors, 'director', 'add-comp-')}
-                    placeholder="e.g. John Smith"
-                    className="text-sm"
                     value={director}
-                    onChange={(e) => { setDirector(e.target.value); recheck('director', e.target.value) }}
+                    onChange={(name) => { setDirector(name); recheck('director', name) }}
                     disabled={isSubmitting}
+                    invalid={!!errors.director}
+                    describedBy="add-comp-director-error"
                   />
                   <FieldMessage id="add-comp-director-error" message={errors.director} />
                 </div>
