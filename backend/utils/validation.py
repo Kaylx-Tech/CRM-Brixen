@@ -84,9 +84,9 @@ def _blank(value):
 def tidy_phone(value):
     """A number pasted from WhatsApp, a phone or a web page: hidden marks (direction marks, zero-width and
     non-breaking spaces) out, other dashes made plain, "0092…" read as "+92…"."""
-    text = re.sub(r'[​-‏‪-‮⁠-⁤﻿]', '', str(value or ''))
-    text = re.sub(r'[  -   　]', ' ', text)
-    text = re.sub(r'[‐-―−]', '-', text)
+    text = re.sub(r'[\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]', '', str(value or ''))
+    text = re.sub(r'[\u00A0\u2000-\u200A\u202F\u205F\u3000]', ' ', text)
+    text = re.sub(r'[\u2010-\u2015\u2212]', '-', text)
     return re.sub(r'^\s*00(?=[1-9])', '+', text).strip()
 
 

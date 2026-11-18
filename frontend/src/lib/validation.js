@@ -26,9 +26,9 @@ const blank = (v) => v === undefined || v === null || (typeof v === "string" ? !
  */
 export function tidyPhone(value) {
   return String(value || "")
-    .replace(/[​-‏‪-‮⁠-⁤﻿]/g, "")
-    .replace(/[  -   　]/g, " ")
-    .replace(/[‐-―−]/g, "-")
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]/g, "")
+    .replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, " ")
+    .replace(/[\u2010-\u2015\u2212]/g, "-")
     .replace(/^\s*00(?=[1-9])/, "+")
 }
 
