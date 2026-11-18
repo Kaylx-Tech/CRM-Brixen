@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react"
 import { accountApi, forgetAccount, openFile, PORTAL_LOGIN, saveAccount, updateUser, useAccount } from "@/lib/account"
 import { SITE } from "@/lib/site"
+import NameInput from "../order/NameInput"
 import { buttonClass, date, Empty, Field, ghostClass, inputClass, Loading, money, Notice, Status } from "./AccountParts"
 
 /**
@@ -578,8 +579,8 @@ function AccountDetails({ account }) {
           <Field label="Email address" hint={`To change your email, write to ${SITE.email}.`}>
             <input className={`${inputClass} bg-slate-50 text-slate-500`} value={account.user?.email || ""} readOnly />
           </Field>
-          <Field label="Full name">
-            <input className={inputClass} required maxLength={120} value={me.full_name} onChange={(e) => setMe((m) => ({ ...m, full_name: e.target.value }))} />
+          <Field label="Name">
+            <NameInput className={inputClass} required value={me.full_name} onChange={(name) => setMe((m) => ({ ...m, full_name: name }))} />
           </Field>
           <Field label="Phone number">
             <input className={inputClass} type="tel" maxLength={40} placeholder="+44 7700 900123" value={me.phone} onChange={(e) => setMe((m) => ({ ...m, phone: e.target.value }))} />

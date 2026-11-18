@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { COUNTRIES } from "@/lib/countries"
 import { SITE } from "@/lib/site"
+import NameInput from "./NameInput"
 
 // Step 3 of an order ("File Details"), as on the WordPress site. It is sent to the CRM
 // (POST /api/public/formation-orders), which saves the order and returns the Stripe card payment page.
@@ -186,7 +187,7 @@ function Form({ pkg, searchedName, cancelled }) {
 
         <Section title="Director Details">
           <Field label="Director Full Name" required>
-            <input className={inputClass} value={v.director_name} onChange={set("director_name")} required maxLength={200} autoComplete="name" placeholder="Enter director's full name" />
+            <NameInput className={inputClass} value={v.director_name} onChange={(name) => setV((old) => ({ ...old, director_name: name }))} required />
           </Field>
           <Field label="Date of Birth" required>
             <input className={inputClass} type="date" value={v.date_of_birth} onChange={set("date_of_birth")} required max={new Date().toISOString().slice(0, 10)} autoComplete="bday" />

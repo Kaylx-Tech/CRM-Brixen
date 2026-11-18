@@ -5,6 +5,7 @@ import { COUNTRIES } from "@/lib/countries"
 import { crmSections, useCrmForm } from "@/lib/crm-forms"
 import { SERVICE_FORMS } from "@/lib/service-forms"
 import { SITE } from "@/lib/site"
+import NameInput from "./NameInput"
 
 // A service's order form, sent to the CRM (POST /api/public/service-orders), which saves the order and returns the
 // Stripe card payment page. The form is the service's own order form from the CRM when it has one there
@@ -259,7 +260,11 @@ function FieldInput({ f, value, set, pick, files }) {
     )
   }
   let input
-  if (f.type === "textarea") input = <textarea className={inputClass} rows={4} value={value} onChange={(e) => set(f.name, e.target.value)} required={f.required} maxLength={2000} />
+  // A person's name (Full Name, Director Name…): First Name + Last Name boxes, sent as one name
+  const personName = (!f.type || f.type === "text") && !["first_name", "last_name", "email", "phone"].includes(f.role) &&
+    /\bname\b/i.test(f.label || "") && !/\b(company|business|trading|proposed|brand|bank|account|user|domain|website|reference|nature)\b/i.test(f.label || "")
+  if (personName) input = <NameInput className={inputClass} value={value} onChange={(name) => set(f.name, name)} required={f.required} />
+  else if (f.type === "textarea") input = <textarea className={inputClass} rows={4} value={value} onChange={(e) => set(f.name, e.target.value)} required={f.required} maxLength={2000} />
   else if (f.type === "select")
     input = (
       <select className={inputClass} value={value} onChange={(e) => set(f.name, e.target.value)} required={f.required}>
