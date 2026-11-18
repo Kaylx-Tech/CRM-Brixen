@@ -25,7 +25,7 @@ const data = {
   },
 }
 
-/** Open work for the menu badges (Orders, Documents, Support), refreshed on each page and every minute. */
+/** Open work for the menu badges (Orders, Documents, Support, Companies that need attention), refreshed on each page and every minute. */
 function useNavCounts() {
   const location = useLocation()
   const [counts, setCounts] = React.useState({})

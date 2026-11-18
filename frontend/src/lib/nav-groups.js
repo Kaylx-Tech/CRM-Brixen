@@ -25,7 +25,7 @@ export const NAV_GROUPS = [
     items: [
       { title: "Dashboard", url: "/admin/dashboard", icon: IconLayoutDashboard },
       { title: "Clients", url: "/admin/customers", icon: IconUsers },
-      { title: "Companies", url: "/admin/companies", icon: IconBuilding },
+      { title: "Companies", url: "/admin/companies", icon: IconBuilding, badge: "companies" },
       { title: "Orders", url: "/admin/orders", icon: IconShoppingCart, badge: "orders" },
       { title: "Services", url: "/admin/services", icon: IconApps },
     ],

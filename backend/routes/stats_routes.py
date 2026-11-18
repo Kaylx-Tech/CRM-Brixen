@@ -44,6 +44,17 @@ def _calc_trend(current, previous):
     return {'text': f'{rounded:g}%', 'direction': 'down', 'pct': rounded}
 
 
+def _attention_companies():
+    """How many registered companies have Companies House issues (overdue accounts or confirmation statement,
+    strike-off, default address...). Pending and closed companies never count (company_attention_issues)."""
+    from services.ch_attention import company_attention_issues
+    try:
+        rows = query_db("SELECT * FROM companies;") or []
+        return sum(1 for row in rows if company_attention_issues(dict(row)))
+    except Exception:
+        return 0
+
+
 def _format_activity_time(val):
     if not val:
         return '—'
@@ -498,6 +509,8 @@ def handle_stats_routes(environ, start_response, path, method, user, body, query
             'tickets': (
                 _count("SELECT COUNT(*) AS c FROM support_tickets WHERE status IN ('Open', 'In Progress');")
                 if _has_table('support_tickets') else 0),
+            # Companies that Companies House says need attention (same list as the Companies page's Attention tab)
+            'companies': _attention_companies(),
         }
         return success_response(start_response, data=counts)
 

@@ -1,58 +1,122 @@
-import React, { useState } from 'react'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { useState } from 'react'
+import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { IconDotsVertical, IconTrash, IconShieldCheck, IconAlertTriangle } from '@tabler/icons-react'
+import { IconAlertTriangle, IconArrowRight, IconBuildingSkyscraper, IconCalendarDue, IconDotsVertical, IconFileText, IconShieldCheck } from '@tabler/icons-react'
+import { cn } from 'cn'
 import ViewCompany from './ViewCompany'
 import { needsAttention, attentionSummary } from './attention'
 
-const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh, monthTag }) => {
+// Show the green "Genuine" shield beside the number (data checked against Companies House)
+const SHOW_GENUINE = false
+
+// Whole days from today to a "YYYY-MM-DD" date (negative once it has passed), or null
+const daysUntil = (value) => {
+  const m = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return null
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return Math.round((new Date(+m[1], +m[2] - 1, +m[3]) - today) / 86400000)
+}
+
+/** A deadline chip: "CS Due 71d", amber inside 30 days, red once overdue. */
+function DueChip({ icon: Icon, label, date, overdue }) {
+  const days = daysUntil(date)
+  if (days === null && !overdue) return null
+  const late = overdue || (days !== null && days < 0)
+  const soon = !late && days !== null && days <= 30
+  return (
+    <span
+      title={date ? `${label} due ${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}` : label}
+      className={cn(
+        'inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] tabular-nums',
+        late ? 'border-destructive/30 bg-destructive/10 text-destructive'
+          : soon ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400'
+            : 'border-border bg-muted/40 text-muted-foreground'
+      )}
+    >
+      <Icon className="size-3.5 shrink-0" />
+      {label}
+      <span className="font-semibold text-foreground/90">
+        {late ? (days !== null && days < 0 ? `${-days}d Late` : 'Overdue') : `${days}d`}
+      </span>
+    </span>
+  )
+}
+
+const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh }) => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
 
-  const name = company?.name || "Unnamed Company";
-  const number = company?.number || "#00000000";
-  const director = company?.director || "Director";
-  const address = company?.address || "United Kingdom";
-  const countryFlag = company?.countryFlag || "🇬🇧";
-  const countryName = company?.countryName || "UK";
+  const name = company?.name || 'Unnamed Company'
+  const number = company?.number || '#00000000'
+  const director = company?.director || 'Director'
+  const address = company?.address || 'United Kingdom'
+  const countryFlag = company?.countryFlag || '🇬🇧'
+  const countryName = company?.countryName || 'UK'
+  const raw = company?.raw || {}
   // A company without a real Companies House number is not live yet, whatever its stored status says
-  const status = company?.isRegistered === false ? "Not registered" : (company?.status || "Active");
-  const deadlineText = company?.deadlineText || "No upcoming deadlines";
-  const hasAttention = company?.isRegistered !== false && needsAttention(company);
+  const status = company?.isRegistered === false ? 'Not Registered' : (company?.status || 'Active')
+  const hasAttention = company?.isRegistered !== false && needsAttention(company)
+  const genuine = SHOW_GENUINE && Boolean(company?.is_genuine || company?.data_locked)
+  const statusTone = /^active$/i.test(status) ? 'badge-green'
+    : /dissolved/i.test(status) ? 'badge-red'
+      : /inactive|not registered/i.test(status) ? 'badge-amber' : 'badge-blue'
 
   return (
     <>
-      <Card size="sm" className={`w-full flex flex-col h-full relative gap-2 transition-all duration-200 ring-2 ring-inset ${isSelected ? 'ring-primary bg-accent/20' : hasAttention ? 'ring-destructive/45 hover:ring-destructive/65' : 'ring-primary/35 hover:ring-primary/60'}`}>
-        <CardHeader className="flex flex-row items-start justify-between gap-2">
-          <div className="flex items-start gap-2.5 overflow-hidden flex-1">
-            <div className="pt-0.5">
-              <Checkbox
-                checked={isSelected}
-                onCheckedChange={() => onToggleSelect && onToggleSelect(company.id)}
-                className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                aria-label={`Select ${name}`}
-              />
-            </div>
-            <div className="flex flex-col gap-0.5 overflow-hidden">
-              <h3 className="font-semibold text-sm leading-tight truncate" title={name}>
-                <button
-                  type="button"
-                  onClick={() => setIsViewModalOpen(true)}
-                  className="max-w-full truncate text-left hover:text-primary hover:underline underline-offset-2 focus-visible:outline-none focus-visible:underline"
-                >
-                  {name}
-                </button>
-              </h3>
-              <span className="text-xs text-muted-foreground">{number}</span>
+      <Card
+        size="sm"
+        className={cn(
+          'group/company relative flex h-full w-full flex-col gap-3 pt-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md',
+          isSelected ? 'ring-2 ring-primary bg-accent/20' : hasAttention ? 'ring-destructive/35 hover:ring-destructive/60' : 'ring-primary/20 hover:ring-primary/45'
+        )}
+      >
+        {/* A thin band in the theme colour along the top (red when the company needs attention) */}
+        <span aria-hidden className={cn('absolute inset-x-0 top-0 h-1', hasAttention ? 'bg-destructive' : 'bg-primary')} />
+
+        <div className="flex items-start gap-3 px-4">
+          <button
+            type="button"
+            onClick={() => setIsViewModalOpen(true)}
+            aria-label={`Open ${name}`}
+            className={cn(
+              'flex size-11 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset transition-colors',
+              hasAttention ? 'bg-destructive/10 text-destructive ring-destructive/20' : 'bg-primary/10 text-primary ring-primary/15 group-hover/company:bg-primary/15'
+            )}
+          >
+            <IconBuildingSkyscraper className="size-5" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-sm font-semibold leading-tight" title={name}>
+              <button
+                type="button"
+                onClick={() => setIsViewModalOpen(true)}
+                className="max-w-full truncate text-left hover:text-primary focus-visible:outline-none focus-visible:underline"
+              >
+                {name}
+              </button>
+            </h3>
+            <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="tabular-nums">{number}</span>
+              {genuine && (
+                <span title="Genuine: checked against Companies House" className="inline-flex">
+                  <IconShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                </span>
+              )}
             </div>
           </div>
-          
-          <div className="flex items-center shrink-0">
+          <div className="flex shrink-0 items-center gap-1">
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={() => onToggleSelect && onToggleSelect(company.id)}
+              className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+              aria-label={`Select ${name}`}
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" aria-label="More">
                   <IconDotsVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -72,46 +136,45 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh,
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </CardHeader>
-        
-        <CardContent className="space-y-1.5 flex-1 text-xs">
-          <div className="truncate" title={director}>
-            <span className="font-medium text-muted-foreground">Director · </span>
-            <span className="text-foreground">{director}</span>
-          </div>
+        </div>
 
-          <p className="text-muted-foreground truncate" title={address}>{address}</p>
+        <div className="space-y-1 px-4 text-xs">
+          <p className="truncate" title={director}>
+            <span className="text-muted-foreground">Director · </span>
+            <span className="font-medium">{director}</span>
+          </p>
+          <p className="truncate text-muted-foreground" title={address}>{address}</p>
+        </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>{countryFlag}</span>
-              <span>{countryName}</span>
-            </div>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {monthTag && (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground" title="Registered">
-                  {monthTag}
-                </span>
-              )}
-              <Badge className={
-                status === 'Active' ? 'badge-green' :
-                status === 'Dissolved' ? 'badge-red' :
-                status === 'Inactive' || status === 'Not registered' ? 'badge-amber' : 'badge-blue'
-              }>
-                {status}
-              </Badge>
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center gap-1.5 px-4">
+          <span className="inline-flex items-center gap-1 rounded-lg bg-muted px-2 py-1 text-[11px] font-medium">
+            <span>{countryFlag}</span>
+            {countryName}
+          </span>
+          <Badge className={statusTone}>{status}</Badge>
+          <DueChip icon={IconCalendarDue} label="CS Due" date={raw.confirmation_next_due} overdue={Boolean(raw.confirmation_overdue)} />
+          <DueChip icon={IconFileText} label="Accounts" date={raw.accounts_next_due} overdue={Boolean(raw.accounts_overdue)} />
+        </div>
 
-          <div className={`flex items-center justify-between gap-2 text-[11px] border-t pt-1.5 ${hasAttention ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-            <span className="truncate">{hasAttention ? attentionSummary(company) : deadlineText}</span>
-            <Button size="xs" variant="outline" className="h-6 shrink-0 px-2 text-[11px]" onClick={() => setIsViewModalOpen(true)}>
-              View
-            </Button>
-          </div>
-        </CardContent>
+        {hasAttention && (
+          <p className="mx-4 flex items-start gap-1.5 rounded-lg bg-destructive/10 px-2.5 py-1.5 text-[11px] font-medium text-destructive">
+            <IconAlertTriangle className="mt-px size-3.5 shrink-0" />
+            <span className="line-clamp-2">{attentionSummary(company)}</span>
+          </p>
+        )}
+
+        <div className="mt-auto border-t px-4 pt-2.5">
+          <button
+            type="button"
+            onClick={() => setIsViewModalOpen(true)}
+            className="flex w-full items-center justify-between text-xs font-semibold text-primary"
+          >
+            View Details
+            <IconArrowRight className="size-4 transition-transform group-hover/company:translate-x-0.5" />
+          </button>
+        </div>
       </Card>
-      
+
       <ViewCompany
         isOpen={isViewModalOpen}
         onClose={() => setIsViewModalOpen(false)}
