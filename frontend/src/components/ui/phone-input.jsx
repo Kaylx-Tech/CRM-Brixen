@@ -4,6 +4,7 @@ import metadata from "libphonenumber-js/min/metadata"
 import { IconChevronDown } from "@tabler/icons-react"
 import { cn } from "cn"
 import { Input } from "@/components/ui/input"
+import { tidyPhone } from "@/lib/validation"
 
 // Every country with its calling code, named in English, A–Z
 const NAMES = typeof Intl !== "undefined" && Intl.DisplayNames ? new Intl.DisplayNames(["en"], { type: "region" }) : null
@@ -54,7 +55,8 @@ function PhoneInput({ value, onChange, defaultCountry = "GB", className, name, i
   const emit = (next) => onChange?.({ target: { value: next, name }, currentTarget: { value: next, name } })
 
   const typeNumber = (e) => {
-    const typed = e.target.value
+    // Hidden marks from a pasted number (WhatsApp) come out, and "0092…" becomes "+92…"
+    const typed = tidyPhone(e.target.value)
     if (typed.trim().startsWith("+")) {
       // A full number with its code: the country follows it
       const found = splitNumber(typed)

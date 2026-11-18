@@ -20,8 +20,20 @@ const URL_RE = /^https?:\/\/[^\s/$.?#][^\s]*\.[^\s]{2,}$/i
 const blank = (v) => v === undefined || v === null || (typeof v === "string" ? !v.trim() : Array.isArray(v) ? !v.length : false)
 
 /** "07700 900123" → "07700900123"; "+44 (0)7700…" → "+447700…" */
+/**
+ * A number pasted from WhatsApp, a phone or a web page carries hidden marks (direction marks, zero-width or
+ * non-breaking spaces) and other dashes; they are taken out, and "0092…" is read as "+92…".
+ */
+export function tidyPhone(value) {
+  return String(value || "")
+    .replace(/[​-‏‪-‮⁠-⁤﻿]/g, "")
+    .replace(/[  -   　]/g, " ")
+    .replace(/[‐-―−]/g, "-")
+    .replace(/^\s*00(?=[1-9])/, "+")
+}
+
 export function cleanPhone(value) {
-  return String(value || "").replace(/\(0\)/g, "").replace(/[\s\-().]/g, "")
+  return tidyPhone(value).replace(/\(0\)/g, "").replace(/[\s\-().]/g, "")
 }
 
 /** "sw1a1aa" → "SW1A 1AA" */

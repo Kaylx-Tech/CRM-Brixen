@@ -81,8 +81,17 @@ def _blank(value):
     return False
 
 
+def tidy_phone(value):
+    """A number pasted from WhatsApp, a phone or a web page: hidden marks (direction marks, zero-width and
+    non-breaking spaces) out, other dashes made plain, "0092…" read as "+92…"."""
+    text = re.sub(r'[​-‏‪-‮⁠-⁤﻿]', '', str(value or ''))
+    text = re.sub(r'[  -   　]', ' ', text)
+    text = re.sub(r'[‐-―−]', '-', text)
+    return re.sub(r'^\s*00(?=[1-9])', '+', text).strip()
+
+
 def clean_phone(value):
-    return re.sub(r'[\s\-().]', '', str(value or '').replace('(0)', ''))
+    return re.sub(r'[\s\-().]', '', tidy_phone(value).replace('(0)', ''))
 
 
 def format_postcode(value):

@@ -5,7 +5,7 @@ import os
 import re
 from db import query_db, execute_db, hash_password
 from utils.response import json_response, success_response, error_response
-from utils.validation import validate, validation_error
+from utils.validation import validate, validation_error, tidy_phone
 from services.permissions import check_permission, can_view_revenue
 from services.price_privacy import normalize_staff_type
 from services.b2b_service import client_is_b2b
@@ -217,7 +217,7 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         if not check_permission(user, 'clients.edit'):
             return _forbidden(start_response)
         cid = body.get('customer_id') or body.get('id')
-        phone = (body.get('phone') or '').strip()
+        phone = tidy_phone(body.get('phone'))
         errors = validate({'phone': phone}, {'phone': {'label': 'Phone', 'type': 'phone'}})
         if errors:
             return validation_error(start_response, errors)
@@ -457,7 +457,7 @@ def handle_client_routes(environ, start_response, path, method, user, body, quer
         email = (body.get('email') or '').strip().lower()
         full_name = (body.get('full_name') or body.get('name') or '').strip()
         role = (body.get('role') or 'CLIENT').strip().upper()
-        phone = (body.get('phone') or '').strip()
+        phone = tidy_phone(body.get('phone'))  # a pasted number's hidden marks out
         password = body.get('password') or DEFAULT_CUSTOMER_PASSWORD
         client_type = body.get('client_type') or 'Individual'
         is_b2b = 1 if (body.get('is_b2b') or client_type == 'B2B') else 0
