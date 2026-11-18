@@ -24,7 +24,7 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh,
 
   return (
     <>
-      <Card size="sm" className={`w-full flex flex-col h-full relative gap-2 transition-all duration-200 ${isSelected ? 'border-primary ring-1 ring-primary/40 bg-accent/20' : hasAttention ? 'border-destructive/50' : 'hover:border-border'}`}>
+      <Card size="sm" className={`w-full flex flex-col h-full relative gap-2 transition-all duration-200 ${isSelected ? 'ring-2 ring-primary bg-accent/20' : hasAttention ? 'ring-destructive/40 hover:ring-destructive/60' : 'ring-primary/35 hover:ring-primary/60'}`}>
         <CardHeader className="flex flex-row items-start justify-between gap-2">
           <div className="flex items-start gap-2.5 overflow-hidden flex-1">
             <div className="pt-0.5">

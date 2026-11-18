@@ -509,21 +509,6 @@ const Companies = () => {
                   <span className="text-xs text-muted-foreground">
                     · {groupCount(group.key)} compan{groupCount(group.key) === 1 ? 'y' : 'ies'} registered
                   </span>
-                  {/* Jump to another month of this page; the pinned bar's month is highlighted */}
-                  {monthGroups.length > 1 && (
-                    <nav className="ml-auto hidden items-center gap-0.5 sm:flex" aria-label="Months">
-                      {monthGroups.map((g) => (
-                        <button
-                          key={g.key}
-                          type="button"
-                          className={`rounded-full px-2 py-0.5 text-xs transition-colors ${g.key === group.key ? 'bg-primary font-semibold text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
-                          onClick={() => document.getElementById(`month-${g.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                        >
-                          {g.key === 'none' ? 'No date' : new Date(`${g.key}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'short' })}
-                        </button>
-                      ))}
-                    </nav>
-                  )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {group.companies.map((company, ci) => {
