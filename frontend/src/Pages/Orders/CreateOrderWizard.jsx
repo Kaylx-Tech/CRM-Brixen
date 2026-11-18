@@ -26,6 +26,8 @@ import ToastSave from "@/components/ToastSave"
 import { DateOfBirthInput } from "@/components/date-of-birth-input"
 import { isDateOfBirthLabel } from "@/lib/date-of-birth"
 import { checkField, ruleFromLabel, parseDate } from "@/lib/validation"
+import FirstLastName from "@/components/FirstLastName"
+import { customerDetailFor, isPersonNameLabel } from "@/lib/personName"
 import { FieldMessage } from "@/components/FormField"
 import { canViewPrices } from "@/lib/permissions"
 import { formatGBP } from "@/lib/money"
@@ -586,6 +588,9 @@ function ServiceFieldInput({ field, value, onChange, hint, error }) {
             </Label>
           ))}
         </RadioGroup>
+      ) : field.type === "text" && isPersonNameLabel(field.label) ? (
+        // A person's name (Full Name, Director Name…): First Name + Last Name, saved as one name
+        <FirstLastName id={id} value={value} onChange={onChange} invalid={!!error} describedBy={error ? `${id}-error` : undefined} />
       ) : field.type === "date" || isDateOfBirthLabel(field.label) ? (
         // Date fields (and older "Date of birth" text questions): a calendar and DD/MM/YYYY
         <DateOfBirthInput id={id} value={value} onChange={onChange} allowFuture={!isDateOfBirthLabel(field.label)} />
@@ -1226,14 +1231,41 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
     )
 
   // The selected services' own order form, shown first on the Details step
+  // "Same Details as the Customer": the order's own questions (name, email, phone, date of birth, home address)
+  // take the selected customer's details, as when the customer orders for themselves
+  const customerValue = (detail) => {
+    const c = selectedCustomer || {}
+    return { name: c.full_name, email: c.notification_email || c.email, phone: c.phone, dob: c.date_of_birth, address: c.address }[detail]
+  }
+  const fillableFields = (!portal && selectedCustomer)
+    ? activeFields.filter((f) => f.type !== "file" && customerDetailFor(f.label) && String(customerValue(customerDetailFor(f.label)) || "").trim())
+    : []
+  const [sameAsCustomer, setSameAsCustomer] = useState(false)
+  const applyCustomerDetails = (on) => {
+    setSameAsCustomer(on)
+    if (!on) return
+    for (const f of fillableFields) setFieldValue(f.key, String(customerValue(customerDetailFor(f.label)) || "").trim())
+  }
+
   const serviceDetailsBlock = detailServiceFields.length > 0 ? (
     <div className="rounded-xl border border-primary/30 bg-primary/[0.03] p-4 space-y-3">
       <div>
-        <h5 className="text-sm font-bold">{selectedProducts.length === 1 ? `${selectedProducts[0].name} form` : "Service form"}</h5>
+        <h5 className="text-sm font-bold">{selectedProducts.length === 1 ? `${selectedProducts[0].name} Form` : "Service Form"}</h5>
         <p className="text-[11px] text-muted-foreground mt-0.5">
           Asked by the selected {selectedProducts.length === 1 ? "service" : "services"}. A question shared by several services is asked once.
         </p>
       </div>
+      {fillableFields.length > 0 && (
+        <Label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-card p-3 text-sm font-normal">
+          <Checkbox className="mt-0.5" checked={sameAsCustomer} onCheckedChange={(on) => applyCustomerDetails(!!on)} />
+          <span>
+            <span className="font-semibold">Same Details as the Customer</span>
+            <span className="block text-xs text-muted-foreground">
+              Fill {fillableFields.map((f) => f.label).join(", ")} from {selectedCustomer?.full_name || "the customer"}'s own details. You can still change them.
+            </span>
+          </span>
+        </Label>
+      )}
       <div className="space-y-4">
         {detailServiceFields.map((f) => {
           const hint = selectedProducts.length > 1 ? `For ${f.services.join(", ")}` : ""

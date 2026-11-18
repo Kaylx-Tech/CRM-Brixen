@@ -18,6 +18,7 @@ import ToastSave from '@/components/ToastSave'
 import { toast } from 'sonner'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
 import { useFormErrors } from '@/lib/validation'
+import FirstLastName from '@/components/FirstLastName'
 import { FieldMessage, RequiredMark, invalidProps } from '@/components/FormField'
 
 const CUSTOMER_SCHEMA = {
@@ -203,14 +204,15 @@ const AddCustomer = ({ isOpen, onClose, onCustomerCreated }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2 md:col-span-2">
-                <Label htmlFor="cust-full_name">Full Name <RequiredMark /></Label>
-                <Input
+                <Label htmlFor="cust-full_name">Name <RequiredMark /></Label>
+                {/* First Name + Last Name, saved as the customer's full name */}
+                <FirstLastName
                   id="cust-full_name"
-                  {...invalidProps(errors, 'full_name', 'cust-')}
-                  placeholder="e.g. Muhammad Ahmed"
                   value={fullName}
-                  onChange={(e) => { setFullName(e.target.value); recheck('full_name', e.target.value) }}
+                  onChange={(name) => { setFullName(name); recheck('full_name', name) }}
                   disabled={isLoading}
+                  invalid={!!errors.full_name}
+                  describedBy="cust-full_name-error"
                 />
                 <FieldMessage id="cust-full_name-error" message={errors.full_name} />
               </div>
