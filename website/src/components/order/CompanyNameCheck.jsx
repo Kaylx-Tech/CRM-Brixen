@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useState, useSyncExternalStore } from "react"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import NameCheckResult from "@/components/order/NameCheckResult"
 import { useNameCheck } from "@/lib/name-check"
 
@@ -21,6 +21,11 @@ function NameCheckBox({ pkg, initial }) {
   const router = useRouter()
   const [name, setName] = useState(initial)
   const { state, checkNow } = useNameCheck(name)
+  // A name brought from the home page search is checked once on arrival (the visitor already pressed Search)
+  useEffect(() => {
+    if (initial.trim()) checkNow()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const submit = (e) => {
     e.preventDefault()

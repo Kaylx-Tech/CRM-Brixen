@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react"
 import { SITE } from "@/lib/site"
 
-const WAIT_MS = 500 // check once the visitor stops typing for this long
 const MIN_LENGTH = 3
 const answers = new Map() // name (lower case) -> promise of the answer, for this visit
 
@@ -32,9 +31,9 @@ async function fetchAnswer(name) {
 }
 
 /**
- * Live company name search: checks the name at Companies House (CRM: GET /api/public/name-availability) a moment
- * after the visitor stops typing. Returns {state, checkNow}; state.status is idle, short, checking, available,
- * taken or error. checkNow() checks at once (the Search button / Enter).
+ * Company name search: checks the name at Companies House (CRM: GET /api/public/name-availability) only when the
+ * visitor presses Search (or Enter), not while they type; typing a different name clears the last answer.
+ * Returns {state, checkNow}; state.status is idle, checking, available, taken or error.
  */
 export function useNameCheck(name) {
   const wanted = name.trim()
@@ -48,14 +47,14 @@ export function useNameCheck(name) {
     if (latest.current === value) setState(answer) // ignore an older answer arriving late
   }
 
+  // A different name typed: the last answer no longer applies (nothing is checked until Search)
   useEffect(() => {
-    if (wanted.length < MIN_LENGTH) {
+    if (latest.current && latest.current !== wanted) {
       latest.current = ""
-      const t = setTimeout(() => setState({ status: wanted ? "short" : "idle" }), 0)
+      const t = setTimeout(() => setState({ status: "idle" }), 0)
       return () => clearTimeout(t)
     }
-    const t = setTimeout(() => run(wanted), answers.has(wanted.toLowerCase()) ? 0 : WAIT_MS)
-    return () => clearTimeout(t)
+    return undefined
   }, [wanted])
 
   function checkNow() {

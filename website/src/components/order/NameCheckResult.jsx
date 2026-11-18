@@ -1,4 +1,4 @@
-/** The answer of the live company name search, on a dark background (hero and the package name search step). */
+/** The answer of the company name search (after Search), on a dark background (hero and the package name search step). */
 export default function NameCheckResult({ state }) {
   return (
     <div className="mt-4 min-h-7 text-lg font-semibold text-white" aria-live="polite">
@@ -24,9 +24,6 @@ export default function NameCheckResult({ state }) {
                 Note: {w}
               </p>
             ))}
-          {state.status === "taken" && state.similar.length > 0 && (
-            <p className="mt-2 text-sm font-normal text-white/70">Similar Names Already Registered: {state.similar.join(", ")}</p>
-          )}
         </div>
       )}
     </div>

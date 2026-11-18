@@ -5,19 +5,19 @@ import { useState } from "react"
 import NameCheckResult from "@/components/order/NameCheckResult"
 import { useNameCheck } from "@/lib/name-check"
 
-/** Company name search in the hero: checked live at Companies House while the visitor types. "Search" (or "Choose a
- *  Package" once the name is free) opens the packages page with the name, which each package carries on. */
+/** Company name search in the hero: "Search" (or Enter) checks the name at Companies House; once it is free,
+ *  "Choose a Package" opens the packages page with the name, which each package carries on. */
 export default function NameSearch() {
   const router = useRouter()
   const [name, setName] = useState("")
-  const { state } = useNameCheck(name)
+  const { state, checkNow } = useNameCheck(name)
   const goOn = () => {
     const value = name.trim()
     router.push(value ? `/packages/?name=${encodeURIComponent(value)}` : "/packages/")
   }
   const submit = (e) => {
     e.preventDefault()
-    goOn()
+    checkNow()
   }
   return (
     <div className="mt-8 w-full max-w-[650px]">
