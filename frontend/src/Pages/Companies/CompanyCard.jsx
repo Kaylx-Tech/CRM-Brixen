@@ -33,8 +33,8 @@ function DueChip({ icon: Icon, label, date, overdue }) {
       className={cn(
         'inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] tabular-nums',
         late ? 'border-destructive/30 bg-destructive/10 text-destructive'
-          : soon ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400'
-            : 'border-border bg-muted/40 text-muted-foreground'
+          : soon ? 'border-yellow-500/35 bg-yellow-500/10 text-yellow-700 dark:border-yellow-400/30 dark:text-yellow-300'
+            : 'border-border bg-muted/40 text-muted-foreground dark:border-white/10 dark:bg-white/[0.04]'
       )}
     >
       <Icon className="size-3.5 shrink-0" />
@@ -70,11 +70,13 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
         size="sm"
         className={cn(
           'group/company relative flex h-full w-full flex-col gap-3 pt-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md',
-          isSelected ? 'ring-2 ring-primary bg-accent/20' : hasAttention ? 'ring-destructive/35 hover:ring-destructive/60' : 'ring-primary/20 hover:ring-primary/45'
+          // Dark: a faint glow of the colour from the top, so the card does not sit flat on the black page
+          'dark:bg-linear-to-b dark:to-card dark:to-60%',
+          isSelected ? 'ring-2 ring-primary bg-accent/20 dark:from-primary/15' : hasAttention ? 'ring-destructive/35 hover:ring-destructive/60 dark:ring-destructive/40 dark:from-destructive/10' : 'ring-primary/20 hover:ring-primary/45 dark:ring-primary/30 dark:hover:ring-primary/60 dark:from-primary/[0.07]'
         )}
       >
         {/* A thin band in the theme colour along the top (red when the company needs attention) */}
-        <span aria-hidden className={cn('absolute inset-x-0 top-0 h-1', hasAttention ? 'bg-destructive' : 'bg-primary')} />
+        <span aria-hidden className={cn('absolute inset-x-0 top-0 h-1', hasAttention ? 'bg-linear-to-r from-destructive via-destructive/80 to-destructive/30' : 'bg-linear-to-r from-primary via-primary/80 to-primary/30')} />
 
         <div className="flex items-start gap-3 px-4">
           <button
@@ -83,7 +85,7 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
             aria-label={`Open ${name}`}
             className={cn(
               'flex size-11 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset transition-colors',
-              hasAttention ? 'bg-destructive/10 text-destructive ring-destructive/20' : 'bg-primary/10 text-primary ring-primary/15 group-hover/company:bg-primary/15'
+              hasAttention ? 'bg-destructive/10 text-destructive ring-destructive/20 dark:bg-destructive/15' : 'bg-primary/10 text-primary ring-primary/15 group-hover/company:bg-primary/15 dark:bg-primary/15 dark:ring-primary/25'
             )}
           >
             <IconBuildingSkyscraper className="size-5" />
@@ -163,7 +165,7 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
           </p>
         )}
 
-        <div className="mt-auto border-t px-4 pt-2.5">
+        <div className="mt-auto border-t px-4 pt-2.5 dark:border-white/10">
           <button
             type="button"
             onClick={() => setIsViewModalOpen(true)}
