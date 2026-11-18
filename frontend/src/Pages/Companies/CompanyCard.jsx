@@ -32,7 +32,7 @@ function DueChip({ icon: Icon, label, date, overdue }) {
       title={date ? `${label} due ${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)}` : label}
       className={cn(
         'inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] tabular-nums',
-        late ? 'border-destructive/30 bg-destructive/10 text-destructive'
+        late ? 'border-destructive/25 bg-destructive/[0.07] text-destructive dark:text-red-300'
           : soon ? 'border-yellow-500/35 bg-yellow-500/10 text-yellow-700 dark:border-yellow-400/30 dark:text-yellow-300'
             : 'border-border bg-muted/40 text-muted-foreground dark:border-white/10 dark:bg-white/[0.04]'
       )}
@@ -70,25 +70,26 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
         size="sm"
         className={cn(
           'group/company relative flex h-full w-full flex-col gap-3 pt-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md',
-          // Dark: a faint glow of the colour from the top, so the card does not sit flat on the black page
-          'dark:bg-linear-to-b dark:to-card dark:to-60%',
-          isSelected ? 'ring-2 ring-primary bg-accent/20 dark:from-primary/15' : hasAttention ? 'ring-destructive/35 hover:ring-destructive/60 dark:ring-destructive/40 dark:from-destructive/10' : 'ring-primary/20 hover:ring-primary/45 dark:ring-primary/30 dark:hover:ring-primary/60 dark:from-primary/[0.07]'
+          // Calm by default: a soft edge in the theme colour that comes forward on hover; a company that needs
+          // attention looks the same (the red note inside says why), so a page of them never turns red
+          isSelected
+            ? 'ring-2 ring-primary/70 bg-primary/[0.04]'
+            : 'ring-primary/15 hover:ring-primary/40 dark:ring-white/10 dark:hover:ring-primary/45'
         )}
       >
-        {/* A thin band in the theme colour along the top (red when the company needs attention) */}
-        <span aria-hidden className={cn('absolute inset-x-0 top-0 h-1', hasAttention ? 'bg-linear-to-r from-destructive via-destructive/80 to-destructive/30' : 'bg-linear-to-r from-primary via-primary/80 to-primary/30')} />
+        {/* A thin line in the theme colour along the top, fading out to the right */}
+        <span aria-hidden className="absolute inset-x-0 top-0 h-[3px] bg-linear-to-r from-primary/70 via-primary/25 to-transparent" />
 
         <div className="flex items-start gap-3 px-4">
           <button
             type="button"
             onClick={() => setIsViewModalOpen(true)}
             aria-label={`Open ${name}`}
-            className={cn(
-              'flex size-11 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset transition-colors',
-              hasAttention ? 'bg-destructive/10 text-destructive ring-destructive/20 dark:bg-destructive/15' : 'bg-primary/10 text-primary ring-primary/15 group-hover/company:bg-primary/15 dark:bg-primary/15 dark:ring-primary/25'
-            )}
+            className="relative flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/[0.08] text-primary ring-1 ring-inset ring-primary/10 transition-colors group-hover/company:bg-primary/[0.13] dark:bg-white/[0.05] dark:ring-white/10"
           >
             <IconBuildingSkyscraper className="size-5" />
+            {/* A small red dot when Companies House shows something to do */}
+            {hasAttention && <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-destructive ring-2 ring-card" />}
           </button>
           <div className="min-w-0 flex-1">
             {/* Name, then the country flag and a small status beside it */}
@@ -159,7 +160,7 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
         </div>
 
         {hasAttention && (
-          <p className="mx-4 flex items-start gap-1.5 rounded-lg bg-destructive/10 px-2.5 py-1.5 text-[11px] font-medium text-destructive">
+          <p className="mx-4 flex items-start gap-1.5 rounded-lg bg-destructive/[0.07] px-2.5 py-1.5 text-[11px] font-medium text-destructive dark:bg-destructive/10 dark:text-red-300">
             <IconAlertTriangle className="mt-px size-3.5 shrink-0" />
             <span className="line-clamp-2">{attentionSummary(company)}</span>
           </p>
@@ -169,10 +170,10 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
           <button
             type="button"
             onClick={() => setIsViewModalOpen(true)}
-            className="flex w-full items-center justify-between text-xs font-semibold text-primary"
+            className="flex w-full items-center justify-between text-xs font-semibold text-foreground/75 transition-colors hover:text-primary"
           >
             View Details
-            <IconArrowRight className="size-4 transition-transform group-hover/company:translate-x-0.5" />
+            <IconArrowRight className="size-4 text-primary transition-transform group-hover/company:translate-x-0.5" />
           </button>
         </div>
       </Card>
