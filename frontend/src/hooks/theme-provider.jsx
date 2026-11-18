@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useLayoutEffect, useState } from "react"
 
 const initialState = {
   theme: "system",
@@ -20,7 +20,8 @@ export function ThemeProvider({
   // Pages that are always light whatever the theme (the sign-in pages), see useLightOnly()
   const [lightOnly, setLightOnly] = useState(0)
 
-  useEffect(() => {
+  // Before the browser paints, so a page never shows a frame in the old theme
+  useLayoutEffect(() => {
     const root = window.document.documentElement
 
     root.classList.remove("light", "dark")

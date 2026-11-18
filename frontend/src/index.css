@@ -427,3 +427,9 @@ html.privacy-mode [data-chart-privacy] {
   transition: filter 0.3s ease, opacity 0.3s ease;
   user-select: none !important;
 }
+
+/* The cross-fade from the sign-in page into the CRM (lib/goHome.js) */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.3s;
+}

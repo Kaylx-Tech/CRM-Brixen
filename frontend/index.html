@@ -21,6 +21,19 @@
         }
       })();
     </script>
+    <script>
+      // The theme before the app loads, so a dark page never shows white first (same rules as hooks/theme-provider.jsx)
+      (function () {
+        try {
+          var path = location.pathname;
+          var lightOnly = /^\/(login|forgot-password|reset-password|signup)(\/|$)/.test(path);
+          var theme = localStorage.getItem('vite-ui-theme') || 'light';
+          if (theme === 'system') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          if (lightOnly || (theme !== 'dark' && theme !== 'light')) theme = 'light';
+          document.documentElement.classList.add(theme);
+        } catch (e) {}
+      })();
+    </script>
     <title>Brixen Consultants - Corporate CMS & Client Portal</title>
   </head>
   <body>

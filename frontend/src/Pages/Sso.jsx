@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { IconLoader2 } from "@tabler/icons-react"
 import { apiRequest } from "@/lib/api"
-import { homePath } from "@/lib/permissions"
+import { goHome } from "@/lib/goHome"
 
 /**
  * Sign-in handed over from the Brixen website (B2B accounts): the API redirects here with the session token in
@@ -28,7 +28,7 @@ export default function Sso() {
         return
       }
       localStorage.setItem("user", JSON.stringify(user))
-      navigate(homePath(user), { replace: true })
+      goHome(navigate, user, { replace: true })
     })
   }, [navigate])
 

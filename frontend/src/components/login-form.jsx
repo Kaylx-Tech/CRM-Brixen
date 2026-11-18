@@ -18,7 +18,7 @@ import { Alert, AlertDescription } from "./ui/alert"
 import { IconAlertCircle } from "@tabler/icons-react"
 import { toast } from "sonner"
 import { toastProcessing, toastDone, toastFail } from "@/lib/toastActions"
-import { homePath } from "@/lib/permissions"
+import { goHome } from "@/lib/goHome"
 import { getDeviceId } from "@/lib/device"
 import { useLightOnly } from "@/hooks/theme-provider"
 import { LoginCodeStep } from "@/components/login-code-step"
@@ -60,7 +60,7 @@ export function LoginForm({ className, ...props }) {
     localStorage.setItem("token", token)
     localStorage.setItem("user", JSON.stringify(userObj || { email }))
     // Customers land on their portal, the team on the CRM
-    navigate(homePath(userObj || {}))
+    goHome(navigate, userObj || {})
     return true
   }
 
