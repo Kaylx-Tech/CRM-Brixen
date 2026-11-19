@@ -240,7 +240,9 @@ const Companies = () => {
   }
   const pageCompanies = filteredCompanies.slice((currentPage - 1) * pageSize, currentPage * pageSize)
   const monthGroups = []
-  for (const company of pageCompanies) {
+  // Attention is one plain list (what needs doing), not split by the month the companies were registered
+  if (activeTab === 'attention') monthGroups.push({ key: 'attention', companies: pageCompanies })
+  else for (const company of pageCompanies) {
     const key = incorporationMonth(company.incDate) || 'none'
     const last = monthGroups[monthGroups.length - 1]
     if (last && last.key === key) last.companies.push(company)
@@ -503,13 +505,13 @@ const Companies = () => {
             {monthGroups.map((group, gi) => (
               <section key={group.key} id={`month-${group.key}`} data-month={group.key} className="mb-5 scroll-mt-[84px]">
                 {/* The month heading stays pinned at the top while its companies scroll past */}
-                <div className="sticky top-[74px] z-[9] -mx-1 mb-2 flex items-center gap-2 bg-background/85 px-1 py-2 backdrop-blur-md">
+                {group.key !== 'attention' && <div className="sticky top-[74px] z-[9] -mx-1 mb-2 flex items-center gap-2 bg-background/85 px-1 py-2 backdrop-blur-md">
                   <h3 className="text-base font-semibold tracking-tight">{groupLabel(group.key)}</h3>
                   {group.key !== 'none' && <span className="text-xs text-muted-foreground">{group.key.slice(0, 4)}</span>}
                   <span className="text-xs text-muted-foreground">
                     · {groupCount(group.key)} compan{groupCount(group.key) === 1 ? 'y' : 'ies'} registered
                   </span>
-                </div>
+                </div>}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {group.companies.map((company, ci) => {
                     const i = gi * 3 + ci
