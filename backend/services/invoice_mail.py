@@ -33,7 +33,7 @@ INVOICE_BANK_PKR = {
 PAYMENT_REQUEST_COPY = (
     'Thank you for your order with Brixen Consultants.\n\n'
     'Your invoice details are below.\n\n'
-    'You may settle this invoice using either the GBP or PKR payment details provided below.'
+    'You can pay by card, or by bank transfer using the GBP or PKR details below.'
 )
 
 
@@ -149,6 +149,108 @@ def _section_html(title, rows):
     )
 
 
+def _invoice_document_html(invoice_id, *, include_pay):
+    """The whole invoice inside the email (as on the PDF), so nothing needs downloading: number, dates, billed
+    to, every product, the totals, the payments received, then how to pay. (html, text) or (None, None)."""
+    try:
+        from services.invoice_document import document_payload
+        p = document_payload(invoice_id)
+    except Exception as exc:
+        print(f"[Invoice mail] invoice #{invoice_id}: {exc}")
+        return None, None
+    if not p:
+        return None, None
+    inv = p['invoice']
+    esc = html_escape
+    cell = 'padding:7px 0;font-size:14px;line-height:1.4;color:#1d1d1f;border-bottom:1px solid #e5e5ea;'
+    head = 'padding:0 0 6px;font-size:12px;color:#6e6e73;font-weight:600;border-bottom:1px solid #e5e5ea;'
+
+    facts = [('Invoice Number', inv.get('invoice_number')), ('Invoice Date', p.get('invoice_date')),
+             ('Due Date', p.get('due_date')), ('Order', inv.get('order_number'))]
+    facts_html = ''.join(
+        f'<td style="padding:0 12px 0 0;vertical-align:top;"><p style="margin:0;font-size:11px;color:#6e6e73;">'
+        f'{esc(k)}</p><p style="margin:2px 0 0;font-size:14px;font-weight:600;color:#1d1d1f;">{esc(str(v))}</p></td>'
+        for k, v in facts if v)
+    billed = []
+    for field in (p.get('owner_name'), p.get('company_name'), p.get('company_address'), p.get('owner_email')):
+        text = str(field or '').strip()
+        if text and text not in billed:
+            billed.append(text)
+    billed_html = (f'<p style="margin:14px 0 0;font-size:11px;color:#6e6e73;">Billed To</p>'
+                   f'<p style="margin:2px 0 0;font-size:14px;line-height:1.45;color:#1d1d1f;">'
+                   f'{"<br>".join(esc(b) for b in billed)}</p>') if billed else ''
+
+    items_html = ''.join(
+        f'<tr><td style="{cell}">{esc(str(i.get("description") or ""))}</td>'
+        f'<td style="{cell}text-align:center;width:40px;">{esc(str(i.get("quantity") or 1))}</td>'
+        f'<td style="{cell}text-align:right;width:90px;white-space:nowrap;">£{float(i.get("amount") or 0):,.2f}</td></tr>'
+        for i in p.get('line_items') or [])
+    totals = [('Subtotal', p['total_display'], False)]
+    paid_before = float(inv.get('amount_paid') or 0) > 0.004 or p.get('payments')
+    if paid_before:
+        totals.append(('Paid', f"-{p['paid_display']}", False))
+    totals.append(('Amount Due', p['amount_due_display'], True))
+    totals_html = ''.join(
+        f'<tr><td style="padding:{8 if strong else 4}px 0 0;font-size:{15 if strong else 14}px;'
+        f'color:{"#1d1d1f" if strong else "#6e6e73"};font-weight:{700 if strong else 400};text-align:right;">{esc(k)}</td>'
+        f'<td style="padding:{8 if strong else 4}px 0 0 16px;font-size:{15 if strong else 14}px;color:#1d1d1f;'
+        f'font-weight:{700 if strong else 500};text-align:right;width:90px;white-space:nowrap;">{esc(v)}</td></tr>'
+        for k, v, strong in totals)
+    pays = p.get('payments') or []
+    pays_html = ''
+    if pays:
+        pays_html = (f'<p style="margin:16px 0 4px;font-size:12px;color:#6e6e73;font-weight:600;">Payments Received</p>'
+                     + ''.join(f'<p style="margin:2px 0;font-size:13px;color:#1d1d1f;">{esc(x["date"])} · '
+                               f'{esc(x["method"] or "Payment")} · {esc(x["amount"])}</p>' for x in pays))
+    status = 'Paid' if p.get('paid') else 'Part Paid' if p.get('part_paid') else 'Due'
+    colour = {'Paid': ('#e8f5ec', '#248a3d'), 'Part Paid': ('#fff4de', '#b26800'), 'Due': ('#e6f0ff', '#0066cc')}[status]
+    html = (
+        f'<div style="margin:20px 0 0;padding:18px 18px 16px;background:#f5f5f7;border-radius:12px;">'
+        f'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>'
+        f'<td style="vertical-align:middle;"><span style="font-size:20px;font-weight:700;color:#1d1d1f;">Invoice</span>'
+        f'<span style="display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;font-size:12px;'
+        f'font-weight:700;background:{colour[0]};color:{colour[1]};">{status}</span></td>'
+        f'<td style="text-align:right;vertical-align:middle;font-size:20px;font-weight:700;color:#1d1d1f;">'
+        f'{esc(p["total_display"] if p.get("paid") else p["amount_due_display"])}</td></tr></table>'
+        f'<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:14px 0 0;"><tr>'
+        f'{facts_html}</tr></table>{billed_html}'
+        f'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" '
+        f'style="width:100%;border-collapse:collapse;margin:18px 0 0;">'
+        f'<tr><td style="{head}">Description</td><td style="{head}text-align:center;">Qty</td>'
+        f'<td style="{head}text-align:right;">Amount</td></tr>{items_html}</table>'
+        f'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:6px 0 0;">'
+        f'{totals_html}</table>{pays_html}</div>'
+    )
+    text = ['', f"Invoice {inv.get('invoice_number') or ''} ({status})"]
+    text += [f"{k}: {v}" for k, v in facts if v]
+    text += [f"- {i.get('description')} x{i.get('quantity') or 1}: £{float(i.get('amount') or 0):,.2f}"
+             for i in p.get('line_items') or []]
+    text += [f"{k}: {v}" for k, v, _ in totals]
+
+    if include_pay and not p.get('paid'):
+        if p.get('pay_url'):
+            html += (f'<p style="margin:20px 0 0;"><a href="{esc(p["pay_url"])}" '
+                     'style="display:inline-block;padding:10px 22px;background:#003971;color:#ffffff;'
+                     'text-decoration:none;border-radius:999px;font-size:14px;font-weight:600;line-height:1.3;">'
+                     'Pay by Card</a></p>'
+                     '<p style="margin:6px 0 0;font-size:12px;line-height:1.45;color:#6e6e73;">'
+                     'Secure card payment by Stripe. Or pay by bank transfer below.</p>')
+            text += ['', f"Pay by card: {p['pay_url']}"]
+        gbp, pkr = INVOICE_BANK_GBP, INVOICE_BANK_PKR
+        html += _section_html('Pay in GBP', [('Account Name', gbp['account_name']),
+                                            ('Account Number', gbp['account_number']), ('Sort Code', gbp['sort_code'])])
+        html += _section_html('Pay in PKR', [('Account Name', pkr['account_name']), ('Bank Name', pkr['bank_name']),
+                                            ('IBAN', pkr['iban'])])
+        fx = p.get('pakistan_fx') or {}
+        if fx.get('math'):
+            html += (f'<p style="margin:12px 0 0;font-size:13px;line-height:1.5;color:#1d1d1f;">'
+                     f'<strong>From Pakistan:</strong> {esc(fx["math"])}. Send {esc(fx["pkr_display"])} to the UBL '
+                     f'account ({esc(fx["gbp_display"])} at today\'s GBP to PKR rate).</p>')
+        text += ['', f"Pay in GBP: {gbp['account_name']}, account {gbp['account_number']}, sort code {gbp['sort_code']}",
+                 f"Pay in PKR: {pkr['account_name']}, {pkr['bank_name']}, IBAN {pkr['iban']}"]
+    return html, '\n'.join(text)
+
+
 def _build_sections(invoice, order, *, include_bank):
     invoice_number = str(invoice.get('invoice_number') or '').strip()
     service = str(order.get('service_name') or 'Your order').strip()
@@ -194,7 +296,7 @@ def _build_sections(invoice, order, *, include_bank):
     return ''.join(sections)
 
 
-def _compose_email(*, subject, greeting, intro, sections_html, category):
+def _compose_email(*, subject, greeting, intro, sections_html, category, extra_text=''):
     brand = brand_settings()
     brand_for_sig = {
         **brand,
@@ -220,7 +322,7 @@ def _compose_email(*, subject, greeting, intro, sections_html, category):
         signature_html=eng.email_signature_html(brand_for_sig),
         disclaimer_html=eng.email_disclaimer_html(disclaimer),
     )
-    text = f"Hello {greeting},\n\n{intro}\n\n{subject}\n"
+    text = f"Hello {greeting},\n\n{intro}\n\n{subject}\n{extra_text}"
     return subject, text, html
 
 
@@ -245,12 +347,15 @@ def send_payment_requested(invoice, order):
     else:
         subject = f"Invoice — {company}"
 
+    # The whole invoice in the email (products, totals, how to pay): no PDF to download
+    doc_html, doc_text = _invoice_document_html(invoice.get('id'), include_pay=True)
     subject, text, html = _compose_email(
         subject=subject,
         greeting=_greeting_name(invoice, order),
         intro=PAYMENT_REQUEST_COPY,
-        sections_html=_build_sections(invoice, order, include_bank=True),
+        sections_html=doc_html or _build_sections(invoice, order, include_bank=True),
         category='INVOICE',
+        extra_text=doc_text or '',
     )
     ok = send_email(to, subject, html, text_content=text, category='INVOICE',
                     user_id=invoice.get('user_id'), order_id=invoice.get('order_id'))
@@ -310,15 +415,18 @@ def send_payment_received(invoice, order):
         )
     subject = f"{title} — {ref} — {company}"
 
+    # The paid invoice in the email (products, payments received)
+    doc_html, doc_text = _invoice_document_html(invoice.get('id'), include_pay=False)
     subject, text, html = _compose_email(
         subject=subject,
         greeting=_greeting_name(invoice, order),
         intro=intro,
-        sections_html=(
+        sections_html=doc_html or (
             _build_sections(invoice, order, include_bank=False)
             + _section_html('Payment', _payment_rows(invoice, paid, due))
         ),
         category='PAYMENT',
+        extra_text=doc_text or '',
     )
     ok = send_email(to, subject, html, text_content=text, category='INVOICE',
                     user_id=invoice.get('user_id'), order_id=invoice.get('order_id'))

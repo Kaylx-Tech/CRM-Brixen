@@ -82,7 +82,7 @@ def _upsert_wizard_order(*, body, user_id, is_staff, as_draft=False, own_orders_
     if not service_name and line_items:
         names = [str(i.get('product_name') or i.get('name') or '').strip() for i in line_items]
         names = [n for n in names if n]
-        service_name = names[0] if len(names) == 1 else ('Multiple Products' if names else '')
+        service_name = ', '.join(dict.fromkeys(names))  # every product chosen, not "Multiple Products"
 
     client_id = body.get('user_id') or body.get('client_id') or user_id
     company_id = body.get('company_id')

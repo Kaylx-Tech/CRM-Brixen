@@ -900,11 +900,9 @@ export default function CreateOrderWizard({ open, onClose, onCreated, portal = f
   const selectedSummary = useMemo(() => {
     const price = selectedProducts.reduce((sum, p) => sum + priceOf(p), 0)
     const title =
-      selectedProducts.length === 1
-        ? selectedProducts[0].name
-        : selectedProducts.length > 1
-          ? "Multiple Products"
-          : "—"
+      selectedProducts.length > 0
+        ? [...new Set(selectedProducts.map((p) => p.name))].join(", ") // every product chosen
+        : "—"
     const cat =
       selectedProducts.length === 1
         ? selectedProducts[0].category || "Service"

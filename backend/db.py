@@ -481,6 +481,17 @@ def ensure_schema():
         conn.execute("UPDATE services SET price = ROUND(price + 0.01, 2) "
                      "WHERE CAST(ROUND(price * 100) AS INTEGER) % 100 = 99")
         conn.execute("INSERT INTO data_fixes (name) VALUES ('whole_pound_prices')")
+    if not conn.execute("SELECT 1 FROM data_fixes WHERE name = 'order_names_from_products'").fetchone():
+        # 2026-11-19: an order with several products was named "Multiple Products"; it now carries every product
+        # chosen ("A, B"), as new orders do
+        for (order_id,) in conn.execute("SELECT id FROM orders WHERE service_name = 'Multiple Products'").fetchall():
+            names = [r[0].strip() for r in conn.execute(
+                "SELECT product_name FROM order_line_items WHERE order_id = ? ORDER BY sort_order ASC, id ASC",
+                (order_id,)).fetchall() if r[0] and r[0].strip()]
+            if names:
+                conn.execute("UPDATE orders SET service_name = ? WHERE id = ?",
+                             (', '.join(dict.fromkeys(names)), order_id))
+        conn.execute("INSERT INTO data_fixes (name) VALUES ('order_names_from_products')")
     if 'wordpress_password_hash' not in user_cols:
         # The old website's password (see verify_wordpress_password); cleared once the CRM has its own
         conn.execute("ALTER TABLE users ADD COLUMN wordpress_password_hash TEXT")

@@ -133,7 +133,8 @@ def create_manual_crm_order(data, actor=None):
             total_price += p
         if not valid_items:
             return None, 'Enter at least one product name'
-        service_name = valid_items[0]['product_name'] if len(valid_items) == 1 else 'Multiple Products'
+        # The order's name: every product chosen ("A, B"), not "Multiple Products"
+        service_name = ', '.join(dict.fromkeys(i['product_name'] for i in valid_items))
     else:
         service_name = str(extras.get('service_name') or extras.get('product') or '').strip()
         if not service_name:
