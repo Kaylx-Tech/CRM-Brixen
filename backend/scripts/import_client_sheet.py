@@ -10,6 +10,8 @@ For every row of Type "Client" (rows without an email and sales calls are left o
     Pending company with the name from the sheet, for the team to check (listed at the end). A company already
     in the CRM is not added again. When it is already on another customer and the email is new, no customer
     is added: the sheet's details go on the customer who has the company (listed at the end, to check).
+    A company on a team login (Admin / staff) counts as having no customer: the sheet's customer is added,
+    and with --move-from-staff the company moves to that customer (else it stays where it is).
   - The sheet's Tide details (status, date, client name, promo code, flag, review, notes) are saved in the
     Activity Log on the customer.
 The file itself is not kept in the CRM. Run it as often as needed: rows already added are skipped.
@@ -105,6 +107,8 @@ def main():
     parser.add_argument('csv', help='the cleaned sheet (CSV), or - to read it from the input')
     parser.add_argument('--apply', action='store_true', help='add the clients (default: report only)')
     parser.add_argument('--no-companies-house', action='store_true', help='do not look companies up')
+    parser.add_argument('--move-from-staff', action='store_true',
+                        help='a company on a team login (Admin / staff) moves to the sheet\'s customer')
     args = parser.parse_args()
 
     text = sys.stdin.read() if args.csv == '-' else open(args.csv, encoding='utf-8-sig').read()
@@ -119,7 +123,8 @@ def main():
     print('REPORT ONLY: nothing is saved. Add --apply to save.\n' if not args.apply else 'SAVING.\n')
 
     counts = {'new customers': 0, 'existing customers': 0, 'added to the customer who has the company': 0,
-              'companies found at CH': 0, 'pending companies': 0, 'companies already in CRM': 0}
+              'companies found at CH': 0, 'pending companies': 0, 'companies already in CRM': 0,
+              'companies on a team login': 0, 'companies moved from a team login': 0}
     to_check = []
     new_emails = set()  # report only: a new customer with two companies is counted once
     for row in clients:
@@ -139,9 +144,14 @@ def main():
             else:
                 item, why = lookup(company, not args.no_companies_house)
                 if item and item.get('company_number'):
-                    owner = query_db("""SELECT u.id, u.full_name, u.email FROM companies c
+                    owner = query_db("""SELECT c.id AS company_id, u.id, u.full_name, u.email, u.role FROM companies c
                                         JOIN users u ON u.id = c.user_id WHERE c.company_number = ? LIMIT 1;""",
                                      (item['company_number'],), one=True)
+
+        # A company on a team login (Admin / staff) has no real customer yet: the sheet's email becomes it
+        staff_owner = owner if owner and owner.get('role') != 'CLIENT' else None
+        if staff_owner:
+            owner = None
 
         info = details(row)
         if not user and owner:
@@ -180,8 +190,25 @@ def main():
                 """, (email, hash_password(secrets.token_urlsafe(32)), name, phone or None,
                       f"{when} 12:00:00" if when else None))
 
+        if user_id is None and args.apply:
+            found = query_db("SELECT id FROM users WHERE LOWER(email) = ?;", (email,), one=True)
+            user_id = (found or {}).get('id')
+
         if not company:
             pass
+        elif staff_owner and args.move_from_staff:
+            counts['companies moved from a team login'] += 1
+            line.append(f"{company} ({item['company_number']}): moved from team login {staff_owner['full_name']} "
+                        "to this customer")
+            if args.apply and user_id:
+                execute_db("UPDATE companies SET user_id = ? WHERE id = ?;", (user_id, staff_owner['company_id']))
+                log_details(user_id, f"Company {company} ({item['company_number']}) moved here from the team login "
+                                     f"{staff_owner['email']} by the client sheet import")
+        elif staff_owner:
+            counts['companies on a team login'] += 1
+            line.append(f"{company} ({item['company_number']}): on team login {staff_owner['full_name']} "
+                        f"({staff_owner['email']}), left there (add --move-from-staff to move it to this customer)")
+            to_check.append(f"{email}: {company} is on the team login {staff_owner['email']}")
         elif why == 'mine':
             counts['companies already in CRM'] += 1
             line.append(f'{company}: already on this customer')
