@@ -51,7 +51,7 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
 
   const name = company?.name || 'Unnamed Company'
   const number = company?.number || '#00000000'
-  const director = company?.director || 'Director'
+  const director = company?.director || ''
   const address = company?.address || 'United Kingdom'
   const countryFlag = company?.countryFlag || '🇬🇧'
   const countryName = company?.countryName || 'UK'
@@ -149,7 +149,7 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
         <div className="space-y-1 px-4 text-xs">
           <p className="truncate" title={director}>
             <span className="text-muted-foreground">Director · </span>
-            <span className="font-medium">{director}</span>
+            {director ? <span className="font-medium">{director}</span> : <span className="text-muted-foreground/70">Not known yet</span>}
           </p>
           <p className="truncate text-muted-foreground" title={address}>{address}</p>
         </div>

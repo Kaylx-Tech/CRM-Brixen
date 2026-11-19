@@ -138,7 +138,7 @@ const Companies = () => {
             id: c.id,
             name: c.company_name || c.name || 'Unnamed Company',
             number: c.company_number || c.number || '#00000000',
-            director: c.director_name || c.director || 'Director',
+            director: c.director_name || c.director || '',
             address: c.registered_office_address || c.reg_office || c.address || 'United Kingdom',
             status: c.status || 'Active',
             incDate: c.incorporation_date || c.inc_date || null,

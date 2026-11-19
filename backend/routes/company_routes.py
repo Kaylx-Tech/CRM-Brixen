@@ -26,6 +26,45 @@ from services.data_protection import (
 
 _CH_LIST_SYNC_LAST = 0.0
 _CH_LIST_SYNC_LOCK = threading.Lock()
+# Companies saved without a director's name (the word "Director" stands in): (db, number) → when last looked up
+_DIRECTOR_LOOKED_UP = {}
+DIRECTOR_RETRY_SECONDS = 12 * 3600
+
+
+def is_placeholder_director(value):
+    return str(value or '').strip().lower() in ('', 'director', 'directors')
+
+
+def fill_missing_directors(limit=5):
+    """Give companies saved without a director's name their real one: from the company's own directors list,
+    else the first active director at Companies House. A few per run; each company is looked up at most
+    every 12 hours."""
+    from db import current_db_path
+    rows = query_db("""
+        SELECT id, company_number FROM companies
+        WHERE (director IS NULL OR lower(trim(director)) IN ('', 'director', 'directors'))
+          AND length(trim(company_number)) >= 6 AND company_number NOT LIKE 'REG-%'
+        ORDER BY id DESC LIMIT 50;
+    """) or []
+    now = time.time()
+    done = 0
+    for row in rows:
+        known = query_db("SELECT name FROM company_directors WHERE company_id = ? AND trim(name) != '' "
+                         "AND lower(trim(name)) != 'director' ORDER BY id LIMIT 1;", (row['id'],), one=True)
+        if known:
+            execute_db("UPDATE companies SET director = ? WHERE id = ?;", (known['name'], row['id']))
+            continue
+        key = (current_db_path(), row['company_number'])
+        if now - _DIRECTOR_LOOKED_UP.get(key, 0) < DIRECTOR_RETRY_SECONDS:
+            continue
+        if done >= limit:
+            break
+        _DIRECTOR_LOOKED_UP[key] = now
+        done += 1
+        from services.smart_intake import fetch_companies_house_primary_director
+        name = fetch_companies_house_primary_director(row['company_number'])
+        if name and not is_placeholder_director(name):
+            execute_db("UPDATE companies SET director = ? WHERE id = ?;", (name, row['id']))
 
 def is_pending_company_number(company_number):
     num = str(company_number or '').strip().upper()
@@ -95,8 +134,9 @@ def public_client_company(row, for_staff=True):
         'inc_date': inc_date_str,
         'incorporation_date': inc_date_str,
         'incDate': inc_date_str,
-        'director': src.get('director') or 'Director',
-        'director_name': src.get('director') or 'Director',
+        # "Director" alone is the stand-in for a name not known yet (filled from Companies House by the sync)
+        'director': '' if is_placeholder_director(src.get('director')) else src.get('director'),
+        'director_name': '' if is_placeholder_director(src.get('director')) else src.get('director'),
         'reg_office': reg_addr,
         'registered_office_address': reg_addr,
         'registered_address': reg_addr,
@@ -230,6 +270,9 @@ def schedule_portfolio_ch_sync(user_id=None):
                             ch_attention_json = COALESCE(ch_attention_json, '[]')
                         WHERE id = ?;
                     """, (comp['id'],))
+
+            # Companies saved without a director's name get the real one
+            fill_missing_directors(limit=5)
         except Exception as exc:
             print(f"[CH sync error] {exc}")
 
