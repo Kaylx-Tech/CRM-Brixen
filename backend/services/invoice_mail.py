@@ -149,6 +149,21 @@ def _section_html(title, rows):
     )
 
 
+def _invoice_pdf(invoice_id):
+    """The invoice PDF as an email attachment [(filename, bytes, 'pdf')], or [] when it cannot be made (the email
+    still goes, with the invoice in its text)."""
+    try:
+        from services.invoice_document import document_payload, download_filename, render_pdf
+        payload = document_payload(invoice_id)
+        if not payload:
+            return []
+        number = str(payload['invoice'].get('invoice_number') or f"INV-{invoice_id}")
+        return [(download_filename(number), render_pdf(payload), 'pdf')]
+    except Exception as exc:
+        print(f"[Invoice mail] PDF for invoice #{invoice_id} not attached: {exc}")
+        return []
+
+
 def _invoice_document_html(invoice_id, *, include_pay):
     """The whole invoice inside the email (as on the PDF), so nothing needs downloading: number, dates, billed
     to, every product, the totals, the payments received, then how to pay. (html, text) or (None, None)."""
@@ -358,7 +373,8 @@ def send_payment_requested(invoice, order):
         extra_text=doc_text or '',
     )
     ok = send_email(to, subject, html, text_content=text, category='INVOICE',
-                    user_id=invoice.get('user_id'), order_id=invoice.get('order_id'))
+                    user_id=invoice.get('user_id'), order_id=invoice.get('order_id'),
+                    attachments=_invoice_pdf(invoice.get('id')))
     return {
         'email_sent': bool(ok),
         'email_status': 'sent' if ok else 'SMTP send failed or not configured',
@@ -429,7 +445,8 @@ def send_payment_received(invoice, order):
         extra_text=doc_text or '',
     )
     ok = send_email(to, subject, html, text_content=text, category='INVOICE',
-                    user_id=invoice.get('user_id'), order_id=invoice.get('order_id'))
+                    user_id=invoice.get('user_id'), order_id=invoice.get('order_id'),
+                    attachments=_invoice_pdf(invoice.get('id')))
     return {
         'email_sent': bool(ok),
         'email_status': 'sent' if ok else 'SMTP send failed or not configured',

@@ -151,7 +151,8 @@ def _deliver_with_fallbacks(recipient, subject, html_content, text_content, send
 
 
 def send_email(recipient, subject, html_content, text_content=None, *, category=None, user_id=None,
-               order_id=None, company_id=None, triggered_by=None, log=True, store_body=True, sender=None, logo=None, images=None):
+               order_id=None, company_id=None, triggered_by=None, log=True, store_body=True, sender=None, logo=None, images=None,
+               attachments=None):
     """Send an HTML transactional email via SMTP. Returns True only on real send.
 
     Every attempt is written to the email log (status sent / failed / not_configured / invalid_recipient)
@@ -159,6 +160,7 @@ def send_email(recipient, subject, html_content, text_content=None, *, category=
     (password reset links) out of the log; such an email cannot be resent from the log.
     logo=(image bytes, 'png'|'jpeg'|...) is the image behind cid:brand-logo instead of the bundled logo;
     images=[(cid, bytes, subtype)] are more pictures shown inside the email (cid:<cid>).
+    attachments=[(filename, bytes, subtype)] are attached files (a resend from the Email log goes without them).
     """
     meta = {'category': category, 'user_id': user_id, 'order_id': order_id, 'company_id': company_id,
             'triggered_by': triggered_by}
@@ -168,7 +170,7 @@ def send_email(recipient, subject, html_content, text_content=None, *, category=
         ok, status, error = False, 'suppressed', 'Emails are turned off in Settings > Email'
     else:
         ok, status, error = _deliver_with_fallbacks(recipient, subject, html_content, text_content, sender=sender,
-                                                    logo=logo, images=images)
+                                                    logo=logo, images=images, attachments=attachments)
     _last_failure['status'], _last_failure['error'] = ('', '') if ok else (status, error)
     if log:
         _log_email((recipient or '').strip(), subject,
@@ -196,8 +198,10 @@ def resend_logged_email(log_id, actor_id=None):
     return ok, status, error
 
 
-def _build_message(subject, sender, recipient, html_content, text_content, logo=None, images=None):
-    """Text + HTML; an HTML email that shows the bundled logo (cid:) carries the logo image inside it."""
+def _build_message(subject, sender, recipient, html_content, text_content, logo=None, images=None,
+                   attachments=None):
+    """Text + HTML; an HTML email that shows the bundled logo (cid:) carries the logo image inside it.
+    attachments=[(filename, bytes, mime subtype e.g. 'pdf')] are added as files (e.g. the invoice PDF)."""
     from services.email_engine import BUNDLED_LOGO_PATH, EMAIL_LOGO_CID
 
     body = MIMEMultipart('alternative')
@@ -223,13 +227,22 @@ def _build_message(subject, sender, recipient, html_content, text_content, logo=
             image.add_header('Content-ID', f'<{cid}>')
             image.add_header('Content-Disposition', 'inline', filename=f'{cid}.{subtype}')
             msg.attach(image)
+    if attachments:
+        from email.mime.application import MIMEApplication
+        mixed = MIMEMultipart('mixed')
+        mixed.attach(msg)
+        for filename, data, subtype in attachments:
+            part = MIMEApplication(data, _subtype=subtype or 'octet-stream')
+            part.add_header('Content-Disposition', 'attachment', filename=filename)
+            mixed.attach(part)
+        msg = mixed
     msg['Subject'] = subject
     msg['From'] = sender
     msg['To'] = recipient
     return msg
 
 
-def _deliver(recipient, subject, html_content, text_content, sender=None, logo=None, images=None):
+def _deliver(recipient, subject, html_content, text_content, sender=None, logo=None, images=None, attachments=None):
     """Hand the message to the SMTP server. Returns (ok, status, error)."""
     recipient = (recipient or '').strip()
     if not recipient or '@' not in recipient:
@@ -246,7 +259,7 @@ def _deliver(recipient, subject, html_content, text_content, sender=None, logo=N
         return False, 'not_configured', 'SMTP is not configured (Settings > Email)'
 
     msg = _build_message(subject, f"Brixen Consultants <{from_email}>", recipient, html_content, text_content, logo=logo,
-                         images=images)
+                         images=images, attachments=attachments)
 
     try:
         if smtp_port == 465:
