@@ -8,7 +8,8 @@ For every row of Type "Client" (rows without an email and sales calls are left o
   - Company: looked up at Companies House by its exact name (the CRM's Companies House key). One live company
     with that name: added with its number, incorporation date and registered office. Not found: added as a
     Pending company with the name from the sheet, for the team to check (listed at the end). A company already
-    in the CRM is not added again.
+    in the CRM is not added again. When it is already on another customer and the email is new, no customer
+    is added: the sheet's details go on the customer who has the company (listed at the end, to check).
   - The sheet's Tide details (status, date, client name, promo code, flag, review, notes) are saved in the
     Activity Log on the customer.
 The file itself is not kept in the CRM. Run it as often as needed: rows already added are skipped.
@@ -22,7 +23,6 @@ Options: --no-companies-house (do not look companies up; every new company is ad
 import argparse
 import csv
 import io
-import json
 import os
 import re
 import secrets
@@ -45,6 +45,11 @@ def same_name(text):
     t = re.sub(r'^the ', '', t)
     t = re.sub(rf'(\s+{ENDINGS})+$', '', t)
     return t.replace(' ', '')
+
+
+def nice(text):
+    """LET'S COLABORATE LIMITED -> Let's Colaborate Limited (str.title would write Let'S)."""
+    return ' '.join(w[:1].upper() + w[1:].lower() for w in str(text or '').split())
 
 
 def lookup(name, use_ch):
@@ -78,6 +83,23 @@ def details(row):
     return ' · '.join(p for p in parts if p)
 
 
+def add_company(user_id, name, number, status, inc_date, director, office):
+    execute_db("""
+        INSERT INTO companies (user_id, name, company_number, status, inc_date, director, reg_office, package,
+                               created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'Imported from client sheet', datetime('now'));
+    """, (user_id, name, number, status, inc_date, director or 'Director', office or 'United Kingdom'))
+
+
+def log_details(user_id, info):
+    done = query_db("""SELECT 1 FROM activity_logs WHERE action = 'Imported from client sheet'
+                       AND entity_type = 'user' AND entity_id = ? AND details = ?;""", (str(user_id), info), one=True)
+    if not done:
+        execute_db("""INSERT INTO activity_logs (user_id, user_email, action, entity_type, entity_id, details)
+                      VALUES (NULL, 'client sheet', 'Imported from client sheet', 'user', ?, ?);""",
+                   (str(user_id), info))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('csv', help='the cleaned sheet (CSV), or - to read it from the input')
@@ -86,7 +108,7 @@ def main():
     args = parser.parse_args()
 
     text = sys.stdin.read() if args.csv == '-' else open(args.csv, encoding='utf-8-sig').read()
-    rows = [r for r in csv.DictReader(io.StringIO(text.lstrip('﻿')))]
+    rows = list(csv.DictReader(io.StringIO(text.lstrip('﻿'))))
     need = {'Type', 'Email', 'Company Name', 'Director Name', 'Phone'}
     if not rows or not need <= set(rows[0]):
         sys.exit(f"This is not the cleaned client sheet (columns needed: {', '.join(sorted(need))}).")
@@ -96,8 +118,8 @@ def main():
           f"({len(rows) - len(clients)} left out: no email or sales calls).")
     print('REPORT ONLY: nothing is saved. Add --apply to save.\n' if not args.apply else 'SAVING.\n')
 
-    counts = {'new customers': 0, 'existing customers': 0, 'companies found at CH': 0,
-              'pending companies': 0, 'companies already in CRM': 0}
+    counts = {'new customers': 0, 'existing customers': 0, 'added to the customer who has the company': 0,
+              'companies found at CH': 0, 'pending companies': 0, 'companies already in CRM': 0}
     to_check = []
     new_emails = set()  # report only: a new customer with two companies is counted once
     for row in clients:
@@ -107,6 +129,34 @@ def main():
         phone = (row.get('Phone') or '').strip()
         user = query_db("SELECT id, full_name, phone FROM users WHERE LOWER(email) = ? LIMIT 1;", (email,), one=True)
         line = [email]
+
+        # The company first: on this customer already, on another customer, found at Companies House, or not
+        item, why, owner = None, '', None
+        if company:
+            mine = query_db("SELECT name FROM companies WHERE user_id = ?;", (user['id'],)) if user else []
+            if any(same_name(c['name']) == same_name(company) for c in mine or []):
+                why = 'mine'
+            else:
+                item, why = lookup(company, not args.no_companies_house)
+                if item and item.get('company_number'):
+                    owner = query_db("""SELECT u.id, u.full_name, u.email FROM companies c
+                                        JOIN users u ON u.id = c.user_id WHERE c.company_number = ? LIMIT 1;""",
+                                     (item['company_number'],), one=True)
+
+        info = details(row)
+        if not user and owner:
+            # The company is already on another customer: no second customer for it; the sheet's details go on
+            # the customer who has the company
+            counts['added to the customer who has the company'] += 1
+            line.append(f"{company} ({item['company_number']}) is on customer {owner['full_name']} "
+                        f"({owner['email']}): details added there, no new customer")
+            to_check.append(f"{email}: {company} is on {owner['full_name']} ({owner['email']}); "
+                            "check that this is the same client")
+            if args.apply and info:
+                log_details(owner['id'], f"Sheet email: {email} · {info}")
+            print(' | '.join(line))
+            continue
+
         if user:
             counts['existing customers'] += 1
             user_id = user['id']
@@ -119,7 +169,7 @@ def main():
         else:
             counts['new customers'] += 1
             new_emails.add(email)
-            name = director or company.title() or email.split('@')[0]
+            name = director or nice(company) or email.split('@')[0]
             line.append(f'new customer "{name}"')
             user_id = None
             if args.apply:
@@ -130,58 +180,39 @@ def main():
                 """, (email, hash_password(secrets.token_urlsafe(32)), name, phone or None,
                       f"{when} 12:00:00" if when else None))
 
-        if company:
-            mine = query_db("SELECT id, name FROM companies WHERE user_id = ?;", (user_id or -1,)) or []
-            if any(same_name(c['name']) == same_name(company) for c in mine):
-                counts['companies already in CRM'] += 1
-                line.append(f'{company}: already on this customer')
-            else:
-                item, why = lookup(company, not args.no_companies_house)
-                number = (item or {}).get('company_number')
-                taken = query_db("SELECT user_id FROM companies WHERE company_number = ?;", (number,), one=True) \
-                    if number else None
-                if taken:
-                    counts['companies already in CRM'] += 1
-                    line.append(f'{company} ({number}): already in CRM on another customer, left there')
-                    to_check.append(f'{email}: {company} ({number}) is on another customer in the CRM')
-                elif item:
-                    counts['companies found at CH'] += 1
-                    line.append(f"{item.get('title')} ({number}) {why}")
-                    if args.apply:
-                        execute_db("""
-                            INSERT INTO companies (user_id, name, company_number, status, inc_date, director,
-                                                   reg_office, package, created_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, 'Imported from client sheet', datetime('now'));
-                        """, (user_id, item.get('title') or company, number,
-                              str(item.get('company_status') or 'active').replace('-', ' ').title(),
-                              item.get('date_of_creation') or row.get('Date Applied') or '2025-01-01',
-                              director or 'Director', item.get('address_snippet') or 'United Kingdom'))
-                else:
-                    counts['pending companies'] += 1
-                    line.append(f'{company}: {why}, added as Pending')
-                    to_check.append(f'{email}: {company} ({why})')
-                    if args.apply:
-                        execute_db("""
-                            INSERT INTO companies (user_id, name, company_number, status, inc_date, director,
-                                                   reg_office, package, created_at)
-                            VALUES (?, ?, ?, 'Pending', DATE('now'), ?, 'United Kingdom',
-                                    'Imported from client sheet', datetime('now'));
-                        """, (user_id, company, f"REG-{secrets.token_hex(4).upper()}", director or 'Director'))
+        if not company:
+            pass
+        elif why == 'mine':
+            counts['companies already in CRM'] += 1
+            line.append(f'{company}: already on this customer')
+        elif owner:
+            counts['companies already in CRM'] += 1
+            line.append(f"{company} ({item['company_number']}): on customer {owner['full_name']} "
+                        f"({owner['email']}), left there")
+            to_check.append(f"{email}: {company} is on {owner['full_name']} ({owner['email']})")
+        elif item:
+            counts['companies found at CH'] += 1
+            line.append(f"{item.get('title')} ({item['company_number']}) {why}")
+            if args.apply:
+                add_company(user_id, item.get('title') or company, item['company_number'],
+                            str(item.get('company_status') or 'active').replace('-', ' ').title(),
+                            item.get('date_of_creation') or row.get('Date Applied') or '2025-01-01',
+                            director, item.get('address_snippet'))
+        else:
+            counts['pending companies'] += 1
+            line.append(f'{company}: {why}, added as Pending')
+            to_check.append(f'{email}: {company} ({why})')
+            if args.apply:
+                add_company(user_id, company, f"REG-{secrets.token_hex(4).upper()}", 'Pending',
+                            row.get('Date Applied') or '2025-01-01', director, 'United Kingdom')
 
-        info = details(row)
         if info and args.apply and user_id:
-            done = query_db("""SELECT 1 FROM activity_logs WHERE action = 'Imported from client sheet'
-                               AND entity_type = 'user' AND entity_id = ? AND details = ?;""",
-                            (str(user_id), info), one=True)
-            if not done:
-                execute_db("""INSERT INTO activity_logs (user_id, user_email, action, entity_type, entity_id, details)
-                              VALUES (NULL, 'client sheet', 'Imported from client sheet', 'user', ?, ?);""",
-                           (str(user_id), info))
+            log_details(user_id, info)
         print(' | '.join(line))
 
     print('\n' + ', '.join(f'{v} {k}' for k, v in counts.items()) + '.')
     if to_check:
-        print('\nPlease check these companies (add the right company number in the CRM):')
+        print('\nPlease check these (add the right company number in the CRM where one is missing):')
         print('\n'.join(f'  - {t}' for t in to_check))
     if not args.apply:
         print('\nNothing was saved. Run again with --apply to add them.')
