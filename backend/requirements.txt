@@ -10,5 +10,5 @@ google-api-python-client>=2.140.0
 google-auth>=2.30.0
 google-auth-httplib2>=0.2.0
 waitress>=3.0.0
-sentry-sdk>=2.20.0
+sentry-sdk>=2.20.0,<3  # 3.x changed init options (kept deploys down on 2026-11-23)
 ddtrace==4.15.7

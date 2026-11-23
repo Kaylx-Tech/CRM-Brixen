@@ -21,16 +21,27 @@ def init_error_tracking():
     except ImportError:
         print("[ErrorTracking] SENTRY_DSN is set but sentry-sdk is not installed")
         return
-    sentry_sdk.init(
-        dsn=dsn,
-        environment=os.environ.get('SENTRY_ENVIRONMENT') or CRM_ENV,
-        release=os.environ.get('SOURCE_COMMIT') or None,
+    basic = dict(dsn=dsn, environment=os.environ.get('SENTRY_ENVIRONMENT') or CRM_ENV,
+                 release=os.environ.get('SOURCE_COMMIT') or None)
+    private = dict(
         send_default_pii=False,
         max_request_body_size='never',
         # Stack frames hold request bodies, users and customers (passwords too), so their variables stay here
         include_local_variables=False,
         traces_sample_rate=0,
     )
+    # Error tracking must never stop the API from starting: a newer sentry-sdk that does not know an option
+    # (2026-11-23: "Unknown option 'send_default_pii'" kept every deploy down) falls back to the basic options,
+    # and if even that fails the API simply runs without error tracking
+    for options in ({**basic, **private}, basic):
+        try:
+            sentry_sdk.init(**options)
+            break
+        except Exception as exc:
+            print(f"[ErrorTracking] sentry-sdk did not accept the options ({exc})")
+    else:
+        print("[ErrorTracking] not started; the API runs without it")
+        return
     _enabled = True
     print("[ErrorTracking] Sending errors to GlitchTip")
 
