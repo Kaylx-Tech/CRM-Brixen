@@ -150,15 +150,22 @@ def company_attention_issues(company):
     return issues
 
 
+def office_text_from_profile(profile):
+    """The registered office from a Companies House profile as one line (with the postcode), or ''."""
+    p = profile if isinstance(profile, dict) else {}
+    office = p.get('registered_office_address') or {}
+    return ', '.join(str(office.get(k) or '').strip() for k in (
+        'care_of', 'po_box', 'address_line_1', 'address_line_2', 'locality', 'region', 'postal_code', 'country'
+    ) if str(office.get(k) or '').strip())
+
+
 def issues_from_profile(profile):
     """Attention issues straight from a Companies House company profile response."""
     p = profile if isinstance(profile, dict) else {}
     accounts = p.get('accounts') or {}
     confirmation = p.get('confirmation_statement') or {}
     office = p.get('registered_office_address') or {}
-    office_text = ', '.join(str(office.get(k) or '').strip() for k in (
-        'care_of', 'po_box', 'address_line_1', 'address_line_2', 'locality', 'region', 'postal_code', 'country'
-    ) if str(office.get(k) or '').strip())
+    office_text = office_text_from_profile(p)
     return companies_house_attention_issues({
         'accounts_next_due': accounts.get('next_due') or (accounts.get('next_accounts') or {}).get('due_on'),
         'accounts_overdue': 1 if accounts.get('overdue') else 0,

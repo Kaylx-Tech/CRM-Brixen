@@ -68,19 +68,22 @@ OVERDUE_DUE_SQL = f"SELECT * FROM ({DUE_SQL_BASE}) WHERE overdue = 1 ORDER BY ch
 
 def apply_profile(company_id, d):
     """Save a Companies House company profile (from the REST API or the stream) on one company."""
-    from services.ch_attention import issues_from_profile
+    from services.ch_attention import issues_from_profile, office_text_from_profile
     from services.smart_intake import companies_house_status_value
     accounts = d.get('accounts') or {}
     confirmation = d.get('confirmation_statement') or {}
+    # The registered office too: attention also reads the stored address (the Cardiff default address), so an
+    # address changed at Companies House must replace the old one here or the warning never clears
+    office = office_text_from_profile(d) or None
     execute_db("""
         UPDATE companies
-        SET status = ?, inc_date = COALESCE(?, inc_date),
+        SET status = ?, inc_date = COALESCE(?, inc_date), reg_office = COALESCE(?, reg_office),
             accounts_next_due = ?, accounts_overdue = ?,
             confirmation_next_due = ?, confirmation_overdue = ?,
             ch_attention_json = ?, ch_checked_at = datetime('now')
         WHERE id = ?;
     """, (companies_house_status_value(d.get('company_status'), d.get('company_status_detail')),
-          d.get('date_of_creation'),
+          d.get('date_of_creation'), office,
           accounts.get('next_due') or (accounts.get('next_accounts') or {}).get('due_on'),
           1 if accounts.get('overdue') else 0,
           confirmation.get('next_due'), 1 if confirmation.get('overdue') else 0,
