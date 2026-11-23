@@ -533,6 +533,20 @@ def _incorporated_after_order(item, created_at):
         return True
 
 
+def _order_date(company_id):
+    """When the company was ordered (its oldest linked order), or None for a pending card without an order
+    (added by hand or by an import of existing clients: their companies can be years old)."""
+    try:
+        row = query_db("SELECT MIN(created_at) AS t FROM orders WHERE company_id = ?;", (company_id,), one=True)
+    except Exception:
+        return None
+    return (row or {}).get('t') or None
+
+
+def _is_live(item):
+    return str((item or {}).get('company_status') or 'active').lower() in ('active', '')
+
+
 def pending_companies_due(limit=PENDING_SYNC_BATCH, user_id=None, company_id=None):
     sql = """
         SELECT id, name, company_number, user_id, created_at FROM companies
@@ -564,7 +578,10 @@ def auto_register_pending_company(company):
     if not found.get('success'):
         return None, found.get('error') or 'search_failed'
     match = _name_match(company.get('name'), found.get('results'))
-    if not match or not _incorporated_after_order(match, company.get('created_at')):
+    # With an order, the company must be incorporated around or after it (not an older company that already had
+    # the name); without one (imported or added by hand) any live company with exactly this name is it
+    ordered = _order_date(company['id'])
+    if not match or not (_incorporated_after_order(match, ordered) if ordered else _is_live(match)):
         return None, 'no_match'
     number = canonical_company_number(match.get('company_number'))
     clash = _in_crm(number) if number else None
@@ -657,7 +674,7 @@ def check_pending_now(limit=60):
             results.append({**out, 'outcome': 'error', 'detail': reason})
             continue
         found = search_companies_house(company.get('name'), items_per_page=50)
-        candidates = _close_names(company.get('name'), found.get('results'), company.get('created_at')) \
+        candidates = _close_names(company.get('name'), found.get('results'), _order_date(company['id'])) \
             if found.get('success') else []
         results.append({**out, 'outcome': 'possible' if candidates else 'not_found', 'candidates': candidates})
     return results
