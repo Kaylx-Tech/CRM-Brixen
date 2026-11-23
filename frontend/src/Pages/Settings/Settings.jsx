@@ -70,6 +70,7 @@ const EMPTY_FORM = {
   wordpress_url: '',
   wordpress_webhook_secret: '',
   compliance_alerts_enabled: false,
+  intake_document_checks: true,
   emails_enabled: true,
   compliance_alerts_verified_only: false,
   compliance_alerts_whatsapp_enabled: true,
@@ -308,6 +309,7 @@ export default function Settings() {
         wordpress_url: webhooks.wordpress_url || '',
         wordpress_webhook_secret: '',
         compliance_alerts_enabled: asBool(compliance.compliance_alerts_enabled, false),
+        intake_document_checks: asBool(flat.intake_document_checks, true),
         emails_enabled: asBool(flat.emails_enabled, true),
         compliance_alerts_verified_only: asBool(flat.compliance_alerts_verified_only, false),
         compliance_alerts_whatsapp_enabled: asBool(flat.compliance_alerts_whatsapp_enabled, true),
@@ -438,6 +440,7 @@ export default function Settings() {
         didit_workflow_id: form.didit_workflow_id.trim(),
         didit_callback_url: form.didit_callback_url.trim(),
         compliance_alerts_enabled: form.compliance_alerts_enabled ? '1' : '0',
+        intake_document_checks: form.intake_document_checks ? '1' : '0',
         emails_enabled: form.emails_enabled ? 'true' : 'false',
         compliance_alerts_verified_only: form.compliance_alerts_verified_only ? '1' : '0',
         compliance_alerts_whatsapp_enabled: form.compliance_alerts_whatsapp_enabled ? '1' : '0',
@@ -1211,6 +1214,20 @@ export default function Settings() {
           </TabsContent>
 
           <TabsContent value="compliance" className="mt-0 space-y-4">
+            <Section
+              title="Smart Intake Document Checks"
+              description="Each uploaded passport is checked: its check digits, expiry date, the page against the bottom lines, and sample passports. A passport that fails is marked Needs Review; it is still filed."
+            >
+              <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox
+                  checked={!!form.intake_document_checks}
+                  onCheckedChange={(v) => setField('intake_document_checks', !!v)}
+                  disabled={isLoading}
+                />
+                <span>Check Passports on Upload</span>
+              </label>
+            </Section>
+
             <Section
               title="Compliance alerts"
               description="Automated filing reminders. Default OFF until enabled."

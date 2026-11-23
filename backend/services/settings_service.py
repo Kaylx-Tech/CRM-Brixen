@@ -89,6 +89,8 @@ DEFAULT_SETTINGS = {
     'secret_key': 'brixen_crm_secure_local_dev_key_2026',
     'cookie_secure': 'false',
     'compliance_alerts_enabled': '0',
+    # Smart Intake: check passports (check digits, expiry, page vs MRZ, sample passports); '0' turns it off
+    'intake_document_checks': '1',
     'compliance_alerts_send_hour': '11',
     'compliance_alerts_test_recipient': '',
     # Short aliases kept for older admin payloads / env

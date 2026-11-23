@@ -26,6 +26,7 @@ import urllib.request
 import uuid
 
 from db import query_db, execute_db, hash_password, unusable_password_hash
+from services.document_checks import check_passport, checks_enabled as document_checks_enabled
 
 _STORE_LOCAL = threading.local()
 
@@ -1798,6 +1799,10 @@ def extract_document_text_and_metadata(filename, b64_content, high_quality=True)
             cached_meta['file_bytes'] = file_bytes
             cached_meta['file_hash'] = file_hash
             cached_meta['cached'] = True
+            # Passport checks are worked out again each time (the expiry check depends on today's date)
+            if cached_meta.get('doc_type') == 'Passport':
+                cached_meta['document_checks'] = check_passport(
+                    (filename or '').strip() + chr(10) + (cached_entry['extracted_text'] or ''))
             return cached_meta
         except Exception:
             pass
@@ -1878,6 +1883,8 @@ def extract_document_text_and_metadata(filename, b64_content, high_quality=True)
         'text_preview': re.sub(r'\s+', ' ', raw_text).strip()[:1200],
         'cached': False,
         'high_quality_ocr': bool(high_quality),
+        # Check digits, expiry and page-vs-MRZ agreement (services/document_checks.py)
+        'document_checks': check_passport(combined_text) if is_passport else None,
     }
 
     # Save to ocr_cache table
@@ -2208,6 +2215,9 @@ def process_smart_intake_files(files_data, user, batch_identities=None, source_m
     if not files_data or not isinstance(files_data, list):
         return {'status': 'error', 'message': 'No files provided for intake'}, "400 Bad Request"
 
+    # Settings › Compliance: admins may turn the passport checks off
+    run_document_checks = document_checks_enabled()
+
     identities = []
     for item in (batch_identities or []):
         if isinstance(item, dict) and (item.get('full_name') or item.get('client_id')):
@@ -2374,6 +2384,7 @@ def process_smart_intake_files(files_data, user, batch_identities=None, source_m
 
         extracted_client_name = res.get('extracted_name')
         extracted_dob = res.get('extracted_dob')
+        doc_checks = res.get('document_checks') if run_document_checks else None
         extracted_company_name = res.get('extracted_company_name')
         extracted_company_num = res.get('extracted_company_number')
         extracted_email = res.get('extracted_email')
@@ -2613,6 +2624,8 @@ def process_smart_intake_files(files_data, user, batch_identities=None, source_m
             file_size_str = format_document_size(len(file_bytes))
             f_hash = res.get('file_hash') or hashlib.sha256(file_bytes).hexdigest()
             stage_ts = json.dumps({'upload': time.time(), 'ocr': time.time(), 'ch': time.time()})
+            if doc_checks:
+                match_meta = {**(match_meta or {}), 'document_checks': doc_checks}
             meta_json = json.dumps(match_meta)
             # Successful intake always lands in Customer Uploads for staff triage.
             # OCR / CH match evidence is kept on the row; only duplicates go to Quarantine.
@@ -2729,6 +2742,7 @@ def process_smart_intake_files(files_data, user, batch_identities=None, source_m
                 'extracted_dob': extracted_dob,
                 'passport_number': res.get('extracted_passport_num'),
                 'nationality': extracted_nat,
+                'document_checks': doc_checks,
                 'extraction_quality': res.get('extraction_quality') or {},
                 'text_preview': res.get('text_preview') or '',
                 'linked_passport_name': (linked_identity or {}).get('full_name') if linked_identity else None,

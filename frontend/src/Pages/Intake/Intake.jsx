@@ -386,6 +386,7 @@ export default function Intake() {
             : ch.company_name
             ? `Filed · ${ch.company_name}${ch.confidence != null ? ` (${ch.confidence}%)` : ''}`
             : ch.message || data.message || 'Filed under customer profile'
+          const checkLabel = docProc.document_checks?.status === 'review' ? ' · Passport: Needs Review' : ''
 
           setQueue((prev) =>
             prev.map((q) =>
@@ -393,7 +394,7 @@ export default function Intake() {
                 ? {
                     ...q,
                     upload_status: 'PROCESSED',
-                    process_status: processStatusLabel,
+                    process_status: processStatusLabel + checkLabel,
                     result: data,
                   }
                 : q
@@ -558,6 +559,8 @@ export default function Intake() {
   const docProc = firstResult.document_processing || {}
   const chMatch = firstResult.companies_house_matching || {}
   const quality = docProc.extraction_quality || firstResult.extraction_quality || {}
+  // Passport checks (check digits, expiry, page vs bottom lines); null when off or not a passport
+  const docChecks = docProc.document_checks || null
 
   const extractedName = docProc.extracted_name || clientProfile.full_name || (results ? 'Unassigned / Customer' : '—')
   const extractedDob = docProc.extracted_dob || (clientProfile.dob && clientProfile.dob !== 'Not detected' ? clientProfile.dob : null)
@@ -963,6 +966,44 @@ export default function Intake() {
               </p>
               <Badge className="badge-sky text-[11px]">Scan Complete</Badge>
             </div>
+
+            {docChecks && (
+              <div className="rounded-md border bg-card p-4 space-y-2 md:col-span-2 xl:col-span-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[11px] text-muted-foreground">Passport Check</div>
+                  <Badge
+                    className={`text-[11px] ${
+                      docChecks.status === 'passed'
+                        ? 'badge-green'
+                        : docChecks.status === 'review'
+                        ? 'badge-amber'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {docChecks.label}
+                  </Badge>
+                </div>
+                {docChecks.status === 'not_checked' ? (
+                  <p className="text-sm text-muted-foreground leading-relaxed">{docChecks.summary}</p>
+                ) : (
+                  <ul className="grid gap-1.5 sm:grid-cols-2">
+                    {(docChecks.checks || []).map((c) => (
+                      <li key={c.key} className="flex items-start gap-2 text-sm">
+                        {c.ok ? (
+                          <IconCheck className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
+                        ) : (
+                          <IconAlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                        )}
+                        <span>
+                          <span className="font-medium">{c.label}</span>
+                          {!c.ok && <span className="text-muted-foreground"> · {c.message}</span>}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
 
           {results.filed_documents && results.filed_documents.length > 0 && (
