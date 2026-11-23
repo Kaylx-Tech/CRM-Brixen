@@ -6,6 +6,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { IconAlertTriangle, IconArrowRight, IconBuildingSkyscraper, IconCalendarDue, IconDotsVertical, IconFileText, IconShieldCheck } from '@tabler/icons-react'
 import { cn } from 'cn'
+import { toast } from 'sonner'
+import { apiRequest } from '@/lib/api'
 import ViewCompany from './ViewCompany'
 import { needsAttention, attentionSummary } from './attention'
 
@@ -48,6 +50,16 @@ function DueChip({ icon: Icon, label, date, overdue }) {
 
 const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh }) => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
+
+  // Check Now: fresh dates and status from Companies House straight away (backend services/ch_refresh.py)
+  const checkNow = async () => {
+    const id = toast.loading('Checking Companies House…')
+    const res = await apiRequest(`/admin/companies/${company.id}/ch-refresh`, { method: 'POST', label: 'Companies House', silent: true })
+    if (res.ok) {
+      toast.success(res.data?.message || 'Up to date.', { id })
+      onRefresh?.()
+    } else toast.error(res.data?.error || res.reason || 'Companies House did not answer.', { id })
+  }
 
   const name = company?.name || 'Unnamed Company'
   const number = company?.number || '#00000000'
@@ -130,6 +142,7 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setIsViewModalOpen(true)}>View Details</DropdownMenuItem>
+                {company?.isRegistered !== false && <DropdownMenuItem onClick={checkNow}>Check Companies House Now</DropdownMenuItem>}
                 <DropdownMenuItem onClick={() => onToggleSelect && onToggleSelect(company.id)}>
                   {isSelected ? 'Deselect' : 'Select'}
                 </DropdownMenuItem>

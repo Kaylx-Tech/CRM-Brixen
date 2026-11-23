@@ -26,45 +26,8 @@ from services.data_protection import (
 
 _CH_LIST_SYNC_LAST = 0.0
 _CH_LIST_SYNC_LOCK = threading.Lock()
-# Companies saved without a director's name (the word "Director" stands in): (db, number) → when last looked up
-_DIRECTOR_LOOKED_UP = {}
-DIRECTOR_RETRY_SECONDS = 12 * 3600
-
-
-def is_placeholder_director(value):
-    return str(value or '').strip().lower() in ('', 'director', 'directors')
-
-
-def fill_missing_directors(limit=5):
-    """Give companies saved without a director's name their real one: from the company's own directors list,
-    else the first active director at Companies House. A few per run; each company is looked up at most
-    every 12 hours."""
-    from db import current_db_path
-    rows = query_db("""
-        SELECT id, company_number FROM companies
-        WHERE (director IS NULL OR lower(trim(director)) IN ('', 'director', 'directors'))
-          AND length(trim(company_number)) >= 6 AND company_number NOT LIKE 'REG-%'
-        ORDER BY id DESC LIMIT 50;
-    """) or []
-    now = time.time()
-    done = 0
-    for row in rows:
-        known = query_db("SELECT name FROM company_directors WHERE company_id = ? AND trim(name) != '' "
-                         "AND lower(trim(name)) != 'director' ORDER BY id LIMIT 1;", (row['id'],), one=True)
-        if known:
-            execute_db("UPDATE companies SET director = ? WHERE id = ?;", (known['name'], row['id']))
-            continue
-        key = (current_db_path(), row['company_number'])
-        if now - _DIRECTOR_LOOKED_UP.get(key, 0) < DIRECTOR_RETRY_SECONDS:
-            continue
-        if done >= limit:
-            break
-        _DIRECTOR_LOOKED_UP[key] = now
-        done += 1
-        from services.smart_intake import fetch_companies_house_primary_director
-        name = fetch_companies_house_primary_director(row['company_number'])
-        if name and not is_placeholder_director(name):
-            execute_db("UPDATE companies SET director = ? WHERE id = ?;", (name, row['id']))
+# Companies House refresh and the director's name live in services/ch_refresh.py
+from services.ch_refresh import fill_missing_directors, is_placeholder_director  # noqa: E402
 
 def is_pending_company_number(company_number):
     num = str(company_number or '').strip().upper()
@@ -206,7 +169,8 @@ def pending_registration_orders(user_id=None, for_client=False):
     return pending
 
 def schedule_portfolio_ch_sync(user_id=None):
-    """Run non-blocking Companies House background refresh."""
+    """Opening the Companies page: register pending companies and check a few due companies now, in the
+    background (the worker in services/ch_refresh.py does the rest). At most every 45 seconds."""
     global _CH_LIST_SYNC_LAST
     now = time.time()
     with _CH_LIST_SYNC_LOCK:
@@ -216,63 +180,14 @@ def schedule_portfolio_ch_sync(user_id=None):
 
     def _job():
         try:
-            api_key = get_ch_api_key()
-            if not api_key:
+            if not get_ch_api_key():
                 return
-
             # Pending companies registered since the last look are turned into the live company
             from services.order_companies import auto_register_pending_companies
             auto_register_pending_companies(limit=15, user_id=user_id)
-
-            # Refresh up to 5 companies needing update (never-checked attention first, then oldest)
-            sql = """
-                SELECT id, company_number, name, inc_date, status
-                FROM companies
-                WHERE length(trim(company_number)) >= 6
-                  AND company_number NOT LIKE 'REG-%'
-                  AND (ch_attention_json IS NULL OR ch_checked_at IS NULL
-                       OR datetime(ch_checked_at) < datetime('now', '-12 hours'))
-                ORDER BY (ch_attention_json IS NULL) DESC, ch_checked_at ASC LIMIT 5;
-            """
-            due_comps = query_db(sql) or []
-            for comp in due_comps:
-                num = comp['company_number']
-                profile = fetch_company_profile(num)
-                if profile.get('success') and profile.get('data'):
-                    d = profile['data']
-                    status = (d.get('company_status') or 'active').capitalize()
-                    inc_date = d.get('date_of_creation')
-                    
-                    accounts_data = d.get('accounts', {})
-                    acc_next_due = accounts_data.get('next_due')
-                    acc_overdue = 1 if accounts_data.get('overdue') else 0
-                    
-                    conf_data = d.get('confirmation_statement', {})
-                    conf_next_due = conf_data.get('next_due')
-                    conf_overdue = 1 if conf_data.get('overdue') else 0
-                    attention = issues_from_profile(d)
-
-                    execute_db("""
-                        UPDATE companies
-                        SET status = ?, inc_date = COALESCE(?, inc_date),
-                            accounts_next_due = ?, accounts_overdue = ?,
-                            confirmation_next_due = ?, confirmation_overdue = ?,
-                            ch_attention_json = ?,
-                            ch_checked_at = datetime('now')
-                        WHERE id = ?;
-                    """, (status, inc_date, acc_next_due, acc_overdue, conf_next_due, conf_overdue,
-                          json.dumps(attention), comp['id']))
-                else:
-                    # Lookup failed: mark checked so one bad number doesn't block the queue
-                    # (retried after 12 hours; stored due dates still drive attention meanwhile)
-                    execute_db("""
-                        UPDATE companies SET ch_checked_at = datetime('now'),
-                            ch_attention_json = COALESCE(ch_attention_json, '[]')
-                        WHERE id = ?;
-                    """, (comp['id'],))
-
-            # Companies saved without a director's name get the real one
-            fill_missing_directors(limit=5)
+            from services.ch_refresh import refresh_due
+            refresh_due(8)
+            fill_missing_directors(limit=3)
         except Exception as exc:
             print(f"[CH sync error] {exc}")
 
@@ -594,6 +509,31 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
             'companies_house_configured': bool(get_ch_api_key()),
             'total_uk': len(formatted_companies)
         })
+
+    # ── Check Now: refresh from Companies House straight away (services/ch_refresh.py) ──
+    #   POST /api/admin/companies/<id>/ch-refresh      one company, answered with its fresh details
+    #   POST /api/admin/companies/ch-refresh {ids}     several (e.g. every company needing attention), in the background
+    match_refresh = re.match(r'^/api/(?:admin/)?companies/(\d+)/ch-refresh$', path)
+    if (match_refresh or path in ('/api/companies/ch-refresh', '/api/admin/companies/ch-refresh')) and method == 'POST':
+        if not is_staff:
+            return error_response(start_response, "For the team only", status_code=403)
+        if not get_ch_api_key():
+            return error_response(start_response, "Companies House is not connected on the server.", status_code=400)
+        from services.ch_refresh import refresh_now
+        if match_refresh:
+            comp_id = int(match_refresh.group(1))
+            result = refresh_now([comp_id])
+            row = query_db(f"SELECT {COMPANY_STAFF_SELECT} FROM companies c LEFT JOIN users u ON c.user_id = u.id "
+                           "WHERE c.id = ? LIMIT 1;", (comp_id,), one=True)
+            if not row:
+                return error_response(start_response, "Company not found", status_code=404)
+            return success_response(start_response, data=public_client_company(row, for_staff=True),
+                                    message="Up to date with Companies House." if result['updated']
+                                    else "Companies House did not answer. Try again in a minute.")
+        ids = [i for i in ((body or {}).get('ids') or []) if str(i).isdigit()][:100]
+        threading.Thread(target=refresh_now, args=(ids,), daemon=True).start()
+        return success_response(start_response, data={'queued': len(ids)},
+                                message=f"Checking {len(ids)} compan{'y' if len(ids) == 1 else 'ies'} with Companies House…")
 
     # ── GET /api/companies/<id> (Detail) ──────────────────────────────────
     match_detail = re.match(r'^/api/(?:admin/)?companies/(\d+)$', path)

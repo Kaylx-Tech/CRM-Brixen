@@ -202,6 +202,11 @@ def run_server():
     from services.address_reminders import start_worker as start_address_reminder_worker
     start_address_reminder_worker()
 
+    # Companies House: companies kept fresh in the background (urgent ones every hour, the rest daily), so a
+    # filed confirmation statement or accounts clear from Attention quickly
+    from services.ch_refresh import start_worker as start_ch_refresh_worker
+    start_ch_refresh_worker()
+
     print("=" * 60)
     print("Brixen CRM Modular API Server Started")
     print(f"Listening on http://{HOST}:{PORT}")

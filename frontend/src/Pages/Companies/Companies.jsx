@@ -181,6 +181,24 @@ const Companies = () => {
 
   const attentionCompanies = companies.filter((c) => c.isRegistered && needsAttention(c))
 
+  // Check All Now: every company in Attention re-checked with Companies House straight away
+  const [checkingAll, setCheckingAll] = useState(false)
+  const checkAllNow = async () => {
+    setCheckingAll(true)
+    const res = await apiRequest('/admin/companies/ch-refresh', { method: 'POST', body: { ids: attentionCompanies.map((c) => c.id) }, label: 'Companies House', silent: true })
+    if (!res.ok) {
+      setCheckingAll(false)
+      return toast.error(res.data?.error || res.reason || 'Companies House did not answer.')
+    }
+    toast.success(res.data?.message || 'Checking…', { description: 'Companies that are up to date leave this list in a moment.' })
+    // About a quarter of a second per company at Companies House; look again when they should be done
+    const wait = Math.min(30000, 3000 + attentionCompanies.length * 400)
+    setTimeout(() => {
+      fetchCompanies()
+      setCheckingAll(false)
+    }, wait)
+  }
+
   // Headline numbers; Attention and Not registered switch the tab below
   const pendingCount = companies.filter(isNotRegistered).length
   const activeCount = companies.filter((c) => !isNotRegistered(c) && String(c.status).toLowerCase() === 'active').length
@@ -423,9 +441,16 @@ const Companies = () => {
 
 
       {activeTab === 'attention' && !isLoading && (
-        <p className="text-sm text-muted-foreground -mt-2">
-          Accounts overdue, confirmation statement pending, default Companies House address, or strike-off.
-        </p>
+        <div className="-mt-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">
+            Accounts overdue, confirmation statement pending, default Companies House address, or strike-off.
+          </p>
+          {attentionCompanies.length > 0 && (
+            <Button size="sm" variant="outline" disabled={checkingAll} onClick={checkAllNow}>
+              {checkingAll ? <IconLoader2 className="size-4 animate-spin" /> : <IconRefresh className="size-4" />} Check All Now
+            </Button>
+          )}
+        </div>
       )}
 
       {/* Bulk Action Bar when items selected */}
