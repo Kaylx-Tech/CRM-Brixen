@@ -126,6 +126,89 @@ def search_companies_house(query):
         return {"success": False, "error": _error_text(e)}
 
 
+# ── Fast lookups for Add Company (search while typing, auto-fill on pick) ─────────────────────────────
+# Company details are public and change rarely, so a lookup is kept for a few minutes: picking a company the
+# browser already looked up (it looks up the top search result in the background) is then instant. Only the
+# Add Company lookup uses this; syncs and refreshes still call Companies House live.
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+_LOOKUP_CACHE = {}
+_LOOKUP_LOCK = threading.Lock()
+_LOOKUP_TTL_S = 300
+_SEARCH_TTL_S = 120
+_LOOKUP_MAX = 500
+_LOOKUP_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix='ch-lookup')
+
+
+def _cache_get(key):
+    with _LOOKUP_LOCK:
+        hit = _LOOKUP_CACHE.get(key)
+        if hit and hit[0] > time.time():
+            return hit[1]
+        _LOOKUP_CACHE.pop(key, None)
+    return None
+
+
+def _cache_put(key, value, ttl):
+    with _LOOKUP_LOCK:
+        if len(_LOOKUP_CACHE) >= _LOOKUP_MAX:
+            now = time.time()
+            for k in [k for k, v in _LOOKUP_CACHE.items() if v[0] <= now] or list(_LOOKUP_CACHE)[:100]:
+                _LOOKUP_CACHE.pop(k, None)
+        _LOOKUP_CACHE[key] = (time.time() + ttl, value)
+
+
+def search_companies_house_fast(query):
+    """search_companies_house, kept for two minutes per query."""
+    key = ('search', str(query or '').strip().lower())
+    hit = _cache_get(key)
+    if hit is not None:
+        return hit
+    res = search_companies_house(query)
+    if res.get('success'):
+        _cache_put(key, res, _SEARCH_TTL_S)
+    return res
+
+
+def company_details_fast(company_number):
+    """Profile and officers fetched at the same time (not one after the other), kept for five minutes.
+    Returns (profile_result, officers_result)."""
+    num = str(company_number or '').strip().replace(' ', '').upper().zfill(8)
+    key = ('details', num)
+    hit = _cache_get(key)
+    if hit is not None:
+        return hit
+    # The pool's threads keep the caller's workspace (the API key and settings are read inside it)
+    try:
+        from tenancy import current_tenant, use_tenant
+        tenant = current_tenant()
+    except Exception:
+        tenant, use_tenant = None, None
+
+    def in_workspace(fn):
+        if tenant and use_tenant:
+            with use_tenant(tenant):
+                return fn(num)
+        return fn(num)
+
+    profile_job = _LOOKUP_POOL.submit(in_workspace, fetch_company_profile)
+    officers_job = _LOOKUP_POOL.submit(in_workspace, fetch_company_officers)
+    try:
+        profile = profile_job.result(timeout=12)
+    except Exception as exc:
+        profile = {'success': False, 'error': str(exc)}
+    try:
+        officers = officers_job.result(timeout=12)
+    except Exception as exc:
+        officers = {'success': False, 'error': str(exc)}
+    result = (profile, officers)
+    if profile.get('success') and profile.get('data'):
+        _cache_put(key, result, _LOOKUP_TTL_S)
+    return result
+
+
 def normalize_company_number(company_number):
     import re
     return re.sub(r'[^A-Z0-9]', '', str(company_number or '').strip().upper())

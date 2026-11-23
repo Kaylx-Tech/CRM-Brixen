@@ -112,6 +112,62 @@ const AddCompany = ({ isOpen, onClose }) => {
     }
   }
 
+  // Companies House details, looked up once per company number and kept for this dialog: the top search
+  // result (and any result the mouse is over) is looked up in the background, so picking it fills at once
+  const detailsCacheRef = useRef(new Map())
+
+  const chFetch = async (params) => {
+    const apiUrl = import.meta.env.VITE_API_URL || '/api'
+    const token = localStorage.getItem('token')
+    const res = await fetch(`${apiUrl}/admin/companies/lookup-ch?${params}`, {
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.data || null
+  }
+
+  const companyDetails = (number) => {
+    const key = String(number || '').replace(/\s+/g, '').toUpperCase()
+    if (!key) return Promise.resolve(null)
+    const cache = detailsCacheRef.current
+    if (!cache.has(key)) {
+      const job = chFetch(`number=${encodeURIComponent(key)}`)
+        .then((d) => (d && d.company_name ? d : null))
+        .catch(() => null)
+      // A failed lookup is not kept, so picking the company tries again
+      job.then((d) => { if (!d) cache.delete(key) })
+      cache.set(key, job)
+    }
+    return cache.get(key)
+  }
+
+  // Fill the form from Companies House details (d) or, failing that, the search result (comp)
+  const fillFromDetails = (d, comp = {}) => {
+    const name = (d && d.company_name) || comp.company_name || ''
+    const number = (d && d.company_number) || comp.company_number || ''
+    setCompanyName(name)
+    setCompanyNumber(number)
+    setIncorporationDate((d && d.incorporation_date) || comp.incorporation_date || '')
+    if (d && d.director) setDirector(d.director)
+    if (d && d.reg_office) setRegOffice(d.reg_office)
+    if ((d && d.status) || comp.status) setStatus((d && d.status) || comp.status)
+    setIsAutoFilled(true)
+    setSearchQuery(number ? `${name} (${number})` : name)
+  }
+
+  // A UK company number: 8 digits, or 2 letters + 6 digits (SC123456); short numbers get their leading zeros
+  const asCompanyNumber = (val) => {
+    const v = val.replace(/\s+/g, '').toUpperCase()
+    if (/^\d{6,8}$/.test(v)) return v.padStart(8, '0')
+    if (/^[A-Z]{2}\d{6}$/.test(v)) return v
+    return ''
+  }
+
   // Companies House Live Search
   const handleSearchChange = (val) => {
     setSearchQuery(val)
@@ -124,71 +180,49 @@ const AddCompany = ({ isOpen, onClose }) => {
       return
     }
 
+    const number = asCompanyNumber(trimmed)
     searchTimeoutRef.current = setTimeout(async () => {
+      // A company number fills the form straight away, no list to pick from
+      if (number) {
+        setIsAutoFilling(true)
+        setShowDropdown(false)
+        try {
+          const d = await companyDetails(number)
+          if (d) {
+            fillFromDetails(d)
+            return
+          }
+        } finally {
+          setIsAutoFilling(false)
+        }
+      }
       setIsSearching(true)
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || '/api'
-        const token = localStorage.getItem('token')
-        const res = await fetch(`${apiUrl}/admin/companies/lookup-ch?query=${encodeURIComponent(trimmed)}`, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        })
-        if (res.ok) {
-          const data = await res.json()
-          const items = data.data?.results || []
-          setSearchResults(items)
-          setShowDropdown(items.length > 0)
-        }
+        const data = await chFetch(`query=${encodeURIComponent(trimmed)}`)
+        const items = data?.results || []
+        setSearchResults(items)
+        setShowDropdown(items.length > 0)
+        // Look up the top result now: it is the one most often picked
+        if (items[0]?.company_number) companyDetails(items[0].company_number)
       } catch (err) {
         console.error('Live search error:', err)
       } finally {
         setIsSearching(false)
       }
-    }, 350)
+    }, number ? 150 : 250)
   }
 
   // Auto-fill company details from selected Companies House result
   const handleSelectCompany = async (comp) => {
     setShowDropdown(false)
-    setIsAutoFilling(true)
     setErrorMsg('')
-    const toastId = toastProcessing('Loading company details…')
+    // Show the name at once; the details follow (instantly when already looked up)
+    fillFromDetails(null, comp)
+    setIsAutoFilling(true)
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${apiUrl}/admin/companies/lookup-ch?number=${encodeURIComponent(comp.company_number)}`, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      })
-      if (res.ok) {
-        const data = await res.json()
-        const d = data.data || {}
-        setCompanyName(d.company_name || comp.company_name || '')
-        setCompanyNumber(d.company_number || comp.company_number || '')
-        setIncorporationDate(d.incorporation_date || '')
-        if (d.director) setDirector(d.director)
-        if (d.reg_office) setRegOffice(d.reg_office)
-        if (d.status) setStatus(d.status)
-        setIsAutoFilled(true)
-        setSearchQuery(`${d.company_name || comp.company_name} (${d.company_number || comp.company_number})`)
-        toastDone(toastId, `Loaded official details for ${d.company_name || 'company'}!`)
-      } else {
-        // Fallback to basic search result
-        setCompanyName(comp.company_name || '')
-        setCompanyNumber(comp.company_number || '')
-        if (comp.incorporation_date) setIncorporationDate(comp.incorporation_date)
-        if (comp.status) setStatus(comp.status)
-        setIsAutoFilled(true)
-        toastDone(toastId, `Loaded details for ${comp.company_name}`)
-      }
-    } catch (err) {
-      toastFail(toastId, 'Failed to fetch full company details: ' + err.message)
+      const d = await companyDetails(comp.company_number)
+      if (d) fillFromDetails(d, comp)
+      else toastFail(null, 'Could not load the full details from Companies House. Check them before saving.')
     } finally {
       setIsAutoFilling(false)
     }
@@ -350,6 +384,7 @@ const AddCompany = ({ isOpen, onClose }) => {
                         <div
                           key={idx}
                           onClick={() => handleSelectCompany(item)}
+                          onMouseEnter={() => companyDetails(item.company_number)}
                           className="p-2.5 rounded-md hover:bg-accent cursor-pointer flex items-center justify-between gap-2 text-sm transition-colors"
                         >
                           <div className="overflow-hidden">

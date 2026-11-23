@@ -13,6 +13,8 @@ from utils.validation import validate, validation_error, format_company_number, 
 from services.companies_house_service import (
     fetch_company_profile,
     fetch_company_officers,
+    company_details_fast,
+    search_companies_house_fast,
     search_companies_house,
     get_ch_api_key,
 )
@@ -398,7 +400,8 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
 
         if comp_number or (len(search_query) >= 6 and search_query.replace(' ', '').isalnum() and any(c.isdigit() for c in search_query)):
             target_num = comp_number or search_query.replace(' ', '')
-            ch_res = fetch_company_profile(target_num)
+            # Profile and directors at the same time, kept a few minutes (instant when picked again)
+            ch_res, off_res = company_details_fast(target_num)
             if ch_res.get('success') and ch_res.get('data'):
                 d = ch_res['data']
                 addr = d.get('registered_office_address', {})
@@ -412,7 +415,6 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
                 reg_office = ', '.join([p for p in addr_parts if p]) or 'United Kingdom'
                 
                 director = ''
-                off_res = fetch_company_officers(target_num)
                 if off_res.get('success') and off_res.get('officers'):
                     for off in off_res['officers']:
                         if off.get('officer_role', '').lower() in ('director', 'corporate-director'):
@@ -436,7 +438,7 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
                 })
 
         if search_query:
-            search_res = search_companies_house(search_query)
+            search_res = search_companies_house_fast(search_query)
             if search_res.get('success'):
                 results = []
                 for item in search_res.get('results', []):
