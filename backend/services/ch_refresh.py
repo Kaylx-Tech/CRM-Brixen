@@ -2,6 +2,8 @@
 attention issues, the director's name), so a statement or accounts filed at Companies House show up quickly.
 
 Who is checked, and how often:
+  * overdue companies (accounts or confirmation statement overdue, or flagged in Attention): every 15 minutes,
+    since they are the ones most likely to have just filed
   * urgent companies (never checked, something overdue or flagged, or a deadline within 30 days): every hour
   * every other live company: once a day
   * closed companies (dissolved, converted / closed): once a week
@@ -16,6 +18,7 @@ import time
 
 from db import execute_db, query_db
 
+OVERDUE_MINUTES = 15
 URGENT_HOURS = 1
 NORMAL_HOURS = 24
 CLOSED_DAYS = 7
@@ -27,6 +30,9 @@ CLOSED = "('dissolved', 'closed', 'converted-closed', 'removed')"
 # Which companies are due a check, most urgent and longest waiting first
 DUE_SQL = f"""
     SELECT id, company_number, name, status,
+           CASE WHEN COALESCE(confirmation_overdue, 0) = 1 OR COALESCE(accounts_overdue, 0) = 1
+                  OR (ch_attention_json IS NOT NULL AND ch_attention_json NOT IN ('', '[]'))
+                THEN 1 ELSE 0 END AS overdue,
            CASE WHEN ch_checked_at IS NULL OR ch_attention_json IS NULL
                   OR COALESCE(confirmation_overdue, 0) = 1 OR COALESCE(accounts_overdue, 0) = 1
                   OR (ch_attention_json IS NOT NULL AND ch_attention_json NOT IN ('', '[]'))
@@ -42,6 +48,9 @@ DUE_SQL = f"""
             AND datetime(ch_checked_at) < datetime('now', '-{CLOSED_DAYS} days'))
         OR (lower(COALESCE(status, '')) NOT IN {CLOSED} AND (
               datetime(ch_checked_at) < datetime('now', '-{NORMAL_HOURS} hours')
+              OR (datetime(ch_checked_at) < datetime('now', '-{OVERDUE_MINUTES} minutes') AND (
+                    COALESCE(confirmation_overdue, 0) = 1 OR COALESCE(accounts_overdue, 0) = 1
+                    OR (ch_attention_json IS NOT NULL AND ch_attention_json NOT IN ('', '[]'))))
               OR (datetime(ch_checked_at) < datetime('now', '-{URGENT_HOURS} hours') AND (
                     ch_attention_json IS NULL
                     OR COALESCE(confirmation_overdue, 0) = 1 OR COALESCE(accounts_overdue, 0) = 1
@@ -49,7 +58,7 @@ DUE_SQL = f"""
                     OR date(confirmation_next_due) <= date('now', '+30 days')
                     OR date(accounts_next_due) <= date('now', '+30 days')))))
       )
-    ORDER BY (ch_checked_at IS NULL) DESC, urgent DESC, ch_checked_at ASC
+    ORDER BY (ch_checked_at IS NULL) DESC, overdue DESC, urgent DESC, ch_checked_at ASC
     LIMIT ?;
 """
 
