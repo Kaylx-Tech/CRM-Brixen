@@ -107,7 +107,7 @@ def fetch_company_officers(company_number):
     except Exception as e:
         return {"success": False, "error": _error_text(e)}
 
-def search_companies_house(query):
+def search_companies_house(query, items_per_page=10):
     """Search companies by name or number from UK Companies House."""
     if not get_ch_api_key():
         return {"success": False, "error": "COMPANIES_HOUSE_API_KEY is not configured"}
@@ -118,7 +118,7 @@ def search_companies_house(query):
         return {"success": True, "results": []}
 
     q_encoded = urllib.parse.quote(q_str)
-    url = f"{CH_API_BASE}/search/companies?q={q_encoded}&items_per_page=10"
+    url = f"{CH_API_BASE}/search/companies?q={q_encoded}&items_per_page={max(1, min(100, int(items_per_page)))}"
 
     try:
         return {"success": True, "results": _ch_get(url).get('items', [])}

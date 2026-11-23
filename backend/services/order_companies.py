@@ -109,7 +109,8 @@ def _create_registered_company(client_id, details):
             INSERT INTO company_directors (company_id, name, role, nationality, appointed_date)
             VALUES (?, ?, ?, ?, ?);
         """, (company_id, d['name'], d.get('role') or 'Director', d.get('nationality') or None,
-              d.get('appointed') or None))
+              # appointed_date may not be empty: Companies House does not always give it
+              d.get('appointed') or details.get('incorporated') or datetime.date.today().isoformat()))
     return company_id
 
 
@@ -476,7 +477,8 @@ def register_pending_company(company_id, number):
                 INSERT INTO company_directors (company_id, name, role, nationality, appointed_date)
                 VALUES (?, ?, ?, ?, ?);
             """, (comp['id'], d['name'], d.get('role') or 'Director', d.get('nationality') or None,
-                  d.get('appointed') or None))
+                  # appointed_date may not be empty: Companies House does not always give it
+                  d.get('appointed') or details.get('incorporated') or datetime.date.today().isoformat()))
     return comp['id'], None
 
 
@@ -557,7 +559,8 @@ def auto_register_pending_company(company):
     execute_db("UPDATE companies SET ch_checked_at = datetime('now') WHERE id = ?;", (company['id'],))
     if len(company_name_key(company.get('name'))) < 4:
         return None, 'name_too_short'
-    found = search_companies_house(company.get('name'))
+    # 50 results: for a common name the exact one is often not in the first 10
+    found = search_companies_house(company.get('name'), items_per_page=50)
     if not found.get('success'):
         return None, found.get('error') or 'search_failed'
     match = _name_match(company.get('name'), found.get('results'))
@@ -592,6 +595,72 @@ def auto_register_pending_companies(limit=PENDING_SYNC_BATCH, user_id=None, comp
             print(f"[Pending companies] #{done} {company.get('name')} is registered")
             registered.append(done)
     return registered
+
+
+def _close_names(name, items, created_at, limit=3):
+    """Companies House results that may be this company although the name is not exactly the one ordered
+    (a letter, a word or "Trading" different): close names, incorporated around or after the order."""
+    import difflib
+    needle = company_name_key(name)
+    scored = []
+    for item in items or []:
+        key = company_name_key(item.get('title') or item.get('company_name'))
+        if not key or key == needle or not _incorporated_after_order(item, created_at):
+            continue
+        ratio = difflib.SequenceMatcher(None, needle, key).ratio()
+        if ratio >= 0.75 or (len(needle) >= 5 and (needle in key or key in needle)):
+            scored.append((ratio, item))
+    scored.sort(key=lambda pair: -pair[0])
+    return [{'name': item.get('title') or item.get('company_name'),
+             'number': canonical_company_number(item.get('company_number')),
+             'incorporated': str(item.get('date_of_creation') or '')[:10],
+             'status': str(item.get('company_status') or '').replace('-', ' ')} for _ratio, item in scored[:limit]]
+
+
+def check_pending_now(limit=60):
+    """Look every Pending company up at Companies House now (Draft / Pending › Check All With Companies House).
+    Registers the exact matches like the worker does, and says for each of the others why not, with close
+    names the team can pick. Returns [{id, name, outcome, number?, detail?, candidates?}]."""
+    from services.companies_house_service import get_ch_api_key, search_companies_house
+    if not get_ch_api_key():
+        return None
+    rows = query_db("""
+        SELECT id, name, company_number, user_id, created_at FROM companies
+        WHERE company_number IS NULL OR TRIM(company_number) = '' OR UPPER(company_number) LIKE 'REG-%'
+              OR UPPER(company_number) LIKE 'PENDING%'
+        ORDER BY created_at DESC LIMIT ?;
+    """, (int(limit),)) or []
+    results = []
+    for company in rows:
+        out = {'id': company['id'], 'name': company.get('name') or ''}
+        try:
+            done, reason = auto_register_pending_company(company)
+        except Exception as exc:
+            done, reason = None, str(exc)[:200]
+        if done:
+            row = query_db("SELECT name, company_number FROM companies WHERE id = ?;", (done,), one=True) or {}
+            results.append({**out, 'outcome': 'registered', 'name': row.get('name') or out['name'],
+                            'number': row.get('company_number')})
+            continue
+        if reason == 'name_too_short':
+            results.append({**out, 'outcome': 'no_name'})
+            continue
+        if reason == 'number_in_crm':
+            found = search_companies_house(company.get('name'), items_per_page=50)
+            match = _name_match(company.get('name'), found.get('results')) if found.get('success') else None
+            clash = _in_crm(canonical_company_number((match or {}).get('company_number'))) if match else None
+            results.append({**out, 'outcome': 'in_crm',
+                            'number': canonical_company_number((match or {}).get('company_number')),
+                            'detail': (clash or {}).get('name'), 'other_id': (clash or {}).get('id')})
+            continue
+        if reason != 'no_match':
+            results.append({**out, 'outcome': 'error', 'detail': reason})
+            continue
+        found = search_companies_house(company.get('name'), items_per_page=50)
+        candidates = _close_names(company.get('name'), found.get('results'), company.get('created_at')) \
+            if found.get('success') else []
+        results.append({**out, 'outcome': 'possible' if candidates else 'not_found', 'candidates': candidates})
+    return results
 
 
 _pending_worker_started = False

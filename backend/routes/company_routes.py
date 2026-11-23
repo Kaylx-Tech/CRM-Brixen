@@ -512,6 +512,20 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
             'total_uk': len(formatted_companies)
         })
 
+    # ── Draft / Pending › Check All With Companies House: every pending company looked up now, exact matches
+    #    registered, the rest explained with close names to pick (services/order_companies.check_pending_now) ──
+    if path in ('/api/companies/pending-check', '/api/admin/companies/pending-check') and method == 'POST':
+        if not is_staff:
+            return error_response(start_response, "For the team only", status_code=403)
+        from services.order_companies import check_pending_now
+        results = check_pending_now()
+        if results is None:
+            return error_response(start_response, "Companies House is not connected on the server.", status_code=400)
+        done = sum(1 for r in results if r['outcome'] == 'registered')
+        return success_response(start_response, data={'results': results},
+                                message=f"{done} of {len(results)} pending compan{'y' if len(results) == 1 else 'ies'} "
+                                        f"registered from Companies House.")
+
     # ── Check Now: refresh from Companies House straight away (services/ch_refresh.py) ──
     #   POST /api/admin/companies/<id>/ch-refresh      one company, answered with its fresh details
     #   POST /api/admin/companies/ch-refresh {ids}     several (e.g. every company needing attention), in the background

@@ -80,6 +80,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
 import { isAdminRole, isManagerOrAbove } from '@/lib/permissions'
 import { needsAttention } from './attention'
+import PendingCheckDialog from './PendingCheckDialog'
 import { m, spring } from '@/lib/motion'
 import { apiRequest, getApiBase, toastApiEmpty } from '@/lib/api'
 import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
@@ -180,6 +181,9 @@ const Companies = () => {
   }, [])
 
   const attentionCompanies = companies.filter((c) => c.isRegistered && needsAttention(c))
+
+  // Draft / Pending › Check All With Companies House (PendingCheckDialog.jsx)
+  const [pendingCheckOpen, setPendingCheckOpen] = useState(false)
 
   // Check All Now: every company in Attention re-checked with Companies House straight away
   const [checkingAll, setCheckingAll] = useState(false)
@@ -452,6 +456,20 @@ const Companies = () => {
           )}
         </div>
       )}
+
+      {activeTab === 'not-registered' && !isLoading && (
+        <div className="-mt-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">
+            Pending companies turn into the registered company by themselves once Companies House has them (checked every 5 minutes).
+          </p>
+          {pendingCount > 0 && (
+            <Button size="sm" variant="outline" onClick={() => setPendingCheckOpen(true)}>
+              <IconRefresh className="size-4" /> Check All With Companies House
+            </Button>
+          )}
+        </div>
+      )}
+      {pendingCheckOpen && <PendingCheckDialog onClose={() => setPendingCheckOpen(false)} onChanged={fetchCompanies} />}
 
       {/* Bulk Action Bar when items selected */}
       {selectedIds.length > 0 && (
