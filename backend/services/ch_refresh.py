@@ -7,8 +7,10 @@ Who is checked, and how often:
   * urgent companies (never checked, something overdue or flagged, or a deadline within 30 days): every hour
   * every other live company: once a day
   * closed companies (dissolved, converted / closed): once a week
-A background worker (start_worker) runs every few minutes within a budget of Companies House calls per run
-(the key allows 600 requests per 5 minutes and is shared with every other feature).
+A background worker (start_worker) runs every few minutes within a budget of Companies House calls per run (the
+key allows 600 requests per 5 minutes and is shared with every other feature): first the overdue companies, then
+the rest. With a Companies House stream key (services/ch_stream.py) every
+change Companies House publishes reaches the companies at once, and this polling is only the safety net.
 Opening the Companies page also checks a few at once, and "Check Now" refreshes one company, or every company
 needing attention, straight away.
 """
@@ -23,13 +25,13 @@ URGENT_HOURS = 1
 NORMAL_HOURS = 24
 CLOSED_DAYS = 7
 RUN_EVERY_SECONDS = 5 * 60
-CALLS_PER_RUN = 100        # Companies House calls a worker run may use
+CALLS_PER_RUN = 300        # Companies House calls a worker run may use (half the limit)
 PAUSE_SECONDS = 0.25       # between calls, gently
 CLOSED = "('dissolved', 'closed', 'converted-closed', 'removed')"
 
 # Which companies are due a check, most urgent and longest waiting first
-DUE_SQL = f"""
-    SELECT id, company_number, name, status,
+DUE_SQL_BASE = f"""
+    SELECT id, company_number, name, status, ch_checked_at,
            CASE WHEN COALESCE(confirmation_overdue, 0) = 1 OR COALESCE(accounts_overdue, 0) = 1
                   OR (ch_attention_json IS NOT NULL AND ch_attention_json NOT IN ('', '[]'))
                 THEN 1 ELSE 0 END AS overdue,
@@ -58,23 +60,16 @@ DUE_SQL = f"""
                     OR date(confirmation_next_due) <= date('now', '+30 days')
                     OR date(accounts_next_due) <= date('now', '+30 days')))))
       )
-    ORDER BY (ch_checked_at IS NULL) DESC, overdue DESC, urgent DESC, ch_checked_at ASC
-    LIMIT ?;
 """
+DUE_SQL = (f"SELECT * FROM ({DUE_SQL_BASE}) ORDER BY (ch_checked_at IS NULL) DESC, overdue DESC, urgent DESC, "
+           "ch_checked_at ASC LIMIT ?;")
+OVERDUE_DUE_SQL = f"SELECT * FROM ({DUE_SQL_BASE}) WHERE overdue = 1 ORDER BY ch_checked_at ASC LIMIT ?;"
 
 
-def refresh_company(company):
-    """Update one company from its Companies House profile now. True when Companies House answered."""
+def apply_profile(company_id, d):
+    """Save a Companies House company profile (from the REST API or the stream) on one company."""
     from services.ch_attention import issues_from_profile
-    from services.companies_house_service import fetch_company_profile
     from services.smart_intake import companies_house_status_value
-    profile = fetch_company_profile(company['company_number'])
-    if not (profile.get('success') and profile.get('data')):
-        # Mark it checked so one bad number never blocks the queue; stored dates still drive attention
-        execute_db("UPDATE companies SET ch_checked_at = datetime('now'), "
-                   "ch_attention_json = COALESCE(ch_attention_json, '[]') WHERE id = ?;", (company['id'],))
-        return False
-    d = profile['data']
     accounts = d.get('accounts') or {}
     confirmation = d.get('confirmation_statement') or {}
     execute_db("""
@@ -89,17 +84,30 @@ def refresh_company(company):
           accounts.get('next_due') or (accounts.get('next_accounts') or {}).get('due_on'),
           1 if accounts.get('overdue') else 0,
           confirmation.get('next_due'), 1 if confirmation.get('overdue') else 0,
-          json.dumps(issues_from_profile(d)), company['id']))
+          json.dumps(issues_from_profile(d)), company_id))
+
+
+def refresh_company(company):
+    """Update one company from its Companies House profile now. True when Companies House answered."""
+    from services.companies_house_service import fetch_company_profile
+    profile = fetch_company_profile(company['company_number'])
+    if not (profile.get('success') and profile.get('data')):
+        # Mark it checked so one bad number never blocks the queue; stored dates still drive attention
+        execute_db("UPDATE companies SET ch_checked_at = datetime('now'), "
+                   "ch_attention_json = COALESCE(ch_attention_json, '[]') WHERE id = ?;", (company['id'],))
+        return False
+    apply_profile(company['id'], profile['data'])
     return True
 
 
-def refresh_due(limit):
-    """Check up to `limit` companies that are due. Returns how many were checked."""
+def refresh_due(limit, overdue_only=False):
+    """Check up to `limit` companies that are due (only overdue ones if asked).
+    Returns how many were checked."""
     from services.companies_house_service import get_ch_api_key
     if limit <= 0 or not get_ch_api_key():
         return 0
     done = 0
-    for company in query_db(DUE_SQL, (int(limit),)) or []:
+    for company in query_db(OVERDUE_DUE_SQL if overdue_only else DUE_SQL, (int(limit),)) or []:
         try:
             refresh_company(company)
         except Exception as exc:
@@ -169,8 +177,10 @@ def fill_missing_directors(limit=5):
 # ── the worker ──────────────────────────────────────────────────────────────
 
 def run_once():
-    """One pass within the call budget. Returns how many Companies House calls were made."""
-    used = refresh_due(CALLS_PER_RUN)
+    """One pass within the call budget: overdue companies first, then everything else that is due.
+    Returns how many Companies House calls were made."""
+    used = refresh_due(CALLS_PER_RUN, overdue_only=True)
+    used += refresh_due(CALLS_PER_RUN - used)
     used += fill_missing_directors(limit=min(3, max(0, CALLS_PER_RUN - used)))
     return used
 

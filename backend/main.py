@@ -206,6 +206,9 @@ def run_server():
     # filed confirmation statement or accounts clear from Attention quickly
     from services.ch_refresh import start_worker as start_ch_refresh_worker
     start_ch_refresh_worker()
+    # …and, with a stream key, every change Companies House publishes reaches the companies at once
+    from services.ch_stream import start_worker as start_ch_stream_worker
+    start_ch_stream_worker()
 
     print("=" * 60)
     print("Brixen CRM Modular API Server Started")
