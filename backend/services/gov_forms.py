@@ -412,6 +412,9 @@ def save(code, company_id, values, status, user, filing_id=None, order_id=None):
         if current.get('order_id'):  # the order this form was for is done
             from services.gov_form_orders import complete_order
             complete_order(current['order_id'])
+        # The client hears it is filed and gets the form in their portal (services/gov_form_notify.py)
+        from services.gov_form_notify import filed
+        filed(_filing(filing_id), user)
     return _filing(filing_id), {}
 
 

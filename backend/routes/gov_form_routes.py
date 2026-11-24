@@ -92,7 +92,8 @@ def handle_gov_form_routes(environ, start_response, path, method, user, body, qu
                                           status_code=400, details={'errors': errors})
                 messages = {'draft': 'Draft saved.',
                             'ready': 'Ready: the Filing Sheet is in Documents and a task to file it was made.',
-                            'filed': 'Marked as filed.' + (' The order is completed.' if filing.get('order_id') else '')}
+                            'filed': 'Marked as filed.' + (' The order is completed.' if filing.get('order_id') else '')
+                                     + ' The client has been emailed the form.'}
                 return success_response(start_response, data=filing, message=messages.get(filing['status']))
     except gov_forms.FormError as exc:
         return error_response(start_response, str(exc), status_code=400)
