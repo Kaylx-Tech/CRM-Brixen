@@ -222,6 +222,46 @@ FORMS = {
             ]},
         ],
     },
+    'CS01': {
+        'title': 'Confirmation Statement',
+        'purpose': 'Confirm once a year that what Companies House holds about the company is right.',
+        'webfiling': 'Confirmation statement (CS01)',
+        'sections': [
+            _company(),
+            {'title': 'Confirmation Period', 'fields': [
+                {'key': 'made_up_to', 'label': 'Confirmation Date (Made Up To)', 'type': 'date', 'required': True,
+                 'source': 'company.cs_made_up_to', 'check': 'past_date',
+                 'help': 'The date the statement confirms the details on; at most 12 months after the last one.'},
+                {'key': 'due', 'label': 'Due By', 'type': 'text', 'source': 'company.cs_due', 'readonly': True},
+            ]},
+            {'title': 'Company Details', 'fields': [
+                {'key': 'registered_office', 'label': 'Registered Office (on the register)', 'type': 'textarea',
+                 'source': 'company.office_text', 'readonly': True,
+                 'help': 'To change it, file AD01 first.'},
+                {'key': 'sic_codes', 'label': 'SIC Codes (What the Company Does)', 'type': 'text', 'required': True,
+                 'source': 'company.sic_text', 'help': 'Up to 4 codes, separated by commas.'},
+            ]},
+            {'title': 'Shares and Shareholders', 'fields': [
+                {'key': 'no_capital_change', 'label': 'No change to the share capital since the last statement',
+                 'type': 'checkbox'},
+                {'key': 'capital_changes', 'label': 'What Changed in the Share Capital', 'type': 'textarea',
+                 'required': True, 'when': {'no_capital_change': False},
+                 'help': 'Class, number and value of shares now, and what was paid for them.'},
+                {'key': 'no_shareholder_change', 'label': 'No change to the shareholders since the last statement',
+                 'type': 'checkbox'},
+                {'key': 'shareholder_changes', 'label': 'Shareholder Changes', 'type': 'textarea', 'required': True,
+                 'when': {'no_shareholder_change': False},
+                 'help': 'Who now holds shares and how many (and any transfers).'},
+            ]},
+            {'title': 'Statement', 'help': 'Directors, secretary and PSC changes are filed on their own forms first '
+                                          '(AP01, TM01, CH01, PSC01, PSC07).', 'fields': [
+                {'key': 'people_correct', 'label': 'The directors and PSCs on the register are right',
+                 'type': 'checkbox', 'required': True},
+                {'key': 'lawful_purpose', 'label': "The company's intended future activities are lawful",
+                 'type': 'checkbox', 'required': True},
+            ]},
+        ],
+    },
     'DS01': {
         'title': 'Close the Company (Striking Off Application)',
         'purpose': 'Ask Companies House to strike off a company that has stopped trading.',

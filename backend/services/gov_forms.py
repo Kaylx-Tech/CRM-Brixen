@@ -56,6 +56,10 @@ def _ensure():
         return
     conn = get_db()
     conn.executescript(SCHEMA)
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(gov_form_filings);").fetchall()}
+    if 'order_id' not in cols:  # the order the form was made for (services/gov_form_orders.py)
+        conn.execute("ALTER TABLE gov_form_filings ADD COLUMN order_id INTEGER;")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_gov_form_filings_order ON gov_form_filings(order_id);")
     conn.commit()
     _ready.add(path)
 
@@ -139,6 +143,9 @@ def context(company_id):
         'office_text': _address_text(office) or str(row.get('reg_office') or ''),
         'period_start': next_accounts.get('period_start_on') or '',
         'period_end': next_accounts.get('period_end_on') or accounts.get('next_made_up_to') or '',
+        'cs_made_up_to': ((profile or {}).get('confirmation_statement') or {}).get('next_made_up_to') or '',
+        'cs_due': ((profile or {}).get('confirmation_statement') or {}).get('next_due') or '',
+        'sic_text': ', '.join((profile or {}).get('sic_codes') or []) or str(row.get('sic_codes') or ''),
     }
 
     directors = []
@@ -196,7 +203,7 @@ def _fields(form):
             yield section, field
 
 
-def prepare(code, company_id):
+def prepare(code, company_id, order_id=None):
     form = _form(code)
     ctx = context(company_id)
     values = {}
@@ -211,8 +218,9 @@ def prepare(code, company_id):
     allowed = JURISDICTION_COUNTRIES.get(ctx['company']['jurisdiction'])
     if code.upper() == 'AD01' and allowed and len(allowed) == 1:
         values['new_country'] = allowed[0]
+    from services.gov_form_orders import order_info
     return {'code': code.upper(), 'form': form, 'context': ctx, 'values': values,
-            'countries': UK_COUNTRIES, 'filings': filings(company_id, code)}
+            'countries': UK_COUNTRIES, 'filings': filings(company_id, code), 'order': order_info(order_id)}
 
 
 # ── checks ──────────────────────────────────────────────────────────────────
@@ -308,7 +316,8 @@ def filings(company_id=None, code=None, limit=50):
         where.append('f.form_code = ?')
         args.append(str(code).upper())
     rows = query_db(f"""
-        SELECT f.*, c.name AS company_name FROM gov_form_filings f LEFT JOIN companies c ON c.id = f.company_id
+        SELECT f.*, c.name AS company_name, o.order_number FROM gov_form_filings f
+        LEFT JOIN companies c ON c.id = f.company_id LEFT JOIN orders o ON o.id = f.order_id
         {'WHERE ' + ' AND '.join(where) if where else ''} ORDER BY f.id DESC LIMIT ?;
     """, tuple(args) + (limit,)) or []
     out = []
@@ -330,7 +339,7 @@ def _filing(filing_id):
     return item
 
 
-def save(code, company_id, values, status, user, filing_id=None):
+def save(code, company_id, values, status, user, filing_id=None, order_id=None):
     """Save a form. Ready and Filed need it to pass the checks. Returns (filing, errors)."""
     _ensure()
     code = str(code or '').upper()
@@ -352,9 +361,10 @@ def save(code, company_id, values, status, user, filing_id=None):
                    (json.dumps(values), status, filing_id))
     else:
         filing_id = execute_db("""
-            INSERT INTO gov_form_filings (company_id, form_code, values_json, status, created_by, created_by_name)
-            VALUES (?, ?, ?, ?, ?, ?);
-        """, (company_id, code, json.dumps(values), status, (user or {}).get('id'), who))
+            INSERT INTO gov_form_filings (company_id, form_code, values_json, status, created_by, created_by_name,
+                                          order_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?);
+        """, (company_id, code, json.dumps(values), status, (user or {}).get('id'), who, order_id))
     if status == 'ready':
         _make_ready(filing_id, form, ctx or context(company_id), values, user)
     if status == 'filed':
@@ -366,6 +376,9 @@ def save(code, company_id, values, status, user, filing_id=None):
         if current.get('task_id'):
             execute_db("UPDATE tasks SET status = 'Completed', completed_at = datetime('now'), "
                        "updated_at = datetime('now') WHERE id = ? AND status != 'Completed';", (current['task_id'],))
+        if current.get('order_id'):  # the order this form was for is done
+            from services.gov_form_orders import complete_order
+            complete_order(current['order_id'])
     return _filing(filing_id), {}
 
 

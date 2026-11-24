@@ -150,7 +150,7 @@ const App = () => {
                 <Route path="tickets" element={<PageGuard page="tickets"><Tickets /></PageGuard>} />
                 <Route path="smart-operations" element={<PageGuard page="smart-operations"><SmartOperations /></PageGuard>} />
                 {/* Gov Forms live in Smart Operations › UK Gov Checks */}
-                <Route path="gov-forms" element={<Navigate to="/admin/smart-operations?tab=uk-gov-checks&section=forms" replace />} />
+                <Route path="gov-forms" element={<Navigate to="/admin/smart-operations?tab=uk-gov-checks&view=forms" replace />} />
                 {/* KYC is the first tab of Smart Operations now; old links open it there */}
                 <Route path="kyc" element={<Navigate to="/admin/smart-operations" replace />} />
                 <Route path="settings" element={<Settings />} />
