@@ -8,6 +8,7 @@ Each form is plain data: its sections and fields. A field says
                         fields the chosen person fills ({field key: person attribute})
   check                 extra checks: postcode, company_number, past_date, adult_dob, personal_code
   when                  only shown when another field has a value ({"key": value})
+  default               a checkbox ticked to start with
   help                  one short hint
 To add a form: add one entry to FORMS (no other code is needed).
 """
@@ -105,7 +106,7 @@ FORMS = {
             {'title': 'Appropriate Registered Office Address', 'fields': [
                 {'key': 'appropriate_address', 'label': 'The new registered office address is an appropriate address '
                                                       '(section 86(2) of the Companies Act 2006)',
-                 'type': 'checkbox', 'required': True,
+                 'type': 'checkbox', 'required': True, 'default': True,
                  'help': 'Post delivered there reaches someone acting for the company, and delivery can be '
                          'acknowledged.'},
             ]},

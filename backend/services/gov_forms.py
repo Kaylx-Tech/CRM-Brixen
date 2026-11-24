@@ -227,7 +227,7 @@ def prepare(code, company_id, order_id=None):
         if field.get('source'):
             values[field['key']] = _source(ctx, field['source']) or ''
         elif field['type'] == 'checkbox':
-            values[field['key']] = False
+            values[field['key']] = bool(field.get('default'))
         elif field['type'] == 'checks':
             values[field['key']] = []
     # The new registered office keeps the country of the company's jurisdiction

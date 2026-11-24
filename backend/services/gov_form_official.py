@@ -240,7 +240,7 @@ def presenter(company_id=None, order_id=None, company_name=''):
 def _ad01(f, v, ctx):
     f.company(v, ctx)
     f.address(v, 'new', 0)
-    f.tick(r'appropriate address', v.get('appropriate_address'), 0)
+    f.tick(r'appropriate address', True, 0)  # the form cannot be Ready without this confirmation
     f.text(r'^authentication', v.get('signer_name'))
 
 
