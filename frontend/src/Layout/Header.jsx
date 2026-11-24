@@ -25,6 +25,7 @@ const ROUTE_LABELS = {
   tasks: 'Team',
   tickets: 'Support',
   'smart-operations': 'Smart Operations',
+  'gov-forms': 'Gov Forms',
   services: 'Services',
   payments: 'Finance',
   'balance-sheet': 'Revenue & Balance Sheet',

@@ -10,6 +10,7 @@ import {
   IconShoppingCart,
   IconApps,
   IconLink,
+  IconForms,
   IconCalculator,
   IconFileCheck,
   IconBrain,
@@ -35,6 +36,8 @@ export const NAV_GROUPS = [
     items: [
       // KYC (identity checks on Finstap's KYC) is the first tab of Smart Operations; /admin/kyc opens it
       { title: "Smart Operations", url: "/admin/smart-operations", icon: IconLink },
+      // Companies House forms filled in from Companies House and the CRM (Pages/GovForms)
+      { title: "Gov Forms", url: "/admin/gov-forms", icon: IconForms },
       { title: "Accountancy", url: "/admin/accountancy", icon: IconCalculator },
       { title: "Documents", url: "/admin/documents", icon: IconFileCheck, badge: "documents" },
       { title: "Smart Intake", url: "/admin/intake", icon: IconBrain },
