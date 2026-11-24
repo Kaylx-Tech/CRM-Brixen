@@ -184,6 +184,32 @@ def _pick_person(field, ctx, answers, values, filled):
                 return
 
 
+def mark_relevant(form, answers, values, filled):
+    """Each answer gets `used`: it filled a field of this form, or its question is one this form asks."""
+    keys = {f['key'] for s in form['sections'] for f in s['fields']}
+    words = [w for key, ws in FIELD_WORDS.items() if key in keys for w in ws]
+    if _address_prefixes(form):
+        words += ['address', 'postcode', 'post code'] + [w for ws in ADDRESS_PARTS.values() for w in ws]
+    if 'first_names' in keys:
+        words += list(FULL_NAME_WORDS)
+    if any(f.get('type') == 'pick' for s in form['sections'] for f in s['fields']):
+        words += ['director', 'psc', 'person with significant control', 'resign', 'remove', 'shareholder']
+    if 'auth_code' in keys:
+        words += ['authentication', 'auth code']
+    if 'personal_code' in keys:
+        words += ['personal code', 'verification code', 'identity code']
+    got = [str(values.get(k) or '').strip().lower() for k in filled if isinstance(values.get(k), str)]
+    got = [g for g in got if len(g) >= 2]
+    for a in answers:
+        value = str(a.get('value') or '').strip().lower()
+        day = _iso_date(a.get('value'))
+        a['used'] = bool(
+            any(g in value or value == g for g in got)
+            or (day and day in got)
+            or (_has(a.get('label'), words) and not _has(a.get('label'), ('email',)))
+        )
+
+
 def fill(form, values, ctx, order):
     """Fill empty fields of `values` from the order's answers. Returns the keys filled."""
     answers = [a for a in (order or {}).get('answers') or [] if str(a.get('value') or '').strip()]

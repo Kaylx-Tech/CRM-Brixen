@@ -28,7 +28,7 @@ const STATUS = {
 }
 // The forms in groups, as Companies House sorts them
 const GROUPS = [
-  ['Company', ['AD01', 'AA01', 'DS01']],
+  ['Company', ['CS01', 'AD01', 'AA01', 'DS01', 'RT01']],
   ['Directors', ['AP01', 'TM01', 'CH01']],
   ['People With Significant Control', ['PSC01', 'PSC07']],
 ]
@@ -197,113 +197,64 @@ async function downloadSheet(filing) {
   URL.revokeObjectURL(url)
 }
 
-/** The orders that need a Companies House form (services/gov_form_orders.py): the first screen. */
-function OrderQueue({ choose }) {
+/** UK Gov Checks starts here: every form, each with the orders waiting for it. */
+function FormsHome({ forms, choose }) {
   const [items, setItems] = useState(null)
-  const [filter, setFilter] = useState('todo')
-  const [search, setSearch] = useState('')
   useEffect(() => {
     apiRequest('/admin/gov-forms/queue', { label: 'Gov Forms', silent: true }).then((res) => setItems(res.ok ? res.data.data.items : []))
   }, [])
-  const q = search.trim().toLowerCase()
-  const shown = (items || [])
-    .filter(FILTERS.find(([key]) => key === filter)[2])
-    .filter((i) => !q || `${i.order_number} ${i.company_name} ${i.client_name} ${i.service} ${i.form_code}`.toLowerCase().includes(q))
-  const open = (i) =>
-    choose({ view: '', form: i.form_code, order: String(i.order_id), company: i.company_id ? String(i.company_id) : '', filing: i.filing_id ? String(i.filing_id) : '' })
+  const count = (code, test) => (items || []).filter((i) => i.form_code === code && test(i)).length
+  const groups = GROUPS.map(([title, codes]) => [title, codes.map((code) => forms.find((f) => f.code === code)).filter(Boolean)])
+  const rest = forms.filter((f) => !GROUPS.some(([, codes]) => codes.includes(f.code)))
+  if (rest.length) groups.push(['Other', rest])
   return (
-    <div className="flex w-full flex-col gap-4 pb-10">
+    <div className="flex w-full flex-col gap-6 pb-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex w-fit gap-1 rounded-full border bg-muted/50 p-1">
-          {FILTERS.map(([key, label, test]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setFilter(key)}
-              className={cn(
-                'rounded-full px-3 py-1 text-sm font-medium transition-colors',
-                filter === key ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {label} <span className="ml-1 text-muted-foreground">{(items || []).filter(test).length}</span>
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-full sm:w-64">
-            <IconSearch className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" className="pl-9" />
-          </div>
-          <Button variant="outline" onClick={() => choose({ view: 'services' })}>
-            <IconSettings className="size-4" /> Services
-          </Button>
-          <Button onClick={() => choose({ view: 'forms' })}>
-            <IconForms className="size-4" /> New Form
-          </Button>
-        </div>
+        <p className="text-sm text-muted-foreground">Choose a form.</p>
+        <Button variant="outline" onClick={() => choose({ view: 'services' })}>
+          <IconSettings className="size-4" /> Services
+        </Button>
       </div>
-      <section className="rounded-2xl border bg-card">
-        {items === null ? (
-          <p className="flex items-center gap-2 px-4 py-6 text-sm text-muted-foreground">
-            <IconLoader2 className="size-4 animate-spin" /> Loading orders…
-          </p>
-        ) : shown.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-left text-xs text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2.5 font-medium">Order</th>
-                  <th className="px-4 py-2.5 font-medium">Company</th>
-                  <th className="px-4 py-2.5 font-medium">Form</th>
-                  <th className="px-4 py-2.5 font-medium">Status</th>
-                  <th className="px-4 py-2.5" />
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {shown.map((i) => (
-                  <tr key={`${i.order_id}-${i.form_code}`} className="hover:bg-muted/40">
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="font-medium">{i.order_number}</span>
-                      <span className="block text-xs text-muted-foreground">{when(i.ordered_at)}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {i.company_name || <span className="text-muted-foreground">No company yet</span>}
-                      {i.client_name && <span className="block text-xs text-muted-foreground">{i.client_name}</span>}
-                    </td>
-                    <td className="px-4 py-3" title={`${i.service}: ${i.form_title}`}>
-                      <span className="font-semibold text-primary">{i.form_code}</span>
-                      <span className="block text-xs text-muted-foreground">{i.form_title}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={cn(PILL, STAGE[i.stage]?.[1])}>{STAGE[i.stage]?.[0]}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {i.stage === 'filed' && i.filing_id && (
-                        <Button size="sm" variant="ghost" className="mr-1 h-8 px-2" title="Filing Sheet" onClick={() => downloadSheet({ id: i.filing_id, form_code: i.form_code, company_name: i.company_name })}>
-                          <IconDownload className="size-4" />
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant={i.stage === 'new' ? 'default' : 'outline'}
-                        onClick={() => open(i)}
-                        title={i.stage === 'new' ? 'Filled in for you in seconds from Companies House and the order' : undefined}
-                      >
-                        {i.stage === 'new' && <IconBolt className="size-4" />}
-                        {{ new: 'Get It Instantly', draft: 'Continue', ready: 'Open', filed: 'View' }[i.stage]}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="px-4 py-10 text-center text-sm text-muted-foreground">
-            {q ? 'No order matches.' : filter === 'todo' ? 'No order is waiting for a form.' : 'Nothing here yet.'}
-          </p>
-        )}
-      </section>
+      {!forms.length ? (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <IconLoader2 className="size-4 animate-spin" /> Loading forms…
+        </p>
+      ) : (
+        groups.map(([title, list]) => (
+          <section key={title} className="flex flex-col gap-3">
+            <h2 className="text-sm font-semibold text-muted-foreground">{title}</h2>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {list.map((f) => {
+                const todo = count(f.code, FILTERS[0][2])
+                const ready = count(f.code, FILTERS[1][2])
+                return (
+                  <button
+                    key={f.code}
+                    type="button"
+                    onClick={() => choose({ form: f.code, view: '' })}
+                    className="group flex items-start gap-3 rounded-2xl border bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                  >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <IconForms className="size-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-primary">{f.code}</span>
+                        <span className="flex gap-1">
+                          {todo > 0 && <span className={cn(PILL, STAGE.new[1])}>{todo} to do</span>}
+                          {ready > 0 && <span className={cn(PILL, STAGE.ready[1])}>{ready} ready</span>}
+                        </span>
+                      </span>
+                      <span className="block font-semibold leading-snug">{f.title}</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">{f.purpose}</span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+        ))
+      )}
     </div>
   )
 }
@@ -328,21 +279,64 @@ function OrderCard({ o, choose }) {
   )
 }
 
-/** A form started from the forms list: which order is it for? The orders for this form come first; the rest only
- * when asked for (or searched). The order brings its company and the client's answers. */
-function OrderPicker({ formCode, title, choose }) {
-  const [orders, setOrders] = useState(null)
+/** What the client wrote on the order: the answers this form needs first, the rest when asked for. */
+function OrderAnswers({ answers, formCode }) {
+  const [all, setAll] = useState(false)
+  const used = answers.filter((a) => a.used)
+  const rest = answers.filter((a) => !a.used)
+  const list = all ? [...used, ...rest] : used
+  return (
+    <>
+      {list.length > 0 ? (
+        <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm md:grid-cols-2">
+          {list.map((a, n) => (
+            <div key={n} className="flex items-start gap-1">
+              <div className="min-w-0 flex-1">
+                <dt className="text-xs text-muted-foreground">{a.label}</dt>
+                <dd className="break-words">{a.value}</dd>
+              </div>
+              <CopyButton text={a.value} />
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className="mt-2 text-sm text-muted-foreground">
+          {answers.length ? `Nothing on the order form is for ${formCode}.` : 'The client gave no answers on the order form.'}
+        </p>
+      )}
+      {rest.length > 0 && (
+        <button type="button" onClick={() => setAll(!all)} className="mt-3 text-xs text-primary underline-offset-2 hover:underline">
+          {all ? 'Only what this form needs' : `Show all the client's answers (${answers.length})`}
+        </button>
+      )}
+    </>
+  )
+}
+
+/** One form: the orders for it (To Do / Ready to File / Filed), then any other order, or no order at all. */
+function FormOrders({ formCode, title, choose }) {
+  const [items, setItems] = useState(null)
+  const [others, setOthers] = useState([])
+  const [filter, setFilter] = useState('todo')
   const [search, setSearch] = useState('')
-  const [showAll, setShowAll] = useState(false)
+  const [showOthers, setShowOthers] = useState(false)
   useEffect(() => {
-    apiRequest(`/admin/gov-forms/orders?form=${formCode}`, { label: 'Gov Forms', silent: true }).then((res) => setOrders(res.ok ? res.data.data.orders : []))
+    apiRequest('/admin/gov-forms/queue', { label: 'Gov Forms', silent: true }).then((res) =>
+      setItems(res.ok ? res.data.data.items.filter((i) => i.form_code === formCode) : []),
+    )
+    apiRequest(`/admin/gov-forms/orders?form=${formCode}`, { label: 'Gov Forms', silent: true }).then((res) =>
+      setOthers(res.ok ? res.data.data.orders.filter((o) => !o.match) : []),
+    )
   }, [formCode])
   const q = search.trim().toLowerCase()
-  const found = (orders || []).filter((o) => !q || `${o.number} ${o.service} ${o.company_name} ${o.company_number} ${o.client}`.toLowerCase().includes(q))
-  const matches = found.filter((o) => o.match)
-  const others = found.filter((o) => !o.match)
+  const shown = (items || [])
+    .filter(FILTERS.find(([key]) => key === filter)[2])
+    .filter((i) => !q || `${i.order_number} ${i.company_name} ${i.client_name} ${i.service}`.toLowerCase().includes(q))
+  const otherShown = others.filter((o) => !q || `${o.number} ${o.service} ${o.company_name} ${o.client}`.toLowerCase().includes(q))
+  const open = (i) =>
+    choose({ order: String(i.order_id), company: i.company_id ? String(i.company_id) : '', filing: i.filing_id ? String(i.filing_id) : '' })
   return (
-    <div className="flex w-full flex-col gap-5 pb-10">
+    <div className="flex w-full flex-col gap-4 pb-10">
       <div>
         <button type="button" onClick={() => choose({ form: '' })} className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <IconArrowLeft className="size-4" /> All Forms
@@ -351,55 +345,104 @@ function OrderPicker({ formCode, title, choose }) {
           {formCode}: {title || '…'}
         </h1>
       </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative w-full max-w-md">
-          <IconSearch className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input autoFocus value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Order number, company or client" className="pl-9" />
-        </div>
-        <button type="button" onClick={() => choose({ noorder: '1' })} className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
-          No order: choose the company
-        </button>
-      </div>
-      {orders === null ? (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <IconLoader2 className="size-4 animate-spin" /> Loading orders…
-        </p>
-      ) : (
-        <>
-          <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-semibold">Orders for {formCode}</h2>
-            {matches.length ? (
-              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                {matches.slice(0, 60).map((o) => (
-                  <OrderCard key={o.id} o={o} choose={choose} />
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {q ? 'No order for this form matches.' : `No order is for ${formCode} yet.`}
-              </p>
-            )}
-          </section>
-          {others.length > 0 && (
-            <section className="flex flex-col gap-2">
-              {showAll || q ? (
-                <>
-                  <h2 className="text-sm font-semibold text-muted-foreground">Other Orders</h2>
-                  <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                    {others.slice(0, 60).map((o) => (
-                      <OrderCard key={o.id} o={o} choose={choose} />
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <button type="button" onClick={() => setShowAll(true)} className="w-fit text-sm text-primary underline-offset-2 hover:underline">
-                  Show other orders ({others.length})
-                </button>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex w-fit gap-1 rounded-full border bg-muted/50 p-1">
+          {FILTERS.map(([key, label, test]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setFilter(key)}
+              className={cn(
+                'rounded-full px-3 py-1 text-sm font-medium transition-colors',
+                filter === key ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
               )}
-            </section>
-          )}
-        </>
-      )}
+            >
+              {label} <span className="ml-1 text-muted-foreground">{(items || []).filter(test).length}</span>
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative w-full sm:w-64">
+            <IconSearch className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" className="pl-9" />
+          </div>
+          <Button variant="outline" onClick={() => choose({ noorder: '1' })}>
+            Without an Order
+          </Button>
+        </div>
+      </div>
+      <section className="rounded-2xl border bg-card">
+        {items === null ? (
+          <p className="flex items-center gap-2 px-4 py-6 text-sm text-muted-foreground">
+            <IconLoader2 className="size-4 animate-spin" /> Loading orders…
+          </p>
+        ) : shown.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2.5 font-medium">Order</th>
+                  <th className="px-4 py-2.5 font-medium">Company</th>
+                  <th className="px-4 py-2.5 font-medium">Status</th>
+                  <th className="px-4 py-2.5" />
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {shown.map((i) => (
+                  <tr key={`${i.order_id}-${i.form_code}`} className="hover:bg-muted/40">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="font-medium">{i.order_number}</span>
+                      <span className="block text-xs text-muted-foreground">{when(i.ordered_at)}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {i.company_name || <span className="text-muted-foreground">No company yet</span>}
+                      {i.client_name && <span className="block text-xs text-muted-foreground">{i.client_name}</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={cn(PILL, STAGE[i.stage]?.[1])}>{STAGE[i.stage]?.[0]}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {i.stage === 'filed' && i.filing_id && (
+                        <Button size="sm" variant="ghost" className="mr-1 h-8 px-2" title="Download" onClick={() => downloadSheet({ id: i.filing_id, form_code: i.form_code, company_name: i.company_name })}>
+                          <IconDownload className="size-4" />
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant={i.stage === 'new' ? 'default' : 'outline'}
+                        onClick={() => open(i)}
+                        title={i.stage === 'new' ? 'Filled in for you in seconds from Companies House and the order' : undefined}
+                      >
+                        {i.stage === 'new' && <IconBolt className="size-4" />}
+                        {{ new: 'Get It Instantly', draft: 'Continue', ready: 'Open', filed: 'View' }[i.stage]}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="px-4 py-10 text-center text-sm text-muted-foreground">
+            {q ? 'No order matches.' : filter === 'todo' ? `No order is waiting for ${formCode}.` : 'Nothing here yet.'}
+          </p>
+        )}
+      </section>
+      {otherShown.length > 0 &&
+        (showOthers || q ? (
+          <section className="flex flex-col gap-2">
+            <h2 className="text-sm font-semibold text-muted-foreground">Other Orders</h2>
+            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {otherShown.slice(0, 60).map((o) => (
+                <OrderCard key={o.id} o={o} choose={choose} />
+              ))}
+            </div>
+          </section>
+        ) : (
+          <button type="button" onClick={() => setShowOthers(true)} className="w-fit text-sm text-primary underline-offset-2 hover:underline">
+            Use another order ({otherShown.length})
+          </button>
+        ))}
     </div>
   )
 }
@@ -497,7 +540,6 @@ export default function GovForms({ embedded = false }) {
   const [filingStatus, setFilingStatus] = useState('')
   const [errors, setErrors] = useState({})
   const [busy, setBusy] = useState('')
-  const [saved, setSaved] = useState([])
 
   useEffect(() => {
     if (!embedded) document.title = 'Gov Forms'
@@ -509,18 +551,6 @@ export default function GovForms({ embedded = false }) {
   },[embedded])
 
   const company = useMemo(() => (companies || []).find((c) => String(c.id) === String(companyId)), [companies, companyId])
-
-  // Saved forms (all companies, or the chosen one) for the first screen
-  useEffect(() => {
-    if (formCode) return undefined
-    let alive = true
-    apiRequest(`/admin/gov-forms/filings${companyId ? `?company_id=${companyId}` : ''}`, { label: 'Gov Forms', silent: true }).then((res) => {
-      if (alive && res.ok) setSaved(res.data.data.filings)
-    })
-    return () => {
-      alive = false
-    }
-  }, [companyId, formCode, filingStatus])
 
   // The chosen form, filled in for the chosen company
   useEffect(() => {
@@ -592,133 +622,19 @@ export default function GovForms({ embedded = false }) {
     return !q || `${c.name} ${c.company_number}`.toLowerCase().includes(q)
   })
 
-  const grouped = GROUPS.map(([title, codes]) => [title, codes.map((code) => forms.find((f) => f.code === code)).filter(Boolean)])
-  const others = forms.filter((f) => !GROUPS.some(([, codes]) => codes.includes(f.code)))
-  if (others.length) grouped.push(['Other', others])
   const chosenForm = forms.find((f) => f.code === formCode)
 
-  // ── the orders waiting for a form, and which service needs which form ──
+  // ── 1. the forms, then 2. a form's orders ──
   if (!formCode && view === 'services') return <ServicesPanel forms={forms} choose={choose} />
-  if (!formCode && view !== 'forms') return <OrderQueue choose={choose} />
+  if (!formCode) return <FormsHome forms={forms} choose={choose} />
 
-  // ── 1. all the forms (a form without an order), and the saved ones ──
-  if (!formCode) {
-    return (
-      <div className="flex w-full flex-col gap-6 pb-10">
-        <div>
-          <button type="button" onClick={() => choose({ view: '', company: '' })} className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-            <IconArrowLeft className="size-4" /> Orders
-          </button>
-          {!embedded && <h1 className="text-2xl font-bold tracking-tight">Gov Forms</h1>}
-          <p className="mt-1 text-sm text-muted-foreground">
-            A form without an order: choose the form, then the company. It comes filled in from Companies House and the CRM.
-          </p>
-          {company && (
-            <span className="mt-2 inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-sm">
-              For {company.name}
-              <button type="button" onClick={() => choose({ company: '' })} className="text-muted-foreground hover:text-foreground" title="Any company">
-                ×
-              </button>
-            </span>
-          )}
-        </div>
-        {!forms.length ? (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <IconLoader2 className="size-4 animate-spin" /> Loading forms…
-          </p>
-        ) : (
-          grouped.map(([title, list]) => (
-            <section key={title} className="flex flex-col gap-3">
-              <h2 className="text-sm font-semibold text-muted-foreground">{title}</h2>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {list.map((f) => (
-                  <button
-                    key={f.code}
-                    type="button"
-                    onClick={() => choose({ form: f.code })}
-                    className="group flex items-start gap-3 rounded-2xl border bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
-                  >
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <IconForms className="size-5" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="text-xs font-semibold text-primary">{f.code}</span>
-                      <span className="block font-semibold leading-snug">{f.title}</span>
-                      <span className="mt-1 block text-xs text-muted-foreground">{f.purpose}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))
-        )}
-        <section className="rounded-2xl border bg-card">
-          <h2 className="border-b px-4 py-3 text-sm font-semibold">Saved Forms</h2>
-          {saved.length ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-left text-xs text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-2 font-medium">Form</th>
-                    <th className="px-4 py-2 font-medium">Company</th>
-                    <th className="px-4 py-2 font-medium">Status</th>
-                    <th className="px-4 py-2 font-medium">Updated</th>
-                    <th className="px-4 py-2" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {saved.map((f) => (
-                    <tr
-                      key={f.id}
-                      onClick={() => choose({ company: String(f.company_id), form: f.form_code, filing: String(f.id), order: f.order_id ? String(f.order_id) : '' })}
-                      className="cursor-pointer hover:bg-muted/40"
-                    >
-                      <td className="px-4 py-2.5">
-                        <span className="font-medium">{f.form_code}</span> <span className="text-muted-foreground">{f.title}</span>
-                        {f.order_number && <span className="block text-xs text-muted-foreground">Order {f.order_number}</span>}
-                      </td>
-                      <td className="px-4 py-2.5">{f.company_name || '—'}</td>
-                      <td className="px-4 py-2.5">
-                        <span className={cn(PILL, STATUS[f.status]?.[1])}>{STATUS[f.status]?.[0] || f.status}</span>
-                      </td>
-                      <td className="px-4 py-2.5 whitespace-nowrap text-muted-foreground">{when(f.updated_at || f.created_at)}</td>
-                      <td className="px-4 py-2.5 text-right">
-                        {f.status !== 'draft' && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2"
-                            title="Filing Sheet"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              downloadSheet(f)
-                            }}
-                          >
-                            <IconDownload className="size-4" />
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="px-4 py-6 text-center text-sm text-muted-foreground">No saved forms yet. Choose a form above to start one.</p>
-          )}
-        </section>
-      </div>
-    )
-  }
-
-  // ── 2. which order is it for (then its company), or no order and a company ──
-  if (!companyId && !orderId && params.get('noorder') !== '1') return <OrderPicker formCode={formCode} title={chosenForm?.title} choose={choose} />
+  if (!companyId && !orderId && params.get('noorder') !== '1') return <FormOrders formCode={formCode} title={chosenForm?.title} choose={choose} />
   if (!companyId) {
     return (
       <div className="flex w-full flex-col gap-5 pb-10">
         <div>
-          <button type="button" onClick={() => choose({ form: '', order: '' })} className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-            <IconArrowLeft className="size-4" /> {orderId ? 'Orders' : 'All Forms'}
+          <button type="button" onClick={() => choose({ order: '', noorder: '' })} className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <IconArrowLeft className="size-4" /> {formCode} Orders
           </button>
           <h1 className="text-2xl font-bold tracking-tight">
             {formCode}: {chosenForm?.title || '…'}
@@ -760,8 +676,8 @@ export default function GovForms({ embedded = false }) {
   return (
     <div className="flex w-full max-w-4xl flex-col gap-5 pb-24">
       <div>
-        <button type="button" onClick={() => choose({ form: '', company: '', order: '' })} className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <IconArrowLeft className="size-4" /> {orderId || view !== 'forms' ? 'Orders' : 'All Forms'}
+        <button type="button" onClick={() => choose({ company: '', order: '', noorder: '' })} className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <IconArrowLeft className="size-4" /> {formCode} Orders
         </button>
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-bold tracking-tight">
@@ -797,23 +713,10 @@ export default function GovForms({ embedded = false }) {
                 Order {data.order.number} · {data.order.service}
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {data.order.client ? `Client: ${data.order.client} · ` : ''}Status: {data.order.status}. Marking the form Filed completes the order.
+                {data.order.client ? `${data.order.client} · ` : ''}
+                {data.order.status}
               </p>
-              {data.order.answers.length > 0 ? (
-                <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm md:grid-cols-2">
-                  {data.order.answers.map((a, n) => (
-                    <div key={n} className="flex items-start gap-1">
-                      <div className="min-w-0 flex-1">
-                        <dt className="text-xs text-muted-foreground">{a.label}</dt>
-                        <dd className="break-words">{a.value}</dd>
-                      </div>
-                      <CopyButton text={a.value} />
-                    </div>
-                  ))}
-                </dl>
-              ) : (
-                <p className="mt-2 text-sm text-muted-foreground">The client gave no answers on the order form.</p>
-              )}
+              <OrderAnswers answers={data.order.answers} formCode={formCode} />
             </section>
           )}
           {errors._form && (
@@ -869,11 +772,7 @@ export default function GovForms({ embedded = false }) {
               </Button>
             )}
             <span className="ml-auto text-xs text-muted-foreground">
-              {locked
-                ? 'Filed: this form is closed.'
-                : `Ready makes ${data.official ? "Companies House's own form, filled in," : 'the Filing Sheet'} (in Documents)${
-                    data.price > 0 ? `; £${Number(data.price).toFixed(2)} from your balance, once` : ''
-                  }.`}
+              {locked ? 'Filed: this form is closed.' : 'Ready saves the filled-in form in Documents.'}
             </span>
           </div>
         </>

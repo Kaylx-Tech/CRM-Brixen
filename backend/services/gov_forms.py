@@ -239,6 +239,10 @@ def prepare(code, company_id, order_id=None):
     from services.gov_form_fill import fill
     order = order_info(order_id)
     from_order = fill(form, values, ctx, order) if order else []
+    if order:  # the client's answers this form needs come first on the screen
+        from services.gov_form_fill import mark_relevant
+        mark_relevant(form, order['answers'], values, from_order)
+        order['answers'].sort(key=lambda a: not a.get('used'))
     return {'code': code.upper(), 'form': form, 'context': ctx, 'values': values, 'from_order': from_order,
             'official': has_official(code), 'price': billing.price() if billing else 0,
             'countries': UK_COUNTRIES, 'filings': filings(company_id, code), 'order': order}
