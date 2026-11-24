@@ -80,6 +80,14 @@ def _person(prefix='person', identity=True):
     return {'title': 'Person', 'fields': fields}
 
 
+def _signer(title='Authentication', help_text='The printed name on the form; it appears on the public record.'):
+    return {'title': title, 'help': help_text, 'fields': [
+        {'key': 'signer', 'label': 'Director or Secretary', 'type': 'pick', 'pick': 'directors',
+         'fill': {'signer_name': 'name'}},
+        {'key': 'signer_name', 'label': 'Name', 'type': 'text', 'required': True},
+    ]}
+
+
 FORMS = {
     'AD01': {
         'title': 'Change of Registered Office Address',
@@ -170,7 +178,6 @@ FORMS = {
             {'title': 'What Changed', 'help': 'Fill in only what changed.', 'fields': [
                 {'key': 'new_name', 'label': 'New Full Name', 'type': 'text'},
                 {'key': 'new_nationality', 'label': 'New Nationality', 'type': 'text'},
-                {'key': 'new_occupation', 'label': 'New Occupation', 'type': 'text'},
                 {'key': 'new_residence', 'label': 'New Country or State of Usual Residence', 'type': 'text'},
                 {'key': 'address_changed', 'label': 'The service or home address changed', 'type': 'checkbox'},
             ]},
@@ -204,7 +211,9 @@ FORMS = {
             _company(),
             {'title': 'Person', 'fields': [
                 {'key': 'psc', 'label': 'Person With Significant Control', 'type': 'pick', 'required': True,
-                 'pick': 'pscs', 'fill': {'psc_name': 'name', 'psc_notified': 'notified_on'}},
+                 'pick': 'pscs', 'fill': {'psc_name': 'name', 'psc_notified': 'notified_on', 'psc_dob': 'date_of_birth',
+                                          'psc_title': 'title', 'psc_first_names': 'first_names',
+                                          'psc_surname': 'surname'}},
                 {'key': 'psc_name', 'label': 'Name', 'type': 'text', 'required': True, 'readonly': True},
                 {'key': 'psc_notified', 'label': 'Became a PSC On', 'type': 'text', 'readonly': True},
                 {'key': 'ceased_date', 'label': 'Date They Stopped Being a PSC', 'type': 'date', 'required': True,
@@ -265,6 +274,14 @@ FORMS = {
                 {'key': 'auth_code', 'label': 'Company Authentication Code', 'type': 'text', 'required': True,
                  'source': 'company.auth_code', 'check': 'auth_code',
                  'help': 'The 6-character code Companies House posted to the registered office.'},
+            ]},
+            {'title': "Director's Identity Verification", 'help': 'Part 6 of the paper form: a director who has '
+                                                                 'verified their identity.', 'fields': [
+                {'key': 'id_director', 'label': 'Director', 'type': 'pick', 'pick': 'directors',
+                 'fill': {'id_first_names': 'first_names', 'id_surname': 'surname'}},
+                {'key': 'id_first_names', 'label': 'First Name(s)', 'type': 'text'},
+                {'key': 'id_surname', 'label': 'Surname', 'type': 'text'},
+                {'key': 'id_date_of_birth', 'label': 'Date of Birth', 'type': 'date', 'check': 'adult_dob'},
                 {'key': 'personal_code', 'label': "Director's Personal Code", 'type': 'text', 'required': True,
                  'source': 'company.personal_code', 'check': 'personal_code',
                  'help': 'From identity verification: 11 letters and numbers.'},
@@ -339,3 +356,22 @@ FORMS = {
         ],
     },
 }
+
+
+# What Companies House's own paper forms ask for as well (services/gov_form_official.py fills them in)
+FORMS['TM01']['sections'].append(_signer())
+FORMS['CH01']['sections'].append(_signer())
+FORMS['PSC01']['sections'][-1:-1] = [
+    {**_address('home', 'Usual Residential Address (Kept Private)')},
+]
+FORMS['PSC01']['sections'].append(_signer())
+FORMS['PSC07']['sections'][-1]['fields'] += [
+    {'key': 'psc_dob', 'label': 'Date of Birth (Month and Year)', 'type': 'text', 'readonly': True},
+    {'key': 'psc_title', 'label': 'Title', 'type': 'text', 'readonly': True},
+    {'key': 'psc_first_names', 'label': 'First Name(s)', 'type': 'text', 'readonly': True},
+    {'key': 'psc_surname', 'label': 'Surname', 'type': 'text', 'readonly': True},
+    {'key': 'register_date', 'label': "Date Entered in the Company's PSC Register", 'type': 'date',
+     'required': True, 'source': 'today', 'check': 'past_date'},
+]
+FORMS['PSC07']['sections'].append(_signer())
+FORMS['CS01']['sections'].insert(-1, _signer('Signed By'))

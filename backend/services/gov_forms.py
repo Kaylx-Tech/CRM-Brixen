@@ -188,7 +188,14 @@ def context(company_id):
         if p.get('ceased_on'):
             continue
         first, surname, full = _split_name(p.get('name'))
+        parts = p.get('name_elements') or {}
+        if parts.get('surname'):
+            first = ' '.join(x for x in (parts.get('forename'), parts.get('middle_name')) if x)
+            surname = parts['surname'].title() if parts['surname'].isupper() else parts['surname']
+            full = f"{first} {surname}".strip()
         people.append({'id': f"psc{i}", 'name': full or p.get('name') or '', 'notified_on': p.get('notified_on') or '',
+                       'first_names': first, 'surname': surname, 'title': parts.get('title') or '',
+                       'date_of_birth': _dob(p.get('date_of_birth')),
                        'kind': str(p.get('kind') or '').replace('-', ' '),
                        'control': [str(c).replace('-', ' ') for c in p.get('natures_of_control') or []]})
     return {'company': company, 'directors': directors, 'pscs': people,
