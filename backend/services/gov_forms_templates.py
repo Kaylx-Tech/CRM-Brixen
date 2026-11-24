@@ -103,13 +103,7 @@ FORMS = {
             _address('new', 'New Registered Office',
                      help_text='Must be in the same country the company is registered in, and an address where '
                                'post can be received (not a PO Box only).'),
-            {'title': 'Appropriate Registered Office Address', 'fields': [
-                {'key': 'appropriate_address', 'label': 'The new registered office address is an appropriate address '
-                                                      '(section 86(2) of the Companies Act 2006)',
-                 'type': 'checkbox', 'required': True, 'default': True,
-                 'help': 'Post delivered there reaches someone acting for the company, and delivery can be '
-                         'acknowledged.'},
-            ]},
+            # Section 3 of the paper form (an appropriate address) is always ticked on it (services/gov_form_official.py)
             {'title': 'Authentication', 'help': 'The printed name on the form; it appears on the public record.',
              'fields': [
                 {'key': 'signer', 'label': 'Director or Secretary', 'type': 'pick', 'required': True,
