@@ -253,6 +253,14 @@ FORMS = {
                  'when': {'no_shareholder_change': False},
                  'help': 'Who now holds shares and how many (and any transfers).'},
             ]},
+            {'title': 'Codes for Filing', 'fields': [
+                {'key': 'auth_code', 'label': 'Company Authentication Code', 'type': 'text', 'required': True,
+                 'source': 'company.auth_code', 'check': 'auth_code',
+                 'help': 'The 6-character code Companies House posted to the registered office.'},
+                {'key': 'personal_code', 'label': "Director's Personal Code", 'type': 'text', 'required': True,
+                 'source': 'company.personal_code', 'check': 'personal_code',
+                 'help': 'From identity verification: 11 letters and numbers.'},
+            ]},
             {'title': 'Statement', 'help': 'Directors, secretary and PSC changes are filed on their own forms first '
                                           '(AP01, TM01, CH01, PSC01, PSC07).', 'fields': [
                 {'key': 'people_correct', 'label': 'The directors and PSCs on the register are right',
@@ -260,6 +268,42 @@ FORMS = {
                 {'key': 'lawful_purpose', 'label': "The company's intended future activities are lawful",
                  'type': 'checkbox', 'required': True},
             ]},
+        ],
+    },
+    'RT01': {
+        'title': 'Restore a Struck-Off Company (Administrative Restoration)',
+        'purpose': 'Bring a company that Companies House struck off back to the register, within 6 years.',
+        'webfiling': 'Application for administrative restoration to the register (RT01)',
+        'sections': [
+            _company(),
+            {'title': 'Dissolution', 'fields': [
+                {'key': 'dissolved_on', 'label': 'Date the Company Was Dissolved', 'type': 'date', 'required': True,
+                 'source': 'company.dissolved_on', 'check': 'within_6_years',
+                 'help': 'Restoration this way is possible for 6 years after dissolution.'},
+                {'key': 'struck_off_by_registrar', 'label': 'Companies House struck it off (the company did not '
+                                                          'apply to close itself)', 'type': 'checkbox',
+                 'required': True, 'help': 'A company that applied to be struck off (DS01) is restored by court.'},
+            ]},
+            {'title': 'Applicant', 'help': 'A former director or a former member (shareholder).', 'fields': [
+                {'key': 'applicant_name', 'label': 'Full Name', 'type': 'text', 'required': True},
+                {'key': 'applicant_capacity', 'label': 'Applying As', 'type': 'select', 'required': True,
+                 'options': [['director', 'Former director'], ['member', 'Former member (shareholder)']]},
+            ]},
+            _address('applicant', 'Applicant Address'),
+            {'title': 'Conditions', 'help': 'All must be met before Companies House restores the company.',
+             'fields': [
+                 {'key': 'was_trading', 'label': 'The company was in business or in operation when struck off',
+                  'type': 'checkbox', 'required': True},
+                 {'key': 'records_up_to_date', 'label': 'All overdue documents (accounts, confirmation statements) '
+                                                       'go with the application', 'type': 'checkbox',
+                  'required': True},
+                 {'key': 'penalties_paid', 'label': 'Late filing penalties from before dissolution will be paid',
+                  'type': 'checkbox', 'required': True},
+                 {'key': 'bona_vacantia', 'label': "The Crown representative's (Bona Vacantia) waiver letter is "
+                                                  'included', 'type': 'checkbox', 'required': True,
+                  'help': "The company's property went to the Crown when it was dissolved; their consent is needed."},
+                 {'key': 'fee_paid', 'label': 'The restoration fee is paid', 'type': 'checkbox', 'required': True},
+             ]},
         ],
     },
     'DS01': {

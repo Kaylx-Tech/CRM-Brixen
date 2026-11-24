@@ -74,7 +74,7 @@ function CopyButton({ text }) {
 }
 
 /** One field of a form, drawn from its template (backend services/gov_forms_templates.py). */
-function Field({ field, value, error, ctx, countries, onChange, onPick, locked }) {
+function Field({ field, value, error, ctx, countries, onChange, onPick, locked, fromOrder }) {
   const id = `gf-${field.key}`
   const readOnly = locked || field.readonly
   const people = field.pick ? ctx[field.pick] || [] : []
@@ -129,6 +129,23 @@ function Field({ field, value, error, ctx, countries, onChange, onPick, locked }
         ))}
       </select>
     )
+  } else if (field.type === 'select') {
+    input = (
+      <select
+        id={id}
+        disabled={readOnly}
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-9 w-full rounded-[10px] border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+      >
+        <option value="">Choose…</option>
+        {options.map(([v, label]) => (
+          <option key={v} value={v}>
+            {label}
+          </option>
+        ))}
+      </select>
+    )
   } else if (field.type === 'textarea') {
     input = <Textarea id={id} rows={2} value={value || ''} readOnly={readOnly} onChange={(e) => onChange(e.target.value)} />
   } else {
@@ -149,6 +166,7 @@ function Field({ field, value, error, ctx, countries, onChange, onPick, locked }
       <label htmlFor={id} className="flex items-center gap-1 text-sm font-medium">
         {field.label}
         {field.required && !readOnly && <span className="text-destructive">*</span>}
+        {fromOrder && <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-px text-[10px] font-semibold text-primary">From order</span>}
       </label>
       <div className="flex items-start gap-1">
         <div className="min-w-0 flex-1">{input}</div>
@@ -291,6 +309,68 @@ function OrderQueue({ choose }) {
           </p>
         )}
       </section>
+    </div>
+  )
+}
+
+/** A form started from the forms list: which order is it for? (The order brings its company and answers.) */
+function OrderPicker({ formCode, title, choose }) {
+  const [orders, setOrders] = useState(null)
+  const [search, setSearch] = useState('')
+  useEffect(() => {
+    apiRequest('/admin/gov-forms/orders', { label: 'Gov Forms', silent: true }).then((res) => setOrders(res.ok ? res.data.data.orders : []))
+  }, [])
+  const q = search.trim().toLowerCase()
+  const shown = (orders || []).filter((o) => !q || `${o.number} ${o.service} ${o.company_name} ${o.company_number} ${o.client}`.toLowerCase().includes(q))
+  return (
+    <div className="flex w-full flex-col gap-5 pb-10">
+      <div>
+        <button type="button" onClick={() => choose({ form: '' })} className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <IconArrowLeft className="size-4" /> All Forms
+        </button>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {formCode}: {title || '…'}
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Which order is this for? The form fills itself from the order&apos;s company and what the client wrote on the order form.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-full max-w-md">
+          <IconSearch className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input autoFocus value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Order number, company or client" className="pl-9" />
+        </div>
+        <button type="button" onClick={() => choose({ noorder: '1' })} className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+          No order: choose the company
+        </button>
+      </div>
+      {orders === null ? (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <IconLoader2 className="size-4 animate-spin" /> Loading orders…
+        </p>
+      ) : (
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          {shown.slice(0, 60).map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => choose({ order: String(o.id), company: o.company_id ? String(o.company_id) : '' })}
+              className="rounded-xl border bg-card px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+            >
+              <span className="flex items-center justify-between gap-2">
+                <span className="font-medium">{o.number}</span>
+                <span className="text-xs text-muted-foreground">{when(o.ordered_at)}</span>
+              </span>
+              <span className="block truncate text-sm">{o.service}</span>
+              <span className="block truncate text-xs text-muted-foreground">
+                {o.company_name || 'No company yet'}
+                {o.client ? ` · ${o.client}` : ''}
+              </span>
+            </button>
+          ))}
+          {!shown.length && <p className="text-sm text-muted-foreground">No order matches.</p>}
+        </div>
+      )}
     </div>
   )
 }
@@ -444,6 +524,7 @@ export default function GovForms({ embedded = false }) {
       const out = new URLSearchParams(prev)
       Object.entries(next).forEach(([key, value]) => (value ? out.set(key, value) : out.delete(key)))
       if (!next.filing) out.delete('filing')
+      if ('form' in next && !next.noorder) out.delete('noorder')
       return out
     })
   const setValue = (key, value) => setValues((v) => ({ ...v, [key]: value }))
@@ -601,7 +682,8 @@ export default function GovForms({ embedded = false }) {
     )
   }
 
-  // ── 2. choose the company for the form ──
+  // ── 2. which order is it for (then its company), or no order and a company ──
+  if (!companyId && !orderId && params.get('noorder') !== '1') return <OrderPicker formCode={formCode} title={chosenForm?.title} choose={choose} />
   if (!companyId) {
     return (
       <div className="flex w-full flex-col gap-5 pb-10">
@@ -724,6 +806,7 @@ export default function GovForms({ embedded = false }) {
                       locked={locked}
                       onChange={(v) => setValue(field.key, v)}
                       onPick={pick}
+                      fromOrder={(data.from_order || []).includes(field.key)}
                     />
                   </div>
                 ))}

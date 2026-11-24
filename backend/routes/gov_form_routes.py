@@ -7,6 +7,7 @@
   GET  /api/admin/gov-forms/filings?company_id=          → saved forms
   GET  /api/admin/gov-forms/filings/<id>/sheet           → the Filing Sheet PDF
   GET  /api/admin/gov-forms/queue                        → orders that need a form (services/gov_form_orders.py)
+  GET  /api/admin/gov-forms/orders                       → recent orders to choose for a form
   GET  /api/admin/gov-forms/services                     → every service and its form
   POST /api/admin/gov-forms/services {service_id, form_code|null} → set a service's form (admins)
 """
@@ -44,6 +45,8 @@ def handle_gov_form_routes(environ, start_response, path, method, user, body, qu
         from services import gov_form_orders
         if path == '/api/admin/gov-forms/queue' and method == 'GET':
             return success_response(start_response, data={'items': gov_form_orders.queue()})
+        if path == '/api/admin/gov-forms/orders' and method == 'GET':
+            return success_response(start_response, data={'orders': gov_form_orders.pick_list()})
         if path == '/api/admin/gov-forms/services' and method == 'GET':
             return success_response(start_response, data={'services': gov_form_orders.services_map()})
         if path == '/api/admin/gov-forms/services' and method == 'POST':

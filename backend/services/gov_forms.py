@@ -146,6 +146,10 @@ def context(company_id):
         'cs_made_up_to': ((profile or {}).get('confirmation_statement') or {}).get('next_made_up_to') or '',
         'cs_due': ((profile or {}).get('confirmation_statement') or {}).get('next_due') or '',
         'sic_text': ', '.join((profile or {}).get('sic_codes') or []) or str(row.get('sic_codes') or ''),
+        'auth_code': str(row.get('authentication_code') or '').strip().upper(),
+        'personal_code': str(row.get('activation_code') or '').strip().upper(),
+        'dissolved_on': (profile or {}).get('date_of_cessation') or '',
+        'status': (profile or {}).get('company_status') or str(row.get('status') or ''),
     }
 
     directors = []
@@ -218,9 +222,13 @@ def prepare(code, company_id, order_id=None):
     allowed = JURISDICTION_COUNTRIES.get(ctx['company']['jurisdiction'])
     if code.upper() == 'AD01' and allowed and len(allowed) == 1:
         values['new_country'] = allowed[0]
+    # What the client wrote on the order form fills what is still empty (services/gov_form_fill.py)
     from services.gov_form_orders import order_info
-    return {'code': code.upper(), 'form': form, 'context': ctx, 'values': values,
-            'countries': UK_COUNTRIES, 'filings': filings(company_id, code), 'order': order_info(order_id)}
+    from services.gov_form_fill import fill
+    order = order_info(order_id)
+    from_order = fill(form, values, ctx, order) if order else []
+    return {'code': code.upper(), 'form': form, 'context': ctx, 'values': values, 'from_order': from_order,
+            'countries': UK_COUNTRIES, 'filings': filings(company_id, code), 'order': order}
 
 
 # ── checks ──────────────────────────────────────────────────────────────────
@@ -268,6 +276,10 @@ def check(code, values, ctx):
             errors[key] = 'Not a UK postcode'
         elif rule == 'company_number' and not re.match(r'^([A-Z]{2}\d{6}|\d{8})$', text.upper()):
             errors[key] = 'Not a company number'
+        elif rule == 'auth_code' and not re.match(r'^[A-Za-z0-9]{6}$', text.replace(' ', '')):
+            errors[key] = 'An authentication code has 6 letters and numbers'
+        elif rule == 'within_6_years' and _date(text) and _add_months(_date(text), 72) < today:
+            errors[key] = 'More than 6 years ago: only a court can restore it now'
         elif rule == 'personal_code' and not re.match(r'^[A-Za-z0-9]{11}$', text.replace(' ', '')):
             errors[key] = 'A personal code has 11 letters and numbers'
         elif rule in ('past_date', 'adult_dob'):
@@ -431,6 +443,8 @@ def _display(field, value, ctx):
         if field.get('options_from') == 'directors':
             labels = {d['id']: d['name'] for d in ctx.get('directors') or []}
         return '\n'.join(f"- {labels.get(v, v)}" for v in value or []) or '-'
+    if field['type'] == 'select':
+        return dict(field.get('options') or []).get(value, value or '-')
     if field['type'] == 'pick':
         people = ctx.get(field.get('pick')) or []
         return next((p['name'] for p in people if p['id'] == value), value or '-')

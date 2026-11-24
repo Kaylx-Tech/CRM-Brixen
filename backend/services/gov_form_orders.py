@@ -163,6 +163,22 @@ def queue(limit=3000):
     return items
 
 
+def pick_list(limit=400):
+    """Recent orders to choose from when a form is started from the forms list (newest first)."""
+    marks = ','.join('?' * len(SKIP_STATUSES))
+    rows = query_db(f"""
+        SELECT o.id, o.order_number, o.service_name, o.status, o.company_id, o.created_at, o.end_client_name,
+               u.full_name AS client_name, c.name AS company_name, c.company_number
+        FROM orders o LEFT JOIN users u ON u.id = o.user_id LEFT JOIN companies c ON c.id = o.company_id
+        WHERE COALESCE(o.is_draft, 0) = 0 AND o.status NOT IN ({marks})
+        ORDER BY o.id DESC LIMIT ?;
+    """, SKIP_STATUSES + (limit,)) or []
+    return [{'id': r['id'], 'number': r['order_number'], 'service': r['service_name'], 'status': r['status'],
+             'company_id': r['company_id'], 'company_name': r.get('company_name') or '',
+             'company_number': r.get('company_number') or '', 'ordered_at': r['created_at'],
+             'client': r.get('end_client_name') or r.get('client_name') or ''} for r in rows]
+
+
 def order_info(order_id):
     """The order beside the form: its number, service, client and what the client wrote on the order form."""
     if not order_id:
