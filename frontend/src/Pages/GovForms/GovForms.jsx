@@ -722,7 +722,11 @@ export default function GovForms({ embedded = false }) {
           {errors._form && (
             <p className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-sm text-destructive">{errors._form}</p>
           )}
-          {form.sections.filter((s) => visible(s, values)).map((section) => (
+          {form.sections
+            // Sections only showing what is already known (the chosen company, its current office) stay out of the
+            // way; they still go on the form, and show if one of them has a problem
+            .filter((s) => visible(s, values) && (s.fields.some((f) => !f.readonly) || s.fields.some((f) => errors[f.key])))
+            .map((section) => (
             <section key={section.title} className="rounded-2xl border bg-card p-5">
               <h2 className="font-semibold">{section.title}</h2>
               {section.help && <p className="mt-0.5 text-xs text-muted-foreground">{section.help}</p>}
