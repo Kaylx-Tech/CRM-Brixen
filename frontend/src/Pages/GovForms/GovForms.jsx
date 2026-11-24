@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import {
   IconAlertTriangle,
   IconArrowLeft,
+  IconBolt,
   IconCheck,
   IconCircleCheck,
   IconCopy,
@@ -282,8 +283,14 @@ function OrderQueue({ choose }) {
                           <IconDownload className="size-4" />
                         </Button>
                       )}
-                      <Button size="sm" variant={i.stage === 'new' ? 'default' : 'outline'} onClick={() => open(i)}>
-                        {{ new: 'Fill Form', draft: 'Continue', ready: 'Open', filed: 'View' }[i.stage]}
+                      <Button
+                        size="sm"
+                        variant={i.stage === 'new' ? 'default' : 'outline'}
+                        onClick={() => open(i)}
+                        title={i.stage === 'new' ? 'Filled in for you in seconds from Companies House and the order' : undefined}
+                      >
+                        {i.stage === 'new' && <IconBolt className="size-4" />}
+                        {{ new: 'Get It Instantly', draft: 'Continue', ready: 'Open', filed: 'View' }[i.stage]}
                       </Button>
                     </td>
                   </tr>
@@ -746,7 +753,7 @@ export default function GovForms({ embedded = false }) {
 
       {!data ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <IconLoader2 className="size-4 animate-spin" /> Filling in from Companies House…
+          <IconBolt className="size-4 animate-pulse text-primary" /> Filling it in for you from Companies House and the order…
         </p>
       ) : (
         <>
