@@ -18,7 +18,10 @@ def filed(filing, user=None):
         if filing.get('document_id'):
             execute_db("UPDATE documents SET client_visible = 1, order_id = COALESCE(order_id, ?) WHERE id = ?;",
                        (filing.get('order_id'), filing['document_id']))
-        from services.client_mail import _order_context, brand_name, notify_client
+        from services import client_mail
+        from services.client_mail import _order_context, notify_client
+        brand = (client_mail.brand_name() if hasattr(client_mail, 'brand_name')
+                 else (client_mail.brand_settings().get('company_name') or ''))
         order, company = _order_context(filing['order_id']) if filing.get('order_id') else (None, None)
         row = query_db("SELECT id, user_id, name, registered_email FROM companies WHERE id = ?;",
                        (filing['company_id'],), one=True)
@@ -40,7 +43,7 @@ def filed(filing, user=None):
                 user_id, title=f'{code} filed with Companies House', headline=f'Your {code} has been filed',
                 message=f'Good news: {title} for {name} has been filed with Companies House.',
                 ntype='order_complete', link='/documents',
-                subject=f'{code} filed with Companies House: {name} — {brand_name()}', points=points,
+                subject=f"{code} filed with Companies House: {name}{f' — {brand}' if brand else ''}", points=points,
                 details=details, cta_label='View your documents', category='COMPLIANCE',
                 company=company, order=order, triggered_by=actor, account_owner=True)
         if order:
