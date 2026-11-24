@@ -212,20 +212,6 @@ function OrderQueue({ choose }) {
     choose({ view: '', form: i.form_code, order: String(i.order_id), company: i.company_id ? String(i.company_id) : '', filing: i.filing_id ? String(i.filing_id) : '' })
   return (
     <div className="flex w-full flex-col gap-4 pb-10">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          Orders for a service that needs a Companies House form show here by themselves. Fill the form (it comes filled in from Companies House, the CRM and the
-          client&apos;s order form), mark it Ready, file it on WebFiling, then mark it Filed: the order is completed.
-        </p>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => choose({ view: 'services' })}>
-            <IconSettings className="size-4" /> Services
-          </Button>
-          <Button onClick={() => choose({ view: 'forms' })}>
-            <IconForms className="size-4" /> New Form
-          </Button>
-        </div>
-      </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex w-fit gap-1 rounded-full border bg-muted/50 p-1">
           {FILTERS.map(([key, label, test]) => (
@@ -242,9 +228,17 @@ function OrderQueue({ choose }) {
             </button>
           ))}
         </div>
-        <div className="relative w-full max-w-xs">
-          <IconSearch className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search order, company, client" className="pl-9" />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative w-full sm:w-64">
+            <IconSearch className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" className="pl-9" />
+          </div>
+          <Button variant="outline" onClick={() => choose({ view: 'services' })}>
+            <IconSettings className="size-4" /> Services
+          </Button>
+          <Button onClick={() => choose({ view: 'forms' })}>
+            <IconForms className="size-4" /> New Form
+          </Button>
         </div>
       </div>
       <section className="rounded-2xl border bg-card">
@@ -259,7 +253,7 @@ function OrderQueue({ choose }) {
                 <tr>
                   <th className="px-4 py-2.5 font-medium">Order</th>
                   <th className="px-4 py-2.5 font-medium">Company</th>
-                  <th className="px-4 py-2.5 font-medium">Service and Form</th>
+                  <th className="px-4 py-2.5 font-medium">Form</th>
                   <th className="px-4 py-2.5 font-medium">Status</th>
                   <th className="px-4 py-2.5" />
                 </tr>
@@ -272,14 +266,12 @@ function OrderQueue({ choose }) {
                       <span className="block text-xs text-muted-foreground">{when(i.ordered_at)}</span>
                     </td>
                     <td className="px-4 py-3">
-                      {i.company_name || <span className="text-muted-foreground">No company on the order</span>}
-                      {i.client_name && <span className="block text-xs text-muted-foreground">Client: {i.client_name}</span>}
+                      {i.company_name || <span className="text-muted-foreground">No company yet</span>}
+                      {i.client_name && <span className="block text-xs text-muted-foreground">{i.client_name}</span>}
                     </td>
-                    <td className="px-4 py-3">
-                      {i.service}
-                      <span className="block text-xs font-semibold text-primary">
-                        {i.form_code} · {i.form_title}
-                      </span>
+                    <td className="px-4 py-3" title={`${i.service}: ${i.form_title}`}>
+                      <span className="font-semibold text-primary">{i.form_code}</span>
+                      <span className="block text-xs text-muted-foreground">{i.form_title}</span>
                     </td>
                     <td className="px-4 py-3">
                       <span className={cn(PILL, STAGE[i.stage]?.[1])}>{STAGE[i.stage]?.[0]}</span>
@@ -301,11 +293,7 @@ function OrderQueue({ choose }) {
           </div>
         ) : (
           <p className="px-4 py-10 text-center text-sm text-muted-foreground">
-            {q
-              ? 'No order matches.'
-              : filter === 'todo'
-                ? 'No order is waiting for a form. Orders for a service linked to a form (see Services) show here.'
-                : 'Nothing here yet.'}
+            {q ? 'No order matches.' : filter === 'todo' ? 'No order is waiting for a form.' : 'Nothing here yet.'}
           </p>
         )}
       </section>
@@ -472,7 +460,7 @@ export default function GovForms({ embedded = false }) {
 
   useEffect(() => {
     if (!embedded) document.title = 'Gov Forms'
-    apiRequest('/admin/gov-forms', { label: 'Gov Forms', silent: true }).then((res) => res.ok && setForms(res.data.data.forms))
+    apiRequest('/admin/gov-forms', { label: 'Gov Forms', silent: true }).then((res) => res.ok && setForms(res.data?.data?.forms || []))
     apiRequest('/admin/companies?limit=500', { label: 'Companies', silent: true }).then((res) => {
       const list = res.ok ? res.data?.data?.companies || res.data?.companies || [] : []
       setCompanies(list.filter((c) => c.is_registered !== false))
