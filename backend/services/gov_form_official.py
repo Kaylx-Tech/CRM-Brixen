@@ -397,8 +397,26 @@ def _filled(name, fill, values, ctx, who):
     return pdf.output()
 
 
+def _flatten(pdf):
+    """The answers printed onto the pages (black, like typed text), with no fill-in boxes left: viewers then show
+    no coloured boxes or grey text."""
+    import pypdfium2 as pdfium
+    import pypdfium2.raw as pdfium_c
+    from pypdf import PdfReader, PdfWriter
+    doc = pdfium.PdfDocument(pdf)
+    for i in range(len(doc)):
+        pdfium_c.FPDFPage_Flatten(doc[i].raw, pdfium_c.FLAT_PRINT)
+    flat = io.BytesIO()
+    doc.save(flat)
+    writer = PdfWriter(clone_from=PdfReader(io.BytesIO(flat.getvalue())))
+    writer._root_object.pop('/AcroForm', None)
+    out = io.BytesIO()
+    writer.write(out)
+    return out.getvalue()
+
+
 def official_pdf(code, values, ctx, order_id=None):
-    """Companies House's PDF for `code` with every box we know filled in (still editable). None without one."""
+    """Companies House's PDF for `code` with every box we know filled in, printed flat. None without one."""
     code = str(code or '').upper()
     if not has_official(code):
         return None
@@ -406,10 +424,10 @@ def official_pdf(code, values, ctx, order_id=None):
     who = presenter(ctx['company'].get('id'), order_id, values.get('company_name') or ctx['company'].get('name'))
     main = _filled(code, MAPS[code], values, ctx, who)
     if code != 'CS01':
-        return main
+        return _flatten(main)
     parts = [(n, fill) for n, fill in _cs01_parts(values, ctx) if os.path.isfile(os.path.join(PDF_DIR, f'{n}.pdf'))]
     if not parts:
-        return main
+        return _flatten(main)
     from pypdf import PdfReader, PdfWriter
     writer = PdfWriter()
     writer.append(PdfReader(io.BytesIO(main)))
@@ -418,4 +436,4 @@ def official_pdf(code, values, ctx, order_id=None):
     writer.set_need_appearances_writer(True)
     out = io.BytesIO()
     writer.write(out)
-    return out.getvalue()
+    return _flatten(out.getvalue())
