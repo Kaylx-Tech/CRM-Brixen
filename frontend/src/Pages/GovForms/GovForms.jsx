@@ -23,6 +23,12 @@ const STATUS = {
   ready: ['Ready to File', 'bg-amber-500/15 text-amber-800 dark:text-amber-300'],
   filed: ['Filed', 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'],
 }
+// The forms in groups, as Companies House sorts them
+const GROUPS = [
+  ['Company', ['AD01', 'AA01', 'DS01']],
+  ['Directors', ['AP01', 'TM01', 'CH01']],
+  ['People With Significant Control', ['PSC01', 'PSC07']],
+]
 const PILL = 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap'
 const when = (v) => (v ? new Date(String(v).replace(' ', 'T') + 'Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
 
@@ -160,7 +166,7 @@ async function downloadSheet(filing) {
 
 /**
  * Gov Forms: Companies House forms filled in from what is known about the company (Companies House first, then
- * the CRM), checked, then Ready (Filing Sheet in Documents + a task in UK Gov Checks) and Filed.
+ * the CRM), checked, then Ready (Filing Sheet in Documents + a task to file it) and Filed.
  */
 export default function GovForms({ embedded = false }) {
   const [params, setParams] = useSearchParams()
@@ -188,17 +194,17 @@ export default function GovForms({ embedded = false }) {
 
   const company = useMemo(() => (companies || []).find((c) => String(c.id) === String(companyId)), [companies, companyId])
 
-  // Saved forms of the chosen company
+  // Saved forms (all companies, or the chosen one) for the first screen
   useEffect(() => {
-    if (!companyId) return undefined
+    if (formCode) return undefined
     let alive = true
-    apiRequest(`/admin/gov-forms/filings?company_id=${companyId}`, { label: 'Gov Forms', silent: true }).then((res) => {
+    apiRequest(`/admin/gov-forms/filings${companyId ? `?company_id=${companyId}` : ''}`, { label: 'Gov Forms', silent: true }).then((res) => {
       if (alive && res.ok) setSaved(res.data.data.filings)
     })
     return () => {
       alive = false
     }
-  }, [companyId, filingStatus])
+  }, [companyId, formCode, filingStatus])
 
   // The chosen form, filled in for the chosen company
   useEffect(() => {
@@ -230,7 +236,7 @@ export default function GovForms({ embedded = false }) {
     setParams((prev) => {
       const out = new URLSearchParams(prev)
       Object.entries(next).forEach(([key, value]) => (value ? out.set(key, value) : out.delete(key)))
-      if ('form' in next && !next.filing) out.delete('filing')
+      if (!next.filing) out.delete('filing')
       return out
     })
   const setValue = (key, value) => setValues((v) => ({ ...v, [key]: value }))
@@ -269,15 +275,129 @@ export default function GovForms({ embedded = false }) {
     return !q || `${c.name} ${c.company_number}`.toLowerCase().includes(q)
   })
 
-  // ── 1. choose the company ──
+  const grouped = GROUPS.map(([title, codes]) => [title, codes.map((code) => forms.find((f) => f.code === code)).filter(Boolean)])
+  const others = forms.filter((f) => !GROUPS.some(([, codes]) => codes.includes(f.code)))
+  if (others.length) grouped.push(['Other', others])
+  const chosenForm = forms.find((f) => f.code === formCode)
+
+  // ── 1. all the forms, and the saved ones ──
+  if (!formCode) {
+    return (
+      <div className="flex w-full flex-col gap-6 pb-10">
+        <div>
+          {!embedded && <h1 className="text-2xl font-bold tracking-tight">Gov Forms</h1>}
+          <p className="mt-1 text-sm text-muted-foreground">
+            Companies House forms, filled in for you from Companies House and the CRM. Choose a form, then the company.
+          </p>
+          {company && (
+            <span className="mt-2 inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-sm">
+              For {company.name}
+              <button type="button" onClick={() => choose({ company: '' })} className="text-muted-foreground hover:text-foreground" title="Any company">
+                ×
+              </button>
+            </span>
+          )}
+        </div>
+        {!forms.length ? (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <IconLoader2 className="size-4 animate-spin" /> Loading forms…
+          </p>
+        ) : (
+          grouped.map(([title, list]) => (
+            <section key={title} className="flex flex-col gap-3">
+              <h2 className="text-sm font-semibold text-muted-foreground">{title}</h2>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {list.map((f) => (
+                  <button
+                    key={f.code}
+                    type="button"
+                    onClick={() => choose({ form: f.code })}
+                    className="group flex items-start gap-3 rounded-2xl border bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                  >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <IconForms className="size-5" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="text-xs font-semibold text-primary">{f.code}</span>
+                      <span className="block font-semibold leading-snug">{f.title}</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">{f.purpose}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ))
+        )}
+        <section className="rounded-2xl border bg-card">
+          <h2 className="border-b px-4 py-3 text-sm font-semibold">Saved Forms</h2>
+          {saved.length ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-xs text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-2 font-medium">Form</th>
+                    <th className="px-4 py-2 font-medium">Company</th>
+                    <th className="px-4 py-2 font-medium">Status</th>
+                    <th className="px-4 py-2 font-medium">Updated</th>
+                    <th className="px-4 py-2" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {saved.map((f) => (
+                    <tr
+                      key={f.id}
+                      onClick={() => choose({ company: String(f.company_id), form: f.form_code, filing: String(f.id) })}
+                      className="cursor-pointer hover:bg-muted/40"
+                    >
+                      <td className="px-4 py-2.5">
+                        <span className="font-medium">{f.form_code}</span> <span className="text-muted-foreground">{f.title}</span>
+                      </td>
+                      <td className="px-4 py-2.5">{f.company_name || '—'}</td>
+                      <td className="px-4 py-2.5">
+                        <span className={cn(PILL, STATUS[f.status]?.[1])}>{STATUS[f.status]?.[0] || f.status}</span>
+                      </td>
+                      <td className="px-4 py-2.5 whitespace-nowrap text-muted-foreground">{when(f.updated_at || f.created_at)}</td>
+                      <td className="px-4 py-2.5 text-right">
+                        {f.status !== 'draft' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2"
+                            title="Filing Sheet"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              downloadSheet(f)
+                            }}
+                          >
+                            <IconDownload className="size-4" />
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="px-4 py-6 text-center text-sm text-muted-foreground">No saved forms yet. Choose a form above to start one.</p>
+          )}
+        </section>
+      </div>
+    )
+  }
+
+  // ── 2. choose the company for the form ──
   if (!companyId) {
     return (
       <div className="flex w-full flex-col gap-5 pb-10">
         <div>
-          {!embedded && <h1 className="text-2xl font-bold tracking-tight">Gov Forms</h1>}
-          <p className="mt-1 text-sm text-muted-foreground">
-            Companies House forms filled in for you from Companies House and the CRM. Choose the company first.
-          </p>
+          <button type="button" onClick={() => choose({ form: '' })} className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <IconArrowLeft className="size-4" /> All Forms
+          </button>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {formCode}: {chosenForm?.title || '…'}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">Which company is this for?</p>
         </div>
         <div className="relative max-w-md">
           <IconSearch className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -293,7 +413,7 @@ export default function GovForms({ embedded = false }) {
               <button
                 key={c.id}
                 type="button"
-                onClick={() => choose({ company: String(c.id), form: '' })}
+                onClick={() => choose({ company: String(c.id) })}
                 className="rounded-xl border bg-card px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
               >
                 <span className="block truncate font-medium">{c.name}</span>
@@ -307,67 +427,13 @@ export default function GovForms({ embedded = false }) {
     )
   }
 
-  // ── 2. choose the form ──
-  if (!formCode) {
-    return (
-      <div className="flex w-full flex-col gap-5 pb-10">
-        <div>
-          <button type="button" onClick={() => choose({ company: '', form: '' })} className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-            <IconArrowLeft className="size-4" /> Companies
-          </button>
-          <h1 className="text-2xl font-bold tracking-tight">{company?.name || 'Company'}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{company?.company_number} · choose a form</p>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {forms.map((f) => (
-            <button
-              key={f.code}
-              type="button"
-              onClick={() => choose({ form: f.code })}
-              className="flex flex-col rounded-2xl border bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
-            >
-              <span className="flex items-center gap-2 text-xs font-semibold text-primary">
-                <IconForms className="size-4" /> {f.code}
-              </span>
-              <span className="mt-2 font-semibold">{f.title}</span>
-              <span className="mt-1 text-xs text-muted-foreground">{f.purpose}</span>
-            </button>
-          ))}
-        </div>
-        {saved.length > 0 && (
-          <div className="rounded-2xl border bg-card p-4">
-            <h2 className="mb-2 text-sm font-semibold">Saved Forms</h2>
-            <ul className="divide-y text-sm">
-              {saved.map((f) => (
-                <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                  <button type="button" onClick={() => choose({ form: f.form_code, filing: String(f.id) })} className="min-w-0 text-left hover:text-primary">
-                    <span className="font-medium">{f.form_code}</span> · {f.title}
-                    <span className="ml-2 text-xs text-muted-foreground">{when(f.updated_at || f.created_at)}</span>
-                  </button>
-                  <span className="flex items-center gap-2">
-                    <span className={cn(PILL, STATUS[f.status]?.[1])}>{STATUS[f.status]?.[0] || f.status}</span>
-                    {f.status !== 'draft' && (
-                      <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => downloadSheet(f)}>
-                        <IconDownload className="size-4" />
-                      </Button>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    )
-  }
-
   // ── 3. the form ──
   const form = data?.form
   return (
     <div className="flex w-full max-w-4xl flex-col gap-5 pb-24">
       <div>
-        <button type="button" onClick={() => choose({ form: '' })} className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <IconArrowLeft className="size-4" /> {company?.name || 'Forms'}
+        <button type="button" onClick={() => choose({ form: '', company: '' })} className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <IconArrowLeft className="size-4" /> All Forms
         </button>
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-bold tracking-tight">
@@ -375,6 +441,14 @@ export default function GovForms({ embedded = false }) {
           </h1>
           {filingStatus && <span className={cn(PILL, STATUS[filingStatus]?.[1])}>{STATUS[filingStatus]?.[0]}</span>}
         </div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {company?.name}
+          {company?.company_number ? ` · ${company.company_number}` : ''}
+          {' · '}
+          <button type="button" onClick={() => choose({ company: '' })} className="underline-offset-2 hover:text-foreground hover:underline">
+            Change company
+          </button>
+        </p>
         {form && <p className="mt-1 text-sm text-muted-foreground">{form.purpose}</p>}
         {data && !data.context.company.from_companies_house && (
           <p className="mt-2 flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300">
@@ -440,7 +514,7 @@ export default function GovForms({ embedded = false }) {
               </Button>
             )}
             <span className="ml-auto text-xs text-muted-foreground">
-              {locked ? 'Filed: this form is closed.' : 'Ready makes the Filing Sheet (in Documents) and a task in UK Gov Checks.'}
+              {locked ? 'Filed: this form is closed.' : 'Ready makes the Filing Sheet (in Documents) and a task to file it.'}
             </span>
           </div>
         </>

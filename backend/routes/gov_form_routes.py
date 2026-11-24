@@ -67,7 +67,7 @@ def handle_gov_form_routes(environ, start_response, path, method, user, body, qu
                     return error_response(start_response, "Some answers need a look before it is ready.",
                                           status_code=400, details={'errors': errors})
                 messages = {'draft': 'Draft saved.',
-                            'ready': 'Ready: the Filing Sheet is in Documents and a task is in UK Gov Checks.',
+                            'ready': 'Ready: the Filing Sheet is in Documents and a task to file it was made.',
                             'filed': 'Marked as filed.'}
                 return success_response(start_response, data=filing, message=messages.get(filing['status']))
     except gov_forms.FormError as exc:
