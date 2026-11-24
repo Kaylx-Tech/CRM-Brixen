@@ -18,6 +18,11 @@ import urllib.request
 
 from db import execute_db, query_db
 from services.gov_forms_templates import FORMS, JURISDICTION_COUNTRIES, UK_COUNTRIES
+from services.gov_form_official import has_official, official_pdf
+try:  # Finstap charges each form to the workspace; Brixen's CRM has no such file
+    from services import gov_form_billing as billing
+except ImportError:
+    billing = None
 
 STATUSES = ('draft', 'ready', 'filed')
 SCHEMA = """
@@ -228,6 +233,7 @@ def prepare(code, company_id, order_id=None):
     order = order_info(order_id)
     from_order = fill(form, values, ctx, order) if order else []
     return {'code': code.upper(), 'form': form, 'context': ctx, 'values': values, 'from_order': from_order,
+            'official': has_official(code), 'price': billing.price() if billing else 0,
             'countries': UK_COUNTRIES, 'filings': filings(company_id, code), 'order': order}
 
 
@@ -364,6 +370,8 @@ def save(code, company_id, values, status, user, filing_id=None, order_id=None):
         errors = check(code, values, ctx)
         if errors:
             return None, errors
+        if billing:  # Finstap: each form costs the workspace (services/gov_form_billing.py)
+            billing.can_pay(filing_id)
     who = (user or {}).get('full_name') or (user or {}).get('email') or ''
     if filing_id:
         current = _filing(filing_id)
@@ -379,6 +387,8 @@ def save(code, company_id, values, status, user, filing_id=None, order_id=None):
         """, (company_id, code, json.dumps(values), status, (user or {}).get('id'), who, order_id))
     if status == 'ready':
         _make_ready(filing_id, form, ctx or context(company_id), values, user)
+    if status != 'draft' and billing:
+        billing.charge(filing_id, f"Gov Form {code}: {(ctx or {}).get('company', {}).get('name') or ''}".strip())
     if status == 'filed':
         execute_db("UPDATE gov_form_filings SET filed_at = datetime('now') WHERE id = ?;", (filing_id,))
         current = _filing(filing_id)
@@ -399,7 +409,7 @@ def _make_ready(filing_id, form, ctx, values, user):
     filing = _filing(filing_id)
     code = filing['form_code']
     company = ctx['company']
-    pdf = sheet_pdf(code, values, ctx, user)
+    pdf = form_pdf(code, values, ctx, user)
     row = query_db("SELECT c.user_id, u.full_name, u.email FROM companies c LEFT JOIN users u ON u.id = c.user_id "
                    "WHERE c.id = ?;", (company['id'],), one=True) or {}
     doc_id = filing.get('document_id')
@@ -416,7 +426,8 @@ def _make_ready(filing_id, form, ctx, values, user):
                                            client_visible, status, review_notes, created_at)
                     VALUES (?, 'Companies House Forms', ?, 'application/pdf', ?, ?, ?, ?, ?, ?, 'POSTED_DOCUMENTS', 0,
                             0, 'Approved', ?, datetime('now'));
-                """, (f"{code} Filing Sheet: {form['title']}", res.get('file_path'), str(res.get('file_size')),
+                """, (f"{code} {'Companies House form' if has_official(code) else 'Filing Sheet'}: {form['title']}",
+                      res.get('file_path'), str(res.get('file_size')),
                       row.get('user_id') or 0, company['id'], (user or {}).get('full_name') or 'Gov Forms',
                       res.get('drive_file_id'), res.get('drive_web_link'), 'Gov Forms filing sheet (internal)'))
         except Exception as exc:
@@ -508,6 +519,17 @@ def sheet_pdf(code, values, ctx, user=None):
     return bytes(pdf.output())
 
 
+def form_pdf(code, values, ctx, user=None):
+    """Companies House's own form filled in when we have it (services/gov_form_official.py), else the Filing Sheet."""
+    try:
+        pdf = official_pdf(code, values, ctx, user)
+        if pdf:
+            return pdf
+    except Exception as exc:
+        print(f"[Gov forms] official {code} not filled, Filing Sheet instead: {exc}")
+    return sheet_pdf(code, values, ctx, user)
+
+
 def sheet_for_filing(filing_id, user=None):
     filing = _filing(filing_id)
-    return filing, sheet_pdf(filing['form_code'], filing['values'], context(filing['company_id']), user)
+    return filing, form_pdf(filing['form_code'], filing['values'], context(filing['company_id']), user)

@@ -94,7 +94,15 @@ FORMS = {
             _address('new', 'New Registered Office',
                      help_text='Must be in the same country the company is registered in, and an address where '
                                'post can be received (not a PO Box only).'),
-            {'title': 'Signed By', 'fields': [
+            {'title': 'Appropriate Registered Office Address', 'fields': [
+                {'key': 'appropriate_address', 'label': 'The new registered office address is an appropriate address '
+                                                      '(section 86(2) of the Companies Act 2006)',
+                 'type': 'checkbox', 'required': True,
+                 'help': 'Post delivered there reaches someone acting for the company, and delivery can be '
+                         'acknowledged.'},
+            ]},
+            {'title': 'Authentication', 'help': 'The printed name on the form; it appears on the public record.',
+             'fields': [
                 {'key': 'signer', 'label': 'Director or Secretary', 'type': 'pick', 'required': True,
                  'pick': 'directors', 'fill': {'signer_name': 'name'}},
                 {'key': 'signer_name', 'label': 'Name', 'type': 'text', 'required': True},

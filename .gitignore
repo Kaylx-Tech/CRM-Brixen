@@ -17,3 +17,5 @@ __pycache__/
 
 # Node
 node_modules/
+# Companies House form PDFs that Gov Forms fills in (services/gov_form_official.py)
+!backend/services/gov_form_pdfs/*.pdf

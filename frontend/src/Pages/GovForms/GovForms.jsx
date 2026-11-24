@@ -825,6 +825,7 @@ export default function GovForms({ embedded = false }) {
                 </Button>
                 <Button disabled={Boolean(busy)} onClick={() => run('save', 'ready')}>
                   {busy === 'ready' ? <IconLoader2 className="size-4 animate-spin" /> : <IconCircleCheck className="size-4" />} Mark Ready
+                  {data.price > 0 && filingStatus !== 'ready' && <span className="opacity-80">· £{Number(data.price).toFixed(2)}</span>}
                 </Button>
                 {filingStatus === 'ready' && (
                   <Button variant="outline" disabled={Boolean(busy)} onClick={() => run('save', 'filed')}>
@@ -835,11 +836,15 @@ export default function GovForms({ embedded = false }) {
             )}
             {filingId && filingStatus !== 'draft' && (
               <Button variant="ghost" onClick={() => downloadSheet({ id: filingId, form_code: formCode, company_name: company?.name })}>
-                <IconDownload className="size-4" /> Filing Sheet
+                <IconDownload className="size-4" /> {data.official ? 'Companies House Form' : 'Filing Sheet'}
               </Button>
             )}
             <span className="ml-auto text-xs text-muted-foreground">
-              {locked ? 'Filed: this form is closed.' : 'Ready makes the Filing Sheet (in Documents) and a task to file it.'}
+              {locked
+                ? 'Filed: this form is closed.'
+                : `Ready makes ${data.official ? "Companies House's own form, filled in," : 'the Filing Sheet'} (in Documents)${
+                    data.price > 0 ? `; £${Number(data.price).toFixed(2)} from your balance, once` : ''
+                  }.`}
             </span>
           </div>
         </>
