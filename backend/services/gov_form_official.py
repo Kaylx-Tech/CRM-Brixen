@@ -4,8 +4,8 @@ The PDFs are Companies House's fillable forms, kept as they come in services/gov
 optional parts as CS01-part-<n>.pdf). The boxes are found by what Companies House labels them ("Company number",
 "Post town", "Date of termination of appointment" ...), not by their internal names, which differ in every form;
 boxes of one character (company number, postcodes, dates, codes) are filled left to right, row by row.
-The presenter boxes (who sends the form) are the workspace's own details: Settings › legal name and registered
-office, the person preparing it, and the support phone. A form without its PDF gets the Filing Sheet instead.
+The presenter boxes are the client the form is for: the order's client (else the company's account holder), the
+company, their address, and their phone only when it is a UK number. A form without its PDF gets the Filing Sheet instead.
 """
 import io
 import os
@@ -193,18 +193,45 @@ def _my(value):
     return f"{m.group(2)}{m.group(1)}" if m else ''
 
 
-def presenter(user=None):
-    """Who presents the form: the workspace (Settings), else nothing (the boxes are optional)."""
-    from services.settings_service import get_setting
+def uk_phone(text):
+    """The number as written when it is a UK one, else ''. Without +44 only 01, 02 and 07 numbers count (a
+    Pakistani mobile is written 03..., like the UK's 03 numbers few people have as their own)."""
+    raw = str(text or '').strip()
+    digits = re.sub(r'[^\d+]', '', raw)
+    if re.fullmatch(r'(\+44|0044)\d{9,10}', digits) or re.fullmatch(r'0[127]\d{9}', digits) \
+            or re.fullmatch(r'44[1237]\d{9}', digits):
+        return raw
+    return ''
+
+
+def presenter(company_id=None, order_id=None, company_name=''):
+    """Who presents the form: the client it is for (the order's client, else the company's account holder) with
+    their address, and their phone only when it is a UK number."""
+    from db import query_db
     from services.gov_form_fill import parse_address
-    office = parse_address(get_setting('registered_office') or '')
+    order = query_db("SELECT user_id, end_client_name, end_client_phone, order_form_values_json FROM orders "
+                     "WHERE id = ?;", (order_id,), one=True) if order_id else None
+    order = dict(order or {})
+    user_id = order.get('user_id')
+    if not user_id and company_id:
+        user_id = (query_db("SELECT user_id FROM companies WHERE id = ?;", (company_id,), one=True) or {}).get('user_id')
+    user = dict(query_db("SELECT full_name, phone, address, country FROM users WHERE id = ?;", (user_id,),
+                         one=True) or {}) \
+        if user_id else {}
+    phones = [order.get('end_client_phone')]
+    if order.get('order_form_values_json'):
+        from services.order_applicant import _answers
+        phones += [value for label, value, _s in _answers(order['order_form_values_json'])
+                   if re.search(r'phone|mobile|telephone|contact number|whatsapp', str(label), re.I)]
+    phones.append(user.get('phone'))
+    office = parse_address(user.get('address') or '')
     return {
-        'contact': (user or {}).get('full_name') or '',
-        'company': get_setting('legal_name') or get_setting('company_name') or '',
+        'contact': order.get('end_client_name') or user.get('full_name') or '',
+        'company': company_name or '',
         'premises': office.get('premises', ''), 'line_1': office.get('line_1', ''), 'line_2': office.get('line_2', ''),
         'town': office.get('town', ''), 'postcode': office.get('postcode', ''),
-        'country': office.get('country', '') or ('United Kingdom' if office.get('postcode') else ''),
-        'phone': get_setting('support_phone') or '',
+        'country': office.get('country', '') or (user.get('country') or '' if office.get('postcode') else ''),
+        'phone': next((uk_phone(p) for p in phones if uk_phone(p)), ''),
     }
 
 
@@ -370,13 +397,14 @@ def _filled(name, fill, values, ctx, who):
     return pdf.output()
 
 
-def official_pdf(code, values, ctx, user=None):
+def official_pdf(code, values, ctx, order_id=None):
     """Companies House's PDF for `code` with every box we know filled in (still editable). None without one."""
     code = str(code or '').upper()
     if not has_official(code):
         return None
     values = values or {}
-    main = _filled(code, MAPS[code], values, ctx, presenter(user))
+    who = presenter(ctx['company'].get('id'), order_id, values.get('company_name') or ctx['company'].get('name'))
+    main = _filled(code, MAPS[code], values, ctx, who)
     if code != 'CS01':
         return main
     parts = [(n, fill) for n, fill in _cs01_parts(values, ctx) if os.path.isfile(os.path.join(PDF_DIR, f'{n}.pdf'))]

@@ -416,7 +416,7 @@ def _make_ready(filing_id, form, ctx, values, user):
     filing = _filing(filing_id)
     code = filing['form_code']
     company = ctx['company']
-    pdf = form_pdf(code, values, ctx, user)
+    pdf = form_pdf(code, values, ctx, user, filing.get('order_id'))
     row = query_db("SELECT c.user_id, u.full_name, u.email FROM companies c LEFT JOIN users u ON u.id = c.user_id "
                    "WHERE c.id = ?;", (company['id'],), one=True) or {}
     doc_id = filing.get('document_id')
@@ -526,10 +526,10 @@ def sheet_pdf(code, values, ctx, user=None):
     return bytes(pdf.output())
 
 
-def form_pdf(code, values, ctx, user=None):
+def form_pdf(code, values, ctx, user=None, order_id=None):
     """Companies House's own form filled in when we have it (services/gov_form_official.py), else the Filing Sheet."""
     try:
-        pdf = official_pdf(code, values, ctx, user)
+        pdf = official_pdf(code, values, ctx, order_id)
         if pdf:
             return pdf
     except Exception as exc:
@@ -539,4 +539,5 @@ def form_pdf(code, values, ctx, user=None):
 
 def sheet_for_filing(filing_id, user=None):
     filing = _filing(filing_id)
-    return filing, form_pdf(filing['form_code'], filing['values'], context(filing['company_id']), user)
+    return filing, form_pdf(filing['form_code'], filing['values'], context(filing['company_id']), user,
+                            filing.get('order_id'))
