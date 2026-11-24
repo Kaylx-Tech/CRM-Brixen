@@ -162,7 +162,7 @@ async function downloadSheet(filing) {
  * Gov Forms: Companies House forms filled in from what is known about the company (Companies House first, then
  * the CRM), checked, then Ready (Filing Sheet in Documents + a task in UK Gov Checks) and Filed.
  */
-export default function GovForms() {
+export default function GovForms({ embedded = false }) {
   const [params, setParams] = useSearchParams()
   const companyId = params.get('company') || ''
   const formCode = params.get('form') || ''
@@ -178,13 +178,13 @@ export default function GovForms() {
   const [saved, setSaved] = useState([])
 
   useEffect(() => {
-    document.title = 'Gov Forms'
+    if (!embedded) document.title = 'Gov Forms'
     apiRequest('/admin/gov-forms', { label: 'Gov Forms', silent: true }).then((res) => res.ok && setForms(res.data.data.forms))
     apiRequest('/admin/companies?limit=500', { label: 'Companies', silent: true }).then((res) => {
       const list = res.ok ? res.data?.data?.companies || res.data?.companies || [] : []
       setCompanies(list.filter((c) => c.is_registered !== false))
     })
-  }, [])
+  },[embedded])
 
   const company = useMemo(() => (companies || []).find((c) => String(c.id) === String(companyId)), [companies, companyId])
 
@@ -225,7 +225,14 @@ export default function GovForms() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId, formCode])
 
-  const choose = (next) => setParams(Object.fromEntries(Object.entries({ company: companyId, ...next }).filter(([, v]) => v)))
+  // company / form / filing live in the address next to anything else there (Smart Operations' tab and section)
+  const choose = (next) =>
+    setParams((prev) => {
+      const out = new URLSearchParams(prev)
+      Object.entries(next).forEach(([key, value]) => (value ? out.set(key, value) : out.delete(key)))
+      if ('form' in next && !next.filing) out.delete('filing')
+      return out
+    })
   const setValue = (key, value) => setValues((v) => ({ ...v, [key]: value }))
   const pick = (field, person) =>
     setValues((v) => {
@@ -267,7 +274,7 @@ export default function GovForms() {
     return (
       <div className="flex w-full flex-col gap-5 pb-10">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Gov Forms</h1>
+          {!embedded && <h1 className="text-2xl font-bold tracking-tight">Gov Forms</h1>}
           <p className="mt-1 text-sm text-muted-foreground">
             Companies House forms filled in for you from Companies House and the CRM. Choose the company first.
           </p>
@@ -305,7 +312,7 @@ export default function GovForms() {
     return (
       <div className="flex w-full flex-col gap-5 pb-10">
         <div>
-          <button type="button" onClick={() => setParams({})} className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <button type="button" onClick={() => choose({ company: '', form: '' })} className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             <IconArrowLeft className="size-4" /> Companies
           </button>
           <h1 className="text-2xl font-bold tracking-tight">{company?.name || 'Company'}</h1>

@@ -29,7 +29,6 @@ const AuditLogs = lazyPage(() => import('./Pages/AuditLogs/AuditLogs'))
 const EmailLog = lazyPage(() => import('./Pages/EmailLog/EmailLog'))
 const Tickets = lazyPage(() => import('./Pages/Tickets/Tickets'))
 const SmartOperations = lazyPage(() => import('./Pages/SmartOperations/SmartOperations'))
-const GovForms = lazyPage(() => import('./Pages/GovForms/GovForms'))
 const Settings = lazyPage(() => import('./Pages/Settings/Settings'))
 const NotificationsPage = lazyPage(() => import('./Pages/Notifications/Notifications'))
 const Performance = lazyPage(() => import('./Pages/Performance/Performance'))
@@ -150,7 +149,8 @@ const App = () => {
                 <Route path="email-log" element={<PageGuard page="email-log"><EmailLog /></PageGuard>} />
                 <Route path="tickets" element={<PageGuard page="tickets"><Tickets /></PageGuard>} />
                 <Route path="smart-operations" element={<PageGuard page="smart-operations"><SmartOperations /></PageGuard>} />
-                <Route path="gov-forms" element={<GovForms />} />
+                {/* Gov Forms live in Smart Operations › UK Gov Checks */}
+                <Route path="gov-forms" element={<Navigate to="/admin/smart-operations?tab=uk-gov-checks&section=forms" replace />} />
                 {/* KYC is the first tab of Smart Operations now; old links open it there */}
                 <Route path="kyc" element={<Navigate to="/admin/smart-operations" replace />} />
                 <Route path="settings" element={<Settings />} />

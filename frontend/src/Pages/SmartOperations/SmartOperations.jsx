@@ -31,7 +31,7 @@ import {
 import { toast } from 'sonner'
 import { useSearchParams } from 'react-router-dom'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import Tasks from '@/Pages/Tasks/Tasks'
+import UkGovChecks from './UkGovChecks'
 // The first tab is KYC (Finstap's KYC checks). The Didit ID Verification tab (./IdVerification) is on hold:
 // the user will switch Didit back on later
 import KycRecords from '@/Pages/KycForm/KycRecords'
@@ -327,7 +327,7 @@ export default function SmartOperations() {
       ) : tab === 'registered-address' ? (
         <RegisteredAddresses />
       ) : govForms ? (
-        <Tasks view="uk-gov-checks" />
+        <UkGovChecks />
       ) : (
       <>
       <div className="relative w-full md:max-w-sm">
