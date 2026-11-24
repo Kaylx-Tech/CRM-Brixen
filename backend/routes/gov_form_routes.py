@@ -46,7 +46,7 @@ def handle_gov_form_routes(environ, start_response, path, method, user, body, qu
         if path == '/api/admin/gov-forms/queue' and method == 'GET':
             return success_response(start_response, data={'items': gov_form_orders.queue()})
         if path == '/api/admin/gov-forms/orders' and method == 'GET':
-            return success_response(start_response, data={'orders': gov_form_orders.pick_list()})
+            return success_response(start_response, data={'orders': gov_form_orders.pick_list(_q(query, 'form'))})
         if path == '/api/admin/gov-forms/services' and method == 'GET':
             return success_response(start_response, data={'services': gov_form_orders.services_map()})
         if path == '/api/admin/gov-forms/services' and method == 'POST':

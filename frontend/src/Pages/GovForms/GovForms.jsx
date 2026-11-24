@@ -308,15 +308,39 @@ function OrderQueue({ choose }) {
   )
 }
 
-/** A form started from the forms list: which order is it for? (The order brings its company and answers.) */
+function OrderCard({ o, choose }) {
+  return (
+    <button
+      type="button"
+      onClick={() => choose({ order: String(o.id), company: o.company_id ? String(o.company_id) : '' })}
+      className="rounded-xl border bg-card px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+    >
+      <span className="flex items-center justify-between gap-2">
+        <span className="font-medium">{o.number}</span>
+        <span className="text-xs text-muted-foreground">{when(o.ordered_at)}</span>
+      </span>
+      <span className="block truncate text-sm">{o.service}</span>
+      <span className="block truncate text-xs text-muted-foreground">
+        {o.company_name || 'No company yet'}
+        {o.client ? ` · ${o.client}` : ''}
+      </span>
+    </button>
+  )
+}
+
+/** A form started from the forms list: which order is it for? The orders for this form come first; the rest only
+ * when asked for (or searched). The order brings its company and the client's answers. */
 function OrderPicker({ formCode, title, choose }) {
   const [orders, setOrders] = useState(null)
   const [search, setSearch] = useState('')
+  const [showAll, setShowAll] = useState(false)
   useEffect(() => {
-    apiRequest('/admin/gov-forms/orders', { label: 'Gov Forms', silent: true }).then((res) => setOrders(res.ok ? res.data.data.orders : []))
-  }, [])
+    apiRequest(`/admin/gov-forms/orders?form=${formCode}`, { label: 'Gov Forms', silent: true }).then((res) => setOrders(res.ok ? res.data.data.orders : []))
+  }, [formCode])
   const q = search.trim().toLowerCase()
-  const shown = (orders || []).filter((o) => !q || `${o.number} ${o.service} ${o.company_name} ${o.company_number} ${o.client}`.toLowerCase().includes(q))
+  const found = (orders || []).filter((o) => !q || `${o.number} ${o.service} ${o.company_name} ${o.company_number} ${o.client}`.toLowerCase().includes(q))
+  const matches = found.filter((o) => o.match)
+  const others = found.filter((o) => !o.match)
   return (
     <div className="flex w-full flex-col gap-5 pb-10">
       <div>
@@ -326,9 +350,6 @@ function OrderPicker({ formCode, title, choose }) {
         <h1 className="text-2xl font-bold tracking-tight">
           {formCode}: {title || '…'}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Which order is this for? The form fills itself from the order&apos;s company and what the client wrote on the order form.
-        </p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative w-full max-w-md">
@@ -344,27 +365,40 @@ function OrderPicker({ formCode, title, choose }) {
           <IconLoader2 className="size-4 animate-spin" /> Loading orders…
         </p>
       ) : (
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-          {shown.slice(0, 60).map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              onClick={() => choose({ order: String(o.id), company: o.company_id ? String(o.company_id) : '' })}
-              className="rounded-xl border bg-card px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
-            >
-              <span className="flex items-center justify-between gap-2">
-                <span className="font-medium">{o.number}</span>
-                <span className="text-xs text-muted-foreground">{when(o.ordered_at)}</span>
-              </span>
-              <span className="block truncate text-sm">{o.service}</span>
-              <span className="block truncate text-xs text-muted-foreground">
-                {o.company_name || 'No company yet'}
-                {o.client ? ` · ${o.client}` : ''}
-              </span>
-            </button>
-          ))}
-          {!shown.length && <p className="text-sm text-muted-foreground">No order matches.</p>}
-        </div>
+        <>
+          <section className="flex flex-col gap-2">
+            <h2 className="text-sm font-semibold">Orders for {formCode}</h2>
+            {matches.length ? (
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {matches.slice(0, 60).map((o) => (
+                  <OrderCard key={o.id} o={o} choose={choose} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {q ? 'No order for this form matches.' : `No order is for ${formCode} yet.`}
+              </p>
+            )}
+          </section>
+          {others.length > 0 && (
+            <section className="flex flex-col gap-2">
+              {showAll || q ? (
+                <>
+                  <h2 className="text-sm font-semibold text-muted-foreground">Other Orders</h2>
+                  <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                    {others.slice(0, 60).map((o) => (
+                      <OrderCard key={o.id} o={o} choose={choose} />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <button type="button" onClick={() => setShowAll(true)} className="w-fit text-sm text-primary underline-offset-2 hover:underline">
+                  Show other orders ({others.length})
+                </button>
+              )}
+            </section>
+          )}
+        </>
       )}
     </div>
   )

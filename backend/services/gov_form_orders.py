@@ -104,10 +104,11 @@ def _form_lookup():
     return by_id, by_name
 
 
-def queue(limit=3000):
-    """The orders that need a form (newest first), each with its form and its saved filing."""
-    from services import gov_forms
-    gov_forms._ensure()
+def _forms_of(orders):
+    """{order id: [(form code, service name)]}: the forms each order's services need (its own service, then the
+    products on it)."""
+    if not orders:
+        return {}
     by_id, by_name = _form_lookup()
 
     def form_of(name, service_id=None):
@@ -116,21 +117,45 @@ def queue(limit=3000):
         key = str(name or '').strip().lower()
         return by_name[key] if key in by_name else form_for_name(name)
 
+    ids = [o['id'] for o in orders]
+    lines = {}
+    for li in query_db(f"SELECT order_id, product_name FROM order_line_items WHERE order_id IN "
+                       f"({','.join('?' * len(ids))});", tuple(ids)) or []:
+        lines.setdefault(li['order_id'], []).append(li['product_name'])
+    out = {}
+    for o in orders:
+        wanted = []
+        main = form_of(o['service_name'], o.get('service_id'))
+        if main:
+            wanted.append((main, o['service_name']))
+        for name in lines.get(o['id'], []):
+            code = form_of(name)
+            if code and code not in [w[0] for w in wanted]:
+                wanted.append((code, name))
+        out[o['id']] = wanted
+    return out
+
+
+def _orders(limit):
     marks = ','.join('?' * len(SKIP_STATUSES))
-    orders = query_db(f"""
+    return query_db(f"""
         SELECT o.id, o.order_number, o.service_id, o.service_name, o.status, o.company_id, o.created_at,
                o.end_client_name, u.full_name AS client_name, c.name AS company_name, c.company_number
         FROM orders o LEFT JOIN users u ON u.id = o.user_id LEFT JOIN companies c ON c.id = o.company_id
         WHERE COALESCE(o.is_draft, 0) = 0 AND o.status NOT IN ({marks})
         ORDER BY o.id DESC LIMIT ?;
     """, SKIP_STATUSES + (limit,)) or []
+
+
+def queue(limit=3000):
+    """The orders that need a form (newest first), each with its form and its saved filing."""
+    from services import gov_forms
+    gov_forms._ensure()
+    orders = _orders(limit)
     if not orders:
         return []
     ids = [o['id'] for o in orders]
-    lines = {}
-    for li in query_db(f"SELECT order_id, product_name FROM order_line_items WHERE order_id IN "
-                       f"({','.join('?' * len(ids))});", tuple(ids)) or []:
-        lines.setdefault(li['order_id'], []).append(li['product_name'])
+    forms = _forms_of(orders)
     saved = {}
     for f in query_db(f"SELECT id, order_id, form_code, status, updated_at FROM gov_form_filings WHERE order_id IN "
                       f"({','.join('?' * len(ids))}) ORDER BY id;", tuple(ids)) or []:
@@ -138,15 +163,7 @@ def queue(limit=3000):
 
     items = []
     for o in orders:
-        wanted = []
-        main = form_of(o['service_name'], o['service_id'])
-        if main:
-            wanted.append((main, o['service_name']))
-        for name in lines.get(o['id'], []):
-            code = form_of(name)
-            if code and code not in [w[0] for w in wanted]:
-                wanted.append((code, name))
-        for code, service in wanted:
+        for code, service in forms.get(o['id'], []):
             filing = saved.get((o['id'], code))
             stage = filing['status'] if filing else 'new'
             if stage in ('new', 'draft') and o['status'] == 'Completed':
@@ -163,20 +180,21 @@ def queue(limit=3000):
     return items
 
 
-def pick_list(limit=400):
-    """Recent orders to choose from when a form is started from the forms list (newest first)."""
-    marks = ','.join('?' * len(SKIP_STATUSES))
-    rows = query_db(f"""
-        SELECT o.id, o.order_number, o.service_name, o.status, o.company_id, o.created_at, o.end_client_name,
-               u.full_name AS client_name, c.name AS company_name, c.company_number
-        FROM orders o LEFT JOIN users u ON u.id = o.user_id LEFT JOIN companies c ON c.id = o.company_id
-        WHERE COALESCE(o.is_draft, 0) = 0 AND o.status NOT IN ({marks})
-        ORDER BY o.id DESC LIMIT ?;
-    """, SKIP_STATUSES + (limit,)) or []
-    return [{'id': r['id'], 'number': r['order_number'], 'service': r['service_name'], 'status': r['status'],
-             'company_id': r['company_id'], 'company_name': r.get('company_name') or '',
-             'company_number': r.get('company_number') or '', 'ordered_at': r['created_at'],
-             'client': r.get('end_client_name') or r.get('client_name') or ''} for r in rows]
+def pick_list(code='', limit=400):
+    """Recent orders to choose from when a form is started from the forms list: the orders whose service needs
+    this form first (match), then the rest, newest first."""
+    code = str(code or '').upper()
+    orders = _orders(limit)
+    forms = _forms_of(orders)
+    out = []
+    for r in orders:
+        codes = [c for c, _service in forms.get(r['id'], [])]
+        out.append({'id': r['id'], 'number': r['order_number'], 'service': r['service_name'], 'status': r['status'],
+                    'company_id': r['company_id'], 'company_name': r.get('company_name') or '',
+                    'company_number': r.get('company_number') or '', 'ordered_at': r['created_at'],
+                    'client': r.get('end_client_name') or r.get('client_name') or '',
+                    'forms': codes, 'match': bool(code) and code in codes})
+    return sorted(out, key=lambda o: not o['match'])
 
 
 def order_info(order_id):
