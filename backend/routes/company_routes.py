@@ -697,6 +697,9 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
         # (services/compliance_alerts.py); compliance reminders go to it
         if 'registered_email' in updates:
             new_email = str(updates.pop('registered_email') or '').strip().lower()
+            if new_email != str(comp.get('registered_email') or '').strip().lower() and is_staff \
+                    and user_role not in ('SUPER_ADMIN', 'ADMIN'):
+                return error_response(start_response, "Only an admin can change the company's email", status_code=403)
             if new_email != str(comp.get('registered_email') or '').strip().lower():
                 if new_email:
                     from services.compliance_alerts import set_company_business_email

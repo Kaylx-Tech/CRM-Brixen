@@ -39,6 +39,7 @@ import { toast } from 'sonner'
 import { formatGBP } from '@/lib/money'
 import { useFormErrors, validateFields, formatCompanyNumber } from '@/lib/validation'
 import { FieldMessage, invalidProps } from '@/components/FormField'
+import { isAdminRole } from '@/lib/permissions'
 
 const COMPLIANCE_SCHEMA = {
   utr_number: { label: 'UTR', validate: (v) => (/^\d{10}$/.test(String(v).replace(/\s/g, '')) ? '' : 'UTR must be 10 digits.') },
@@ -188,13 +189,15 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
       accounts_next_due: src.accounts_next_due ? String(src.accounts_next_due).slice(0, 10) : '',
       confirmation_next_due: (src.confirmation_next_due || src.confirmation_statement_next_due) ? String(src.confirmation_next_due || src.confirmation_statement_next_due).slice(0, 10) : '',
     })
-    setContact({ registered_email: src.registered_email || '', whatsapp_number: src.whatsapp_number || '' })
+    // The email shown is the one emails really go to: the company's own, else the customer's login email
+    setContact({ registered_email: src.registered_email || src.client_email || '', whatsapp_number: src.whatsapp_number || '' })
   }, [detail, company])
 
   const handleSaveContact = async () => {
     if (!company?.id) return
     const payload = {
-      registered_email: contact.registered_email.trim().toLowerCase(),
+      // only an admin changes the company's email
+      ...(isAdminRole() ? { registered_email: contact.registered_email.trim().toLowerCase() } : {}),
       whatsapp_number: contact.whatsapp_number.trim(),
     }
     if (!contactErrors.check(payload)) return
@@ -315,8 +318,9 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
   const clientEmail = d.client_email || raw.client_email || raw.email || ''
   const clientPhone = d.client_phone || raw.client_phone || raw.phone || ''
   const emailLocked = Number(d.business_email_verified || raw.business_email_verified || 0) === 1
+  const canEditEmail = isAdminRole() && !emailLocked
   const contactChanged =
-    contact.registered_email.trim().toLowerCase() !== String(d.registered_email || raw.registered_email || '').trim().toLowerCase() ||
+    contact.registered_email.trim().toLowerCase() !== String(d.registered_email || raw.registered_email || clientEmail || '').trim().toLowerCase() ||
     contact.whatsapp_number.trim() !== String(d.whatsapp_number || raw.whatsapp_number || '').trim()
   const isGenuine = Boolean(d.is_genuine || d.data_locked || raw.is_genuine || raw.data_locked || company.is_genuine || company.data_locked)
   const accountsDue = d.accounts_next_due || raw.accounts_next_due || company.deadlineText || 'No upcoming deadlines'
@@ -495,9 +499,10 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                         type="email"
                         value={contact.registered_email}
                         onChange={(e) => setContact((c) => ({ ...c, registered_email: e.target.value }))}
-                        placeholder={clientEmail || 'name@company.co.uk'}
+                        placeholder="name@company.co.uk"
                         className="max-w-md"
-                        disabled={emailLocked || isSavingContact}
+                        readOnly={!canEditEmail}
+                        disabled={isSavingContact}
                         maxLength={160}
                         {...invalidProps(contactErrors.errors, 'registered_email', 'company-contact-')}
                       />
@@ -507,7 +512,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                     <p className="text-xs text-muted-foreground">
                       {emailLocked
                         ? 'This email is verified and locked.'
-                        : `The company's own email for compliance reminders. Left empty, emails go to the customer's login email${clientEmail ? ` (${clientEmail})` : ''}.`}
+                        : 'Compliance reminders and offers go to this email. Only an admin can change it.'}
                     </p>
                   </div>
 
