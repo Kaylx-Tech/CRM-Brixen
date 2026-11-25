@@ -419,7 +419,7 @@ export default function KycRecords({ embedded = false }) {
         <Card className="p-4">
           <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Tabs value={tab} onValueChange={setTab}>
-              <TabsList className="max-w-full justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <TabsTrigger value="all" className={TAB}>All</TabsTrigger>
                 <TabsTrigger value="waiting" className={TAB}>Waiting</TabsTrigger>
                 <TabsTrigger value="review" className={TAB}>In Review</TabsTrigger>
@@ -457,7 +457,7 @@ export default function KycRecords({ embedded = false }) {
                 )
               })}
             </div>
-            <div className="hidden overflow-x-auto md:block">
+            <div className="hidden overflow-x-auto overflow-y-hidden overscroll-x-contain md:block">
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead className="border-b text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>

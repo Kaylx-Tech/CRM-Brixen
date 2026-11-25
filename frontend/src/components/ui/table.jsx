@@ -42,7 +42,7 @@ function Table({
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      className="relative w-full overflow-x-auto overflow-y-hidden overscroll-x-contain"
     >
       <table
         ref={ref}

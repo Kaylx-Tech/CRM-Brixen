@@ -363,7 +363,7 @@ export const DataTable = ({
           )}
         </div>
       )}
-      <div className={cn("overflow-x-auto rounded-md border bg-card", mobileCards && "hidden md:block")}>
+      <div className={cn("overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-md border bg-card", mobileCards && "hidden md:block")}>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

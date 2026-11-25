@@ -377,7 +377,7 @@ function FormOrders({ formCode, title, choose }) {
             <IconLoader2 className="size-4 animate-spin" /> Loading orders…
           </p>
         ) : shown.length ? (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-hidden overscroll-x-contain">
             <table className="w-full text-sm">
               <thead className="text-left text-xs text-muted-foreground">
                 <tr>

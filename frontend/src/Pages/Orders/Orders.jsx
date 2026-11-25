@@ -804,7 +804,7 @@ export default function Orders() {
         }}
       >
         {/* Scrolls sideways on phones instead of cutting the last tab off */}
-        <TabsList className="max-w-full justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <TabsTrigger value="All" className="text-sm rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             All Orders
           </TabsTrigger>

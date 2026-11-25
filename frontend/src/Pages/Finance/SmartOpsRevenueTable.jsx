@@ -73,7 +73,7 @@ export default function SmartOpsRevenueTable({ month, version }) {
       {isLoading && !data ? (
         <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}</div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border bg-card">
+        <div className="overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-xl border bg-card">
           <table className="w-full min-w-[520px] text-sm">
             <thead>
               <tr className="border-b text-left text-xs text-muted-foreground">

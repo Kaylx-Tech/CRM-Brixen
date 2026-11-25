@@ -776,7 +776,7 @@ export default function Intake() {
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-md border bg-card">
+          <div className="overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-md border bg-card">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1011,7 +1011,7 @@ export default function Intake() {
               <h3 className="text-base font-semibold">
                 Filed Documents ({results.filed_documents.length})
               </h3>
-              <div className="overflow-x-auto rounded-md border bg-card">
+              <div className="overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-md border bg-card">
                 <Table>
                   <TableHeader>
                     <TableRow>

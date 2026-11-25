@@ -423,7 +423,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
 
         {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col">
-          <div className="px-6 py-2 border-b overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="px-6 py-2 border-b overflow-x-auto overflow-y-hidden overscroll-x-contain [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             <TabsList className="flex w-max">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="registered-office">Registered Office</TabsTrigger>

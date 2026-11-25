@@ -183,7 +183,7 @@ const ViewService = ({ service, isOpen, onClose, onEdit }) => {
         {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex min-h-0 flex-1 flex-col">
           <div className="px-6 py-2 border-b bg-background shrink-0">
-            <TabsList className="flex w-full justify-start overflow-x-auto h-auto py-1">
+            <TabsList className="flex w-full justify-start overflow-x-auto overflow-y-hidden overscroll-x-contain h-auto py-1">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               {showFinance ? <TabsTrigger value="pricing">Financials & Margin</TabsTrigger> : null}
               <TabsTrigger value="compliance">Requirements & Docs</TabsTrigger>
