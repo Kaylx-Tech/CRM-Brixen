@@ -3,7 +3,7 @@ import { LoginForm } from '@/components/login-form'
 
 const Login = () => {
   return (
-    <div className='min-h-screen w-full'>
+    <div className='min-h-dvh w-full'>
         <LoginForm />
     </div>
   )

@@ -303,7 +303,7 @@ export default function Tickets() {
         ]}
       />
 
-      <div className="grid h-[calc(100vh-340px)] min-h-[480px] grid-cols-1 gap-4 md:grid-cols-[340px_1fr]">
+      <div className="grid h-[calc(100dvh-340px)] min-h-[480px] grid-cols-1 gap-4 md:grid-cols-[340px_1fr]">
         <div className={`flex min-h-0 flex-col gap-3 ${openId ? 'hidden md:flex' : 'flex'}`}>
           <Tabs value={filter} onValueChange={setFilter}>
             <TabsList className="h-auto flex-wrap justify-start">

@@ -3,7 +3,7 @@ import { SignupForm } from '@/components/signup-form'
 
 const SignUp = () => {
     return (
-        <div className='h-screen w-full flex justify-center items-center'>
+        <div className='h-dvh w-full flex justify-center items-center'>
             <SignupForm />
         </div>
     )

@@ -8,7 +8,7 @@ import { useLightOnly } from "@/hooks/theme-provider"
 export function AuthLayout({ title, subtitle, children }) {
   useLightOnly()
   return (
-    <div className="grid min-h-screen w-full bg-background md:grid-cols-2">
+    <div className="grid min-h-dvh w-full bg-background md:grid-cols-2">
       <div className="relative hidden md:flex flex-col justify-center p-12 lg:p-16 bg-linear-to-br from-slate-900 via-blue-900 to-blue-950 text-white">
         <div className="max-w-[480px] space-y-4">
           <img src={whiteLogo} alt="Brixen Logo" className="w-auto mb-6 h-16" />

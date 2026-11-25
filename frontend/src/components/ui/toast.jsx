@@ -293,11 +293,11 @@ export function Toaster({
   }, [])
 
   const positionClasses = {
-    "bottom-center": "fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col-reverse items-center gap-2",
-    "bottom-right": "fixed bottom-6 right-6 z-[100] flex flex-col-reverse items-end gap-2",
-    "top-center": "fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2",
-    "top-right": "fixed top-6 right-6 z-[100] flex flex-col items-end gap-2",
-  }[position] || "fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2"
+    "bottom-center": "fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[100] flex flex-col-reverse items-center gap-2",
+    "bottom-right": "fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 z-[100] flex flex-col-reverse items-end gap-2",
+    "top-center": "fixed top-[calc(1.5rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2",
+    "top-right": "fixed top-[calc(1.5rem+env(safe-area-inset-top))] right-6 z-[100] flex flex-col items-end gap-2",
+  }[position] || "fixed top-[calc(1.5rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2"
 
   return (
     <div className={cn(positionClasses, "pointer-events-none", className)}>
@@ -333,11 +333,11 @@ export function ToastSave({
   if (!open) return null
 
   const positionClasses = {
-    "bottom-center": "fixed bottom-6 left-1/2 -translate-x-1/2 z-[100]",
-    "bottom-right": "fixed bottom-6 right-6 z-[100]",
-    "top-center": "fixed top-6 left-1/2 -translate-x-1/2 z-[100]",
+    "bottom-center": "fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[100]",
+    "bottom-right": "fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 z-[100]",
+    "top-center": "fixed top-[calc(1.5rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-[100]",
     "inline": "relative",
-  }[position] || "fixed top-6 left-1/2 -translate-x-1/2 z-[100]"
+  }[position] || "fixed top-[calc(1.5rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-[100]"
 
   return (
     <AnimatePresence>

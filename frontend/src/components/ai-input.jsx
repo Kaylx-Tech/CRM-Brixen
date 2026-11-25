@@ -226,7 +226,7 @@ export default function AiInput({
     <>
       <div
         className={cn(
-          "pointer-events-none fixed bottom-0 left-1/2 z-50 flex w-full -translate-x-1/2 justify-center pb-5",
+          "pointer-events-none fixed bottom-0 left-1/2 z-50 flex w-full -translate-x-1/2 justify-center pb-[calc(1.25rem+env(safe-area-inset-bottom))]",
           className
         )}
       >
