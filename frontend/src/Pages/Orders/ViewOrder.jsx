@@ -166,31 +166,72 @@ function CompanyAnswer({ company }) {
   )
 }
 
+function CopyValue({ text }) {
+  const [done, setDone] = useState(false)
+  if (!String(text || '').trim()) return null
+  return (
+    <button
+      type="button"
+      title="Copy"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(String(text))
+          setDone(true)
+          setTimeout(() => setDone(false), 1200)
+        } catch {
+          // the value is on screen to copy by hand
+        }
+      }}
+      className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+    >
+      {done ? <IconCheck className="size-4 text-emerald-600" /> : <IconCopy className="size-4" />}
+    </button>
+  )
+}
+
+// The client's own details (who placed the order), shown apart from the service's details
+const CLIENT_FIELD = /^(client|owner|customer|applicant|your|full)\s*name$|^name$|e-?mail|phone|mobile|whatsapp|contact number|telephone/i
+const isClientField = (label) => CLIENT_FIELD.test(String(label || '').trim())
+
+/** One box of an order's answers: label above, value, Copy beside it (two columns). */
+function InfoBox({ title, items, tone = 'primary' }) {
+  if (!items.length) return null
+  return (
+    <section className={`rounded-2xl border p-5 ${tone === 'primary' ? 'border-primary/25 bg-primary/5' : 'bg-card'}`}>
+      <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+      <dl className="mt-3 grid gap-x-6 gap-y-3 text-sm md:grid-cols-2">
+        {items.map((f, idx) => (
+          <div key={`${f.label}-${idx}`} className={`flex items-start gap-1 ${f.wide ? 'md:col-span-2' : ''}`}>
+            <div className="min-w-0 flex-1">
+              <dt className="text-xs text-muted-foreground">{f.label}</dt>
+              <dd className="break-words whitespace-pre-line text-foreground">{f.node || String(f.value || '').trim() || '—'}</dd>
+              {f.note && <dd className="text-[11px] text-muted-foreground">{f.note}</dd>}
+            </div>
+            {!f.node && <CopyValue text={f.value} />}
+          </div>
+        ))}
+      </dl>
+    </section>
+  )
+}
+
 /** Answers to the services' own order form (Create Order wizard), read-only. */
 function ServiceFormAnswers({ answers, linked, uploads }) {
   if (!answers.length && !linked.length && !uploads.length) return null
   return (
     <div className="space-y-3">
-      <h4 className="text-sm uppercase tracking-wider font-semibold text-muted-foreground">Service Form</h4>
+      <InfoBox
+        title="Service Form"
+        tone="plain"
+        items={answers.map((f) => ({
+          label: f.label,
+          value: f.value,
+          wide: Boolean(f.company) || isWideField(f.label) || String(f.value || '').length > 60,
+          node: f.company ? <CompanyAnswer company={f.company} /> : undefined,
+          note: (f.services || []).length > 1 ? `For ${f.services.join(', ')}` : '',
+        }))}
+      />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
-        {answers.map((f, idx) => {
-          const wide = f.company || isWideField(f.label) || String(f.value || '').length > 60
-          return (
-            <div key={`${f.label}-${idx}`} className={`flex flex-col gap-1 ${wide ? 'md:col-span-2' : ''}`}>
-              <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">{f.label}</span>
-              {f.company ? (
-                <CompanyAnswer company={f.company} />
-              ) : (
-                <span className="font-semibold text-foreground text-sm break-words whitespace-pre-line">
-                  {String(f.value || '').trim() || '—'}
-                </span>
-              )}
-              {(f.services || []).length > 1 ? (
-                <span className="text-[11px] text-muted-foreground">For {f.services.join(', ')}</span>
-              ) : null}
-            </div>
-          )
-        })}
         {uploads.length ? (
           <div className="flex flex-col gap-1 md:col-span-2">
             <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">Form Uploads</span>
@@ -428,7 +469,7 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
     if (fields.length === 0) {
       if (o.company_name) fields.push({ label: 'Desired Company Name', value: o.company_name })
       if (o.company_address) fields.push({ label: 'Registered Office Address', value: o.company_address })
-      if (o.client_name || o.owner_name) fields.push({ label: 'Director Name', value: o.client_name || o.owner_name })
+      if (o.client_name || o.owner_name) fields.push({ label: 'Client Name', value: o.client_name || o.owner_name })
       if (o.client_email || o.owner_form_email) fields.push({ label: 'Email', value: o.client_email || o.owner_form_email })
       if (o.client_phone) fields.push({ label: 'UK Phone Number', value: o.client_phone })
       if (o.business_activities) fields.push({ label: 'Business Activities', value: o.business_activities })
@@ -438,6 +479,13 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
       if (o.trading_proof) fields.push({ label: 'Trading Proof', value: o.trading_proof })
     }
 
+    // "Director Name" filled with the person who placed the order is the client: shown as Client Name
+    const placedBy = String(o.client_name || o.owner_name || '').trim().toLowerCase()
+    fields = fields.map((f) =>
+      /^director'?s?\s*name$/i.test(String(f.label).trim()) && placedBy && String(f.value).trim().toLowerCase() === placedBy
+        ? { ...f, label: 'Client Name' }
+        : f,
+    )
     setFormFields(fields)
 
     // The services' own order form (Create Order wizard), shown read-only in its own section
@@ -943,30 +991,21 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                       </div>
 
                       {!isEditingDetails ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
-                          {formFields.length === 0 ? (
-                            <p className="text-sm text-muted-foreground col-span-2">
-                              No checkout form details recorded.
-                            </p>
-                          ) : (
-                            formFields.map((field, idx) => {
-                              const wide = isWideField(field.label)
-                              return (
-                                <div
-                                  key={`${field.label}-${idx}`}
-                                  className={`flex flex-col gap-1 ${wide ? 'md:col-span-2' : ''}`}
-                                >
-                                  <span className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">
-                                    {field.label}
-                                  </span>
-                                  <span className="font-semibold text-foreground text-sm break-words whitespace-pre-line">
-                                    {field.value || '—'}
-                                  </span>
-                                </div>
-                              )
-                            })
-                          )}
-                        </div>
+                        formFields.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No checkout form details recorded.</p>
+                        ) : (
+                          <div className="space-y-4">
+                            <InfoBox
+                              title="Client Details"
+                              items={formFields.filter((f) => isClientField(f.label)).map((f) => ({ ...f, wide: isWideField(f.label) }))}
+                            />
+                            <InfoBox
+                              title="Service Details"
+                              tone="plain"
+                              items={formFields.filter((f) => !isClientField(f.label)).map((f) => ({ ...f, wide: isWideField(f.label) }))}
+                            />
+                          </div>
+                        )
                       ) : (
                         <div className="space-y-4">
                           {/* The order itself */}
