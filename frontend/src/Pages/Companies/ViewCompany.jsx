@@ -327,7 +327,9 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
   const confirmationDue = d.confirmation_statement_next_due || d.confirmation_next_due || raw.confirmation_statement_next_due || raw.confirmation_next_due || '—'
   const authCode = d.auth_code || raw.auth_code || ''
   const utrNumber = d.utr_number || d.utr || raw.utr_number || ''
-  const sicCodes = d.sic_codes || raw.sic_codes || d.sic_description || raw.sic_description || 'Standard commercial trading'
+  // Companies House's own SIC codes (with their names), as the company record keeps them
+  const sicList = Array.isArray(d.sic_list) ? d.sic_list : []
+  const sicCodes = d.sic_codes || raw.sic_codes || d.sic_description || raw.sic_description || ''
 
   const isRegistered = (d.is_registered ?? company.isRegistered) !== false
   const attention = isRegistered ? attentionIssues(Array.isArray(d.attention) ? d : company) : []
@@ -565,9 +567,20 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
               <TabsContent value="business-activity" className="m-0 space-y-6 outline-none">
                 <div className="border rounded-xl p-4 space-y-2 bg-background shadow-xs">
                   <div className="text-sm uppercase tracking-wider font-semibold text-muted-foreground">Principal Activity / SIC</div>
-                  <div className="font-medium text-sm text-foreground">
-                    {sicCodes}
-                  </div>
+                  {sicList.length ? (
+                    <ul className="space-y-1.5 text-sm">
+                      {sicList.map((sic) => (
+                        <li key={sic.code} className="flex gap-3">
+                          <span className="font-semibold tabular-nums text-foreground">{sic.code}</span>
+                          <span className="text-foreground">{sic.description}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="font-medium text-sm text-foreground">
+                      {sicCodes || <span className="text-muted-foreground">Companies House shows no SIC code for this company yet.</span>}
+                    </div>
+                  )}
                 </div>
               </TabsContent>
 

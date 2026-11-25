@@ -75,15 +75,17 @@ def apply_profile(company_id, d):
     # The registered office too: attention also reads the stored address (the Cardiff default address), so an
     # address changed at Companies House must replace the old one here or the warning never clears
     office = office_text_from_profile(d) or None
+    sic = ', '.join(str(c) for c in d.get('sic_codes') or [] if c) or None  # the business activity codes
     execute_db("""
         UPDATE companies
         SET status = ?, inc_date = COALESCE(?, inc_date), reg_office = COALESCE(?, reg_office),
+            sic_codes = COALESCE(?, sic_codes),
             accounts_next_due = ?, accounts_overdue = ?,
             confirmation_next_due = ?, confirmation_overdue = ?,
             ch_attention_json = ?, ch_checked_at = datetime('now')
         WHERE id = ?;
     """, (companies_house_status_value(d.get('company_status'), d.get('company_status_detail')),
-          d.get('date_of_creation'), office,
+          d.get('date_of_creation'), office, sic,
           accounts.get('next_due') or (accounts.get('next_accounts') or {}).get('due_on'),
           1 if accounts.get('overdue') else 0,
           confirmation.get('next_due'), 1 if confirmation.get('overdue') else 0,

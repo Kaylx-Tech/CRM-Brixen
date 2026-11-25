@@ -71,6 +71,26 @@ def format_deadline_text(row):
         return f"Confirmation due: {conf_due}"
     return "No upcoming deadlines"
 
+_SIC_NAMES = None
+
+
+def sic_list(text):
+    """'62020, 70229' → [{code, description}] (descriptions from the SIC 2007 list, where we have it)."""
+    codes = re.findall(r'\b\d{4,5}\b', str(text or ''))
+    global _SIC_NAMES
+    if _SIC_NAMES is None:
+        import json
+        import os
+        try:
+            with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'services',
+                                   'sic_codes.json'), encoding='utf-8') as fh:
+                _SIC_NAMES = {code: label for code, label in json.load(fh)}
+        except (OSError, ValueError):
+            _SIC_NAMES = {}
+    names = _SIC_NAMES
+    return [{'code': c, 'description': names.get(c) or names.get(c.zfill(5)) or ''} for c in codes]
+
+
 def public_client_company(row, for_staff=True):
     if not row:
         return None
@@ -570,6 +590,18 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
         if not is_staff and row['user_id'] != user_id:
             return error_response(start_response, "Access denied", status_code=403)
 
+        # No business activity yet (never checked since SIC codes are kept): ask Companies House now, so the SIC
+        # codes and the registered office shown are Companies House's own
+        number = str(row['company_number'] or '').strip().upper()
+        if not str(row['sic_codes'] or '').strip() and number and not number.startswith(('REG-', 'PENDING')):
+            try:
+                from services.ch_refresh import refresh_company
+                if refresh_company({'id': comp_id, 'company_number': number}):
+                    row = query_db(f"SELECT {COMPANY_STAFF_SELECT} FROM companies c LEFT JOIN users u ON c.user_id = u.id "
+                                   "WHERE c.id = ? LIMIT 1;", (comp_id,), one=True) or row
+            except Exception as exc:
+                print(f"[Companies] SIC look-up for {comp_id}: {exc}")
+
         directors = query_db("SELECT * FROM company_directors WHERE company_id = ? ORDER BY id ASC;", (comp_id,))
         # Team members (STAFF) only see the orders they added
         own_sql, own_params = ("AND created_by_id = ?", (user_id,)) if user_role == 'STAFF' else ("", ())
@@ -579,6 +611,7 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
             (comp_id, *own_params))
 
         data = public_client_company(row, for_staff=is_staff)
+        data['sic_list'] = sic_list(data.get('sic_codes'))
         data['directors'] = [dict(d) for d in (directors or [])]
         data['orders'] = [dict(o) for o in (orders or [])]
         # Documents filed against this company (customers only see the ones shared with them)
