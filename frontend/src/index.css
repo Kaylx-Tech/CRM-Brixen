@@ -284,6 +284,11 @@ body {
   html {
     @apply font-sans;
   }
+  /* Phones: the page itself never slides sideways, even if something is a little wider than the screen.
+     clip (not hidden) keeps sticky headers working; strips and tables that need it scroll inside themselves */
+  html, body {
+    overflow-x: clip;
+  }
   /* Every screen uses the normal 100% text size: 90% on desktop read too small (and stacked with a
      browser zoom). The Apple layer below keeps the look calm without shrinking the text */
 }
