@@ -427,8 +427,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
           <div className="px-6 py-2 border-b overflow-x-auto overflow-y-hidden overscroll-x-contain [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             <TabsList className="flex w-max">
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="registered-office">Registered Office</TabsTrigger>
-              <TabsTrigger value="business-activity">Business Activity</TabsTrigger>
+              <TabsTrigger value="registered-office">Office & Activity</TabsTrigger>
               <TabsTrigger value="compliance">Compliance</TabsTrigger>
               <TabsTrigger value="orders">Orders / Services</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -545,7 +544,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                 </div>
               </TabsContent>
 
-              {/* Registered Office Tab */}
+              {/* Office & Activity: the registered office, then the business activity (SIC codes) */}
               <TabsContent value="registered-office" className="m-0 space-y-6 outline-none">
                 <div className="grid grid-cols-1 gap-y-4">
                   <div className="space-y-1">
@@ -563,10 +562,6 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
                     </div>
                   </div>
                 </div>
-              </TabsContent>
-
-              {/* Business Activity Tab */}
-              <TabsContent value="business-activity" className="m-0 space-y-6 outline-none">
                 <div className="border rounded-xl p-4 space-y-2 bg-background shadow-xs">
                   <div className="text-sm uppercase tracking-wider font-semibold text-muted-foreground">Principal Activity / SIC</div>
                   {sicList.length ? (
