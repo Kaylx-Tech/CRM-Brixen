@@ -189,7 +189,7 @@ function CopyValue({ text }) {
   )
 }
 
-// The client's own details (who placed the order), shown apart from the service's details
+// The client's own details (who placed the order): left out of the order's Service Details
 const CLIENT_FIELD = /^(client|owner|customer|applicant|your|full)\s*name$|^name$|e-?mail|phone|mobile|whatsapp|contact number|telephone/i
 const isClientField = (label) => CLIENT_FIELD.test(String(label || '').trim())
 
@@ -991,20 +991,15 @@ export default function ViewOrder({ orderId, isOpen, onClose, onOrderUpdated }) 
                       </div>
 
                       {!isEditingDetails ? (
-                        formFields.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">No checkout form details recorded.</p>
+                        // Only the service's own answers: the client's name, email and phone are shown elsewhere
+                        formFields.filter((f) => !isClientField(f.label)).length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No service details recorded.</p>
                         ) : (
-                          <div className="space-y-4">
-                            <InfoBox
-                              title="Client Details"
-                              items={formFields.filter((f) => isClientField(f.label)).map((f) => ({ ...f, wide: isWideField(f.label) }))}
-                            />
-                            <InfoBox
-                              title="Service Details"
-                              tone="plain"
-                              items={formFields.filter((f) => !isClientField(f.label)).map((f) => ({ ...f, wide: isWideField(f.label) }))}
-                            />
-                          </div>
+                          <InfoBox
+                            title="Service Details"
+                            tone="plain"
+                            items={formFields.filter((f) => !isClientField(f.label)).map((f) => ({ ...f, wide: isWideField(f.label) }))}
+                          />
                         )
                       ) : (
                         <div className="space-y-4">
