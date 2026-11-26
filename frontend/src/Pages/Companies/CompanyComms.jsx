@@ -122,8 +122,18 @@ export default function CompanyComms({ companyId, active }) {
                     <span className="font-medium">{o.service_name}</span>
                     <span className="text-muted-foreground">
                       {' '}· {o.channel === 'whatsapp' ? 'WhatsApp' : 'Email'} · {when(o.sent_at)}
-                      {Number(o.followups) > 0 ? ` · ${o.followups} reminder${o.followups > 1 ? 's' : ''} sent` : ''}
+                      {Number(o.followups) > 0 && !o.contact_number ? ` · ${o.followups} reminder${o.followups > 1 ? 's' : ''} sent` : ''}
                     </span>
+                    {o.contact_number && (
+                      <a
+                        href={`https://wa.me/${String(o.contact_number).replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-0.5 block text-xs font-semibold text-emerald-700 hover:underline dark:text-emerald-300"
+                      >
+                        Wants a WhatsApp message: {o.contact_number}
+                      </a>
+                    )}
                   </span>
                   <span className={`${PILL} ${tone(o.accepted_at ? 'accepted' : o.status)}`}>
                     {o.accepted_at ? 'Accepted · order created' : o.opened_at ? 'Opened' : o.status === 'failed' ? 'Failed' : 'Sent'}

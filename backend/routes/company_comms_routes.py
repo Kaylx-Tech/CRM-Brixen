@@ -47,7 +47,7 @@ def _offers(company_id):
         return None  # this CRM has no Offer to Fix
     attention_offers._ensure()
     rows = query_db("SELECT id, service_name, channel, recipient, status, sent_at, opened_at, accepted_at, order_id, "
-                    "sent_by_name, followups, last_followup_at FROM attention_offers WHERE company_id = ? "
+                    "sent_by_name, followups, last_followup_at, contact_number, contact_requested_at FROM attention_offers WHERE company_id = ? "
                     "ORDER BY id DESC LIMIT 30;", (company_id,)) or []
     return [dict(r) for r in rows]
 

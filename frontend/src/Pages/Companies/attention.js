@@ -21,6 +21,8 @@ export function offerStatusLine(offer) {
   if (!offer) return ''
   const when = (v) => (v ? new Date(String(v).replace(' ', 'T') + 'Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '')
   if (offer.accepted_at) return `Accepted ${when(offer.accepted_at)} · order created`
+  // The client left a WhatsApp number on the offer page: message them
+  if (offer.contact_number) return `Wants WhatsApp ${when(offer.contact_requested_at)}: ${offer.contact_number}`
   // Reminders go by themselves after 3 and 7 days (backend services/attention_offers.py run_followups)
   const reminders = Number(offer.followups) > 0 ? ` · ${offer.followups} reminder${offer.followups > 1 ? 's' : ''} sent` : ''
   if (offer.opened_at) return `Opened ${when(offer.opened_at)} · ${offer.service_name}${reminders}`

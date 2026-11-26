@@ -9,6 +9,7 @@ Team (admins, managers and staff who may see prices):
 Client (no sign-in):
   GET  /api/public/offer/<token>                → what the offer page shows (marks it opened)
   POST /api/public/offer/<token>/accept         → a Pending order for the service, once
+  POST /api/public/offer/<token>/whatsapp       {phone} → the team is told to message the client on WhatsApp
 """
 import re
 
@@ -24,8 +25,11 @@ def handle_attention_offer_routes(environ, start_response, path, method, user, b
     from services import attention_offers as offers
     body = body if isinstance(body, dict) else {}
     try:
-        public = re.match(r'^/api/public/offer/([A-Za-z0-9_-]{16,64})(/accept)?$', path)
+        public = re.match(r'^/api/public/offer/([A-Za-z0-9_-]{16,64})(/accept|/whatsapp)?$', path)
         if public:
+            if public.group(2) == '/whatsapp' and method == 'POST':
+                return success_response(start_response, data=offers.request_whatsapp(public.group(1), body),
+                                        message="Thank you. We will message you on WhatsApp.")
             if public.group(2) and method == 'POST':
                 return success_response(start_response, data=offers.accept(public.group(1)),
                                         message="Thank you. We have your go-ahead and will start on it.")

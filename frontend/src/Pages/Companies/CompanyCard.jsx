@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { IconAlertTriangle, IconArrowRight, IconBuildingSkyscraper, IconCalendarDue, IconCircleCheck, IconDotsVertical, IconFileText, IconSend, IconShieldCheck } from '@tabler/icons-react'
+import { IconAlertTriangle, IconArrowRight, IconBuildingSkyscraper, IconBrandWhatsapp, IconCalendarDue, IconCircleCheck, IconDotsVertical, IconFileText, IconSend, IconShieldCheck } from '@tabler/icons-react'
 import { cn } from 'cn'
 import { toast } from 'sonner'
 import { apiRequest } from '@/lib/api'
@@ -186,7 +186,16 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh,
               {offer?.accepted_at && <IconCircleCheck className="mr-1 inline size-3.5 align-[-2px]" />}
               {offer ? offerStatusLine(offer) : 'No offer sent yet'}
             </span>
-            {!offer?.accepted_at && (
+            {offer?.contact_number && !offer?.accepted_at ? (
+              <a
+                href={`https://wa.me/${String(offer.contact_number).replace(/\D/g, '')}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md bg-[#25D366] px-2.5 text-xs font-semibold text-white hover:bg-[#1fb257]"
+              >
+                <IconBrandWhatsapp className="size-3.5" /> WhatsApp
+              </a>
+            ) : !offer?.accepted_at && (
               <Button size="sm" variant={offer ? 'outline' : 'default'} className="h-7 shrink-0 px-2.5 text-xs" onClick={() => onOffer(company)}>
                 <IconSend className="size-3.5" /> {offer ? 'Send Again' : 'Offer to Fix'}
               </Button>

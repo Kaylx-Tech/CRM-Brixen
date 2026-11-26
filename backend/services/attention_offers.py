@@ -73,6 +73,9 @@ def _ensure():
     if 'followups' not in cols:  # reminders sent by run_followups
         conn.execute("ALTER TABLE attention_offers ADD COLUMN followups INTEGER NOT NULL DEFAULT 0;")
         conn.execute("ALTER TABLE attention_offers ADD COLUMN last_followup_at TIMESTAMP;")
+    if 'contact_number' not in cols:  # the WhatsApp number the client left on the offer page
+        conn.execute("ALTER TABLE attention_offers ADD COLUMN contact_number TEXT;")
+        conn.execute("ALTER TABLE attention_offers ADD COLUMN contact_requested_at TIMESTAMP;")
     conn.commit()
     _ready.add(path)
 
@@ -124,27 +127,6 @@ def _phone_digits(value):
     elif digits.startswith('0') and len(digits) == 11:  # a UK number written 07…
         digits = '44' + digits[1:]
     return digits if 8 <= len(digits) <= 15 else ''
-
-
-def _whatsapp_url(company, service_name=''):
-    """wa.me link to the firm, with a ready message, for the Chat on WhatsApp button ('' when no number is set)."""
-    from urllib.parse import quote
-    try:
-        from services.email_engine import WHATSAPP_NUMBER as number  # the firm's own WhatsApp number, where set
-    except ImportError:
-        number = ''
-    if not number:
-        try:
-            from services.portal_compat import brand_settings
-            number = (brand_settings() or {}).get('support_phone') or ''
-        except Exception:
-            number = ''
-    digits = _phone_digits(number)
-    if not digits:
-        return ''
-    text = f"Hello, I have a question about {company.get('name') or 'my company'}"
-    text += f" ({service_name})." if service_name else "."
-    return f"https://wa.me/{digits}?text={quote(text)}"
 
 
 def _money(value):
@@ -223,6 +205,11 @@ def marketing_mailbox_ready():
     return _mailbox_ready()
 
 
+def _whatsapp_link(link):
+    """The offer page opened at its 'Message me on WhatsApp' box."""
+    return link + ('&' if '?' in link else '?') + 'whatsapp=1'
+
+
 def _link(token):
     from services.portal_compat import portal_base_url
     return f"{portal_base_url()}/offer/{token}"
@@ -276,10 +263,10 @@ def send(company_id, body, actor):
                      ('Price', _price_text(service))],  # an empty price row is left out
             cta_label='Yes, Please Go Ahead',
             cta_url=link,
-            cta2_label='Chat on WhatsApp' if _whatsapp_url(company) else None,
-            cta2_url=_whatsapp_url(company, service['name']) or None,
+            cta2_label='Message Me on WhatsApp',
+            cta2_url=_whatsapp_link(link),
             category='COMPLIANCE',
-            footnote=f"This link works for {OFFER_DAYS} days. Reply to this email or message us on WhatsApp if you have a question.",
+            footnote=f"This link works for {OFFER_DAYS} days. Prefer WhatsApp? Leave your number and we will message you.",
         )
         ok = send_email(recipient, subject, html, text, category='COMPLIANCE',
                         user_id=(client or {}).get('id'),
@@ -306,13 +293,13 @@ def latest_by_company():
         ORDER BY id DESC;
     """) or []
     out = {}
-    for r in rows:  # newest first; an accepted offer wins, then one that was opened
+    for r in rows:  # newest first; an accepted offer wins, then a WhatsApp request, then one that was opened
         key = str(r['company_id'])
-        rank = 2 if r['accepted_at'] else 1 if r['opened_at'] else 0
+        rank = 3 if r['accepted_at'] else 2 if r['contact_number'] else 1 if r['opened_at'] else 0
         if key not in out or rank > out[key]['_rank']:
             out[key] = {**{k: r[k] for k in ('id', 'service_name', 'channel', 'status', 'sent_at', 'opened_at',
                                             'accepted_at', 'order_id', 'sent_by_name', 'followups',
-                                            'last_followup_at')}, '_rank': rank}
+                                            'last_followup_at', 'contact_number', 'contact_requested_at')}, '_rank': rank}
     for item in out.values():
         item.pop('_rank')
     return out
@@ -388,7 +375,7 @@ def public_view(token):
         'service': offer['service_name'],
         'price': _price_text({'price': offer['price'], 'vat_rate': service.get('vat_rate')}),
         'accepted': bool(offer.get('accepted_at')),
-        'whatsapp': _whatsapp_url(company, offer['service_name']),
+        'contact_number': offer.get('contact_number') or '',
     }
 
 
@@ -420,6 +407,33 @@ def accept(token):
     return public_view(token)
 
 
+def request_whatsapp(token, body):
+    """The client left a WhatsApp number on the offer page: the team is told to message them, and the email
+    reminders for this offer stop."""
+    offer = _by_token(token)
+    digits = _phone_digits((body or {}).get('phone'))
+    if not digits:
+        raise OfferError("Please write your WhatsApp number with the country code, for example +44 7700 900123.")
+    number = '+' + digits
+    execute_db("UPDATE attention_offers SET contact_number = ?, contact_requested_at = datetime('now'), followups = 2 "
+               "WHERE id = ?;", (number, offer['id']))
+    company = _company(offer['company_id'])
+    name = company.get('name') or 'A client'
+    text = (f"{name} wants a WhatsApp message about {offer['service_name']}: {number} "
+            f"(https://wa.me/{digits}).")
+    try:
+        from services.notification_service import notify_staff
+        notify_staff('WhatsApp request', text, 'info', '/admin/companies')
+    except Exception as exc:
+        print(f"[Offers] WhatsApp request {offer['id']}: team not notified: {exc}")
+    try:
+        from services.client_mail import email_team
+        email_team(f"WhatsApp request: {name}", text, link_path='/admin/companies')
+    except Exception as exc:
+        print(f"[Offers] WhatsApp request {offer['id']}: team not emailed: {exc}")
+    return public_view(token)
+
+
 # ── follow-ups ───────────────────────────────────────────────────────────────
 
 def _send_reminder(offer, last):
@@ -445,8 +459,8 @@ def _send_reminder(offer, last):
         details=[('Company', company.get('name')), ('Service', service['name']), ('Price', _price_text(service))],
         cta_label='Yes, Please Go Ahead',
         cta_url=_link(offer['token']),
-        cta2_label='Chat on WhatsApp' if _whatsapp_url(company) else None,
-        cta2_url=_whatsapp_url(company, service['name']) or None,
+        cta2_label='Message Me on WhatsApp',
+        cta2_url=_whatsapp_link(_link(offer['token'])),
         category='COMPLIANCE',
         footnote="Reply to this email if you have a question, or if it is already taken care of.",
     )
