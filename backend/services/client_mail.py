@@ -99,6 +99,12 @@ def _rows_box(rows, total=None, title=None, margin='20px 0 0'):
             f'style="width:100%;border-collapse:collapse;">{body}</table></div>')
 
 
+def bold_marks(escaped):
+    """**words** in an email's (already escaped) message → bold."""
+    import re
+    return re.sub(r'\*\*(.+?)\*\*', r'<strong style="font-weight:700;color:#1d1d1f;">\1</strong>', escaped)
+
+
 def compose_client_email(*, subject, headline, greeting, message, points=None, details=None,
                          cta_label=None, cta_url=None, category='ORDER', cta2_label=None, cta2_url=None,
                          details_total=None, boxes=None, footnote=None, alert=None):
@@ -141,7 +147,7 @@ def compose_client_email(*, subject, headline, greeting, message, points=None, d
     body_inner = (
         f'<p style="margin:0 0 12px;font-size:15px;line-height:1.55;color:#1d1d1f;">Hello {html_escape(greeting)},</p>'
         f'<p style="margin:0;font-size:15px;line-height:1.55;color:#424245;">'
-        f'{html_escape(message).replace(chr(10), "<br>")}</p>'
+        f'{bold_marks(html_escape(message)).replace(chr(10), "<br>")}</p>'
         f'{alert_html}{points_html}{details_html}{cta_html}{boxes_html}{footnote_html}'
     )
     hero = eng.email_brand_header_html(brand, headline)
@@ -153,7 +159,7 @@ def compose_client_email(*, subject, headline, greeting, message, points=None, d
         signature_html=eng.email_signature_html(brand_for_sig),
         disclaimer_html=eng.email_disclaimer_html(eng.category_disclaimer(category)),
     )
-    text_lines = [f"Hello {greeting},", '', message, *([f"! {alert}"] if alert else []), *points]
+    text_lines = [f"Hello {greeting},", '', message.replace('**', ''), *([f"! {alert}"] if alert else []), *points]
     text_lines += [f"{k}: {v}" for k, v in details]
     if details_total:
         text_lines += [f"{details_total[0]}: {details_total[1]}"]

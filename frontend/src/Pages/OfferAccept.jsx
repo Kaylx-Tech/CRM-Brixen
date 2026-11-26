@@ -69,7 +69,12 @@ export default function OfferAccept() {
               </ul>
             )}
 
-            {o.message && <p className="mt-5 whitespace-pre-line text-sm leading-relaxed text-foreground/80">{o.message}</p>}
+            {o.message && (
+              <p className="mt-5 whitespace-pre-line text-sm leading-relaxed text-foreground/80">
+                {/* **words** are bold, as in the email */}
+                {String(o.message).split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 ? <strong key={i} className="font-semibold text-foreground">{part}</strong> : part))}
+              </p>
+            )}
 
             <div className="mt-5 flex items-center justify-between rounded-xl border px-4 py-3">
               <span className="font-medium">{o.service}</span>

@@ -144,17 +144,17 @@ def _issue_sentence(company, issues):
     for i in issues:
         detail = f" ({'d' + i['detail'][1:]})" if str(i.get('detail') or '').startswith('Due ') else ''
         title = str(i.get('title') or i['code'])
-        parts.append(f"{title[:1].lower() + title[1:]}{detail}")
+        parts.append(f"**{title[:1].lower() + title[1:]}**{detail}")
     if not parts:
-        return f"Companies House shows something that needs doing for {name}."
-    return f"Companies House shows that {name} has: {'; '.join(parts)}."
+        return f"Companies House shows something that needs doing for **{name}**."
+    return f"Companies House shows that **{name}** has: {'; '.join(parts)}."
 
 
 def default_message(company, issues, service):
     lines = [_issue_sentence(company, issues), '']
     if service:
         price = _price_text(service)
-        lines.append(f"We can take care of it for you: {service['name']}{f' for {price}' if price else ''}. "
+        lines.append(f"We can take care of it for you: **{service['name']}**{f' for **{price}**' if price else ''}. "
                      "Press the button below (or open the link) and we will start straight away.")
     else:
         lines.append("We can take care of it for you. Press the button below (or open the link) and we will start "
@@ -269,7 +269,7 @@ def send(company_id, body, actor):
         from urllib.parse import quote
         greeting = ((client or {}).get('full_name') or company.get('director') or '').split()
         hello = f"Hello {greeting[0]},\n\n" if greeting else "Hello,\n\n"
-        out['whatsapp_url'] = f"https://wa.me/{recipient}?text={quote(hello + message + chr(10) + chr(10) + link)}"
+        out['whatsapp_url'] = f"https://wa.me/{recipient}?text={quote(hello + message.replace('**', '*') + chr(10) + chr(10) + link)}"
 
     out['offer'] = _last_offer(company['id'])
     return out
@@ -407,12 +407,12 @@ def _send_reminder(offer, last):
     from services.client_mail import compose_client_email
     from services.email_service import send_email
     greeting = ((client or {}).get('full_name') or company.get('director') or 'there').split()[0]
-    message = (f"Just a reminder about {company.get('name')}: {_issue_sentence(company, _issues(company))} "
-               f"We can take care of it for you with our {service['name']} service; one click below and we start."
+    message = (f"Just a reminder about **{company.get('name')}**: {_issue_sentence(company, _issues(company))} "
+               f"We can take care of it for you with our **{service['name']}** service; one click below and we start."
                if not last else
-               f"A last reminder about {company.get('name')}: {_issue_sentence(company, _issues(company))} "
-               f"Leaving it can mean penalties from Companies House, so we would be glad to sort it for you with "
-               f"our {service['name']} service.")
+               f"A last reminder about **{company.get('name')}**: {_issue_sentence(company, _issues(company))} "
+               f"Leaving it can mean **penalties from Companies House**, so we would be glad to sort it for you with "
+               f"our **{service['name']}** service.")
     subject, text, html = compose_client_email(
         subject=f"{'Last reminder' if last else 'Reminder'}: {company.get('name')} needs attention",
         headline='Still Need a Hand With This?' if not last else 'A Last Reminder',
