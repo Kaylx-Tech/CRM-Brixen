@@ -1,6 +1,7 @@
 """Email log (/api/admin/email-logs): every email the CRM tried to send, with its status. Admins only.
 
 GET  /api/admin/email-logs?status=&category=&search=&page=&limit=   list (no bodies) + counts per status
+GET  /api/admin/email-logs/readers?search=                           one row per address: sent, opened, clicked
 GET  /api/admin/email-logs/<id>                                     one email, with its body for the preview
 POST /api/admin/email-logs/<id>/resend                              send it again to the same address
 """
@@ -13,6 +14,8 @@ ADMIN_ROLES = ('SUPER_ADMIN', 'ADMIN')
 LIST_FIELDS = (
     "e.id, e.recipient, e.subject, e.status, e.attempts, e.last_error, e.category, e.user_id, e.order_id, "
     "e.company_id, e.triggered_by, e.created_at, e.sent_at, "
+    "e.opened_at, e.last_opened_at, e.open_count, e.clicked_at, e.click_count, "
+    "CASE WHEN e.track_token IS NOT NULL THEN 1 ELSE 0 END AS tracked, "
     "u.full_name AS client_name, t.full_name AS triggered_by_name, o.order_number, c.name AS company_name, "
     "CASE WHEN COALESCE(e.body_html, e.body_text, '') != '' THEN 1 ELSE 0 END AS resendable"
 )
@@ -36,6 +39,11 @@ def handle_email_log_routes(environ, start_response, path, method, user, body, q
         return error_response(start_response, "Authentication required", status_code=401)
     if user.get('role') not in ADMIN_ROLES:
         return error_response(start_response, "The email log is available to administrators only.", status_code=403)
+    from services import email_tracking
+    email_tracking.ensure()  # opened / clicked columns
+
+    if path == '/api/admin/email-logs/readers' and method == 'GET':
+        return success_response(start_response, data={'readers': email_tracking.readers(_first(query, 'search'))})
 
     if path == '/api/admin/email-logs' and method == 'GET':
         clauses, params = [], []

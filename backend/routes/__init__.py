@@ -9,6 +9,7 @@ from .company_routes import handle_company_routes
 from .gov_form_routes import handle_gov_form_routes
 from .company_comms_routes import handle_company_comms_routes
 from .attention_offer_routes import handle_attention_offer_routes
+from .email_track_routes import handle_email_track_routes
 from .order_routes import handle_order_routes
 from .invoice_routes import handle_invoice_routes
 from .client_routes import handle_client_routes
@@ -48,6 +49,11 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
 
     # 0. My Account on the website (retail customers; its own sign-in, never the CRM portal)
     res = handle_website_account_routes(environ, start_response, path, method, user, body, query)
+    if res is not None:
+        return res
+
+    # Email opens and clicks (no sign-in: the picture and links inside sent emails)
+    res = handle_email_track_routes(environ, start_response, path, method, user, body, query)
     if res is not None:
         return res
 

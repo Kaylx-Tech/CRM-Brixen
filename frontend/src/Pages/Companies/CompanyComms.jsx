@@ -157,8 +157,17 @@ export default function CompanyComms({ companyId, active }) {
                     {e.category ? ` · ${String(e.category).toLowerCase()}` : ''}
                   </span>
                 </span>
-                <span className={`${PILL} ${tone(e.status)}`} title={e.last_error || ''}>
-                  {String(e.status || '').replace('_', ' ')}
+                <span className="flex items-center gap-1.5">
+                  {Number(e.click_count) > 0 ? (
+                    <span className={`${PILL} bg-emerald-500/10 text-emerald-700 dark:text-emerald-300`} title={`First click ${when(e.clicked_at)}`}>Clicked</span>
+                  ) : Number(e.open_count) > 0 ? (
+                    <span className={`${PILL} bg-sky-500/10 text-sky-700 dark:text-sky-300`} title={`First opened ${when(e.opened_at)}`}>Opened</span>
+                  ) : Number(e.tracked) && e.status === 'sent' ? (
+                    <span className={`${PILL} bg-muted text-muted-foreground`}>Not opened</span>
+                  ) : null}
+                  <span className={`${PILL} ${tone(e.status)}`} title={e.last_error || ''}>
+                    {String(e.status || '').replace('_', ' ')}
+                  </span>
                 </span>
               </li>
             ))}

@@ -27,8 +27,12 @@ def _company(comp_id):
 
 
 def _emails(company):
+    from services import email_tracking
+    email_tracking.ensure()
     rows = query_db("""
-        SELECT id, recipient, subject, status, category, last_error, created_at, sent_at
+        SELECT id, recipient, subject, status, category, last_error, created_at, sent_at,
+               opened_at, last_opened_at, open_count, clicked_at, click_count,
+               CASE WHEN track_token IS NOT NULL THEN 1 ELSE 0 END AS tracked
         FROM email_outbox
         WHERE company_id = ? OR (company_id IS NULL AND ? IS NOT NULL AND user_id = ?)
         ORDER BY id DESC LIMIT 100;

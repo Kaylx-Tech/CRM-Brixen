@@ -166,16 +166,26 @@ def send_email(recipient, subject, html_content, text_content=None, *, category=
             'triggered_by': triggered_by}
     # Master switch (Settings > Email: "Send emails"): when off, nothing goes out except password resets,
     # and the email is logged as suppressed so it can be sent later from the Email log
+    # Opens and clicks (services/email_tracking.py): the email goes out with them, the log keeps it as written
+    from services import email_tracking
+    track = log and email_tracking.wants_tracking(category, html_content, store_body) and sender != 'login'
+    token = email_tracking.new_token() if track else None
+    sent_html, links = email_tracking.add_tracking(html_content, token) if track else (html_content, [])
     if category != 'SECURITY' and not emails_enabled():
         ok, status, error = False, 'suppressed', 'Emails are turned off in Settings > Email'
     else:
-        ok, status, error = _deliver_with_fallbacks(recipient, subject, html_content, text_content, sender=sender,
+        ok, status, error = _deliver_with_fallbacks(recipient, subject, sent_html, text_content, sender=sender,
                                                     logo=logo, images=images, attachments=attachments)
     _last_failure['status'], _last_failure['error'] = ('', '') if ok else (status, error)
     if log:
-        _log_email((recipient or '').strip(), subject,
-                   html_content if store_body else None, text_content if store_body else None,
-                   status, error, meta)
+        log_id = _log_email((recipient or '').strip(), subject,
+                            html_content if store_body else None, text_content if store_body else None,
+                            status, error, meta)
+        if track:
+            try:
+                email_tracking.save(log_id, token, links)
+            except Exception as exc:
+                print(f"[Email Service] Could not save the email's tracking: {exc}")
     return ok
 
 
@@ -187,7 +197,13 @@ def resend_logged_email(log_id, actor_id=None):
         return False, 'not_found', 'Email not found in the log'
     if not row.get('body_html') and not row.get('body_text'):
         return False, 'not_resendable', 'This email (e.g. a password reset) was not stored, so it cannot be resent'
-    ok, status, error = _deliver_with_fallbacks(row['recipient'], row['subject'], row.get('body_html'),
+    from services import email_tracking
+    html = row.get('body_html')
+    if email_tracking.wants_tracking(row.get('category'), html):
+        token = row.get('track_token') or email_tracking.new_token()
+        html, links = email_tracking.add_tracking(html, token)
+        email_tracking.save(log_id, token, links)
+    ok, status, error = _deliver_with_fallbacks(row['recipient'], row['subject'], html,
                                                 row.get('body_text'))
     execute_db("""
         UPDATE email_outbox

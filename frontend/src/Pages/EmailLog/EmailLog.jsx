@@ -10,7 +10,8 @@ import {
 } from '@/components/ui/dialog'
 import { createColumnHelper } from '@tanstack/react-table'
 import { DataTable } from '../../Layout/DataTable'
-import { IconEye, IconSend, IconLoader2, IconMailCheck, IconMailX, IconMailPause } from '@tabler/icons-react'
+import { IconEye, IconSend, IconLoader2, IconMailCheck, IconMailX, IconMailPause, IconMailOpened, IconPointer } from '@tabler/icons-react'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SectionCards } from '../../Layout/StatsCard'
 import { apiRequest } from '@/lib/api'
 import { toastProcessing, toastDone, toastFail } from '@/lib/toastActions'
@@ -57,6 +58,105 @@ function StatusBadge({ status, error }) {
   )
 }
 
+/** Whether the reader opened the email or clicked a link in it (services/email_tracking.py). */
+function readState(e) {
+  if (Number(e.click_count) > 0) return 'clicked'
+  if (Number(e.open_count) > 0) return 'opened'
+  if (Number(e.tracked) && e.status === 'sent') return 'unread'
+  return ''
+}
+const READ = {
+  clicked: { label: 'Clicked', className: 'badge-green' },
+  opened: { label: 'Opened', className: 'badge-sky' },
+  unread: { label: 'Not opened', className: 'bg-muted text-muted-foreground' },
+}
+
+function ReadBadge({ email }) {
+  const state = readState(email)
+  if (!state) return <span className="text-sm text-muted-foreground">—</span>
+  const when = state === 'clicked' ? email.clicked_at : email.opened_at
+  const times = state === 'clicked' ? Number(email.click_count) : Number(email.open_count)
+  return (
+    <Badge
+      className={`${READ[state].className} text-[11px]`}
+      title={when ? `First ${state === 'clicked' ? 'click' : 'open'} ${formatWhen(when)}${times > 1 ? ` · ${times} times` : ''}` : undefined}
+    >
+      {READ[state].label}
+    </Badge>
+  )
+}
+
+const READER = {
+  clicks: { label: 'Clicks links', className: 'badge-green' },
+  opens: { label: 'Opens emails', className: 'badge-sky' },
+  never: { label: 'Never opens', className: 'badge-red' },
+}
+
+/** One row per email address: how many emails it got, opened and clicked. Who to email, who to call instead. */
+function Readers() {
+  const [rows, setRows] = useState(null)
+  useEffect(() => {
+    apiRequest('/admin/email-logs/readers', { label: 'Readers', silent: true }).then((res) =>
+      setRows(
+        res.ok
+          ? (res.data?.data?.readers || []).map((r) => ({
+              ...r,
+              readerLabel: READER[r.reader]?.label || r.reader,
+              lastOpened: formatWhen(r.last_opened_at),
+            }))
+          : []
+      )
+    )
+  }, [])
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor('email', {
+        header: 'Client',
+        cell: ({ row }) => (
+          <div className="flex min-w-0 max-w-[260px] flex-col gap-0.5">
+            <OverflowTooltip text={row.original.name || row.original.email} className="text-sm font-medium text-foreground" />
+            {row.original.name ? <OverflowTooltip text={row.original.email} className="text-[11px] text-muted-foreground" /> : null}
+          </div>
+        ),
+      }),
+      columnHelper.accessor('readerLabel', {
+        header: 'Reader',
+        cell: ({ row }) => <Badge className={`${READER[row.original.reader]?.className || ''} text-[11px]`}>{row.getValue('readerLabel')}</Badge>,
+      }),
+      columnHelper.accessor('sent', { header: 'Emails', cell: ({ row }) => <span className="text-sm">{row.getValue('sent')}</span> }),
+      columnHelper.accessor('opened', {
+        header: 'Opened',
+        cell: ({ row }) => (
+          <span className="text-sm">
+            {row.original.opened} <span className="text-muted-foreground">({row.original.open_rate}%)</span>
+          </span>
+        ),
+      }),
+      columnHelper.accessor('clicked', { header: 'Clicked', cell: ({ row }) => <span className="text-sm">{row.getValue('clicked')}</span> }),
+      columnHelper.accessor('lastOpened', {
+        header: 'Last Opened',
+        cell: ({ row }) => <span className="whitespace-nowrap text-sm text-muted-foreground">{row.getValue('lastOpened')}</span>,
+      }),
+    ],
+    []
+  )
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-muted-foreground">
+        Emails sent since tracking started. <b>Clicks links</b> is sure; <b>Opened</b> is a good hint (iPhone Mail can open emails by
+        itself, and some people block pictures). Clients who never open emails are better reached by WhatsApp or a call.
+      </p>
+      <DataTable
+        columns={columns}
+        data={rows || []}
+        isLoading={rows === null}
+        filterConfig={[{ columnKey: 'readerLabel', placeholder: 'Reader', options: Object.values(READER).map((r) => ({ label: r.label, value: r.label })) }]}
+        searchPlaceholder="Search client or email…"
+      />
+    </div>
+  )
+}
+
 /** Preview of one logged email (rendered in a sandboxed frame) with its delivery details. */
 function EmailPreview({ emailId, onClose, onResend }) {
   const [email, setEmail] = useState(null)
@@ -99,6 +199,7 @@ function EmailPreview({ emailId, onClose, onResend }) {
                 {email.triggered_by_name ? ` · by ${email.triggered_by_name}` : ''}
                 {Number(email.attempts) > 1 ? ` · ${email.attempts} attempts` : ''}
               </span>
+              <ReadBadge email={email} />
             </div>
             {email.last_error && email.status !== 'sent' ? (
               <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
@@ -159,6 +260,7 @@ export default function EmailLog() {
           ...e,
           when: formatWhen(e.created_at),
           categoryLabel: CATEGORY_LABELS[e.category] || e.category || '—',
+          readLabel: READ[readState(e)]?.label || '—',
         }))
       )
       setCounts(d.counts || {})
@@ -227,6 +329,10 @@ export default function EmailLog() {
         header: 'Status',
         cell: ({ row }) => <StatusBadge status={row.getValue('status')} error={row.original.last_error} />,
       }),
+      columnHelper.accessor('readLabel', {
+        header: 'Read',
+        cell: ({ row }) => <ReadBadge email={row.original} />,
+      }),
       columnHelper.accessor('triggered_by_name', {
         header: 'Triggered By',
         cell: ({ row }) => (
@@ -266,10 +372,19 @@ export default function EmailLog() {
         placeholder: 'Type',
         options: cats.map((c) => ({ label: c, value: c })),
       },
+      {
+        columnKey: 'readLabel',
+        placeholder: 'Read',
+        options: Object.values(READ).map((r) => ({ label: r.label, value: r.label })),
+      },
     ]
   }, [emails])
 
   const failed = (counts.failed || 0) + (counts.not_configured || 0) + (counts.invalid_recipient || 0)
+  const [view, setView] = useState('emails')
+  const tracked = emails.filter((e) => readState(e))
+  const openedCount = tracked.filter((e) => readState(e) !== 'unread').length
+  const clickedCount = tracked.filter((e) => readState(e) === 'clicked').length
 
   return (
     <div className="flex flex-col gap-4 w-full pb-10">
@@ -293,9 +408,21 @@ export default function EmailLog() {
           { title: 'Total Emails', hero: true, value: String(total), footerSubText: 'Sent or attempted' },
           { title: 'Delivered', tone: 'emerald', icon: IconMailCheck, value: String(counts.sent || 0), footerSubText: total ? `${Math.round(((counts.sent || 0) / total) * 100)}% of all emails` : 'Nothing yet' },
           { title: 'Not Delivered', tone: 'rose', icon: IconMailX, value: String(failed), footerSubText: 'Failed, bad address or no SMTP' },
-          { title: 'Held (Emails Off)', tone: 'amber', icon: IconMailPause, value: String(counts.suppressed || 0), footerSubText: 'Send emails is switched off' },
+          { title: 'Opened', tone: 'sky', icon: IconMailOpened, value: String(openedCount), footerSubText: tracked.length ? `${Math.round((openedCount / tracked.length) * 100)}% of tracked emails` : 'Tracking starts with new emails' },
+          { title: 'Clicked', tone: 'emerald', icon: IconPointer, value: String(clickedCount), footerSubText: tracked.length ? `${Math.round((clickedCount / tracked.length) * 100)}% clicked a link` : 'Tracking starts with new emails' },
+          // Held only when there are some, so the cards stay on one row
+          ...(counts.suppressed
+            ? [{ title: 'Held (Emails Off)', tone: 'amber', icon: IconMailPause, value: String(counts.suppressed), footerSubText: 'Send emails is switched off' }]
+            : []),
         ]}
       />
+
+      <Tabs value={view} onValueChange={setView}>
+        <TabsList>
+          <TabsTrigger value="emails">Emails</TabsTrigger>
+          <TabsTrigger value="readers">Readers</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {loadError && (
         <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-2 text-sm text-destructive">
@@ -303,14 +430,18 @@ export default function EmailLog() {
         </div>
       )}
 
-      <DataTable
-        hideOnSmallerScreens={['triggered_by_name']}
-        columns={columns}
-        data={emails}
-        filterConfig={filterConfig}
-        isLoading={isLoading}
-        searchPlaceholder="Search address, subject, customer…"
-      />
+      {view === 'readers' ? (
+        <Readers />
+      ) : (
+        <DataTable
+          hideOnSmallerScreens={['triggered_by_name']}
+          columns={columns}
+          data={emails}
+          filterConfig={filterConfig}
+          isLoading={isLoading}
+          searchPlaceholder="Search address, subject, customer…"
+        />
+      )}
 
       <EmailPreview emailId={previewId} onClose={() => setPreviewId(null)} onResend={resend} />
     </div>
