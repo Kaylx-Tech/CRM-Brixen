@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
-import { IconAlertTriangle, IconCircleCheck, IconLoader2 } from "@tabler/icons-react"
+import { IconAlertTriangle, IconBrandWhatsapp, IconCircleCheck, IconLoader2 } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { getApiBase } from "@/lib/api"
 
@@ -95,6 +95,11 @@ export default function OfferAccept() {
                   This tells {o.firm || "us"} to start. {o.price ? "You will get an invoice for it." : ""}
                 </p>
               </>
+            )}
+            {o.whatsapp && (
+              <Button variant="outline" size="lg" className="mt-3 w-full" onClick={() => window.open(o.whatsapp, "_blank", "noopener")}>
+                <IconBrandWhatsapp className="size-5 text-[#25D366]" /> Chat on WhatsApp
+              </Button>
             )}
             {state.error && <p className="mt-3 text-sm text-destructive">{state.error}</p>}
           </>
