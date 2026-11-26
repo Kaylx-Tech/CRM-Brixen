@@ -5,7 +5,7 @@ import { SITE } from "@/lib/site"
 
 export const metadata = {
   title: "Contact Us",
-  description: `Contact Brixen Consultants: call ${SITE.phone}, WhatsApp ${SITE.phone2}, email ${SITE.email}, or send us your question. Open 24 hours, 7 days a week.`,
+  description: `Contact Brixen Consultants: call or WhatsApp ${SITE.phone}, email ${SITE.email}, or send us your question. Open 24 hours, 7 days a week.`,
   alternates: { canonical: "/contact/" },
 }
 
@@ -37,7 +37,7 @@ const contactLd = {
   mainEntity: {
     "@type": "ProfessionalService",
     name: SITE.legalName,
-    telephone: [SITE.phone, SITE.phone2],
+    telephone: SITE.phone,
     email: SITE.email,
     openingHours: "Mo-Su 00:00-23:59",
     address: { "@type": "PostalAddress", streetAddress: "57 Wellesley Road", addressLocality: "Ilford", postalCode: "IG1 4JZ", addressCountry: "GB" },
@@ -53,7 +53,6 @@ export default function ContactPage() {
       "Call Us",
       <span key="p" className="flex flex-col">
         <a href={SITE.phoneHref} className="hover:text-brand-blue">{SITE.phone}</a>
-        <a href={SITE.phone2Href} className="hover:text-brand-blue">{SITE.phone2}</a>
       </span>,
     ],
     ["email", "Email Us", <a key="e" href={`mailto:${SITE.email}`} className="break-all hover:text-brand-blue">{SITE.email}</a>],

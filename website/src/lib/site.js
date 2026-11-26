@@ -14,11 +14,9 @@ export const SITE = {
   tagline: "UK company formation and business services",
   companyNumber: "17314564",
   icoNumber: "ZB941411",
-  phone: "+44 7490 359487",
-  phoneHref: "tel:+447490359487",
-  phone2: "+44 7360 515317",
-  phone2Href: "tel:+447360515317",
-  // WhatsApp chats go to the second number
+  // Our one number: calls and WhatsApp chats
+  phone: "+44 7360 515317",
+  phoneHref: "tel:+447360515317",
   whatsapp: "447360515317",
   officeHours: "Monday to Sunday, open 24 hours",
   email: "contact@brixenconsultants.com",
