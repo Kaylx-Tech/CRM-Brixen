@@ -25,8 +25,8 @@ LETTERHEAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__
 LH = {'top_w': 186.1, 'top_h': 93.4, 'bottom_w': 293.6, 'bottom_h': 154.9, 'logo_w': 103.4, 'map_w': 246.75}
 LH_SCALE = 0.4
 CONTENT_BOTTOM = 238  # mm: the invoice text ends above the bottom waves
-# The UK number on the letterhead (emails and invoices)
-LETTERHEAD_PHONE = '+44 7490 359487'
+# The firm's number on the invoice letterhead: WhatsApp (a click in the PDF opens a chat)
+LETTERHEAD_PHONE = '+44 7360 515317'
 
 # Registered company details printed on every invoice (app.py brand_settings)
 COMPANY_DETAILS = {
@@ -336,20 +336,22 @@ def _render_pdf(payload, s=1.0):
             art('top-right.png', x=210 - LH['top_w'] * m, y=0, w=LH['top_w'] * m)
             art('logo.png', x=L, y=18, w=LH['logo_w'] * m * 1.1)
 
-        # The letterhead's bottom: waves on the left; the website, phone and email and the company details on
+        # The letterhead's bottom: waves on the left; the website, WhatsApp and email and the company details on
         # the right
         def footer(self):
             m = LH_SCALE
             art('bottom-left.png', x=0, y=297 - LH['bottom_h'] * m, w=LH['bottom_w'] * m)
             x, w = 112, R - 112
             y0 = 297 - 34
-            for icon, text in (('web', website), ('phone', LETTERHEAD_PHONE),
-                               ('mail', brand.get('support_email') or 'contact@brixenconsultants.com')):
+            email = brand.get('support_email') or 'contact@brixenconsultants.com'
+            wa_link = 'https://wa.me/' + re.sub(r'\D', '', LETTERHEAD_PHONE)
+            for icon, text, link in (('web', website, f'https://{website}'), ('whatsapp', LETTERHEAD_PHONE, wa_link),
+                                     ('mail', email, f'mailto:{email}')):
                 art(f'icon-{icon}.png', x=x, y=y0 + 0.6, w=3.2)
                 self.set_xy(x + 5, y0)
                 self.set_font('Helvetica', 'B', 8.5)
                 self.set_text_color(*lh_navy)
-                self.cell(w - 5, 4.4, latin(text))
+                self.cell(w - 5, 4.4, latin(text), link=link)
                 y0 += 5
             self.set_xy(x, y0 + 1.5)
             self.set_font('Helvetica', '', 6.8)
