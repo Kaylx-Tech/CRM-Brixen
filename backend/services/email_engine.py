@@ -590,7 +590,7 @@ def email_letterhead_top_html(brand):
 
 
 def email_letterhead_footer_html(brand=None):
-    """The letterhead's bottom: waves on the left; the website, phone and email and the registered company
+    """The letterhead's bottom: waves on the left; the website, WhatsApp and email and the registered company
     details on the right."""
     if brand is None:
         try:
@@ -599,15 +599,13 @@ def email_letterhead_footer_html(brand=None):
         except Exception:
             brand = {}
     try:
-        from services.invoice_document import COMPANY_DETAILS as reg, LETTERHEAD_PHONE as phone
+        from services.invoice_document import COMPANY_DETAILS as reg
     except Exception:
-        reg, phone = {}, ''
+        reg = {}
     c = brand_contact_fields(brand)
-    phone_digits = re.sub(r'\D', '', phone)
     wa_digits = re.sub(r'\D', '', WHATSAPP_NUMBER)
     lines = [('web', c['website_label'], c['website']),
-             ('whatsapp', WHATSAPP_NUMBER, f"https://wa.me/{wa_digits}"),  # opens a WhatsApp chat
-             ('phone', phone, f"tel:+{phone_digits}"),
+             ('whatsapp', WHATSAPP_NUMBER, f"https://wa.me/{wa_digits}"),  # opens a WhatsApp chat (our only number)
              ('mail', c['email'], f"mailto:{c['email']}")]
     rows = ''.join(
         f'<tr><td width="16" style="padding:2px 7px 2px 0;vertical-align:middle;">'
