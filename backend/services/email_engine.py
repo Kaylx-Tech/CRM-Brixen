@@ -219,8 +219,7 @@ def email_signature_text(brand):
     lines = [
         'Kind regards,',
         '',
-        'The Brixen Consultants Team',
-        c['legal_name'],
+        'Brixen Consultants Team',
     ]
     if c['email']:
         lines.append(c['email'])
@@ -243,7 +242,7 @@ def email_signature_html(brand, *, align='left'):
         f'font-size:15px;line-height:1.45;color:{ink};">Kind regards,</p>',
         f'<p style="margin:0;text-align:{align};font-family:{EMAIL_FONT_STACK};'
         f'font-size:15px;line-height:1.45;font-weight:600;color:{ink};">'
-        f'The Brixen Consultants Team</p>',
+        f'Brixen Consultants Team</p>',
         f'<p style="margin:2px 0 0;text-align:{align};font-family:{EMAIL_FONT_STACK};'
         f'font-size:14px;line-height:1.45;color:{muted};">{html_escape(c["legal_name"])}</p>',
     ]
@@ -566,6 +565,8 @@ def email_html_for_preview(html):
 # email with the company details at the bottom. The pictures are in frontend/public/email/letterhead-*.png (no
 # text in them).
 LETTERHEAD_NAVY = '#000c3d'
+# The letterhead footer's WhatsApp line: a click opens a chat with the firm
+WHATSAPP_NUMBER = '+44 7360 515317'
 
 
 def _img(filename, width, alt='', style=''):
@@ -603,7 +604,10 @@ def email_letterhead_footer_html(brand=None):
         reg, phone = {}, ''
     c = brand_contact_fields(brand)
     phone_digits = re.sub(r'\D', '', phone)
-    lines = [('web', c['website_label'], c['website']), ('phone', phone, f"tel:+{phone_digits}"),
+    wa_digits = re.sub(r'\D', '', WHATSAPP_NUMBER)
+    lines = [('web', c['website_label'], c['website']),
+             ('whatsapp', WHATSAPP_NUMBER, f"https://wa.me/{wa_digits}"),  # opens a WhatsApp chat
+             ('phone', phone, f"tel:+{phone_digits}"),
              ('mail', c['email'], f"mailto:{c['email']}")]
     rows = ''.join(
         f'<tr><td width="16" style="padding:2px 7px 2px 0;vertical-align:middle;">'
@@ -699,8 +703,7 @@ def email_signature_html(brand, *, align='left'):
     return (
         f'<div style="margin:24px 0 0;font-family:{EMAIL_FONT_STACK};font-size:15px;line-height:1.5;color:#1d1d1f;text-align:{align};">'
         f'<p style="margin:0 0 8px;font-weight:400;">Kind regards,</p>'
-        f'<p style="margin:0;font-weight:600;color:#1d1d1f;">The {html_escape(bname)} Team</p>'
-        f'<p style="margin:0;">{html_escape(cname)}</p>'
+        f'<p style="margin:0;font-weight:700;color:#1d1d1f;">{html_escape(bname)} Team</p>'
         # The website, phone and email are in the letterhead at the top of the email
         f'</div>'
     )
