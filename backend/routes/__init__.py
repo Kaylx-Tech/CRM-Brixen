@@ -8,6 +8,7 @@ from .stats_routes import handle_stats_routes
 from .company_routes import handle_company_routes
 from .gov_form_routes import handle_gov_form_routes
 from .company_comms_routes import handle_company_comms_routes
+from .attention_offer_routes import handle_attention_offer_routes
 from .order_routes import handle_order_routes
 from .invoice_routes import handle_invoice_routes
 from .client_routes import handle_client_routes
@@ -47,6 +48,11 @@ def dispatch_api_routes(environ, start_response, path, method, user, body, query
 
     # 0. My Account on the website (retail customers; its own sign-in, never the CRM portal)
     res = handle_website_account_routes(environ, start_response, path, method, user, body, query)
+    if res is not None:
+        return res
+
+    # Companies › Attention › Offer to Fix, and the client's offer page (no sign-in)
+    res = handle_attention_offer_routes(environ, start_response, path, method, user, body, query)
     if res is not None:
         return res
 

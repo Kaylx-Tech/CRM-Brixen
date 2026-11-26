@@ -206,6 +206,9 @@ def run_server():
     # filed confirmation statement or accounts clear from Attention quickly
     from services.ch_refresh import start_worker as start_ch_refresh_worker
     start_ch_refresh_worker()
+    # Companies › Attention › Offer to Fix: an email offer not accepted gets a reminder after 3 and 7 days
+    from services.attention_offers import start_followup_worker
+    start_followup_worker()
     # …and, with a stream key, every change Companies House publishes reaches the companies at once
     from services.ch_stream import start_worker as start_ch_stream_worker
     start_ch_stream_worker()

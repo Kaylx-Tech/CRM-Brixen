@@ -19,6 +19,7 @@ import {
   IconTrash,
   IconAlertTriangle,
   IconLoader2,
+  IconSend,
   IconCheck,
   IconCalendarDue,
   IconChevronLeft,
@@ -80,6 +81,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import DeleteConfirmation from '@/components/DeleteConfirmation'
 import { isAdminRole, isManagerOrAbove } from '@/lib/permissions'
 import { needsAttention } from './attention'
+import OfferDialog from './OfferDialog'
 import PendingCheckDialog from './PendingCheckDialog'
 import { m, spring } from '@/lib/motion'
 import { apiRequest, getApiBase, toastApiEmpty } from '@/lib/api'
@@ -181,6 +183,31 @@ const Companies = () => {
   }, [])
 
   const attentionCompanies = companies.filter((c) => c.isRegistered && needsAttention(c))
+
+  // Offer to Fix (OfferDialog.jsx): the newest offer of each company, loaded with the Attention tab
+  const [offers, setOffers] = useState({})
+  const [offerFor, setOfferFor] = useState(null)
+  const [sendingAll, setSendingAll] = useState(false)
+  const loadOffers = () =>
+    apiRequest('/admin/attention-offers', { label: 'Offers', silent: true }).then((res) => {
+      if (res.ok) setOffers(res.data.data?.offers || {})
+    })
+  useEffect(() => {
+    if (activeTab === 'attention') loadOffers()
+  }, [activeTab])
+  const offerToAll = async () => {
+    const waiting = attentionCompanies.filter((c) => !offers[String(c.id)]?.accepted_at)
+    if (!waiting.length) return
+    if (!window.confirm(`Email an offer to the clients of ${waiting.length} compan${waiting.length === 1 ? 'y' : 'ies'}? Each gets the service that fixes its problem. Companies with an offer in the last 3 days, no matching service or no email are skipped.`)) return
+    setSendingAll(true)
+    const res = await apiRequest('/admin/attention-offers/send-all', { method: 'POST', body: { company_ids: waiting.map((c) => c.id) }, label: 'Offers', silent: true })
+    setSendingAll(false)
+    if (res.ok) {
+      const skipped = res.data.data?.skipped || []
+      toast.success(res.data.message || 'Offers sent.', skipped.length ? { description: skipped.slice(0, 4).map((x) => `${x.company}: ${x.reason}`).join(' · ') } : undefined)
+      loadOffers()
+    } else toast.error(res.data?.error || res.reason || 'The offers were not sent.')
+  }
 
   // Draft / Pending › Check All With Companies House (PendingCheckDialog.jsx)
   const [pendingCheckOpen, setPendingCheckOpen] = useState(false)
@@ -447,12 +474,18 @@ const Companies = () => {
       {activeTab === 'attention' && !isLoading && (
         <div className="-mt-2 flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">
-            Accounts overdue, confirmation statement pending, default Companies House address, or strike-off.
+            Accounts overdue, confirmation statement pending, default Companies House address, or strike-off. Offer to Fix sends the client a
+            one-click offer for the service that sorts it out; an email offer not accepted gets a reminder after 3 and 7 days.
           </p>
           {attentionCompanies.length > 0 && (
-            <Button size="sm" variant="outline" disabled={checkingAll} onClick={checkAllNow}>
-              {checkingAll ? <IconLoader2 className="size-4 animate-spin" /> : <IconRefresh className="size-4" />} Check All Now
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" disabled={checkingAll} onClick={checkAllNow}>
+                {checkingAll ? <IconLoader2 className="size-4 animate-spin" /> : <IconRefresh className="size-4" />} Check All Now
+              </Button>
+              <Button size="sm" variant="outline" disabled={sendingAll} onClick={offerToAll}>
+                {sendingAll ? <IconLoader2 className="size-4 animate-spin" /> : <IconSend className="size-4" />} Offer to All
+              </Button>
+            </div>
           )}
         </div>
       )}
@@ -571,6 +604,8 @@ const Companies = () => {
                           isSelected={selectedIds.includes(company.id)}
                           onToggleSelect={handleToggleSelect}
                           onRefresh={fetchCompanies}
+                          offer={activeTab === 'attention' ? offers[String(company.id)] : undefined}
+                          onOffer={activeTab === 'attention' ? setOfferFor : undefined}
                           onDelete={isAdminRole() ? (id) => {
                             setSingleDeleteId(id)
                             setDeleteConfirmOpen(true)
@@ -584,6 +619,14 @@ const Companies = () => {
             ))}
           </div>
         </div>
+
+        {offerFor && (
+          <OfferDialog
+            company={offerFor}
+            onClose={() => setOfferFor(null)}
+            onSent={(offer) => offer && setOffers((o) => ({ ...o, [String(offerFor.id)]: offer }))}
+          />
+        )}
 
         {/* Companies per page (25 / 50 / 75 / 100) and the page buttons */}
         {filteredCompanies.length > 0 && (

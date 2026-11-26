@@ -4,12 +4,12 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { IconAlertTriangle, IconArrowRight, IconBuildingSkyscraper, IconCalendarDue, IconDotsVertical, IconFileText, IconShieldCheck } from '@tabler/icons-react'
+import { IconAlertTriangle, IconArrowRight, IconBuildingSkyscraper, IconCalendarDue, IconCircleCheck, IconDotsVertical, IconFileText, IconSend, IconShieldCheck } from '@tabler/icons-react'
 import { cn } from 'cn'
 import { toast } from 'sonner'
 import { apiRequest } from '@/lib/api'
 import ViewCompany from './ViewCompany'
-import { needsAttention, attentionSummary } from './attention'
+import { needsAttention, attentionSummary, offerStatusLine } from './attention'
 
 // Show the green "Genuine" shield beside the number (data checked against Companies House)
 const SHOW_GENUINE = false
@@ -48,7 +48,7 @@ function DueChip({ icon: Icon, label, date, overdue }) {
   )
 }
 
-const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh }) => {
+const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh, offer, onOffer }) => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
 
   // Check Now: fresh dates and status from Companies House straight away (backend services/ch_refresh.py)
@@ -177,6 +177,21 @@ const CompanyCard = ({ company, isSelected, onToggleSelect, onDelete, onRefresh 
             <IconAlertTriangle className="mt-px size-3.5 shrink-0" />
             <span className="line-clamp-2">{attentionSummary(company)}</span>
           </p>
+        )}
+
+        {/* Attention › Offer to Fix: send the client an offer for the service that fixes it */}
+        {hasAttention && onOffer && (
+          <div className="mx-4 flex items-center justify-between gap-2">
+            <span className={cn('min-w-0 truncate text-[11px]', offer?.accepted_at ? 'font-semibold text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground')}>
+              {offer?.accepted_at && <IconCircleCheck className="mr-1 inline size-3.5 align-[-2px]" />}
+              {offer ? offerStatusLine(offer) : 'No offer sent yet'}
+            </span>
+            {!offer?.accepted_at && (
+              <Button size="sm" variant={offer ? 'outline' : 'default'} className="h-7 shrink-0 px-2.5 text-xs" onClick={() => onOffer(company)}>
+                <IconSend className="size-3.5" /> {offer ? 'Send Again' : 'Offer to Fix'}
+              </Button>
+            )}
+          </div>
         )}
 
         <div className="mt-auto border-t px-4 pt-2.5 dark:border-white/10">

@@ -67,6 +67,7 @@ import { MotionRoot } from './lib/motion'
 import { ThemeProvider } from './hooks/theme-provider'
 import { PrivacyProvider } from './context/PrivacyContext'
 import { Toaster } from './components/ui/sonner'
+import OfferAccept from './Pages/OfferAccept'
 
 const App = () => {
   return (
@@ -78,6 +79,8 @@ const App = () => {
             <React.Suspense fallback={<PageLoading fullScreen />}>
             <Routes>
             <Route path="/" element={<HomeRedirect />} />
+            {/* An Offer to Fix from Companies › Attention: the client says yes (no sign-in) */}
+            <Route path="/offer/:token" element={<OfferAccept />} />
             
             {/* Public Login Route */}
             <Route
