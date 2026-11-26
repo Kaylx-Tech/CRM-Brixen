@@ -40,6 +40,7 @@ import { formatGBP } from '@/lib/money'
 import { useFormErrors, validateFields, formatCompanyNumber } from '@/lib/validation'
 import { FieldMessage, invalidProps } from '@/components/FormField'
 import { isAdminRole } from '@/lib/permissions'
+import CompanyComms from './CompanyComms'
 
 const COMPLIANCE_SCHEMA = {
   utr_number: { label: 'UTR', validate: (v) => (/^\d{10}$/.test(String(v).replace(/\s/g, '')) ? '' : 'UTR must be 10 digits.') },
@@ -431,6 +432,7 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
               <TabsTrigger value="compliance">Compliance</TabsTrigger>
               <TabsTrigger value="orders">Orders / Services</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="emails">Reminders</TabsTrigger>
             </TabsList>
           </div>
 
@@ -741,6 +743,10 @@ const ViewCompany = ({ company, isOpen, onClose, onUpdate }) => {
               </TabsContent>
 
               {/* Documents Tab */}
+              <TabsContent value="emails" className="m-0 space-y-6 outline-none">
+                <CompanyComms key={company?.id} companyId={company?.id} active={activeTab === "emails"} />
+              </TabsContent>
+
               <TabsContent value="documents" className="m-0 space-y-6 outline-none">
                 {/* Upload a document against this company */}
                 <div className="rounded-xl border bg-muted/20 p-4 space-y-3">
