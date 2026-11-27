@@ -19,6 +19,7 @@ import {
   IconTrash,
   IconAlertTriangle,
   IconLoader2,
+  IconFileSpreadsheet,
   IconSend,
   IconCheck,
   IconCalendarDue,
@@ -73,6 +74,7 @@ import { SectionCards } from '../../Layout/StatsCard'
 import CompanyCard from './CompanyCard'
 import AddCompany from './AddCompany'
 import ImportWebfilingModal from './ImportWebfilingModal'
+import ImportSheetModal from './ImportSheetModal'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
@@ -89,6 +91,7 @@ import { useRefreshOnReturn } from "@/lib/useRefreshOnReturn"
 
 const Companies = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [isWebfilingModalOpen, setIsWebfilingModalOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [companies, setCompanies] = useState([])
@@ -394,6 +397,12 @@ const Companies = () => {
           <h2 className="text-2xl font-bold tracking-tight">Registered Companies</h2>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          {isAdminRole() && (
+            <Button variant="outline" onClick={() => setIsSheetOpen(true)}>
+              <IconFileSpreadsheet className="mr-2 h-4 w-4" />
+              Import Spreadsheet
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setIsWebfilingModalOpen(true)}>
             <IconUpload className="mr-2 h-4 w-4" />
             Import WebFiling
@@ -702,6 +711,8 @@ const Companies = () => {
           fetchCompanies()
         }}
       />
+
+      <ImportSheetModal isOpen={isSheetOpen} onClose={() => setIsSheetOpen(false)} onDone={fetchCompanies} />
 
       <ImportWebfilingModal
         isOpen={isWebfilingModalOpen}

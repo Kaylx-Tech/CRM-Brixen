@@ -333,6 +333,24 @@ def handle_company_routes(environ, start_response, path, method, user, body, que
             message=(f"Imported {summary['imported']}, moved {summary.get('moved', 0)}, updated {summary['updated']}, "
                      f"skipped {summary['skipped']}, failed {summary['failed']}."))
 
+    # ── POST /api/admin/companies/sheet-preview + sheet-import (Import from spreadsheet) ──
+    if path in ('/api/admin/companies/sheet-preview', '/api/admin/companies/sheet-import') and method == 'POST':
+        if user_role not in ('SUPER_ADMIN', 'ADMIN'):
+            return error_response(start_response, "Only an admin can import companies", status_code=403)
+        from services import sheet_import
+        from services.smart_intake import companies_house_api_key
+        payload = body if isinstance(body, dict) else {}
+        rows = payload.get('rows') if isinstance(payload.get('rows'), list) else []
+        if not rows:
+            return error_response(start_response, "No rows to read", status_code=400)
+        if not companies_house_api_key():
+            return error_response(start_response, "Companies House is not connected yet", status_code=503)
+        if path.endswith('/sheet-preview'):
+            return success_response(start_response, data={'rows': sheet_import.preview(rows)})
+        result = sheet_import.import_rows(rows, payload.get('fallback'), actor=user,
+                                         update_existing=bool(payload.get('update_existing')))
+        return success_response(start_response, data=result)
+
     # ── GET /api/companies/ch-details?number= (order form: details of the selected company) ──
     # Official profile + active directors (month/year of birth, nationality, appointed) from Companies House.
     # Public register data, so B2B customers can use it on their own order form too
